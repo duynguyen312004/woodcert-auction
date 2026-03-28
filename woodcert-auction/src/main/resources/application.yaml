@@ -1,0 +1,33 @@
+server:
+  port: 8080
+
+spring:
+  config:
+    import: optional:classpath:application-local.yml
+
+  application:
+    name: woodcert-auction
+
+  datasource:
+    url: ${DB_URL:}
+    username: ${DB_USERNAME:}
+    password: ${DB_PASSWORD:}
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        "[format_sql]": true
+        dialect: org.hibernate.dialect.MySQLDialect
+
+  data:
+    redis:
+      host: ${REDIS_HOST:}
+      port: ${REDIS_PORT:0}
+
+jwt:
+  secret-key: ${JWT_SECRET_KEY:}
+  access-token-expiration: 900
+  refresh-token-expiration: 604800
