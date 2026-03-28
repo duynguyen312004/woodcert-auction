@@ -8,6 +8,11 @@ spring:
   application:
     name: woodcert-auction
 
+  jackson:
+    time-zone: UTC
+    serialization:
+      write-dates-as-timestamps: false
+
   datasource:
     url: ${DB_URL:}
     username: ${DB_USERNAME:}
@@ -21,6 +26,8 @@ spring:
       hibernate:
         "[format_sql]": true
         dialect: org.hibernate.dialect.MySQLDialect
+        jdbc:
+          time_zone: UTC
 
   data:
     redis:
