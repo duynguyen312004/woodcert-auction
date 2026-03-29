@@ -4,6 +4,7 @@ import com.woodcert.auction.core.dto.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -67,6 +68,20 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(403)
                 .body(ApiResponse.error(403, "Access denied"));
+    }
+
+    /**
+     * Handle Spring Security AuthenticationException.
+     * Catches BadCredentialsException, UsernameNotFoundException, etc.
+     * Safety net for any auth errors that leak past the service layer.
+     */
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAuthenticationException(AuthenticationException ex) {
+        log.warn("Authentication failed: {}", ex.getMessage());
+
+        return ResponseEntity
+                .status(401)
+                .body(ApiResponse.error(401, "Invalid email or password"));
     }
 
     /**

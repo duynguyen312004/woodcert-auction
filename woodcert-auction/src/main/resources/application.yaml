@@ -22,17 +22,28 @@ spring:
     hibernate:
       ddl-auto: update
     show-sql: true
+    defer-datasource-initialization: true
     properties:
       hibernate:
         "[format_sql]": true
         dialect: org.hibernate.dialect.MySQLDialect
         jdbc:
-          time_zone: UTC
+          "[time_zone]": UTC
+
+  sql:
+    init:
+      mode: always
 
   data:
     redis:
       host: ${REDIS_HOST:}
       port: ${REDIS_PORT:0}
+
+  devtools:
+    restart:
+      enabled: true
+    livereload:
+      enabled: true
 
 jwt:
   secret-key: ${JWT_SECRET_KEY:}
