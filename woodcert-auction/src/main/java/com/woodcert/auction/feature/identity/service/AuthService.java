@@ -1,6 +1,10 @@
 package com.woodcert.auction.feature.identity.service;
 
-import com.woodcert.auction.feature.identity.dto.*;
+import com.woodcert.auction.feature.identity.dto.request.LoginReq;
+import com.woodcert.auction.feature.identity.dto.request.RegisterReq;
+import com.woodcert.auction.feature.identity.dto.response.AuthRes;
+import com.woodcert.auction.feature.identity.dto.response.RefreshRes;
+import com.woodcert.auction.feature.identity.dto.response.RegisterRes;
 
 /**
  * Authentication service interface.

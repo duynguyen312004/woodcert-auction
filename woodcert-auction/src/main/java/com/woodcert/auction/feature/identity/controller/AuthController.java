@@ -1,7 +1,12 @@
 package com.woodcert.auction.feature.identity.controller;
 
 import com.woodcert.auction.core.dto.ApiResponse;
-import com.woodcert.auction.feature.identity.dto.*;
+import com.woodcert.auction.feature.identity.dto.request.LoginReq;
+import com.woodcert.auction.feature.identity.dto.request.RefreshReq;
+import com.woodcert.auction.feature.identity.dto.request.RegisterReq;
+import com.woodcert.auction.feature.identity.dto.response.AuthRes;
+import com.woodcert.auction.feature.identity.dto.response.RefreshRes;
+import com.woodcert.auction.feature.identity.dto.response.RegisterRes;
 import com.woodcert.auction.feature.identity.service.AuthService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
@@ -28,7 +33,7 @@ public class AuthController {
     private static final int COOKIE_MAX_AGE = 604800; // 7 days
 
     /**
-     * POST /api/v1/auth/login 🔓
+     * POST /api/v1/auth/login
      * Authenticate user, return tokens. Also sets refresh token as HttpOnly cookie.
      */
     @PostMapping("/login")
@@ -40,7 +45,7 @@ public class AuthController {
     }
 
     /**
-     * POST /api/v1/auth/register 🔓
+     * POST /api/v1/auth/register
      * Register a new user account.
      */
     @PostMapping("/register")
@@ -51,14 +56,14 @@ public class AuthController {
     }
 
     /**
-     * POST /api/v1/auth/refresh 🔓
+     * POST /api/v1/auth/refresh
      * Refresh access token. Reads refresh token from:
      * 1. HttpOnly cookie (Web/SPA)
      * 2. Request body (Mobile fallback)
      */
     @PostMapping("/refresh")
     public ResponseEntity<ApiResponse<RefreshRes>> refresh(
-            @RequestBody(required = false) RefreshReq request,
+            @RequestBody(required = false) @Valid RefreshReq request,
             @CookieValue(name = REFRESH_TOKEN_COOKIE, required = false) String cookieRefreshToken,
             HttpServletResponse response) {
 
@@ -82,12 +87,12 @@ public class AuthController {
     }
 
     /**
-     * POST /api/v1/auth/logout 🔒
+     * POST /api/v1/auth/logout
      * Revoke refresh token and clear cookie.
      */
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Void>> logout(
-            @RequestBody(required = false) RefreshReq request,
+            @RequestBody(required = false) @Valid RefreshReq request,
             @CookieValue(name = REFRESH_TOKEN_COOKIE, required = false) String cookieRefreshToken,
             HttpServletResponse response) {
 

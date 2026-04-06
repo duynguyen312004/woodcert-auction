@@ -23,6 +23,7 @@ public enum ErrorCode {
     // --- Resource ---
     RESOURCE_NOT_FOUND(404, "Resource not found"),
     DUPLICATE_RESOURCE(409, "Resource already exists"),
+    INVALID_REQUEST(400, "Invalid request"),
 
     // --- Token ---
     TOKEN_EXPIRED(401, "Token has expired"),

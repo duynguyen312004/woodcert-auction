@@ -162,7 +162,7 @@ Success Response (200):
     "roles": ["ROLE_BIDDER", "ROLE_SELLER"],
     "hasSellerProfile": true
   },
-  "message": "Success",
+  "message": "Fetch user profile successful",
   "timestamp": "2026-03-28T10:00:00"
 }
 ```
@@ -170,6 +170,9 @@ Success Response (200):
 ### PUT /users/me 🔒
 
 Update basic profile info (excluding email/password).
+Behavior:
+- Fields omitted from the request body keep their current values
+- Optional fields can be cleared by sending blank string
 
 Request Body:
 
@@ -181,7 +184,99 @@ Request Body:
 }
 ```
 
+Notes:
+
+- This endpoint is kept for backward compatibility.
+- Fields omitted from the request body keep their current values.
+- Optional fields can be cleared by sending blank string.
+
+Success Response (200):
+
+```json
+{
+  "statusCode": 200,
+  "data": {
+    "id": "uuid-1234-5678",
+    "email": "user@example.com",
+    "fullName": "Nguyen Van A Updated",
+    "phoneNumber": "0911222333",
+    "avatarUrl": "https://s3.../new-avatar.jpg",
+    "status": "ACTIVE",
+    "roles": ["ROLE_BIDDER"],
+    "hasSellerProfile": false
+  },
+  "message": "User profile updated successfully",
+  "timestamp": "2026-03-30T10:00:00"
+}
+```
+
+### PATCH /users/me 🔒
+
+Patch current user profile with explicit semantics:
+
+- field omitted: keep current value
+- field provided with `null`: clear field if nullable
+- field provided with value: update field
+
+Request Body:
+
+```json
+{
+  "fullName": "Nguyen Van A Partial",
+  "avatarUrl": null
+}
+```
+
+Success Response (200):
+
+```json
+{
+  "statusCode": 200,
+  "data": {
+    "id": "uuid-1234-5678",
+    "email": "user@example.com",
+    "fullName": "Nguyen Van A Partial",
+    "phoneNumber": "0911222333",
+    "avatarUrl": null,
+    "status": "ACTIVE",
+    "roles": ["ROLE_BIDDER"],
+    "hasSellerProfile": false
+  },
+  "message": "User profile patched successfully",
+  "timestamp": "2026-04-06T10:00:00"
+}
+```
+
+Errors:
+
+- 400: No field provided, invalid field type, invalid format
+
 ## 3. Seller Profiles
+
+### GET /users/me/seller-profile 🔒
+
+Get current logged-in seller profile.
+
+Success Response (200):
+
+```json
+{
+  "statusCode": 200,
+  "data": {
+    "userId": "uuid-1234-5678",
+    "storeName": "Xưởng Gỗ Mỹ Nghệ ABC",
+    "identityCardNumber": "001099012345",
+    "taxCode": "0101234567",
+    "reputationScore": 5.00
+  },
+  "message": "Fetch seller profile successful",
+  "timestamp": "2026-03-30T10:00:00"
+}
+```
+
+Errors:
+
+- 404: Seller profile not found
 
 ### POST /users/me/seller-profile 🔒
 
@@ -217,6 +312,7 @@ Success Response (201):
 Errors:
 
 - 409: User already has a seller profile, or Identity Card exists
+- 400: Phone number is required before creating seller profile
 
 ## 4. Addresses
 
@@ -266,7 +362,61 @@ Request Body:
 
 (Note: If isDefault is true, backend will automatically set all other addresses of this user to false).
 
-## 5. Categories
+Success Response (201):
+
+```json
+{
+  "statusCode": 201,
+  "data": {
+    "id": 12,
+    "receiverName": "Nguoi nhan thay",
+    "phoneNumber": "0911222333",
+    "streetAddress": "Toa nha ABC",
+    "provinceCode": "01",
+    "districtCode": "001",
+    "wardCode": "00001",
+    "isDefault": false
+  },
+  "message": "Address created successfully",
+  "timestamp": "2026-03-30T10:00:00"
+}
+```
+
+Errors:
+
+- 400: Invalid location hierarchy
+
+## 5. Location Master Data
+
+These endpoints are public so clients can populate address forms without bundling local static data.
+
+### GET /locations/provinces 🔓
+
+List all provinces sorted by name.
+
+### GET /locations/districts?provinceCode=01 🔓
+
+List all districts in a province.
+
+Errors:
+
+- 400: Missing `provinceCode`
+- 404: Province not found
+
+### GET /locations/wards?districtCode=001 🔓
+
+List all wards in a district.
+
+Errors:
+
+- 400: Missing `districtCode`
+- 404: District not found
+
+Notes:
+
+- Location codes are normalized by the backend, so clients may send `1` and still resolve to stored codes such as `01`, `001`, `00001`.
+
+## 6. Categories
 
 ### GET /categories 🔓
 
@@ -298,7 +448,7 @@ Success Response (200):
 }
 ```
 
-## 6. Products (Seller & Public)
+## 7. Products (Seller & Public)
 
 ### GET /products 🔓
 

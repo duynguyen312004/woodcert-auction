@@ -49,3 +49,11 @@ jwt:
   secret-key: ${JWT_SECRET_KEY:}
   access-token-expiration: 900
   refresh-token-expiration: 604800
+
+identity:
+  location-seed:
+    enabled: true
+    api-url: https://provinces.open-api.vn/api/v1/?depth=3
+  refresh-token-cleanup:
+    enabled: true
+    cron: "0 0 */6 * * *"

@@ -7,6 +7,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -52,6 +53,21 @@ public class GlobalExceptionHandler {
         }
 
         log.warn("Validation failed: {}", fieldErrors);
+
+        return ResponseEntity
+                .badRequest()
+                .body(ApiResponse.error(400, "Validation failed", fieldErrors));
+    }
+
+    /**
+     * Handle missing required query/form parameters.
+     */
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ApiResponse<Map<String, String>>> handleMissingRequestParameter(
+            MissingServletRequestParameterException ex) {
+
+        Map<String, String> fieldErrors = Map.of(ex.getParameterName(), ex.getMessage());
+        log.warn("Missing request parameter: {}", fieldErrors);
 
         return ResponseEntity
                 .badRequest()

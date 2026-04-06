@@ -34,3 +34,4 @@ build/
 
 # Local-only secrets/config (do not push)
 **/src/main/resources/application-local.yml
+woodcert-auction/docs/postman/

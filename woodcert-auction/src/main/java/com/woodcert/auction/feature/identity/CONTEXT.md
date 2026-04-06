@@ -1,59 +1,94 @@
-# Identity — Bối cảnh triển khai (Implementation Context)
-> Viết ngày: 2026-03-29 | Tác giả: AI Assistant + Duy Nguyen
+# Identity - Bối Cảnh Triển Khai
+> Viết ngày: 2026-03-30 | Tác giả: AI Assistant + Duy Nguyen
 
-## Bối cảnh nghiệp vụ (Business Context)
-Module Identity (Danh tính) là **nền tảng cốt lõi** của nền tảng WoodCert Auction. Nó quản lý tài khoản người dùng, xác thực (dựa trên JWT), phân quyền dựa trên vai trò (RBAC), hồ sơ người bán, địa chỉ giao hàng, và dữ liệu cấu trúc hành chính của Việt Nam (tỉnh/huyện/xã). Mọi module chức năng khác đều phụ thuộc vào Identity để tham chiếu người dùng và phân quyền.
+## Bối Cảnh Nghiệp Vụ
+`identity` là module nền tảng của WoodCert Auction. Module này phụ trách xác thực, vòng đời phiên JWT, RBAC, hồ sơ người dùng, hồ sơ pháp lý người bán, địa chỉ giao hàng và dữ liệu địa giới hành chính Việt Nam để các phần khác của hệ thống sử dụng.
 
-## Quyết định kỹ thuật (Technical Decisions)
+## Các Quyết Định Kỹ Thuật
+- **`User.id` dùng UUID dạng chuỗi (`VARCHAR(36)`)** để tránh lộ quy luật ID và an toàn hơn cho các luồng phân tán về sau.
+- **Refresh token được lưu dưới dạng SHA-256 hash** thay vì lưu raw token. Client chỉ nhận raw token đúng một lần.
+- **Refresh token rotation là bắt buộc**. Mỗi lần `/auth/refresh` thành công sẽ thu hồi refresh token cũ và cấp cặp access/refresh token mới.
+- **Thứ tự đọc refresh token là Body trước, Cookie sau** để tránh vô tình dùng lại cookie cũ trong các luồng Postman hoặc trình duyệt.
+- **`Address` lưu `province_code`, `district_code`, `ward_code` dưới dạng chuỗi thường**. Việc validate được xử lý ở service layer, không dùng mapping `@ManyToOne` nặng cho dữ liệu master read-only.
+- **Dữ liệu địa giới hành chính Việt Nam được seed một lần khi ứng dụng khởi động nếu các bảng đang rỗng**. Ứng dụng ưu tiên gọi `https://provinces.open-api.vn/api/v1/?depth=3`; nếu không gọi được thì fallback sang file seed local trong project. Sau đó toàn bộ location API chỉ đọc từ DB.
+- **Roles và permissions được lưu trong database**, không hardcode bằng enum Java, để RBAC có thể mở rộng mà không cần build lại ứng dụng.
+- **Chỉ những entity có đủ audit columns mới kế thừa `BaseEntity`**. `User` có; `Address`, `SellerProfile`, `Role`, `Permission` thì không.
+- **`SellerProfile` dùng chung khóa chính với `User`** thông qua `@MapsId`.
+- **JWT được tạo bằng Nimbus JOSE (HS512)** để luồng tạo và validate token đồng bộ với Spring Security OAuth2 Resource Server.
+- **Các controller đã đăng nhập trong module identity dùng `@CurrentUserId`** thông qua custom MVC argument resolver, nên controller không cần inject `Jwt` trực tiếp nữa.
 
-- **User.id sử dụng UUID (VARCHAR 36) thay vì BIGINT tự tăng**: Ngăn chặn tấn công dò quét ID (ID enumeration), an toàn cho hệ thống phân tán và cho phép sinh ID từ phía client nếu cần. Đánh đổi: các cột khóa ngoại trên toàn Database sẽ lớn hơn một chút.
+## Phạm Vi Phase 1 Đã Hoàn Thành
+- Auth APIs: `POST /api/v1/auth/login`, `/register`, `/refresh`, `/logout`
+- User profile APIs: `GET/PUT /api/v1/users/me`
+- Seller profile APIs: `GET/POST /api/v1/users/me/seller-profile`
+- Address APIs: `GET/POST /api/v1/addresses`
+- Public location APIs: `GET /api/v1/locations/provinces`, `/districts`, `/wards`
 
-- **RefreshToken lưu trữ mã băm SHA-256, không lưu token thô**: Nếu DB bị lộ, kẻ tấn công không thể dùng mã băm để sinh access token hoặc mạo danh người dùng. Token thô chỉ được giữ trong bộ nhớ ở một thời điểm và trả về cho client một lần duy nhất.
+## Luật Nghiệp Vụ
+- Một user chỉ có tối đa một seller profile.
+- `identity_card_number` trong seller profile phải là duy nhất.
+- Muốn nâng cấp thành seller thì user phải có `phoneNumber` trước.
+- Khi tạo seller profile sẽ được gán `ROLE_SELLER`, nhưng client cần đăng nhập lại để access token nhận claim role mới.
+- Một user có thể có nhiều địa chỉ giao hàng.
+- Nếu tạo địa chỉ mới với `isDefault = true`, toàn bộ địa chỉ khác của user đó sẽ bị đặt lại thành `false`.
+- Validate địa chỉ là bắt buộc theo hierarchy: district phải thuộc province, và ward phải thuộc district.
 
-- **Token Rotation (Xoay vòng token) khi refresh**: Mỗi lệnh gọi `/auth/refresh` sẽ tự động hủy (revoke) refresh token cũ và cấp một bộ hoàn toàn mới (access + refresh mới). Điều này thu hẹp thiệt hại nếu refresh token bị đánh cắp — vì nó chỉ được dùng một lần.
+## Các Phương Án Đã Loại Bỏ
+- **Spring Authorization Server**: quá nặng cho phạm vi hiện tại của ứng dụng.
+- **Thư viện JJWT**: không cần thiết vì stack hiện tại đã có Nimbus qua Spring Security.
+- **Dùng hierarchy `@ManyToOne` cho province/district/ward trong `Address`**: thừa chi phí cho dữ liệu master chỉ đọc.
+- **Dùng Lombok `@Data` cho entity**: bị loại để tránh `equals/hashCode` không an toàn và side effect với lazy loading.
 
-- **Thứ tự đọc Refresh token: Ưu tiên Body, Cookie hỗ trợ (fallback)**: Controller sẽ kiểm tra token ở request body trước khi đọc từ HttpOnly cookie. Lý do: body thể hiện chủ ý rõ ràng của client (dành cho app Mobile/Postman), còn cookie là ngầm định (trình duyệt tự gắn). Điều này cũng giúp tránh lỗi refresh nhầm vòng token cũ do Postman hay trình duyệt nhớ cookie.
+## Giới Hạn Hiện Tại
+- Chưa có luồng verify email. Tài khoản đăng ký mới vẫn ở trạng thái `UNVERIFIED` cho tới khi được kích hoạt thủ công.
+- Chưa có brute-force protection cho `/login`.
+- `data.sql` vẫn đang được dùng cho bootstrap/master data trong môi trường dev; migration tooling vẫn chưa được đưa vào.
+- Lần khởi động đầu tiên vẫn ưu tiên API tỉnh thành public, nhưng đã có fallback local đi kèm project để tránh làm app fail chỉ vì mất mạng ngoài.
+- Chưa hoàn tất full controller/integration test coverage.
+- Việc verify bằng Maven hiện vẫn bị chặn bởi vấn đề môi trường/sandbox (`mvnw.cmd` lỗi wrapper và Maven local repository trong sandbox không truy cập được).
 
-- **Mã địa lý được lưu là String, không dùng @ManyToOne**: Cột `province_code`, `district_code`, `ward_code` trong entity `Address` là cột `String` thuần để lấy giá trị từ bảng danh mục. Tránh quan hệ JPA rườm rà và tốn tài nguyên lazy-loading. Việc kiểm tra mã này có đúng hay không sẽ diễn ra tại các hàm Validation ở service.
+## Nhật Ký Refactor
+### Cập nhật 2026-03-29 | Nền Tảng
+- Xây nền identity đầu tiên: entities, repositories, security config, cấp JWT, các API login/register/refresh/logout.
+- Sửa lỗi ưu tiên refresh token do cookie cũ trong Postman/trình duyệt gây ra.
+- Chuẩn hóa `BadCredentialsException` bị lộ thành `AppException(INVALID_CREDENTIALS)` để tránh HTTP 500 khi đăng nhập sai.
 
-- **Roles & Permissions lưu trong CSDL, không phải Java enums**: Cho phép tuỳ biến RBAC (ví dụ: gán thêm quyền cho role cũ, tạo role mới hoàn toàn) lúc ứng dụng đang chạy thông qua màn hình Admin. Dữ liệu gốc được tải qua `data.sql` khi build chương trình.
+### Cập nhật 2026-03-30 | Hoàn Thành Phase 1
+- Thêm API hồ sơ người dùng hiện tại.
+- Thêm API tạo và lấy seller profile.
+- Thêm API lấy danh sách và tạo địa chỉ.
+- Thêm bộ public location master-data APIs cho form địa chỉ của frontend.
+- Thêm validate ở service layer cho hierarchy location và logic đổi địa chỉ mặc định.
 
-- **Entity không có cột ngày tháng truy vết (audit) sẽ KHÔNG kế thừa BaseEntity**: Chỉ có `User` có `created_at` + `updated_at` trong Schema -> extends BaseEntity. Còn Role, Permission, Address... không có, nên tránh dùng. RefreshToken chỉ có `created_at` sẽ tự định nghĩa `@CreationTimestamp`.
+### Cập nhật 2026-03-30 | Refactor Auth
+- Thay việc truyền `Jwt` trực tiếp vào controller bằng `@CurrentUserId`.
+- Thêm `CurrentUserIdResolver` và đăng ký qua `WebConfig`.
+- Xóa helper `SecurityUtils` cũ vốn chỉ dùng để lấy subject từ JWT trong controller.
 
-- **SellerProfile dùng chung khoá chính cùng User**: `@MapsId` trên khoá ngoại, tránh sinh thêm cột index/ID phụ, hiệu năng mapping giữa Người Dùng - Hồ Sơ Bán tốt nhất.
+### Cập nhật 2026-03-31 | Dọn Dẹp DTO và Validation
+- Tách DTO của identity thành `dto/request` và `dto/response`.
+- Siết chặt validation cho email, password, số điện thoại, CCCD, mã số thuế, avatar URL, location code và payload địa chỉ.
+- Thêm tập pattern validate dùng chung để quy tắc định dạng nhất quán trong toàn bộ module identity.
+- Thêm xử lý `@Valid` cho request body optional của refresh/logout nhưng vẫn giữ behavior cookie fallback.
 
-- **CustomUserDetailsService đặt ở `core/security/` thay vì Identity Service**: Vì nó thực chất là "Bản lề" gắn liền với Spring Security - phụ thuộc của Framework (nhận/ném lỗi theo khuôn). Điều này giúp giữ mã Identity Service của chúng ta sạch sẽ.
+### Cập nhật 2026-04-06 | Cơ Chế Seed Location
+- Thay cách load `location-data.sql` offline bằng cơ chế `seed-if-empty` lúc ứng dụng khởi động.
+- Thêm location seed client và runner để chỉ gọi `https://provinces.open-api.vn/api/v1/?depth=3` khi bảng `provinces` đang rỗng.
+- Bổ sung fallback local `src/main/resources/seed/location-seed.json` để first boot không phụ thuộc cứng vào API ngoài.
+- Chuẩn hóa mã địa giới trước khi lưu: tỉnh `01`, quận/huyện `001`, phường/xã `00001`.
+- Sau khi seed xong, toàn bộ location APIs chỉ đọc dữ liệu từ database nội bộ.
 
-- **Dùng Nimbus JOSE (HS512) tạo JWT, không cài JJWT**: Thay vì cài thêm 1 hệ thư viện (JJWT) làm nặng build, thì thư viện định tuyến OAuth2 gốc `spring-boot-starter-oauth2-resource-server` đã kèm sẵn Nimbus. Dùng Nimbus cho việc tạo (JwtService) và giải mã (Bảng cấu hình của Spring Security) làm tăng độ ổn định của Application.
+### Cập nhật 2026-04-06 | Chuẩn Hóa Update và Input
+- `PUT /users/me` chuyển sang behavior cập nhật từng phần: field không gửi lên sẽ giữ nguyên giá trị cũ.
+- Chuẩn hóa số điện thoại Việt Nam trước khi lưu và kiểm tra trùng lặp, ví dụ `+849...` sẽ được đổi về `09...`.
+- Chuẩn hóa location code trước khi validate và lưu, nên input như `1`, `01`, `001` sẽ được đưa về đúng định dạng hệ thống.
 
-## Cân nhắc nhưng bị rớt đài (Considered and Rejected)
+### Cập nhật 2026-04-06 | Patch User Profile
+- Bổ sung `PATCH /users/me` để hỗ trợ semantics rõ ràng hơn cho cập nhật profile.
+- Với `PATCH /users/me`: field không gửi sẽ giữ nguyên, field gửi `null` sẽ xóa nếu là field nullable, field gửi value sẽ update.
+- `PUT /users/me` vẫn giữ lại tạm thời để tương thích ngược với client cũ.
 
-- **Cài thư viện con JJWT**: Do Nimbus quá thừa khả năng.
-
-- **Dựng Spring Authorization Server**: Vì Auth thuần ở mức app này tự implement hiệu quả hơn là phải học khối cấu hình nặng trịch từ hệ Authorization gốc (thường thiết kế cho SSO hoặc kết nối bên thế 3).
-
-- **Map Tỉnh/Phường là Entities nhúng `@ManyToOne` ở Entity Address**: Dữ liệu danh mục này hoàn toàn là Read-only (chỉ đọc). Mapping lôi thôi làm giảm sốt hiệu năng khi trả JSON.
-
-- **Dùng `@Data` của Lombok cho entity**: Cấm trong dự án. Do sinh ra `@ToString`, `@EqualsAndHashCode`. Ở môi trường JPA nhiều FetchType.LAZY dễ sinh vòng lặp StackOverflow do load móc ngoặc vòng. Chúng ta chỉ gắn `@Getter`, `@Setter` sạch sẽ.
-
-## Dependencies (Tham chiếu)
-- **Cần**: Cần các gói trong thư mục Core như `ApiResponse`, `AppException`, `BaseEntity`, `SecurityConfig`, `JwtProperties`...
-- **Bị Trực thuộc**: Mọi module còn lại đều lấy giá trị từ class `User`.
-
-## Các Hạn Chế Còn Được Giữ (Known Limitations)
-
-- ⚠️ **Không có xác nhận thư (Email Verifier)**: Đăng ký thì Status luôn là `UNVERIFIED`. Đang phải Update Manual thành `ACTIVE`. Sẽ chắp vá email ở Phase khác.
-
-- ⚠️ **RefreshToken sẽ ngày một to lên**: Do chưa dọn dẹp hàng ngàn row Revoked (Đã hủy). Nhưng hiện đang phát triển và dùng hàm Query nhanh nên chấp nhận. Dự định viết Job dọn rác `@Scheduled` sau.
-
-- ⚠️ **Dùng File `.sql` cứng mỗi lần khởi động App (data.sql)**: Tuy viết cẩn thận nhờ `INSERT IGNORE` nhưng với DB lớn là dư thừa và chưa thật chuyên nghiệp khi Deploy. Rất tốt ở giai đoạn đầu. Nhưng sẽ phải cài Flyway/Liquibase migration sau cùng.
-
-- ⚠️ **Chưa bảo vệ tấn công brute-force ở API `/login`**: API tự do. Sau này cần giới hạn Rate limiting ở NGINX hoặc Gateway.
-
-## Nhật ký Đại Tu (Refactor Log)
-
-### Cập nhật 2026-03-29 | Hệ Thống
-- Thiết lập Nền tảng Identity bước 1
-- Dựng 10 thực thể, Setup Security. Viết API Login, Register, Refresh, Logout
-- Xử lý mâu thuẫn Refresh Token (đã ghi ở trên): do nhận Cookie thừa ở Postman làm Token thu hồi bị sai thứ tự ngắm. Đổi ưu tiên Request Body cho API Refresh + Logout.
-- Bắt sự cố rò rỉ ngoại lệ `BadCredentialsException`. Ép thành `AppException(INVALID_CREDENTIALS)` tại source chặn bug HTTP 500 do Spring Security tuồn ra ngoài, và thêm Filter hỗ trợ phụ của Spring.
+### Cập nhật 2026-04-06 | Cleanup Refresh Token
+- Bổ sung scheduled job dọn bảng `refresh_tokens` theo cron cấu hình được.
+- Job sẽ xóa các refresh token đã `revoked = true` hoặc đã hết hạn, giúp bảng token không phình dần theo thời gian.
+- Bật mặc định qua `identity.refresh-token-cleanup.enabled=true`, cron mặc định là `0 0 */6 * * *`.

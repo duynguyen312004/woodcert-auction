@@ -14,6 +14,26 @@
             "name": "jwt.refresh-token-expiration",
             "type": "java.lang.String",
             "description": "A description for 'jwt.refresh-token-expiration'"
+        },
+        {
+            "name": "identity.location-seed.enabled",
+            "type": "java.lang.Boolean",
+            "description": "A description for 'identity.location-seed.enabled'"
+        },
+        {
+            "name": "identity.location-seed.api-url",
+            "type": "java.lang.String",
+            "description": "A description for 'identity.location-seed.api-url'"
+        },
+        {
+            "name": "identity.refresh-token-cleanup.enabled",
+            "type": "java.lang.Boolean",
+            "description": "Enable scheduled cleanup for revoked and expired refresh tokens."
+        },
+        {
+            "name": "identity.refresh-token-cleanup.cron",
+            "type": "java.lang.String",
+            "description": "Cron expression for scheduled cleanup of revoked and expired refresh tokens."
         }
     ]
 }

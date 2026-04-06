@@ -1,83 +1,90 @@
 # Project Status
 
-> Last updated: 2026-03-29 | By: AI Assistant | Session: #3
+> Last updated: 2026-04-06 | By: AI Assistant | Session: #7
 >
 > AI: update this file at the end of every session when asked.
-> Follow this exact format. Keep it concise — under 80 lines.
+> Follow this exact format. Keep it concise - under 80 lines.
 
 ---
 
 ## Completed
-- ✅ Project skeleton (Spring Boot 3.5.x, Maven, application.yml)
-- ✅ Documentation setup (AI-INSTRUCTIONS, PROJECT-RULES, ARCHITECTURE, DATABASE, API_SPEC)
-- ✅ ADR-001: Refresh token strategy decided (Cookie + Body)
-- ✅ ADR-002: Real-time Bidding Concurrency (Redis Lua Scripts)
-- ✅ ADR-003: Escrow Wallet & Auto-Complete Flow (CronJob)
-- ✅ ADR-004: Modular Monolith Architecture
-- ✅ AI workflow setup (docs/ai-workflows/)
-- ✅ Cấu hình cơ bản (pom.xml, application.yml)
-- ✅ Xây dựng thư mục core (ApiResponse, PaginationResponse, Custom Exceptions, BaseEntity)
-- ✅ SecurityConfig + JwtService + JwtProperties (core/config + core/security)
-- ✅ CustomUserDetailsService (core/security)
-- ✅ Identity Entities: User, Role, Permission, RefreshToken, Address, SellerProfile, Province, District, Ward
-- ✅ Identity Repositories: User, Role, Permission, RefreshToken, Address, SellerProfile
-- ✅ Auth REST APIs: Login, Register, Refresh, Logout (Controller + Service + DTOs)
+- [x] Project skeleton (Spring Boot 3.5.x, Maven, application.yml)
+- [x] Documentation setup (CLAUDE, PROJECT-RULES, ARCHITECTURE, DATABASE, API_SPEC)
+- [x] ADR-001: Refresh token strategy decided (Cookie + Body)
+- [x] ADR-002: Real-time bidding concurrency (Redis Lua Scripts)
+- [x] ADR-003: Escrow wallet & auto-complete flow (CronJob)
+- [x] ADR-004: Modular monolith architecture
+- [x] Core package setup (ApiResponse, PaginationResponse, exceptions, BaseEntity)
+- [x] SecurityConfig + JwtService + JwtProperties + CustomUserDetailsService
+- [x] Identity entities: User, Role, Permission, RefreshToken, Address, SellerProfile, Province, District, Ward
+- [x] Identity repositories for auth, seller profile, address, and location master data
+- [x] Auth REST APIs: Login, Register, Refresh, Logout
+- [x] User Profile APIs: GET/PUT/PATCH `/api/v1/users/me`
+- [x] Seller Profile APIs: GET/POST `/api/v1/users/me/seller-profile`
+- [x] Address APIs: GET/POST `/api/v1/addresses`
+- [x] Optional location APIs: GET `/api/v1/locations/provinces`, `/districts`, `/wards`
+- [x] Startup `seed-if-empty` workflow for Vietnam location master data
+- [x] Bundled local fallback seed and normalization for phone numbers, location codes, and partial user-profile updates
+- [x] Scheduled cleanup job for revoked and expired refresh tokens
+- [x] Authentication controller cleanup: `@CurrentUserId` + MVC argument resolver
+- [x] Identity DTOs reorganized into `dto/request` and `dto/response` with stricter request validation
+- [x] Unit tests added for user profile, seller profile, address, location, and token-cleanup services
 
 ## In Progress
-_None._
+- Testing and verification are limited by local Maven sandbox/tooling issues.
 
 ## Deferred Issues
-_None._
+- Full controller/integration test coverage is not finished yet.
 
 ## Warnings
-_None._
+- `mvnw.cmd` is broken in the current environment.
+- `mvn` verification is blocked in the sandbox because Maven tries to use an inaccessible local repository path.
 
 ## Next Tasks
-1. **[P6]** User Profile APIs (GET/PUT /users/me)
-2. **[P7]** Seller Profile APIs (POST /users/me/seller-profile)
-3. **[P8]** Address APIs (GET/POST /addresses)
-4. **[P9]** Bắt đầu Phase 2 — Catalog (Category, Product, AppraisalReport)
+1. **[P9]** Start Phase 2 - Catalog (Category, Product, AppraisalReport)
+2. **[P10]** Add controller/integration tests once Maven verification is available
 
 ## Milestones
 
-### Phase 0 — Foundation
-- [x] Update `pom.xml` (JJWT, MapStruct, Lombok)
+### Phase 0 - Foundation
+- [x] Update `pom.xml`
 - [x] Database & Redis connection in `application.yml`
 - [x] BaseEntity (createdAt, updatedAt)
 - [x] ApiResponse & GlobalExceptionHandler
-- [x] SecurityConfig (Initial setup) & JwtProperties
+- [x] SecurityConfig & JwtProperties
 
-### Phase 1 — Auth & Identity
+### Phase 1 - Auth & Identity
 - [x] Entities: User, Role, Permission, Address, SellerProfile, RefreshToken
 - [x] Repositories & DTOs
-- [x] POST /auth/login, /auth/register, /auth/refresh, /auth/logout
+- [x] POST `/auth/login`, `/auth/register`, `/auth/refresh`, `/auth/logout`
 - [x] CustomUserDetailsService & JwtService
-- [ ] User Profile APIs
-- [ ] Seller Profile APIs
-- [ ] Address APIs
+- [x] User Profile APIs
+- [x] Seller Profile APIs
+- [x] Address APIs
+- [x] Optional location master-data APIs
 
-### Phase 2 — Catalog & Appraisal
+### Phase 2 - Catalog & Appraisal
 - [ ] Entities: Category, Product, ProductImage, AppraisalReport
 - [ ] Category CRUD APIs
 - [ ] Seller: Create Draft Product, Submit for Appraisal
 - [ ] Appraiser: Pending list, Submit Appraisal Report logic
 
-### Phase 3 — Finance (Escrow Wallet)
+### Phase 3 - Finance (Escrow Wallet)
 - [ ] Entities: Wallet, WalletTransaction (with @Version)
 - [ ] Wallet APIs (Get balance, Get history)
 - [ ] Internal Service: Freeze, Unfreeze, Deposit, Deduct methods
 
-### Phase 4 — Real-time Auction (The Core)
+### Phase 4 - Real-time Auction (The Core)
 - [ ] Entities: AuctionSession, Bid, AuctionParticipant
 - [ ] Seller: Create Auction Session
 - [ ] Buyer: Register Auction (Freeze deposit)
 - [ ] Redis Lua Script for atomic bidding
-- [ ] POST /bids (Redis validation + Async MySQL sync)
-- [ ] WebSocket integration (/topic/auctions/{id})
+- [ ] POST `/bids` (Redis validation + async MySQL sync)
+- [ ] WebSocket integration (`/topic/auctions/{id}`)
 
-### Phase 5 — Fulfillment & Dispute
+### Phase 5 - Fulfillment & Dispute
 - [ ] Entities: Order, Shipment, Dispute
 - [ ] Buyer: Pay remaining balance
 - [ ] Seller: Update shipment status
-- [ ] Scheduled Job: 72h Auto-complete (Release funds to Seller)
-- [ ] Dispute flow (Admin resolve)
+- [ ] Scheduled Job: 72h auto-complete (release funds to seller)
+- [ ] Dispute flow (admin resolve)

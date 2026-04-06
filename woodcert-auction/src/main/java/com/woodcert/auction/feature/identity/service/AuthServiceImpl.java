@@ -3,7 +3,11 @@ package com.woodcert.auction.feature.identity.service;
 import com.woodcert.auction.core.exception.AppException;
 import com.woodcert.auction.core.exception.ErrorCode;
 import com.woodcert.auction.core.security.JwtService;
-import com.woodcert.auction.feature.identity.dto.*;
+import com.woodcert.auction.feature.identity.dto.request.LoginReq;
+import com.woodcert.auction.feature.identity.dto.request.RegisterReq;
+import com.woodcert.auction.feature.identity.dto.response.AuthRes;
+import com.woodcert.auction.feature.identity.dto.response.RefreshRes;
+import com.woodcert.auction.feature.identity.dto.response.RegisterRes;
 import com.woodcert.auction.feature.identity.entity.RefreshToken;
 import com.woodcert.auction.feature.identity.entity.Role;
 import com.woodcert.auction.feature.identity.entity.User;
@@ -11,6 +15,7 @@ import com.woodcert.auction.feature.identity.entity.UserStatus;
 import com.woodcert.auction.feature.identity.repository.RefreshTokenRepository;
 import com.woodcert.auction.feature.identity.repository.RoleRepository;
 import com.woodcert.auction.feature.identity.repository.UserRepository;
+import com.woodcert.auction.feature.identity.util.IdentityNormalizationUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -48,17 +53,19 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public AuthRes login(LoginReq request) {
+        String normalizedEmail = request.email().trim();
+
         // Authenticate via Spring Security AuthenticationManager
         try {
             authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(request.email(), request.password())
+                    new UsernamePasswordAuthenticationToken(normalizedEmail, request.password())
             );
         } catch (BadCredentialsException e) {
             throw new AppException(ErrorCode.INVALID_CREDENTIALS);
         }
 
         // Load user with roles + permissions
-        User user = userRepository.findByEmail(request.email())
+        User user = userRepository.findByEmail(normalizedEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.INVALID_CREDENTIALS));
 
         // Check user status
@@ -87,11 +94,15 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public RegisterRes register(RegisterReq request) {
+        String normalizedEmail = request.email().trim();
+        String normalizedFullName = request.fullName().trim();
+        String normalizedPhoneNumber = IdentityNormalizationUtils.normalizeVietnamesePhoneNullable(request.phoneNumber());
+
         // Check duplicates
-        if (userRepository.existsByEmail(request.email())) {
+        if (userRepository.existsByEmail(normalizedEmail)) {
             throw new AppException(ErrorCode.DUPLICATE_RESOURCE, "Email already exists");
         }
-        if (request.phoneNumber() != null && userRepository.existsByPhoneNumber(request.phoneNumber())) {
+        if (normalizedPhoneNumber != null && userRepository.existsByPhoneNumber(normalizedPhoneNumber)) {
             throw new AppException(ErrorCode.DUPLICATE_RESOURCE, "Phone number already exists");
         }
 
@@ -101,10 +112,10 @@ public class AuthServiceImpl implements AuthService {
 
         // Create user
         User user = new User();
-        user.setEmail(request.email());
+        user.setEmail(normalizedEmail);
         user.setPasswordHash(passwordEncoder.encode(request.password()));
-        user.setFullName(request.fullName());
-        user.setPhoneNumber(request.phoneNumber());
+        user.setFullName(normalizedFullName);
+        user.setPhoneNumber(normalizedPhoneNumber);
         user.setStatus(UserStatus.UNVERIFIED);
         user.setRoles(Set.of(bidderRole));
 
@@ -188,4 +199,5 @@ public class AuthServiceImpl implements AuthService {
             throw new RuntimeException("SHA-256 algorithm not available", e);
         }
     }
+
 }

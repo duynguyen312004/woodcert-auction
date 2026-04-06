@@ -18,6 +18,12 @@ ALL AI tools (Claude, Cursor, Copilot, Gemini) MUST follow this file.
 | Build | Maven |
 | Validation | Jakarta Bean Validation |
 
+## 0.1 Bootstrap Data
+
+- Small bootstrap data may stay in `src/main/resources/data.sql`
+- Large read-only master data may use dedicated startup seed services when the source is external and the data should only be fetched once on empty tables
+- Runtime business flows must still read local database state after seeding; do not call external master-data APIs per request
+
 ## 1. Package Structure (Modular Monolith)
 
 ```text
@@ -117,10 +123,12 @@ public record ApiResponse<T>(
 ## 5. DTO Rules
 
 - Use record for ALL DTOs
+- Split DTOs into `dto/request` and `dto/response` packages when a feature has both directions
 
 Request DTO:
 
 - MUST have validation annotations
+- MUST validate format, length, and required business constraints as close to the boundary as possible
 
 Response DTO:
 
@@ -346,6 +354,12 @@ Before finishing:
 - Money uses BigDecimal
 - Redis used for bidding logic
 - No business logic in Controller
+
+## 16. Auth Injection
+
+- Controllers SHOULD use `@CurrentUserId String userId` when they need the authenticated user id
+- Do not inject `Jwt` directly into controllers just to read `sub`
+- The extraction logic belongs in MVC argument resolver infrastructure under `core/auth`
 
 ## Final Note
 
