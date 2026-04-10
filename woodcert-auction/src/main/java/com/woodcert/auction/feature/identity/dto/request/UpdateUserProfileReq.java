@@ -21,17 +21,10 @@ public record UpdateUserProfileReq(
                 regexp = IdentityRequestPatterns.VIETNAMESE_PHONE_OR_BLANK,
                 message = "Phone number must be a valid Vietnamese phone number"
         )
-        String phoneNumber,
-
-        @Size(max = 500, message = "Avatar URL must not exceed 500 characters")
-        @Pattern(
-                regexp = IdentityRequestPatterns.HTTP_URL_OR_BLANK,
-                message = "Avatar URL must be a valid http or https URL"
-        )
-        String avatarUrl
+        String phoneNumber
 ) {
     @AssertTrue(message = "At least one field must be provided")
     public boolean isAtLeastOneFieldProvided() {
-        return fullName != null || phoneNumber != null || avatarUrl != null;
+        return fullName != null || phoneNumber != null;
     }
 }

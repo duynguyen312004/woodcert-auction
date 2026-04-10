@@ -10,6 +10,7 @@ import com.woodcert.auction.feature.identity.entity.User;
 import com.woodcert.auction.feature.identity.entity.UserStatus;
 import com.woodcert.auction.feature.identity.repository.SellerProfileRepository;
 import com.woodcert.auction.feature.identity.repository.UserRepository;
+import com.woodcert.auction.feature.media.util.MediaUrlBuilder;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,6 +37,9 @@ class UserProfileServiceImplTest {
     @Mock
     private SellerProfileRepository sellerProfileRepository;
 
+    @Mock
+    private MediaUrlBuilder mediaUrlBuilder;
+
     @InjectMocks
     private UserProfileServiceImpl userProfileService;
 
@@ -59,7 +63,7 @@ class UserProfileServiceImplTest {
     @DisplayName("updateCurrentUserProfile throws when phone number belongs to another user")
     void updateCurrentUserProfile_duplicatePhone_throwsAppException() {
         User user = createUser("user-1", "0911222333");
-        UpdateUserProfileReq request = new UpdateUserProfileReq("Updated User", "0999888777", null);
+        UpdateUserProfileReq request = new UpdateUserProfileReq("Updated User", "0999888777");
 
         when(userRepository.findById("user-1")).thenReturn(java.util.Optional.of(user));
         when(userRepository.existsByPhoneNumberAndIdNot("0999888777", "user-1")).thenReturn(true);
@@ -76,7 +80,7 @@ class UserProfileServiceImplTest {
     @DisplayName("updateCurrentUserProfile updates current user and trims blank optional fields")
     void updateCurrentUserProfile_success_updatesUser() {
         User user = createUser("user-1", "0911222333");
-        UpdateUserProfileReq request = new UpdateUserProfileReq("  Updated User  ", null, "  https://img  ");
+        UpdateUserProfileReq request = new UpdateUserProfileReq("  Updated User  ", null);
 
         when(userRepository.findById("user-1")).thenReturn(java.util.Optional.of(user));
         when(userRepository.save(user)).thenReturn(user);
@@ -86,7 +90,6 @@ class UserProfileServiceImplTest {
 
         assertEquals("Updated User", user.getFullName());
         assertEquals("0911222333", user.getPhoneNumber());
-        assertEquals("https://img", user.getAvatarUrl());
         assertFalse(result.hasSellerProfile());
         verify(userRepository).save(user);
     }
@@ -95,7 +98,7 @@ class UserProfileServiceImplTest {
     @DisplayName("updateCurrentUserProfile clears phone number when blank is provided")
     void updateCurrentUserProfile_blankPhone_clearsField() {
         User user = createUser("user-1", "0911222333");
-        UpdateUserProfileReq request = new UpdateUserProfileReq(null, "   ", null);
+        UpdateUserProfileReq request = new UpdateUserProfileReq(null, "   ");
 
         when(userRepository.findById("user-1")).thenReturn(java.util.Optional.of(user));
         when(userRepository.save(user)).thenReturn(user);
@@ -110,7 +113,7 @@ class UserProfileServiceImplTest {
     @DisplayName("updateCurrentUserProfile normalizes +84 phone before duplicate check")
     void updateCurrentUserProfile_normalizesPhoneBeforeConflictCheck() {
         User user = createUser("user-1", "0911222333");
-        UpdateUserProfileReq request = new UpdateUserProfileReq(null, "+84999888777", null);
+        UpdateUserProfileReq request = new UpdateUserProfileReq(null, "+84999888777");
 
         when(userRepository.findById("user-1")).thenReturn(java.util.Optional.of(user));
         when(userRepository.existsByPhoneNumberAndIdNot("0999888777", "user-1")).thenReturn(true);
@@ -124,14 +127,12 @@ class UserProfileServiceImplTest {
     }
 
     @Test
-    @DisplayName("patchCurrentUserProfile keeps omitted fields and clears avatar when null is provided")
-    void patchCurrentUserProfile_nullClearsAndMissingKeeps() {
+    @DisplayName("patchCurrentUserProfile keeps omitted fields and updates only provided values")
+    void patchCurrentUserProfile_missingKeepsExistingValues() {
         User user = createUser("user-1", "0911222333");
-        user.setAvatarUrl("https://old-avatar");
         PatchUserProfileReq request = new PatchUserProfileReq(
                 JsonNodeFactory.instance.textNode("Patched User"),
-                null,
-                JsonNodeFactory.instance.nullNode()
+                null
         );
 
         when(userRepository.findById("user-1")).thenReturn(java.util.Optional.of(user));
@@ -142,14 +143,13 @@ class UserProfileServiceImplTest {
 
         assertEquals("Patched User", user.getFullName());
         assertEquals("0911222333", user.getPhoneNumber());
-        assertNull(user.getAvatarUrl());
         assertFalse(result.hasSellerProfile());
     }
 
     @Test
     @DisplayName("patchCurrentUserProfile throws when no field is provided")
     void patchCurrentUserProfile_noField_throws() {
-        PatchUserProfileReq request = new PatchUserProfileReq(null, null, null);
+        PatchUserProfileReq request = new PatchUserProfileReq(null, null);
 
         AppException exception = assertThrows(
                 AppException.class,

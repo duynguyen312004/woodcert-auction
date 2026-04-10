@@ -4,10 +4,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 public record PatchUserProfileReq(
         JsonNode fullName,
-        JsonNode phoneNumber,
-        JsonNode avatarUrl
+        JsonNode phoneNumber
 ) {
     public boolean hasAnyField() {
-        return fullName != null || phoneNumber != null || avatarUrl != null;
+        return fullName != null || phoneNumber != null;
     }
 }

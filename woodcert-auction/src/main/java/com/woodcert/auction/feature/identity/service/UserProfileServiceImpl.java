@@ -11,6 +11,7 @@ import com.woodcert.auction.feature.identity.entity.User;
 import com.woodcert.auction.feature.identity.repository.SellerProfileRepository;
 import com.woodcert.auction.feature.identity.repository.UserRepository;
 import com.woodcert.auction.feature.identity.util.IdentityNormalizationUtils;
+import com.woodcert.auction.feature.media.util.MediaUrlBuilder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,13 +22,14 @@ public class UserProfileServiceImpl implements UserProfileService {
 
     private final UserRepository userRepository;
     private final SellerProfileRepository sellerProfileRepository;
+    private final MediaUrlBuilder mediaUrlBuilder;
 
     @Override
     @Transactional(readOnly = true)
     public UserProfileRes getCurrentUserProfile(String userId) {
         User user = findUser(userId);
         boolean hasSellerProfile = sellerProfileRepository.existsById(userId);
-        return UserProfileRes.fromEntity(user, hasSellerProfile);
+        return toUserProfile(user, hasSellerProfile);
     }
 
     @Override
@@ -49,12 +51,9 @@ public class UserProfileServiceImpl implements UserProfileService {
         if (request.phoneNumber() != null) {
             user.setPhoneNumber(normalizedPhone);
         }
-        if (request.avatarUrl() != null) {
-            user.setAvatarUrl(IdentityNormalizationUtils.normalizeNullable(request.avatarUrl()));
-        }
 
         boolean hasSellerProfile = sellerProfileRepository.existsById(userId);
-        return UserProfileRes.fromEntity(userRepository.save(user), hasSellerProfile);
+        return toUserProfile(userRepository.save(user), hasSellerProfile);
     }
 
     @Override
@@ -86,18 +85,8 @@ public class UserProfileServiceImpl implements UserProfileService {
             }
         }
 
-        if (request.avatarUrl() != null) {
-            if (request.avatarUrl().isNull()) {
-                user.setAvatarUrl(null);
-            } else {
-                String avatarUrl = requireTextValue(request.avatarUrl(), "avatarUrl");
-                validateAvatarUrl(avatarUrl);
-                user.setAvatarUrl(avatarUrl.trim());
-            }
-        }
-
         boolean hasSellerProfile = sellerProfileRepository.existsById(userId);
-        return UserProfileRes.fromEntity(userRepository.save(user), hasSellerProfile);
+        return toUserProfile(userRepository.save(user), hasSellerProfile);
     }
 
     private User findUser(String userId) {
@@ -135,12 +124,7 @@ public class UserProfileServiceImpl implements UserProfileService {
         }
     }
 
-    private void validateAvatarUrl(String avatarUrl) {
-        if (avatarUrl.length() > 500) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Avatar URL must not exceed 500 characters");
-        }
-        if (!avatarUrl.matches(IdentityRequestPatterns.HTTP_URL_OR_BLANK) || avatarUrl.trim().isEmpty()) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Avatar URL must be a valid http or https URL");
-        }
+    private UserProfileRes toUserProfile(User user, boolean hasSellerProfile) {
+        return UserProfileRes.fromEntity(user, hasSellerProfile, mediaUrlBuilder.buildAvatarUrl(user.getAvatarMedia()));
     }
 }

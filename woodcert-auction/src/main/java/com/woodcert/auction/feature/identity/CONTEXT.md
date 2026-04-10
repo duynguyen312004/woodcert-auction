@@ -67,7 +67,7 @@
 
 ### Cập nhật 2026-03-31 | Dọn Dẹp DTO và Validation
 - Tách DTO của identity thành `dto/request` và `dto/response`.
-- Siết chặt validation cho email, password, số điện thoại, CCCD, mã số thuế, avatar URL, location code và payload địa chỉ.
+- Siết chặt validation cho email, password, số điện thoại, CCCD, mã số thuế, location code và payload địa chỉ. Avatar nay đi qua luồng media riêng thay vì nhận raw URL trong profile.
 - Thêm tập pattern validate dùng chung để quy tắc định dạng nhất quán trong toàn bộ module identity.
 - Thêm xử lý `@Valid` cho request body optional của refresh/logout nhưng vẫn giữ behavior cookie fallback.
 

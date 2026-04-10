@@ -1,6 +1,7 @@
 package com.woodcert.auction.feature.identity.entity;
 
 import com.woodcert.auction.core.entity.BaseEntity;
+import com.woodcert.auction.feature.media.entity.MediaAsset;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -39,9 +40,6 @@ public class User extends BaseEntity {
     @Column(name = "phone_number", unique = true, length = 20)
     private String phoneNumber;
 
-    @Column(name = "avatar_url", length = 500)
-    private String avatarUrl;
-
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     private UserStatus status;
@@ -61,6 +59,10 @@ public class User extends BaseEntity {
 
     @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
     private Set<Address> addresses = new HashSet<>();
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "avatar_media_id")
+    private MediaAsset avatarMedia;
 
     @OneToOne(mappedBy = "user", fetch = FetchType.LAZY)
     private SellerProfile sellerProfile;

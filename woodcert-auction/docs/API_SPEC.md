@@ -179,8 +179,7 @@ Request Body:
 ```json
 {
   "fullName": "Nguyen Van A Updated",
-  "phoneNumber": "0911222333",
-  "avatarUrl": "https://s3.../new-avatar.jpg"
+  "phoneNumber": "0911222333"
 }
 ```
 
@@ -223,7 +222,7 @@ Request Body:
 ```json
 {
   "fullName": "Nguyen Van A Partial",
-  "avatarUrl": null
+  "phoneNumber": null
 }
 ```
 
@@ -250,6 +249,71 @@ Success Response (200):
 Errors:
 
 - 400: No field provided, invalid field type, invalid format
+
+### POST /users/me/avatar/upload-intent 🔒
+
+Create a signed Cloudinary upload intent for the current user's avatar.
+
+Request Body:
+
+```json
+{
+  "originalFileName": "avatar.jpg",
+  "contentType": "image/jpeg",
+  "fileSize": 248123
+}
+```
+
+Success Response (201):
+
+```json
+{
+  "statusCode": 201,
+  "data": {
+    "mediaId": 101,
+    "uploadUrl": "https://api.cloudinary.com/v1_1/<cloud>/image/upload",
+    "cloudName": "<cloud>",
+    "apiKey": "<api-key>",
+    "assetFolder": "woodcert/dev/users/uuid-1234-5678/avatar",
+    "publicId": "woodcert/dev/users/uuid-1234-5678/avatar/101",
+    "resourceType": "image",
+    "timestamp": 1775700000,
+    "signature": "signed-hash"
+  },
+  "message": "Avatar upload intent created successfully",
+  "timestamp": "2026-04-09T10:00:00"
+}
+```
+
+Direct Cloudinary upload after receiving the intent must send these form-data fields:
+- `file`
+- `api_key`
+- `timestamp`
+- `signature`
+- `public_id`
+- `asset_folder`
+
+### PUT /users/me/avatar 🔒
+
+Attach an uploaded Cloudinary asset as the current user's avatar.
+The backend verifies the asset directly with Cloudinary using the immutable `assetId`, then checks that its `publicId` still matches the issued upload intent.
+
+Request Body:
+
+```json
+{
+  "mediaId": 101,
+  "assetId": "3a1fbda4eb0aa195ce151c93899a827f"
+}
+```
+
+Success Response (200): same shape as `GET /users/me`, with `avatarUrl` generated from Cloudinary.
+
+### DELETE /users/me/avatar 🔒
+
+Detach the current user's avatar. The old Cloudinary asset is marked for background deletion.
+
+Success Response (200): same shape as `GET /users/me`, with `avatarUrl = null`.
 
 ## 3. Seller Profiles
 

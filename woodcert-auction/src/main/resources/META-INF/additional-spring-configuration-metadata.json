@@ -34,6 +34,71 @@
             "name": "identity.refresh-token-cleanup.cron",
             "type": "java.lang.String",
             "description": "Cron expression for scheduled cleanup of revoked and expired refresh tokens."
+        },
+        {
+            "name": "cloudinary.cloud-name",
+            "type": "java.lang.String",
+            "description": "Cloudinary cloud name used for media uploads and delivery."
+        },
+        {
+            "name": "cloudinary.api-key",
+            "type": "java.lang.String",
+            "description": "Cloudinary API key used to sign upload and destroy requests."
+        },
+        {
+            "name": "cloudinary.api-secret",
+            "type": "java.lang.String",
+            "description": "Cloudinary API secret used only on the backend."
+        },
+        {
+            "name": "cloudinary.secure",
+            "type": "java.lang.Boolean",
+            "description": "Use HTTPS for Cloudinary upload and delivery URLs."
+        },
+        {
+            "name": "cloudinary.base-folder",
+            "type": "java.lang.String",
+            "description": "Base folder prefix for all media stored in Cloudinary."
+        },
+        {
+            "name": "cloudinary.cleanup.enabled",
+            "type": "java.lang.Boolean",
+            "description": "Enable scheduled cleanup of stale or pending-delete media assets."
+        },
+        {
+            "name": "cloudinary.cleanup.cron",
+            "type": "java.lang.String",
+            "description": "Cron expression for Cloudinary media cleanup."
+        },
+        {
+            "name": "cloudinary.cleanup.stale-pending-hours",
+            "type": "java.lang.Long",
+            "description": "How long a pending media upload intent can live before cleanup marks it for deletion."
+        },
+        {
+            "name": "cloudinary.cleanup.batch-size",
+            "type": "java.lang.Integer",
+            "description": "Maximum number of media assets processed in a single cleanup batch."
+        },
+        {
+            "name": "cloudinary.cleanup.max-delete-attempts",
+            "type": "java.lang.Integer",
+            "description": "Maximum number of retry attempts for deleting a Cloudinary asset."
+        },
+        {
+            "name": "cloudinary.upload.avatar-max-bytes",
+            "type": "java.lang.Long",
+            "description": "Maximum allowed avatar upload size in bytes."
+        },
+        {
+            "name": "cloudinary.upload.image-max-bytes",
+            "type": "java.lang.Long",
+            "description": "Maximum allowed image upload size in bytes for non-avatar usages."
+        },
+        {
+            "name": "cloudinary.upload.video-max-bytes",
+            "type": "java.lang.Long",
+            "description": "Maximum allowed video upload size in bytes."
         }
     ]
 }

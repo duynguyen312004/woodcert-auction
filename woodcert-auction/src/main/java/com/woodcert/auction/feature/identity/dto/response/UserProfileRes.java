@@ -21,7 +21,7 @@ public record UserProfileRes(
         List<String> roles,
         boolean hasSellerProfile
 ) {
-    public static UserProfileRes fromEntity(User user, boolean hasSellerProfile) {
+    public static UserProfileRes fromEntity(User user, boolean hasSellerProfile, String avatarUrl) {
         List<String> roles = user.getRoles().stream()
                 .map(Role::getName)
                 .sorted(Comparator.naturalOrder())
@@ -32,7 +32,7 @@ public record UserProfileRes(
                 user.getEmail(),
                 user.getFullName(),
                 user.getPhoneNumber(),
-                user.getAvatarUrl(),
+                avatarUrl,
                 user.getStatus().name(),
                 roles,
                 hasSellerProfile

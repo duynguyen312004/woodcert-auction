@@ -1,6 +1,6 @@
 # Project Status
 
-> Last updated: 2026-04-06 | By: AI Assistant | Session: #7
+> Last updated: 2026-04-09 | By: AI Assistant | Session: #8
 >
 > AI: update this file at the end of every session when asked.
 > Follow this exact format. Keep it concise - under 80 lines.
@@ -29,20 +29,23 @@
 - [x] Authentication controller cleanup: `@CurrentUserId` + MVC argument resolver
 - [x] Identity DTOs reorganized into `dto/request` and `dto/response` with stricter request validation
 - [x] Unit tests added for user profile, seller profile, address, location, and token-cleanup services
+- [x] Cloudinary-ready media foundation: `media_assets`, signed upload intent flow, direct Cloudinary upload contract, avatar attach/remove APIs, and background media cleanup
 
 ## In Progress
-- Testing and verification are limited by local Maven sandbox/tooling issues.
+- Manual end-to-end verification is available through Postman; automated Maven verification is still limited by local sandbox/tooling issues.
 
 ## Deferred Issues
 - Full controller/integration test coverage is not finished yet.
+- Media expansion for product/appraisal/shipment/dispute is not started yet, but the shared foundation is in place.
 
 ## Warnings
 - `mvnw.cmd` is broken in the current environment.
 - `mvn` verification is blocked in the sandbox because Maven tries to use an inaccessible local repository path.
 
 ## Next Tasks
-1. **[P9]** Start Phase 2 - Catalog (Category, Product, AppraisalReport)
-2. **[P10]** Add controller/integration tests once Maven verification is available
+1. **[P9]** Extend `feature/media` into product gallery, appraisal evidence, shipment packing video, and dispute evidence flows
+2. **[P10]** Add controller/integration tests with a test profile and Cloudinary API stubs
+3. **[P11]** Standardize media policies per usage type: max size, allowed content types, transformations, and retention rules
 
 ## Milestones
 

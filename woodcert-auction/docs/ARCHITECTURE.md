@@ -241,3 +241,35 @@ feature/
 
 - CDN can be used for serving product images
 
+---
+
+## Media Module
+
+- `feature/media` is the shared integration layer for Cloudinary upload, media metadata, delivery URL generation, and cleanup.
+- Domain tables should keep foreign keys to `media_assets` instead of persisting raw cloud URLs.
+- Backend issues signed upload intents, client uploads directly to Cloudinary, backend confirms and attaches the uploaded asset to a business entity.
+- Media deletion is asynchronous: detach first, mark asset `PENDING_DELETE`, then scheduled cleanup calls Cloudinary destroy.
+- Direct Cloudinary upload should send both:
+  - `public_id` for stable asset identity and delivery URLs
+  - `asset_folder` for Cloudinary Media Library organization
+- Current avatar folder pattern is `woodcert/dev/users/{userId}/avatar`.
+- The same pattern should be extended later for product, appraisal, shipment, and dispute media so the module can stay generic.
+
+### Avatar Flow
+
+```text
+Client -> POST /api/v1/users/me/avatar/upload-intent
+-> create media_assets row (PENDING) + sign Cloudinary upload params including assetFolder/publicId
+
+Client -> upload file directly to Cloudinary
+
+Client -> PUT /api/v1/users/me/avatar
+-> backend fetches uploaded metadata from Cloudinary by assetId
+-> backend verifies assetId + publicId
+-> set users.avatar_media_id
+-> old avatar marked PENDING_DELETE
+
+GET /api/v1/users/me
+-> avatarUrl is generated from public_id + asset_version
+```
+

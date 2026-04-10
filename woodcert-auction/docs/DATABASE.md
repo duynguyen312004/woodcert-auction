@@ -44,7 +44,7 @@
 │ password_hash   │                    │ user_id (FK)     │    │ identity_card    │
 │ full_name       │                    │ expires_at       │    │ tax_code         │
 │ phone (UQ)      │                    │ revoked          │    │ reputation_score │
-│ avatar_url      │                    │ created_at       │    └──────────────────┘
+│ avatar_media_id │                    │ created_at       │    └──────────────────┘
 │ status          │                    └──────────────────┘
 │ created_at      │
 └────────┬────────┘
@@ -305,7 +305,7 @@ Quản lý phiên đăng nhập và bảo mật JWT tokens.
 | password_hash | VARCHAR(255) | NOT NULL | Mật khẩu đã mã hóa |
 | full_name | VARCHAR(100) | NOT NULL | Họ tên hiển thị |
 | phone_number | VARCHAR(20) | UNIQUE, NULLABLE | Số điện thoại |
-| avatar_url | VARCHAR(500) | NULLABLE | Ảnh đại diện |
+| avatar_media_id | BIGINT | NULLABLE, FK → media_assets(id) | Media asset ảnh đại diện |
 | status | VARCHAR(20) | NOT NULL | Enum: ACTIVE, BANNED, UNVERIFIED |
 | created_at | TIMESTAMP | NOT NULL, DEFAULT CURRENT_TIMESTAMP | Thời điểm tạo |
 | updated_at | TIMESTAMP | NOT NULL, DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP | Thời điểm cập nhật |
@@ -313,6 +313,52 @@ Quản lý phiên đăng nhập và bảo mật JWT tokens.
 
 - UNIQUE INDEX idx_users_email ON users(email)
 - UNIQUE INDEX idx_users_phone_number ON users(phone_number)
+
+### media_assets
+
+Cloudinary metadata store. Domain tables should keep foreign keys to this table instead of storing raw media URLs.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | BIGINT | PK, AUTO_INCREMENT | Internal media ID |
+| asset_id | VARCHAR(100) | UNIQUE, NULLABLE | Immutable Cloudinary asset ID |
+| public_id | VARCHAR(255) | UNIQUE, NULLABLE | Cloudinary public ID |
+| resource_type | VARCHAR(20) | NOT NULL | Enum: IMAGE, VIDEO, RAW |
+| usage_type | VARCHAR(40) | NOT NULL | Business usage type |
+| owner_user_id | VARCHAR(36) | NOT NULL | User who requested upload |
+| folder | VARCHAR(255) | NOT NULL | Cloudinary folder prefix |
+| asset_version | BIGINT | NULLABLE | Cloudinary version |
+| format | VARCHAR(20) | NULLABLE | File format |
+| file_size | BIGINT | NULLABLE | Uploaded file size |
+| width | INT | NULLABLE | Width |
+| height | INT | NULLABLE | Height |
+| duration_seconds | DOUBLE | NULLABLE | Video duration |
+| content_type | VARCHAR(100) | NULLABLE | MIME type |
+| original_filename | VARCHAR(255) | NULLABLE | Original client file name |
+| secure_url | VARCHAR(500) | NULLABLE | Cached secure URL |
+| status | VARCHAR(20) | NOT NULL | PENDING, ACTIVE, PENDING_DELETE, DELETE_FAILED, DELETED |
+| metadata_json | TEXT | NULLABLE | Optional metadata blob |
+| delete_requested_at | TIMESTAMP | NULLABLE | Deletion requested time |
+| deleted_at | TIMESTAMP | NULLABLE | Deletion finished time |
+| cleanup_attempts | INT | NOT NULL | Background cleanup retry count |
+| last_error | VARCHAR(500) | NULLABLE | Last cleanup error |
+| created_at | TIMESTAMP | NOT NULL | |
+| updated_at | TIMESTAMP | NOT NULL | |
+
+**Indexes:**
+
+- UNIQUE INDEX uk_media_assets_asset_id ON media_assets(asset_id)
+- UNIQUE INDEX uk_media_assets_public_id ON media_assets(public_id)
+- INDEX idx_media_assets_owner_usage ON media_assets(owner_user_id, usage_type)
+- INDEX idx_media_assets_status_created ON media_assets(status, created_at)
+- INDEX idx_media_assets_status_delete_requested ON media_assets(status, delete_requested_at)
+
+**Notes:**
+
+- `asset_id` is the immutable Cloudinary identifier used during confirm/verification.
+- `public_id` is the stable delivery/delete identifier issued during upload intent.
+- `folder` stores the intended Cloudinary folder prefix, for example `woodcert/dev/users/{userId}/avatar`.
+- Current implemented usage is `USER_AVATAR`; other usage types are prepared for later phases.
 
 ### addresses
 
@@ -431,6 +477,10 @@ Composite PK: (role_id, permission_id)
 
 - INDEX idx_product_images_product_id ON product_images(product_id)
 
+**Planned media migration:**
+
+- This table should later move from `image_url` to `media_id BIGINT FK -> media_assets(id)` so product media can reuse the shared Cloudinary/media flow.
+
 ### appraisal_reports
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
@@ -473,6 +523,10 @@ Composite PK: (role_id, permission_id)
 **Indexes:**
 
 - INDEX idx_appraisal_images_report_id ON appraisal_images(appraisal_report_id)
+
+**Planned media migration:**
+
+- This table should later move from `image_url` to `media_id BIGINT FK -> media_assets(id)`.
 
 ### wallets
 | Column | Type | Constraints | Description |
@@ -622,6 +676,10 @@ Composite PK: (role_id, permission_id)
 - UNIQUE INDEX idx_shipments_order_id ON shipments(order_id)
 - INDEX idx_shipments_tracking_code ON shipments(tracking_code)
 
+**Planned media migration:**
+
+- `packing_video_url` should later become `packing_video_media_id BIGINT FK -> media_assets(id)`.
+
 ### disputes
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
@@ -643,9 +701,15 @@ Composite PK: (role_id, permission_id)
 - INDEX idx_disputes_status ON disputes(status)
 - INDEX idx_disputes_admin_id ON disputes(admin_id)
 
+**Planned media migration:**
+
+- `proof_images` should later be replaced by a join table such as `dispute_media(dispute_id, media_id, sort_order, description)` to reuse `media_assets`.
+
 ---
 
 ## Relationships Summary
+
+Current avatar relationship note: `users.avatar_media_id -> media_assets.id` (optional one-to-one reference for the active avatar asset).
 
 | Relationship | Type | Notes |
 |-------------|------|-------|
@@ -730,10 +794,11 @@ roles
 - BAN_USER
 ### Table List
 
-Total tables: 24
+Total tables: 25
 
-**Infrastructure & Location (11 tables):**
+**Infrastructure & Location (12 tables):**
 - users
+- media_assets
 - addresses
 - provinces (master data)
 - districts (master data)
@@ -766,7 +831,7 @@ Total tables: 24
 - shipments
 - disputes
 
-**Note:** Total 24 tables including all join tables, master data, and operational tables. Updated count reflects addition of location hierarchy (provinces, districts, wards) and refresh tokens for JWT management.
+**Note:** Total 25 tables including all join tables, master data, and operational tables. Updated count reflects addition of `media_assets` plus the location hierarchy and refresh tokens for JWT management.
 
 ### Recommended Schema Strategy
 
