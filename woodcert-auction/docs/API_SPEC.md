@@ -61,6 +61,9 @@ Errors:
 ### POST /auth/register 🔓
 
 Register a new basic user account (Default role: ROLE_BIDDER, Status: UNVERIFIED).
+The backend sends a one-time verification link to the submitted email address. The account becomes `ACTIVE` only after that link is opened successfully.
+The verification link expires after 15 minutes.
+Phone number is required at registration time.
 
 Request Body:
 
@@ -92,8 +95,62 @@ Success Response (201):
 
 Errors:
 
-- 400: Validation failed (blank name, invalid email, weak password)
+- 400: Validation failed (blank name, invalid email, weak password, missing phone number)
 - 409: Email or phone number already exists
+
+### GET /auth/verify-email 🔓
+
+Verify the inbox owner by opening the one-time link sent after registration.
+
+Query Parameters:
+
+```text
+token=eyJ...one-time-token...
+```
+
+Success Response (200):
+
+```json
+{
+  "statusCode": 200,
+  "data": null,
+  "message": "Email verified successfully",
+  "timestamp": "2026-03-28T10:05:00"
+}
+```
+
+Errors:
+
+- 400: Missing, invalid, or expired token
+- 409: Email already verified
+
+### POST /auth/resend-verification 🔓
+
+Resend the verification link if the account exists and is still `UNVERIFIED`.
+
+Request Body:
+
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+Success Response (200):
+
+```json
+{
+  "statusCode": 200,
+  "data": null,
+  "message": "If the account exists and is unverified, a new verification email has been sent.",
+  "timestamp": "2026-03-28T10:07:00"
+}
+```
+
+Errors:
+
+- 400: Validation failed
+- 429: Please wait before requesting another verification email
 
 ### POST /auth/refresh 🔓
 

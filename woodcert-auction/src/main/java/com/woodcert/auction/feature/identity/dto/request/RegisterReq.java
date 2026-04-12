@@ -31,9 +31,10 @@ public record RegisterReq(
         )
         String fullName,
 
+        @NotBlank(message = "Phone number is required")
         @Size(max = 20, message = "Phone number must not exceed 20 characters")
         @Pattern(
-                regexp = IdentityRequestPatterns.VIETNAMESE_PHONE_OR_BLANK,
+                regexp = IdentityRequestPatterns.VIETNAMESE_PHONE,
                 message = "Phone number must be a valid Vietnamese phone number"
         )
         String phoneNumber

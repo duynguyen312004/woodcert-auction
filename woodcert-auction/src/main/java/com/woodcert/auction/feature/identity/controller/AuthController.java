@@ -3,6 +3,7 @@ package com.woodcert.auction.feature.identity.controller;
 import com.woodcert.auction.core.dto.ApiResponse;
 import com.woodcert.auction.feature.identity.dto.request.LoginReq;
 import com.woodcert.auction.feature.identity.dto.request.RefreshReq;
+import com.woodcert.auction.feature.identity.dto.request.ResendVerificationReq;
 import com.woodcert.auction.feature.identity.dto.request.RegisterReq;
 import com.woodcert.auction.feature.identity.dto.response.AuthRes;
 import com.woodcert.auction.feature.identity.dto.response.RefreshRes;
@@ -18,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
 
 /**
  * Authentication REST controller.
- * Handles login, registration, token refresh, and logout.
+ * Handles login, registration, email verification, token refresh, and logout.
  * All endpoints under /api/v1/auth are public except /logout.
  */
 @RestController
@@ -53,6 +54,31 @@ public class AuthController {
         RegisterRes registerRes = authService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.created(registerRes, "User registered successfully. Please verify your email."));
+    }
+
+    /**
+     * GET /api/v1/auth/verify-email?token=...
+     * Verify a newly registered account using the email link.
+     */
+    @GetMapping("/verify-email")
+    public ResponseEntity<ApiResponse<Void>> verifyEmail(@RequestParam("token") String token) {
+        authService.verifyEmail(token);
+        return ResponseEntity.ok(ApiResponse.success(null, "Email verified successfully"));
+    }
+
+    /**
+     * POST /api/v1/auth/resend-verification
+     * Resend the verification email if the account is still unverified.
+     */
+    @PostMapping("/resend-verification")
+    public ResponseEntity<ApiResponse<Void>> resendVerification(@RequestBody @Valid ResendVerificationReq request) {
+        authService.resendVerificationEmail(request.email());
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        null,
+                        "If the account exists and is unverified, a new verification email has been sent."
+                )
+        );
     }
 
     /**

@@ -23,6 +23,16 @@ public interface AuthService {
     RegisterRes register(RegisterReq request);
 
     /**
+     * Verify a user's email using the raw token sent to their inbox.
+     */
+    void verifyEmail(String rawToken);
+
+    /**
+     * Resend the verification email if the account exists and is still unverified.
+     */
+    void resendVerificationEmail(String email);
+
+    /**
      * Refresh access token using a raw refresh token.
      * Implements token rotation: old token revoked, new pair issued.
      *

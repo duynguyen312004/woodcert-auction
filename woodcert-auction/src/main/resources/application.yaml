@@ -57,6 +57,12 @@ identity:
   refresh-token-cleanup:
     enabled: true
     cron: "0 0 */6 * * *"
+  email-verification:
+    verification-link-base-url: ${EMAIL_VERIFICATION_LINK_BASE_URL:http://localhost:8080/api/v1/auth/verify-email}
+    from-address: ${EMAIL_VERIFICATION_FROM:no-reply@woodcert.local}
+    subject: ${EMAIL_VERIFICATION_SUBJECT:Verify your WoodCert email}
+    token-ttl-seconds: ${EMAIL_VERIFICATION_TOKEN_TTL_SECONDS:900}
+    resend-cooldown-seconds: ${EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS:60}
 
 cloudinary:
   cloud-name: ${CLOUDINARY_CLOUD_NAME:}

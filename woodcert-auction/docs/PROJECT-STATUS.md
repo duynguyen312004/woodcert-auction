@@ -1,6 +1,6 @@
 # Project Status
 
-> Last updated: 2026-04-09 | By: AI Assistant | Session: #8
+> Last updated: 2026-04-10 | By: AI Assistant | Session: #10
 >
 > AI: update this file at the end of every session when asked.
 > Follow this exact format. Keep it concise - under 80 lines.
@@ -18,7 +18,8 @@
 - [x] SecurityConfig + JwtService + JwtProperties + CustomUserDetailsService
 - [x] Identity entities: User, Role, Permission, RefreshToken, Address, SellerProfile, Province, District, Ward
 - [x] Identity repositories for auth, seller profile, address, and location master data
-- [x] Auth REST APIs: Login, Register, Refresh, Logout
+- [x] Auth REST APIs: Login, Register, Verify Email, Resend Verification, Refresh, Logout
+- [x] Registration now requires `phoneNumber` to ensure every account has a contact number
 - [x] User Profile APIs: GET/PUT/PATCH `/api/v1/users/me`
 - [x] Seller Profile APIs: GET/POST `/api/v1/users/me/seller-profile`
 - [x] Address APIs: GET/POST `/api/v1/addresses`
@@ -36,16 +37,16 @@
 
 ## Deferred Issues
 - Full controller/integration test coverage is not finished yet.
-- Media expansion for product/appraisal/shipment/dispute is not started yet, but the shared foundation is in place.
 
 ## Warnings
 - `mvnw.cmd` is broken in the current environment.
 - `mvn` verification is blocked in the sandbox because Maven tries to use an inaccessible local repository path.
 
 ## Next Tasks
-1. **[P9]** Extend `feature/media` into product gallery, appraisal evidence, shipment packing video, and dispute evidence flows
-2. **[P10]** Add controller/integration tests with a test profile and Cloudinary API stubs
-3. **[P11]** Standardize media policies per usage type: max size, allowed content types, transformations, and retention rules
+1. **[P9]** Build Phase 2 foundation: `Category`, `Product`, `ProductImage`, `AppraisalReport`
+2. **[P10]** Implement Category CRUD APIs and related validation/response DTOs
+3. **[P11]** Implement Seller draft product creation and submit-for-appraisal flow
+4. **[P12]** Implement Appraiser pending list and appraisal report submission logic
 
 ## Milestones
 
@@ -59,7 +60,7 @@
 ### Phase 1 - Auth & Identity
 - [x] Entities: User, Role, Permission, Address, SellerProfile, RefreshToken
 - [x] Repositories & DTOs
-- [x] POST `/auth/login`, `/auth/register`, `/auth/refresh`, `/auth/logout`
+- [x] POST `/auth/login`, `/auth/register`, `/auth/verify-email`, `/auth/resend-verification`, `/auth/refresh`, `/auth/logout`
 - [x] CustomUserDetailsService & JwtService
 - [x] User Profile APIs
 - [x] Seller Profile APIs

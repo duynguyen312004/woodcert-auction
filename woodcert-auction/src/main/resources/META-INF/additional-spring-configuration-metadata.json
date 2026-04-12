@@ -36,6 +36,31 @@
             "description": "Cron expression for scheduled cleanup of revoked and expired refresh tokens."
         },
         {
+            "name": "identity.email-verification.verification-link-base-url",
+            "type": "java.lang.String",
+            "description": "Base URL for email verification links sent to users."
+        },
+        {
+            "name": "identity.email-verification.from-address",
+            "type": "java.lang.String",
+            "description": "From address used for verification emails when SMTP is configured."
+        },
+        {
+            "name": "identity.email-verification.subject",
+            "type": "java.lang.String",
+            "description": "Email subject line for verification messages."
+        },
+        {
+            "name": "identity.email-verification.token-ttl-seconds",
+            "type": "java.lang.Long",
+            "description": "Time to live for a raw email verification token in seconds."
+        },
+        {
+            "name": "identity.email-verification.resend-cooldown-seconds",
+            "type": "java.lang.Long",
+            "description": "Minimum delay between resend requests for the same account in seconds."
+        },
+        {
             "name": "cloudinary.cloud-name",
             "type": "java.lang.String",
             "description": "Cloudinary cloud name used for media uploads and delivery."

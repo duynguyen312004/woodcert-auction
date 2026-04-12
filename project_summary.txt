@@ -1,0 +1,127 @@
+====================================================================
+BẢN TÓM TẮT TIẾN ĐỘ VÀ CẤU TRÚC DỰ ÁN WOODCERT-AUCTION (10/04/2026)
+====================================================================
+
+Tài liệu này tổng hợp lại toàn bộ các API, chức năng, luồng nghiệp vụ (flos) và các thành phần kiến trúc cốt lõi đã được xây dựng sẵn để dễ dàng mở rộng trong tương lai.
+
+--------------------------------------------------------------------
+1. CÁC CHỨC NĂNG & API ĐÃ HOÀN THIỆN
+--------------------------------------------------------------------
+
+[X] Authentication & Authorization (Xác thực & Phân quyền)
+- POST /api/v1/auth/register : Đăng ký tài khoản (bắt buộc có phoneNumber).
+- POST /api/v1/auth/login : Đăng nhập, trả về Access Token.
+- POST /api/v1/auth/verify-email : Xác thực email qua token.
+- POST /api/v1/auth/resend-verification : Gửi lại email xác thực.
+- POST /api/v1/auth/refresh : Cấp lại Access Token mới bằng Refresh Token.
+- POST /api/v1/auth/logout : Đăng xuất, vô hiệu hóa Refresh Token.
+
+[X] Identity & Profile (Quản lý hồ sơ người dùng & địa chỉ)
+- GET / PUT / PATCH /api/v1/users/me : Lấy thông tin cá nhân / Cập nhật toàn bộ / Cập nhật một phần.
+- GET / POST /api/v1/users/me/seller-profile : Lấy thông tin hồ sơ người bán / Đăng ký trở thành người bán.
+- GET / POST /api/v1/addresses : Quản lý sổ địa chỉ (dùng cho giao hàng/nhận hàng).
+
+[X] Location Master Data (Dữ liệu địa giới hành chính VN)
+- GET /api/v1/locations/provinces : Danh sách Tỉnh/Thành phố.
+- GET /api/v1/locations/districts : Danh sách Quận/Huyện (theo mã Tỉnh).
+- GET /api/v1/locations/wards : Danh sách Phường/Xã (theo mã Huyện).
+
+[X] Media & Cloudinary (Quản lý file phương tiện)
+- API khởi tạo luồng upload an toàn (Signed upload intent).
+- API đính kèm/gỡ bỏ Avatar (giao tiếp trực tiếp với Cloudinary).
+
+
+--------------------------------------------------------------------
+2. CÁC LUỒNG NGHIỆP VỤ (FLOWS) ĐÃ HOÀN TẤT
+--------------------------------------------------------------------
+- Luồng Đăng ký & Xác thực Email: Đảm bảo người dùng phải xác thực email trước khi có thể hoạt động toàn diện.
+- Luồng Cấp phát & Thu hồi JWT (ADR-001): Sử dụng Access Token (thời gian sống ngắn) và Refresh Token lưu trữ an toàn (Cookie/Body) kết hợp lưu trạng thái trên Database để có thể linh hoạt thu hồi (revoke).
+- Luồng Master Data Seeding: Tự động chạy khi startup để nạp dữ liệu địa giới hành chính Việt Nam (Tỉnh/Huyện/Xã) nếu database đang trống.
+- Luồng Background Cleanup (CronJobs):
+  + Tự động dọn dẹp các Refresh Token đã hết hạn / bị thu hồi.
+  + Tự động dọn dẹp file rác trên Cloudinary (ảnh bị mồ côi, file người dùng chọn xóa nhưng chưa xóa thẳng do lỗi mạng, v.v.).
+
+
+--------------------------------------------------------------------
+3. CÁC CODE NỀN TẢNG (FOUNDATION) VIẾT TRƯỚC ĐỂ DỄ MỞ RỘNG
+--------------------------------------------------------------------
+
+Dự án áp dụng kiến trúc Modular Monolith. Các module được cấu trúc độc lập chặt chẽ. Đã xây dựng sẵn các core framework sau:
+
+[A] Core - Exception Handling (Xử lý lỗi tập trung)
+- AppException: Exception gốc cho toàn bộ business logic.
+- ErrorCode (Enum): Chứa toàn bộ mã lỗi (Code) và HTTP Status tương ứng. Cực kỳ dễ thêm mã lỗi mới (Product, Order, Auction...).
+- GlobalExceptionHandler: @RestControllerAdvice tự động bắt mọi lỗi (AppException, Validation, Security...) và map ra chuẩn JSON chung.
+
+[B] Core - API & DTO Contracts (Chuẩn giao tiếp)
+- ApiResponse<T>: Wrapper chuẩn hoá kết quả trả về (`statusCode`, `message`, `data`, `timestamp`). Có các factory methods: success(), created(), error().
+- PaginationResponse<T>: Wrapper chuẩn hoá cho danh sách phân trang (có Meta data như page, pageSize, total).
+- BaseEntity: Entity gốc (@MappedSuperclass) tự động quản lý `createdAt` và `updatedAt`. Mọi Entity sau này (Product, Bid, Order...) chỉ cần extend là xong.
+
+[C] Core - Security (Bảo mật)
+- JwtService & SecurityConfig: Hệ thống verify token Stateless. Sử dụng annotation `@CurrentUserId` và Argument Resolver ở tầng controller giúp inject thẳng ID người dùng vào API mà không cần query lại database hay xử lý lặp boilerplate code.
+
+[D] Feature - Media Asset Management (Quản lý File Mở rộng)
+- Không chỉ code cứng cho Avatar, hệ thống MediaAsset (MediaAssetService, Enum MediaUsageType) được thiết kế hoàn toàn Generic.
+- Để thêm tính năng upload ảnh sản phẩm (Product), ảnh thẩm định (Appraisal), hay video đóng gói (Shipment):
+  -> Chỉ cần định nghĩa thêm loại trong `MediaUsageType`.
+  -> Truyền `MediaUploadContext` tương ứng (folder, Max size, v.v.).
+  -> Gọi lại hàm `initiateUpload()` / `confirmUpload()` của MediaAssetService là xong. Không phải cắm lại Cloudinary API.
+
+[E] Regex Validation Patterns 
+- `IdentityRequestPatterns`: Nơi chứa sẵn các mẫu Regex (Số Căn cước, Mã số Thuế, Số điện thoại VN, Validate chuỗi...). Dùng chung bằng annotation `@Pattern(regexp = ...)` ở mọi Request DTO.
+
+--------------------------------------------------------------------
+4. CHI TIẾT CÁC HÀM, MỤC ĐÍCH VÀ LUỒNG THỰC THI (EXECUTION FLOWS)
+--------------------------------------------------------------------
+
+[A] Luồng Xác thực & Phân quyền (AuthService & JwtService)
+- Flow Đăng ký (Register):
+  Controller.register -> AuthService.register
+  -> Chuẩn hóa email, parse số điện thoại VN (+84 -> 0).
+  -> Lưu User (status = UNVERIFIED), gán ROLE_BIDDER.
+  -> Tạo Token xác thực gửi qua Email -> Chờ người dùng click link.
+- Flow Đăng nhập (Login):
+  Controller.login -> AuthService.login
+  -> Spring Security `AuthenticationManager` xác thực email/password.
+  -> Kiểm tra trạng thái tài khoản (chặn BANNED, UNVERIFIED).
+  -> JwtService.generateToken (tạo Access Token JWT bằng Nimbus JOSE, HS512, expire 15m).
+  -> Tạo và hash Refresh Token -> Lưu vào DB -> Trả về Client.
+- Flow Cấp lại Token (Refresh Token Rotation):
+  Controller.refresh -> AuthService.refreshToken
+  -> Xác minh Refresh Token cũ (có tồn tại, chưa hết hạn, chưa bị thu hồi).
+  -> Đánh dấu Refresh Token cũ là REVOKED (thu hồi).
+  -> Generate cặp Access Token & Refresh Token mới -> Lưu DB -> Trả về Client.
+  (Giúp chống Request Replay Attack).
+
+[B] Luồng Cập nhật Hồ sơ Người dùng (UserProfileService & SellerProfile)
+- Lấy Profile: UserProfileService.getCurrentUserProfile -> Query DB -> Map Avatar URL -> Trả về DTO.
+- Cập nhật Profile (Update/Patch): 
+  UserProfileService.updateCurrentUserProfile / patchCurrentUserProfile 
+  -> Validate định dạng dữ liệu (Regex) -> Tránh trùng số điện thoại -> Update DB.
+- Đăng ký Bán hàng:
+  SellerProfileService.createSellerProfile
+  -> Validate Căn cước (CCCD) không trùng lặp -> Khởi tạo uy tín (Reputation = 5.0) -> Gán thêm ROLE_SELLER.
+
+[C] Luồng Quản lý Upload File/Media (MediaAssetService & AvatarMediaService)
+Đây là kiến trúc thiết kế để Client tải file trực tiếp lên Cloudinary, Backend không phải chịu tải.
+- Bước 1 (Client xin phép): Controller -> AvatarMediaService.createCurrentUserAvatarUploadIntent
+  -> Gọi MediaAssetService.createUploadIntent
+  -> Validate điều kiện (Size, Content-Type).
+  -> Tạo record MediaAsset tạm trong DB (Status = PENDING).
+  -> Ký mã HMAC-SHA1 với API Secret của Cloudinary.
+  -> Trả về cho Client: signature, timestamp, api_key, cloud_name.
+- Bước 2 (Client Upload): Client dùng Signature ở Bước 1 băn trực tiếp file lên API của Cloudinary.
+- Bước 3 (Xác nhận): Client gọi API báo thành công -> MediaAssetService.confirmOwnedUpload
+  -> Lấy metadata thực tế từ Cloudinary.
+  -> Đổi Status MediaAsset trong DB từ PENDING sang ACTIVE.
+  (Các file bị treo ở PENDING quá lâu sẽ bị vòng lặp Cleanup Job tự quét xóa để dọn rác).
+
+[D] Các thiết kế sẵn sàng cho tương lai (Unused/Extensible Functions):
+- CleanupJobs (CronJob định kỳ):
+  + MediaCleanupJob: Sẵn sàng quét và xóa các file rác (Status = PENDING_DELETE hoặc PENDING quá 6h). Hàm `markExpiredPendingAssetsForDeletion()` và `cleanupPendingDeleteAssets()` tự động lo việc dọn dẹp hàng chuỗi mà không cần gọi bằng tay.
+  + RefreshTokenCleanupJob: Tự động chạy ngầm xóa các token đã REVOKED để chống làm phình to DB.
+- Hàm Fetch dữ liệu Location (LocationService):
+  `getProvinces()`, `getDistricts()`, `getWards()` hiện đang thiết kế theo cơ chế load từ list JSON seed. Sẵn sàng tích hợp cache (Redis) nếu sau này lượng requests mở rộng nhiều hơn. 
+- Custom Query methods trong Repositories:
+  Nhiều hàm `existsByX` hoặc `findByY` đã được viết sẵn trong thư mục `repository/` để sẵn sàng dùng cho các luồng validate khi xây dựng Entity `Product` hoặc `Bidding` sau này.

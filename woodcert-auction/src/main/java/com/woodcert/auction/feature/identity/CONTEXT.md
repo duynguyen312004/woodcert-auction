@@ -18,7 +18,7 @@
 - **Các controller đã đăng nhập trong module identity dùng `@CurrentUserId`** thông qua custom MVC argument resolver, nên controller không cần inject `Jwt` trực tiếp nữa.
 
 ## Phạm Vi Phase 1 Đã Hoàn Thành
-- Auth APIs: `POST /api/v1/auth/login`, `/register`, `/refresh`, `/logout`
+- Auth APIs: `POST /api/v1/auth/login`, `/register`, `/verify-email`, `/resend-verification`, `/refresh`, `/logout`
 - User profile APIs: `GET/PUT /api/v1/users/me`
 - Seller profile APIs: `GET/POST /api/v1/users/me/seller-profile`
 - Address APIs: `GET/POST /api/v1/addresses`
@@ -40,7 +40,7 @@
 - **Dùng Lombok `@Data` cho entity**: bị loại để tránh `equals/hashCode` không an toàn và side effect với lazy loading.
 
 ## Giới Hạn Hiện Tại
-- Chưa có luồng verify email. Tài khoản đăng ký mới vẫn ở trạng thái `UNVERIFIED` cho tới khi được kích hoạt thủ công.
+- Luồng verify email đã có: đăng ký tạo token một lần, gửi link vào inbox, và chuyển user sang `ACTIVE` khi token được xác minh.
 - Chưa có brute-force protection cho `/login`.
 - `data.sql` vẫn đang được dùng cho bootstrap/master data trong môi trường dev; migration tooling vẫn chưa được đưa vào.
 - Lần khởi động đầu tiên vẫn ưu tiên API tỉnh thành public, nhưng đã có fallback local đi kèm project để tránh làm app fail chỉ vì mất mạng ngoài.

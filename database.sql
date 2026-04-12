@@ -18,6 +18,19 @@ Cac cot:
 - created_at        TIMESTAMP     Thoi gian tao tai khoan.
 - updated_at        TIMESTAMP     Thoi gian cap nhat gan nhat.
 
+1.1) Bang email_verification_tokens (Token xac minh email)
+Mo ta:
+- Luu token xac minh dang raw duoc hash SHA-256 truoc khi luu DB.
+- Moi token chi dung mot lan va co han su dung.
+
+Cac cot:
+- id                BIGINT        PK, auto increment.
+- user_id           VARCHAR(36)   FK -> users.id.
+- token_hash        CHAR(64)      UNIQUE, NOT NULL. SHA-256 cua raw token gui cho user.
+- expires_at        TIMESTAMP     Thoi gian het han cua token.
+- verified_at       TIMESTAMP     Thoi gian token duoc xac minh thanh cong.
+- created_at        TIMESTAMP     Thoi gian tao token.
+
 2) Bang addresses (So dia chi giao/nhan hang)
 Mo ta:
 - Thay the cho buyer_profile.
