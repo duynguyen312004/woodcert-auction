@@ -39,6 +39,11 @@ public class CurrentUserIdResolver implements HandlerMethodArgumentResolver {
             }
         }
 
+        CurrentUserId annotation = parameter.getParameterAnnotation(CurrentUserId.class);
+        if (annotation != null && !annotation.required()) {
+            return null;
+        }
+
         throw new AppException(ErrorCode.UNAUTHORIZED);
     }
 }

@@ -74,8 +74,7 @@ class AuthServiceImplTest {
                 "user@example.com",
                 "Password123",
                 "Nguyen Van A",
-                "+84987654321"
-        );
+                "+84987654321");
 
         Role bidderRole = new Role();
         bidderRole.setId(1);
@@ -86,17 +85,13 @@ class AuthServiceImplTest {
         when(roleRepository.findByName("ROLE_BIDDER")).thenReturn(Optional.of(bidderRole));
         when(passwordEncoder.encode("Password123")).thenReturn("hashed-password");
         when(emailVerificationProperties.getTokenTtlSeconds()).thenReturn(900L);
-        when(emailVerificationProperties.getResendCooldownSeconds()).thenReturn(60L);
-        when(emailVerificationProperties.getVerificationLinkBaseUrl()).thenReturn("http://localhost:8080/api/v1/auth/verify-email");
-        when(emailVerificationProperties.getFromAddress()).thenReturn("no-reply@woodcert.local");
-        when(emailVerificationProperties.getSubject()).thenReturn("Verify your WoodCert email");
-        when(mailSenderProvider.getIfAvailable()).thenReturn(null);
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
             User user = invocation.getArgument(0);
             user.setId("user-1");
             return user;
         });
-        when(emailVerificationTokenRepository.save(any(EmailVerificationToken.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(emailVerificationTokenRepository.save(any(EmailVerificationToken.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         authService.register(request);
 
@@ -121,7 +116,8 @@ class AuthServiceImplTest {
         token.setExpiresAt(Instant.now().plusSeconds(3600));
 
         when(emailVerificationTokenRepository.findByTokenHash(any())).thenReturn(Optional.of(token));
-        when(emailVerificationTokenRepository.save(any(EmailVerificationToken.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(emailVerificationTokenRepository.save(any(EmailVerificationToken.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         authService.verifyEmail("raw-token");
 
@@ -143,12 +139,8 @@ class AuthServiceImplTest {
         when(emailVerificationTokenRepository.findTopByUserAndVerifiedAtIsNullOrderByCreatedAtDesc(user))
                 .thenReturn(Optional.empty());
         when(emailVerificationProperties.getTokenTtlSeconds()).thenReturn(900L);
-        when(emailVerificationProperties.getResendCooldownSeconds()).thenReturn(60L);
-        when(emailVerificationProperties.getVerificationLinkBaseUrl()).thenReturn("http://localhost:8080/api/v1/auth/verify-email");
-        when(emailVerificationProperties.getFromAddress()).thenReturn("no-reply@woodcert.local");
-        when(emailVerificationProperties.getSubject()).thenReturn("Verify your WoodCert email");
-        when(mailSenderProvider.getIfAvailable()).thenReturn(null);
-        when(emailVerificationTokenRepository.save(any(EmailVerificationToken.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(emailVerificationTokenRepository.save(any(EmailVerificationToken.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         authService.resendVerificationEmail(" user@example.com ");
 

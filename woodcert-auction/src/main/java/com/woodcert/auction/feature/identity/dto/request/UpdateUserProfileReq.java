@@ -9,22 +9,11 @@ import jakarta.validation.constraints.AssertTrue;
  */
 public record UpdateUserProfileReq(
 
-        @Size(min = 2, max = 100, message = "Full name must be between 2 and 100 characters")
-        @Pattern(
-                regexp = IdentityRequestPatterns.HUMAN_NAME,
-                message = "Full name contains invalid characters"
-        )
-        String fullName,
+                @Size(min = 2, max = 100, message = "Full name must be between 2 and 100 characters") @Pattern(regexp = IdentityRequestPatterns.HUMAN_NAME, message = "Full name contains invalid characters") String fullName,
 
-        @Size(max = 20, message = "Phone number must not exceed 20 characters")
-        @Pattern(
-                regexp = IdentityRequestPatterns.VIETNAMESE_PHONE_OR_BLANK,
-                message = "Phone number must be a valid Vietnamese phone number"
-        )
-        String phoneNumber
-) {
-    @AssertTrue(message = "At least one field must be provided")
-    public boolean isAtLeastOneFieldProvided() {
-        return fullName != null || phoneNumber != null;
-    }
+                @Size(max = 20, message = "Phone number must not exceed 20 characters") @Pattern(regexp = IdentityRequestPatterns.VIETNAMESE_PHONE, message = "Phone number must be a valid Vietnamese phone number") String phoneNumber) {
+        @AssertTrue(message = "At least one field must be provided")
+        public boolean isAtLeastOneFieldProvided() {
+                return fullName != null || phoneNumber != null;
+        }
 }

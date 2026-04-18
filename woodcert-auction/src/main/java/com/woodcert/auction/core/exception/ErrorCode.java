@@ -32,6 +32,19 @@ public enum ErrorCode {
     // --- Token ---
     TOKEN_EXPIRED(401, "Token has expired"),
     TOKEN_INVALID(401, "Token is invalid"),
+
+    // --- Catalog ---
+    CATEGORY_NOT_FOUND(404, "Category not found"),
+    PRODUCT_NOT_FOUND(404, "Product not found"),
+    PRODUCT_NOT_OWNED(403, "You do not own this product"),
+    PRODUCT_NOT_DRAFT(400, "Product must be in DRAFT status"),
+    PRODUCT_NOT_PENDING(400, "Product must be in PENDING_APPRAISAL status"),
+    PRODUCT_ALREADY_APPRAISED(409, "Product has already been appraised"),
+    INVALID_PRIMARY_IMAGE(400, "Exactly one primary image is required"),
+    DUPLICATE_MEDIA_ID(400, "Duplicate media asset references are not allowed"),
+    DUPLICATE_SORT_ORDER(400, "Duplicate sort order values are not allowed"),
+    MEDIA_USAGE_TYPE_MISMATCH(400, "Media asset usage type does not match expected type"),
+    REJECTION_NOTES_REQUIRED(400, "Appraiser notes are required when rejecting a product"),
     ;
 
     private final int statusCode;

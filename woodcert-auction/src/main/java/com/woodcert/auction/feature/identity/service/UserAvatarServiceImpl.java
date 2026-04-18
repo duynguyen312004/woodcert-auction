@@ -1,4 +1,4 @@
-package com.woodcert.auction.feature.media.service;
+package com.woodcert.auction.feature.identity.service;
 
 import com.woodcert.auction.core.exception.AppException;
 import com.woodcert.auction.core.exception.ErrorCode;
@@ -13,6 +13,7 @@ import com.woodcert.auction.feature.media.dto.response.MediaUploadIntentRes;
 import com.woodcert.auction.feature.media.entity.MediaAsset;
 import com.woodcert.auction.feature.media.entity.MediaResourceType;
 import com.woodcert.auction.feature.media.entity.MediaUsageType;
+import com.woodcert.auction.feature.media.service.MediaAssetService;
 import com.woodcert.auction.feature.media.support.MediaUploadContext;
 import com.woodcert.auction.feature.media.util.MediaUrlBuilder;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-public class AvatarMediaService {
+public class UserAvatarServiceImpl implements UserAvatarService {
 
     private final UserRepository userRepository;
     private final SellerProfileRepository sellerProfileRepository;
@@ -29,12 +30,14 @@ public class AvatarMediaService {
     private final MediaAssetService mediaAssetService;
     private final MediaUrlBuilder mediaUrlBuilder;
 
+    @Override
     @Transactional
     public MediaUploadIntentRes createCurrentUserAvatarUploadIntent(String userId, CreateMediaUploadIntentReq request) {
         ensureUserExists(userId);
         return mediaAssetService.createUploadIntent(buildAvatarContext(userId), request);
     }
 
+    @Override
     @Transactional
     public UserProfileRes attachCurrentUserAvatar(String userId, ConfirmMediaUploadReq request) {
         User user = findUser(userId);
@@ -51,6 +54,7 @@ public class AvatarMediaService {
         return UserProfileRes.fromEntity(savedUser, hasSellerProfile, mediaUrlBuilder.buildAvatarUrl(uploadedAvatar));
     }
 
+    @Override
     @Transactional
     public UserProfileRes clearCurrentUserAvatar(String userId) {
         User user = findUser(userId);

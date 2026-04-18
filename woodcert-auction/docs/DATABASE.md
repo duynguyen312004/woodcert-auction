@@ -101,7 +101,7 @@
 ├──────────────────────┤  ├─────────────────────┤
 │ id (PK)              │  │ id (PK)             │
 │ product_id (FK)      │  │ product_id (UQ,FK)  │ 1:1
-│ image_url            │  │ appraiser_id (FK)   │
+│ media_id (FK)        │  │ appraiser_id (FK)   │
 │ is_primary           │  │ certificate_code    │
 │ sort_order           │  │ verified_material   │
 └──────────────────────┘  │ estimated_value     │
@@ -113,7 +113,7 @@
                           ├─────────────────────┤
                           │ id (PK)             │
                           │ appraisal_report_id │
-                          │ image_url           │
+                          │ media_id (FK)       │
                           │ description         │
                           └─────────────────────┘
 
@@ -357,8 +357,8 @@ Cloudinary metadata store. Domain tables should keep foreign keys to this table 
 
 - `asset_id` is the immutable Cloudinary identifier used during confirm/verification.
 - `public_id` is the stable delivery/delete identifier issued during upload intent.
-- `folder` stores the intended Cloudinary folder prefix, for example `woodcert/dev/users/{userId}/avatar`.
-- Current implemented usage is `USER_AVATAR`; other usage types are prepared for later phases.
+- `folder` stores the intended Cloudinary folder prefix, for example `woodcert/dev/users/{userId}/avatar` or `woodcert/dev/users/{userId}/products`.
+- Current implemented usages include `USER_AVATAR`, `PRODUCT_IMAGE` and `APPRAISAL_IMAGE`.
 
 ### addresses
 
@@ -469,7 +469,7 @@ Composite PK: (role_id, permission_id)
 |--------|------|-------------|-------------|
 | id | BIGINT | PK, AUTO_INCREMENT | |
 | product_id | BIGINT | NOT NULL, FK → products(id) | |
-| image_url | VARCHAR(500) | NOT NULL | Link ảnh cloud |
+| media_id | BIGINT | NOT NULL, FK → media_assets(id) | Ảnh đã confirm qua media module |
 | is_primary | BOOLEAN | NOT NULL, DEFAULT false | Ảnh bìa |
 | sort_order | INT | NOT NULL, DEFAULT 0 | Thứ tự hiển thị |
 
@@ -477,9 +477,9 @@ Composite PK: (role_id, permission_id)
 
 - INDEX idx_product_images_product_id ON product_images(product_id)
 
-**Planned media migration:**
+**Notes:**
 
-- This table should later move from `image_url` to `media_id BIGINT FK -> media_assets(id)` so product media can reuse the shared Cloudinary/media flow.
+- Product list/detail should derive delivery URL from joined `media_assets`, not from raw client-supplied URLs.
 
 ### appraisal_reports
 | Column | Type | Constraints | Description |
@@ -517,16 +517,16 @@ Composite PK: (role_id, permission_id)
 |--------|------|-------------|-------------|
 | id | BIGINT | PK, AUTO_INCREMENT | |
 | appraisal_report_id | BIGINT | NOT NULL, FK → appraisal_reports(id) | |
-| image_url | VARCHAR(500) | NOT NULL | Ảnh bằng chứng |
+| media_id | BIGINT | NOT NULL, FK → media_assets(id) | Ảnh bằng chứng đã confirm |
 | description | VARCHAR(255) | NULLABLE | Chú thích ảnh |
 
 **Indexes:**
 
 - INDEX idx_appraisal_images_report_id ON appraisal_images(appraisal_report_id)
 
-**Planned media migration:**
+**Notes:**
 
-- This table should later move from `image_url` to `media_id BIGINT FK -> media_assets(id)`.
+- Appraisal proof images share the same `media_assets` confirmation and cleanup lifecycle as avatar/product images.
 
 ### wallets
 | Column | Type | Constraints | Description |
@@ -763,6 +763,7 @@ Product Truth Model
 products chứa dữ liệu seller tự khai
 appraisal_reports chứa dữ liệu đã kiểm định
 Buyer chỉ nên thấy các field xác thực từ appraisal_reports cho chất liệu, tình trạng, định giá
+Catalog list/detail hiện là internal workflow APIs cho seller/appraiser; buyer-facing browse/detail nên đi qua auction read model sau này
 Escrow Rules
 Khi tham gia đấu giá: tiền cọc chuyển từ available_balance → frozen_balance
 Người thua: deposit_status = REFUNDED

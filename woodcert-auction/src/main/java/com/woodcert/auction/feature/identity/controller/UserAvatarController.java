@@ -1,12 +1,12 @@
-package com.woodcert.auction.feature.media.controller;
+package com.woodcert.auction.feature.identity.controller;
 
 import com.woodcert.auction.core.auth.CurrentUserId;
 import com.woodcert.auction.core.dto.ApiResponse;
 import com.woodcert.auction.feature.identity.dto.response.UserProfileRes;
+import com.woodcert.auction.feature.identity.service.UserAvatarService;
 import com.woodcert.auction.feature.media.dto.request.ConfirmMediaUploadReq;
 import com.woodcert.auction.feature.media.dto.request.CreateMediaUploadIntentReq;
 import com.woodcert.auction.feature.media.dto.response.MediaUploadIntentRes;
-import com.woodcert.auction.feature.media.service.AvatarMediaService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -22,13 +22,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class UserAvatarController {
 
-    private final AvatarMediaService avatarMediaService;
+    private final UserAvatarService userAvatarService;
 
     @PostMapping("/upload-intent")
     public ResponseEntity<ApiResponse<MediaUploadIntentRes>> createUploadIntent(
             @CurrentUserId String userId,
             @RequestBody @Valid CreateMediaUploadIntentReq request) {
-        MediaUploadIntentRes response = avatarMediaService.createCurrentUserAvatarUploadIntent(userId, request);
+        MediaUploadIntentRes response = userAvatarService.createCurrentUserAvatarUploadIntent(userId, request);
         return ResponseEntity.status(201).body(ApiResponse.created(response, "Avatar upload intent created successfully"));
     }
 
@@ -36,14 +36,14 @@ public class UserAvatarController {
     public ResponseEntity<ApiResponse<UserProfileRes>> attachAvatar(
             @CurrentUserId String userId,
             @RequestBody @Valid ConfirmMediaUploadReq request) {
-        UserProfileRes profile = avatarMediaService.attachCurrentUserAvatar(userId, request);
+        UserProfileRes profile = userAvatarService.attachCurrentUserAvatar(userId, request);
         return ResponseEntity.ok(ApiResponse.success(profile, "Avatar updated successfully"));
     }
 
     @DeleteMapping
     public ResponseEntity<ApiResponse<UserProfileRes>> deleteAvatar(
             @CurrentUserId String userId) {
-        UserProfileRes profile = avatarMediaService.clearCurrentUserAvatar(userId);
+        UserProfileRes profile = userAvatarService.clearCurrentUserAvatar(userId);
         return ResponseEntity.ok(ApiResponse.success(profile, "Avatar removed successfully"));
     }
 }

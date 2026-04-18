@@ -1,4 +1,4 @@
-package com.woodcert.auction.feature.media.service;
+package com.woodcert.auction.feature.identity.service;
 
 import com.woodcert.auction.core.exception.AppException;
 import com.woodcert.auction.feature.identity.dto.response.UserProfileRes;
@@ -14,6 +14,7 @@ import com.woodcert.auction.feature.media.dto.response.MediaUploadIntentRes;
 import com.woodcert.auction.feature.media.entity.MediaAsset;
 import com.woodcert.auction.feature.media.entity.MediaResourceType;
 import com.woodcert.auction.feature.media.entity.MediaUsageType;
+import com.woodcert.auction.feature.media.service.MediaAssetService;
 import com.woodcert.auction.feature.media.support.MediaUploadContext;
 import com.woodcert.auction.feature.media.util.MediaUrlBuilder;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,7 +35,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class AvatarMediaServiceTest {
+class UserAvatarServiceImplTest {
 
     @Mock
     private UserRepository userRepository;
@@ -49,14 +50,14 @@ class AvatarMediaServiceTest {
     private MediaUrlBuilder mediaUrlBuilder;
 
     private CloudinaryProperties properties;
-    private AvatarMediaService avatarMediaService;
+    private UserAvatarServiceImpl userAvatarService;
 
     @BeforeEach
     void setUp() {
         properties = new CloudinaryProperties();
         properties.setBaseFolder("woodcert/dev");
         properties.getUpload().setAvatarMaxBytes(5_242_880);
-        avatarMediaService = new AvatarMediaService(
+        userAvatarService = new UserAvatarServiceImpl(
                 userRepository,
                 sellerProfileRepository,
                 properties,
@@ -71,7 +72,7 @@ class AvatarMediaServiceTest {
 
         AppException exception = assertThrows(
                 AppException.class,
-                () -> avatarMediaService.createCurrentUserAvatarUploadIntent(
+                () -> userAvatarService.createCurrentUserAvatarUploadIntent(
                         "user-1",
                         new CreateMediaUploadIntentReq("avatar.jpg", "image/jpeg", 1024L)));
 
@@ -104,7 +105,7 @@ class AvatarMediaServiceTest {
                         "image/")),
                 eq(request))).thenReturn(response);
 
-        MediaUploadIntentRes result = avatarMediaService.createCurrentUserAvatarUploadIntent("user-1", request);
+        MediaUploadIntentRes result = userAvatarService.createCurrentUserAvatarUploadIntent("user-1", request);
 
         assertEquals(101L, result.mediaId());
     }
@@ -127,11 +128,33 @@ class AvatarMediaServiceTest {
         when(userRepository.save(user)).thenReturn(user);
         when(mediaUrlBuilder.buildAvatarUrl(uploadedAvatar)).thenReturn("https://res.cloudinary.com/avatar");
 
-        UserProfileRes result = avatarMediaService.attachCurrentUserAvatar("user-1", request);
+        UserProfileRes result = userAvatarService.attachCurrentUserAvatar("user-1", request);
 
         assertEquals("https://res.cloudinary.com/avatar", result.avatarUrl());
         assertEquals(uploadedAvatar, user.getAvatarMedia());
         verify(mediaAssetService).markPendingDelete(oldAvatar);
+    }
+
+    @Test
+    @DisplayName("attachCurrentUserAvatar does not delete when replacing with same asset")
+    void attachCurrentUserAvatar_sameAsset_keepsCurrentAssetActive() {
+        User user = createUser("user-1");
+        MediaAsset currentAvatar = new MediaAsset();
+        currentAvatar.setId(2L);
+        user.setAvatarMedia(currentAvatar);
+
+        ConfirmMediaUploadReq request = new ConfirmMediaUploadReq(2L, "asset-2");
+
+        when(userRepository.findById("user-1")).thenReturn(Optional.of(user));
+        when(mediaAssetService.confirmOwnedUpload("user-1", request)).thenReturn(currentAvatar);
+        when(sellerProfileRepository.existsById("user-1")).thenReturn(false);
+        when(userRepository.save(user)).thenReturn(user);
+        when(mediaUrlBuilder.buildAvatarUrl(currentAvatar)).thenReturn("https://res.cloudinary.com/avatar");
+
+        UserProfileRes result = userAvatarService.attachCurrentUserAvatar("user-1", request);
+
+        assertEquals("https://res.cloudinary.com/avatar", result.avatarUrl());
+        assertEquals(currentAvatar, user.getAvatarMedia());
     }
 
     @Test
@@ -146,7 +169,7 @@ class AvatarMediaServiceTest {
         when(sellerProfileRepository.existsById("user-1")).thenReturn(false);
         when(userRepository.save(user)).thenReturn(user);
 
-        UserProfileRes result = avatarMediaService.clearCurrentUserAvatar("user-1");
+        UserProfileRes result = userAvatarService.clearCurrentUserAvatar("user-1");
 
         assertNull(result.avatarUrl());
         assertNull(user.getAvatarMedia());

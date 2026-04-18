@@ -10,11 +10,16 @@ import org.springframework.stereotype.Component;
 public class MediaUrlBuilder {
 
     private static final String AVATAR_TRANSFORMATION = "c_fill,f_auto,g_face,h_256,q_auto,w_256";
+    private static final String PRODUCT_IMAGE_TRANSFORMATION = "c_limit,f_auto,h_800,q_auto,w_800";
 
     private final CloudinaryProperties properties;
 
     public String buildAvatarUrl(MediaAsset asset) {
         return buildDeliveryUrl(asset, AVATAR_TRANSFORMATION);
+    }
+
+    public String buildProductImageUrl(MediaAsset asset) {
+        return buildDeliveryUrl(asset, PRODUCT_IMAGE_TRANSFORMATION);
     }
 
     public String buildDeliveryUrl(MediaAsset asset, String transformation) {

@@ -569,13 +569,18 @@ Success Response (200):
 }
 ```
 
-## 7. Products (Seller & Public)
+## 7. Catalog Products & Appraisal Workflow
 
-### GET /products 🔓
+Catalog is now an internal workflow module for seller and appraiser. It is no longer the public-facing marketplace read API. Buyer/public listing-detail will later be served by the auction module.
 
-List products with filters & pagination.
+### GET /products 🔒
 
-Note: Public users only see status = APPRAISED. Sellers can pass `?isMine=true` to see all their own products.
+List catalog products visible to the current authenticated user.
+
+Access rules:
+- Seller: sees their own products in all statuses
+- Appraiser: sees all `PENDING_APPRAISAL`, plus `APPRAISED` / `REJECTED` products that were appraised by that same appraiser
+- Public: not allowed
 
 Query Parameters:
 
@@ -584,8 +589,7 @@ Query Parameters:
 | page | int | 1 | Page number |
 | size | int | 10 | Items per page |
 | categoryId | int | null | Filter by category |
-| status | string | APPRAISED | Filter by status |
-| isMine | boolean | false | (Auth required) View my own products |
+| status | string | null | Filter by visible status |
 
 Success Response (200):
 
@@ -593,26 +597,31 @@ Success Response (200):
 {
   "statusCode": 200,
   "data": {
-    "meta": { "page": 1, "pageSize": 10, "pages": 5, "total": 50 },
+    "meta": { "page": 1, "pageSize": 10, "pages": 2, "total": 11 },
     "result": [
       {
         "id": 1001,
         "title": "Tượng Đạt Ma Sư Tổ Gỗ Sưa Đỏ",
         "category": { "id": 1, "name": "Tượng Gỗ Phong Thủy" },
-        "status": "APPRAISED",
-        "primaryImage": "https://s3.../dat-ma-1.jpg",
-        "createdAt": "2026-03-28T08:00:00"
+        "status": "PENDING_APPRAISAL",
+        "primaryImage": "https://res.cloudinary.com/.../products/1001-main.jpg",
+        "createdAt": "2026-04-18T08:00:00"
       }
     ]
   },
   "message": "Fetch products successful",
-  "timestamp": "2026-03-28T10:00:00"
+  "timestamp": "2026-04-18T10:00:00"
 }
 ```
 
-### GET /products/{id} 🔓
+### GET /products/{id} 🔒
 
-Get detailed product info, including its Images and Appraisal Report (if it is APPRAISED).
+Get internal catalog product detail, including images and appraisal report.
+
+Access rules:
+- Owner: can view any status
+- Appraiser: can view `PENDING_APPRAISAL`, plus `APPRAISED` / `REJECTED` only if `appraisalReport.appraiserId == currentUserId`
+- Other cases: `PRODUCT_NOT_FOUND`
 
 Success Response (200):
 
@@ -627,38 +636,46 @@ Success Response (200):
       "reputationScore": 4.9
     },
     "title": "Tượng Đạt Ma Sư Tổ",
-    "description": "Mô tả chi tiết bằng HTML...",
-    "material": "Gỗ Sưa (Seller khai báo)",
-    "dimensions": "Cao 1m2 x Rộng 40cm",
+    "description": "Mô tả chi tiết...",
+    "material": "Gỗ Sưa",
+    "dimensions": "120x40x35 cm",
     "weight": 45.5,
     "status": "APPRAISED",
+    "category": {
+      "id": 1,
+      "name": "Tượng Gỗ Phong Thủy",
+      "slug": "tuong-go-phong-thuy",
+      "parentId": null,
+      "description": "Các loại tượng gỗ Đạt Ma, Di Lặc..."
+    },
     "images": [
-      { "id": 1, "imageUrl": "https://s3.../dat-ma-1.jpg", "isPrimary": true, "sortOrder": 0 },
-      { "id": 2, "imageUrl": "https://s3.../dat-ma-2.jpg", "isPrimary": false, "sortOrder": 1 }
+      { "imageUrl": "https://res.cloudinary.com/.../products/1001-main.jpg", "isPrimary": true, "sortOrder": 0 },
+      { "imageUrl": "https://res.cloudinary.com/.../products/1001-side.jpg", "isPrimary": false, "sortOrder": 1 }
     ],
     "appraisalReport": {
       "certificateCode": "CERT-2026-001",
-      "verifiedMaterial": "Gỗ Sưa Đỏ Thật 100%",
-      "estimatedValue": 50000000.00,
+      "verifiedMaterial": "Gỗ Sưa Đỏ",
+      "origin": "Việt Nam",
+      "ageEstimation": "Khoảng 40 năm",
       "conditionGrade": "EXCELLENT",
+      "estimatedValue": 50000000.00,
       "isAuthentic": true,
+      "appraiserNotes": "Bề mặt và vân gỗ đồng nhất.",
+      "sellerAccuracy": 5.00,
       "digitalSignature": "abc123xyz..."
-    }
+    },
+    "createdAt": "2026-04-18T08:00:00"
   },
   "message": "Fetch product successful",
-  "timestamp": "2026-03-28T10:00:00"
+  "timestamp": "2026-04-18T10:00:00"
 }
 ```
 
 ### POST /products 🔒
 
-Create a new product. Initial status will be DRAFT.
-
-Requires Role: ROLE_SELLER
+Create a new product. Initial status is `DRAFT`.
 
 Request Body:
-
-(Note: Upload images via /files endpoint first, then pass the URLs here)
 
 ```json
 {
@@ -669,44 +686,76 @@ Request Body:
   "dimensions": "60x40x30 cm",
   "weight": 15.0,
   "images": [
-    { "imageUrl": "https://s3.../di-lac-1.jpg", "isPrimary": true, "sortOrder": 0 },
-    { "imageUrl": "https://s3.../di-lac-2.jpg", "isPrimary": false, "sortOrder": 1 }
+    { "mediaId": 201, "isPrimary": true, "sortOrder": 0 },
+    { "mediaId": 202, "isPrimary": false, "sortOrder": 1 }
   ]
 }
 ```
 
-### POST /products/{id}/submit-appraisal 🔒
+Notes:
+- Images reference confirmed `mediaId` values, not raw URLs
+- Client must upload and confirm product images first through `/products/images/*`
 
-Seller submits a DRAFT product to the Appraisers. Changes status to PENDING_APPRAISAL.
+### PUT /products/{id} 🔒
 
-Request Body: Empty.
+Update an existing `DRAFT` product.
 
-Success Response (200):
+Request Body:
 
 ```json
 {
-  "statusCode": 200,
-  "data": null,
-  "message": "Product submitted for appraisal successfully",
-  "timestamp": "2026-03-28T10:00:00"
+  "categoryId": 1,
+  "title": "Tượng Di Lặc Gỗ Hương Updated",
+  "description": "Chi tiết đục tay tinh xảo...",
+  "material": "Gỗ Hương Đá",
+  "dimensions": "60x40x30 cm",
+  "weight": 15.0,
+  "images": [
+    { "mediaId": 201, "isPrimary": true, "sortOrder": 0 },
+    { "mediaId": 202, "isPrimary": false, "sortOrder": 1 }
+  ]
 }
 ```
 
-## 7. Appraisals (Appraiser Area)
+Notes:
+- Only `DRAFT` products can be updated
+- Image replacement is full-replacement
+- Removed images are marked `PENDING_DELETE`
 
-### GET /appraisals/pending 🔒
+### DELETE /products/{id} 🔒
 
-List products waiting for appraisal.
+Delete an existing `DRAFT` product.
 
-Requires Role: ROLE_APPRAISER
+Notes:
+- Only `DRAFT` products can be deleted
+- All attached product images are marked `PENDING_DELETE`
 
-Success Response (200): Returns paginated list of products where status = PENDING_APPRAISAL.
+### POST /products/{id}/submit-appraisal 🔒
+
+Seller submits a `DRAFT` product for appraisal. Status changes to `PENDING_APPRAISAL`.
+
+Request Body: empty.
+
+### POST /products/images/upload-intent 🔒
+
+Create a signed Cloudinary upload intent for a product image.
+
+### PUT /products/images/confirm 🔒
+
+Confirm a product image upload after direct Cloudinary upload.
+
+Request Body:
+
+```json
+{
+  "mediaId": 201,
+  "assetId": "3a1fbda4eb0aa195ce151c93899a827f"
+}
+```
 
 ### POST /products/{id}/appraise 🔒
 
-Appraiser submits the official Appraisal Report. This endpoint updates the product's status and generates the certificate.
-
-Requires Role: ROLE_APPRAISER
+Appraiser submits the official appraisal report. Product becomes `APPRAISED` or `REJECTED`.
 
 Request Body:
 
@@ -721,7 +770,7 @@ Request Body:
   "appraiserNotes": "Tượng không nứt nẻ, PU bóng mờ đẹp.",
   "sellerAccuracy": 5,
   "proofImages": [
-    { "imageUrl": "https://s3.../soi-loi-1.jpg", "description": "Chụp cận cảnh vân gỗ" }
+    { "mediaId": 301, "description": "Chụp cận cảnh vân gỗ" }
   ]
 }
 ```
@@ -738,15 +787,33 @@ Success Response (201):
     "newProductStatus": "APPRAISED"
   },
   "message": "Appraisal report created successfully",
-  "timestamp": "2026-03-28T11:00:00"
+  "timestamp": "2026-04-18T11:00:00"
 }
 ```
 
-Note on Logic:
+Notes:
+- `AppraisalReport` is immutable once submitted
+- If `isAuthentic = false`, product status becomes `REJECTED`
+- `appraiserNotes` is required when rejecting
+- `digitalSignature` is generated internally by the backend
+- Appraisers can fetch their pending/reviewed workflow through `GET /products`
 
-- If isAuthentic = false, the system will automatically set Product status to REJECTED and the appraiserNotes will act as the rejected_reason.
+### POST /appraisals/images/upload-intent 🔒
 
-The digitalSignature is generated internally by the server by hashing the report data and is not passed by the client.
+Create a signed Cloudinary upload intent for an appraisal proof image.
+
+### PUT /appraisals/images/confirm 🔒
+
+Confirm an appraisal proof image upload after direct Cloudinary upload.
+
+Request Body:
+
+```json
+{
+  "mediaId": 301,
+  "assetId": "9b2fbda4eb0aa195ce151c93899a1234"
+}
+```
 
 ## 8. Wallets & Transactions (Finance)
 

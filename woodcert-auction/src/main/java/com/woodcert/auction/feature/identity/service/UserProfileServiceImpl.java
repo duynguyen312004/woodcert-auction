@@ -49,6 +49,9 @@ public class UserProfileServiceImpl implements UserProfileService {
             user.setFullName(request.fullName().trim());
         }
         if (request.phoneNumber() != null) {
+            if (normalizedPhone == null) {
+                throw new AppException(ErrorCode.INVALID_REQUEST, "Phone number cannot be empty");
+            }
             user.setPhoneNumber(normalizedPhone);
         }
 
@@ -72,8 +75,8 @@ public class UserProfileServiceImpl implements UserProfileService {
         }
 
         if (request.phoneNumber() != null) {
-            if (request.phoneNumber().isNull()) {
-                user.setPhoneNumber(null);
+            if (request.phoneNumber().isNull() || request.phoneNumber().asText().trim().isEmpty()) {
+                throw new AppException(ErrorCode.INVALID_REQUEST, "Phone number cannot be empty");
             } else {
                 String phoneNumber = requireTextValue(request.phoneNumber(), "phoneNumber");
                 validatePhoneNumber(phoneNumber);

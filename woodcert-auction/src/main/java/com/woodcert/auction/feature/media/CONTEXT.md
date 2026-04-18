@@ -1,16 +1,21 @@
 # Media - Implementation Context
-> Written: 2026-04-09 | Author: AI Assistant + Duy Nguyen
+> Written: 2026-04-09 | Updated: 2026-04-18 | Author: AI Assistant + Duy Nguyen
 
 ## Business Purpose
 `feature/media` is the shared media layer for WoodCert Auction. It centralizes Cloudinary upload, media metadata persistence, delivery URL generation, ownership checks, and background cleanup so business modules do not store raw cloud URLs directly.
 
 ## Current Scope
-- Avatar flow is implemented end-to-end.
-- Other usages are prepared in the shared design but not integrated yet:
+- Media is already integrated for:
+  - `USER_AVATAR`
   - `PRODUCT_IMAGE`
   - `APPRAISAL_IMAGE`
+- Media remains generic and reusable for later phases:
   - `SHIPMENT_PACKING_VIDEO`
   - `DISPUTE_EVIDENCE`
+- Business modules own the public APIs:
+  - `identity` owns avatar endpoints
+  - `catalog` owns product-image and appraisal-image endpoints
+  - `media` only provides shared upload/confirm/delete primitives
 
 ## Core Decisions
 - Database stores `media_assets` metadata and business relationships, not raw upload URLs as source of truth.
@@ -25,21 +30,36 @@
 
 ## Avatar Flow
 1. `POST /api/v1/users/me/avatar/upload-intent`
-   - create `media_assets` row with `PENDING`
-   - generate `publicId`
-   - return signed Cloudinary params including `assetFolder`
+   - identity module validates the current user
+   - media creates `media_assets` row with `PENDING`
+   - media generates `publicId`
+   - media returns signed Cloudinary params including `assetFolder`
 2. Client uploads directly to Cloudinary
 3. `PUT /api/v1/users/me/avatar`
    - request contains `mediaId` and `assetId`
-   - backend fetches asset metadata from Cloudinary
-   - backend verifies `assetId`, `publicId`, type, and size
-   - backend marks asset `ACTIVE` and sets `users.avatar_media_id`
+   - media fetches asset metadata from Cloudinary
+   - media verifies `assetId`, `publicId`, type, and size
+   - identity attaches the confirmed asset to `users.avatar_media_id`
 4. `DELETE /api/v1/users/me/avatar`
-   - detach current avatar
-   - mark old asset `PENDING_DELETE`
-5. `MediaCleanupJob`
-   - deletes `PENDING_DELETE` assets from Cloudinary
-   - marks them `DELETED`
+   - identity detaches current avatar
+   - identity marks old asset `PENDING_DELETE` through media service
+5. `MediaCleanupJob` (3-Phase cleanup)
+   - Phase 1: Marks stale `PENDING` assets as `PENDING_DELETE` (e.g. user requested intent but never uploaded).
+   - Phase 2: Marks orphan `ACTIVE` assets as `PENDING_DELETE` (e.g. asset uploaded but not attached to avatar, product image, or appraisal image).
+   - Phase 3: Executes actual Cloudinary deletion for `PENDING_DELETE` and `DELETE_FAILED` assets, marking them `DELETED` upon success.
+
+## Catalog Media Flows
+### Product Images
+1. `POST /api/v1/products/images/upload-intent`
+2. Client uploads directly to Cloudinary
+3. `PUT /api/v1/products/images/confirm`
+4. Seller references confirmed `mediaId` values when creating/updating a product
+
+### Appraisal Proof Images
+1. `POST /api/v1/appraisals/images/upload-intent`
+2. Client uploads directly to Cloudinary
+3. `PUT /api/v1/appraisals/images/confirm`
+4. Appraiser references confirmed `mediaId` values when submitting an appraisal report
 
 ## Cloudinary Upload Contract
 The direct upload request to Cloudinary must include:
@@ -57,9 +77,13 @@ The direct upload request to Cloudinary must include:
 Current avatar folder pattern:
 - `woodcert/dev/users/{userId}/avatar`
 
+Product Image folder pattern:
+- `woodcert/dev/users/{userId}/products`
+
+Appraisal Image folder pattern:
+- `woodcert/dev/users/{userId}/appraisals`
+
 Recommended next patterns:
-- `woodcert/dev/products/{productId}/gallery`
-- `woodcert/dev/appraisals/{reportId}/evidence`
 - `woodcert/dev/shipments/{shipmentId}/packing`
 - `woodcert/dev/disputes/{disputeId}/evidence`
 
@@ -67,9 +91,19 @@ Recommended next patterns:
 - `MediaAsset`: database metadata for one asset
 - `MediaAssetService`: create intent, confirm, mark pending delete, cleanup
 - `CloudinaryApiService`: fetch metadata and destroy asset on Cloudinary
-- `AvatarMediaService`: avatar-specific orchestration
 - `MediaCleanupJob`: scheduled cleanup runner
 - `MediaUrlBuilder`: delivery URL builder from stored metadata
+
+## Module Boundary
+- `media` should not own avatar/product/appraisal business rules.
+- Owning modules are responsible for:
+  - validating actor and business state
+  - attaching/detaching `media_assets` to domain entities
+  - deciding when an asset becomes orphaned from business perspective
+- `media` is responsible for:
+  - upload intent creation
+  - Cloudinary confirmation by immutable asset metadata
+  - async cleanup lifecycle
 
 ## Extension Rule For Next Phases
 When adding a new media use case:

@@ -131,6 +131,38 @@ public class MediaAssetService {
         return assets.size();
     }
 
+    /**
+     * Detect and mark orphan ACTIVE media assets for deletion.
+     * An asset is orphan if it is ACTIVE but not referenced by any user avatar,
+     * product image, or appraisal image. Uses a 48h cutoff to be conservative
+     * (avoid marking assets in multi-step flows that are about to be attached).
+     */
+    @Transactional
+    public int markOrphanActiveAssetsForDeletion() {
+        // 48h buffer — double the stale-pending window for extra safety
+        Instant cutoff = Instant.now().minusSeconds(
+                properties.getCleanup().getStalePendingHours() * 3600L * 2);
+
+        List<MediaAsset> orphans = mediaAssetRepository.findOrphanActiveAssets(
+                MediaStatus.ACTIVE,
+                cutoff,
+                PageRequest.of(0, properties.getCleanup().getBatchSize())
+        ).getContent();
+
+        for (MediaAsset asset : orphans) {
+            asset.setDeleteRequestedAt(Instant.now());
+            asset.setStatus(MediaStatus.PENDING_DELETE);
+            asset.setLastError(null);
+        }
+
+        if (!orphans.isEmpty()) {
+            mediaAssetRepository.saveAll(orphans);
+            log.info("Marked {} orphan ACTIVE media assets for deletion", orphans.size());
+        }
+
+        return orphans.size();
+    }
+
     @Transactional
     public int cleanupPendingDeleteAssets() {
         List<MediaAsset> assets = mediaAssetRepository.findByStatusInOrderByDeleteRequestedAtAscIdAsc(

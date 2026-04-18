@@ -22,7 +22,6 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.verify;
@@ -70,8 +69,7 @@ class UserProfileServiceImplTest {
 
         AppException exception = assertThrows(
                 AppException.class,
-                () -> userProfileService.updateCurrentUserProfile("user-1", request)
-        );
+                () -> userProfileService.updateCurrentUserProfile("user-1", request));
 
         assertEquals("Phone number already exists", exception.getMessage());
     }
@@ -95,18 +93,19 @@ class UserProfileServiceImplTest {
     }
 
     @Test
-    @DisplayName("updateCurrentUserProfile clears phone number when blank is provided")
-    void updateCurrentUserProfile_blankPhone_clearsField() {
+    @DisplayName("updateCurrentUserProfile throws exception when blank phone number is provided")
+    void updateCurrentUserProfile_blankPhone_throwsException() {
         User user = createUser("user-1", "0911222333");
         UpdateUserProfileReq request = new UpdateUserProfileReq(null, "   ");
 
         when(userRepository.findById("user-1")).thenReturn(java.util.Optional.of(user));
-        when(userRepository.save(user)).thenReturn(user);
-        when(sellerProfileRepository.existsById("user-1")).thenReturn(false);
 
-        userProfileService.updateCurrentUserProfile("user-1", request);
+        AppException ex = assertThrows(AppException.class, () -> {
+            userProfileService.updateCurrentUserProfile("user-1", request);
+        });
 
-        assertNull(user.getPhoneNumber());
+        assertEquals(400, ex.getStatusCode());
+        assertEquals("Phone number cannot be empty", ex.getMessage());
     }
 
     @Test
@@ -120,8 +119,7 @@ class UserProfileServiceImplTest {
 
         AppException exception = assertThrows(
                 AppException.class,
-                () -> userProfileService.updateCurrentUserProfile("user-1", request)
-        );
+                () -> userProfileService.updateCurrentUserProfile("user-1", request));
 
         assertEquals("Phone number already exists", exception.getMessage());
     }
@@ -132,8 +130,7 @@ class UserProfileServiceImplTest {
         User user = createUser("user-1", "0911222333");
         PatchUserProfileReq request = new PatchUserProfileReq(
                 JsonNodeFactory.instance.textNode("Patched User"),
-                null
-        );
+                null);
 
         when(userRepository.findById("user-1")).thenReturn(java.util.Optional.of(user));
         when(userRepository.save(user)).thenReturn(user);
@@ -153,8 +150,7 @@ class UserProfileServiceImplTest {
 
         AppException exception = assertThrows(
                 AppException.class,
-                () -> userProfileService.patchCurrentUserProfile("user-1", request)
-        );
+                () -> userProfileService.patchCurrentUserProfile("user-1", request));
 
         assertEquals("At least one field must be provided", exception.getMessage());
     }

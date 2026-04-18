@@ -361,6 +361,16 @@ Before finishing:
 - Do not inject `Jwt` directly into controllers just to read `sub`
 - The extraction logic belongs in MVC argument resolver infrastructure under `core/auth`
 
+## 17. Media & Uploads
+
+- Always persist `media_assets` as the source of truth, avoiding raw Cloudinary URLs in database domain tables.
+- Media deletion is asynchronous: background jobs cleanup Cloudinary resources instead of relying on frontend deletes.
+- The `MediaCleanupJob` is implemented as a 3-Phase cleanup: 
+  - Phase 1: Mark stale `PENDING` -> `PENDING_DELETE`
+  - Phase 2: Mark orphan `ACTIVE` -> `PENDING_DELETE`
+  - Phase 3: Execute Cloudinary deletion for `PENDING_DELETE` + `DELETE_FAILED`
+- Store images in user-scoped folders to stay organized, such as `{baseFolder}/users/{userId}/products` and `{baseFolder}/users/{userId}/appraisals`.
+
 ## Final Note
 
 This is a high-concurrency financial system.

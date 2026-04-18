@@ -3,6 +3,8 @@
 -- Runs on every startup (INSERT IGNORE = skip if already exists)
 -- ============================================================
 
+SET NAMES utf8mb4;
+
 -- ========================
 -- ROLES
 -- ========================
@@ -59,3 +61,18 @@ INSERT IGNORE INTO role_permissions (role_id, permission_id) VALUES (4, 6);
 INSERT IGNORE INTO role_permissions (role_id, permission_id) VALUES (4, 7);
 INSERT IGNORE INTO role_permissions (role_id, permission_id) VALUES (4, 8);
 INSERT IGNORE INTO role_permissions (role_id, permission_id) VALUES (4, 9);
+
+-- ========================
+-- CATEGORIES (Wood Art Products)
+-- ========================
+INSERT IGNORE INTO categories (id, name, slug, parent_id, description) VALUES (1, 'Tượng Gỗ Phong Thủy', 'tuong-go-phong-thuy', NULL, 'Các loại tượng gỗ Đạt Ma, Di Lặc, Phật Bà, Thần Tài...');
+INSERT IGNORE INTO categories (id, name, slug, parent_id, description) VALUES (2, 'Lục Bình Gỗ', 'luc-binh-go', NULL, 'Lục bình gỗ nguyên khối các loại');
+INSERT IGNORE INTO categories (id, name, slug, parent_id, description) VALUES (3, 'Bàn Ghế Gỗ', 'ban-ghe-go', NULL, 'Bàn ghế gỗ nguyên khối, bộ bàn ghế phòng khách');
+INSERT IGNORE INTO categories (id, name, slug, parent_id, description) VALUES (4, 'Tranh Gỗ', 'tranh-go', NULL, 'Tranh gỗ chạm khắc, tranh gỗ phong thủy');
+INSERT IGNORE INTO categories (id, name, slug, parent_id, description) VALUES (5, 'Tượng Gỗ Nghệ Thuật', 'tuong-go-nghe-thuat', NULL, 'Tượng gỗ nghệ thuật điêu khắc tay');
+INSERT IGNORE INTO categories (id, name, slug, parent_id, description) VALUES (6, 'Sập Gỗ', 'sap-go', NULL, 'Sập gỗ nguyên khối, sập thờ, sập chân quỳ');
+INSERT IGNORE INTO categories (id, name, slug, parent_id, description) VALUES (7, 'Đồ Thờ Cúng', 'do-tho-cung', NULL, 'Bàn thờ, hoành phi, câu đối, đỉnh hương gỗ');
+INSERT IGNORE INTO categories (id, name, slug, parent_id, description) VALUES (8, 'Gỗ Cảnh - Nu - Lũa', 'go-canh-nu-lua', NULL, 'Gỗ cảnh tự nhiên, nu gỗ, lũa gỗ nghệ thuật');
+INSERT IGNORE INTO categories (id, name, slug, parent_id, description) VALUES (9, 'Đồ Gỗ Trang Trí', 'do-go-trang-tri', NULL, 'Các sản phẩm gỗ trang trí nội thất');
+INSERT IGNORE INTO categories (id, name, slug, parent_id, description) VALUES (10, 'Vòng Tay - Chuỗi Hạt Gỗ', 'vong-tay-chuoi-hat-go', NULL, 'Vòng tay, chuỗi hạt từ các loại gỗ quý');
+INSERT IGNORE INTO categories (id, name, slug, parent_id, description) VALUES (11, 'Khác', 'khac', NULL, 'Các sản phẩm gỗ mỹ nghệ khác');

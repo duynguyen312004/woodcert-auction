@@ -69,8 +69,7 @@ public class AuthServiceImpl implements AuthService {
         // Authenticate via Spring Security AuthenticationManager
         try {
             authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(normalizedEmail, request.password())
-            );
+                    new UsernamePasswordAuthenticationToken(normalizedEmail, request.password()));
         } catch (BadCredentialsException e) {
             throw new AppException(ErrorCode.INVALID_CREDENTIALS);
         }
@@ -98,7 +97,6 @@ public class AuthServiceImpl implements AuthService {
                 .map(Role::getName)
                 .collect(Collectors.toList());
 
-        log.info("User {} logged in successfully", user.getEmail());
         return new AuthRes(accessToken, rawRefreshToken, roles);
     }
 
@@ -107,7 +105,8 @@ public class AuthServiceImpl implements AuthService {
     public RegisterRes register(RegisterReq request) {
         String normalizedEmail = IdentityNormalizationUtils.normalizeEmail(request.email());
         String normalizedFullName = request.fullName().trim();
-        String normalizedPhoneNumber = IdentityNormalizationUtils.normalizeVietnamesePhoneNullable(request.phoneNumber());
+        String normalizedPhoneNumber = IdentityNormalizationUtils
+                .normalizeVietnamesePhoneNullable(request.phoneNumber());
 
         // Check duplicates
         if (userRepository.existsByEmail(normalizedEmail)) {
@@ -119,7 +118,8 @@ public class AuthServiceImpl implements AuthService {
 
         // Find default role
         Role bidderRole = roleRepository.findByName("ROLE_BIDDER")
-                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Default role ROLE_BIDDER not found"));
+                .orElseThrow(
+                        () -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Default role ROLE_BIDDER not found"));
 
         // Create user
         User user = new User();
@@ -261,7 +261,8 @@ public class AuthServiceImpl implements AuthService {
     }
 
     /**
-     * Create a new verification token, persist it, and send the corresponding email.
+     * Create a new verification token, persist it, and send the corresponding
+     * email.
      */
     private void issueAndSendVerificationToken(User user) {
         String rawToken = UUID.randomUUID().toString();
@@ -278,7 +279,8 @@ public class AuthServiceImpl implements AuthService {
 
     /**
      * Send the verification email if SMTP is configured.
-     * If no mail sender is available, log the link so the dev environment remains usable.
+     * If no mail sender is available, log the link so the dev environment remains
+     * usable.
      */
     private void sendVerificationEmail(User user, String rawToken) {
         String verificationUrl = buildVerificationUrl(rawToken);
@@ -306,11 +308,12 @@ public class AuthServiceImpl implements AuthService {
                     """.formatted(
                     user.getFullName(),
                     verificationUrl,
-                    Math.max(1, emailVerificationProperties.getTokenTtlSeconds() / 60)
-            ));
+                    Math.max(1, emailVerificationProperties.getTokenTtlSeconds() / 60)));
             mailSender.send(message);
         } catch (Exception ex) {
-            log.warn("Failed to send verification email to {}. The account was created, but the message could not be delivered.", user.getEmail(), ex);
+            log.warn(
+                    "Failed to send verification email to {}. The account was created, but the message could not be delivered.",
+                    user.getEmail(), ex);
         }
     }
 

@@ -7,8 +7,10 @@ import java.lang.annotation.Target;
 
 /**
  * Injects the authenticated user's id from the JWT subject claim.
+ * Set required = false to allow null for public endpoints that can optionally use user context.
  */
 @Target(ElementType.PARAMETER)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface CurrentUserId {
+    boolean required() default true;
 }

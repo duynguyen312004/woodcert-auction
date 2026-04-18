@@ -1,94 +1,78 @@
 # Project Status
 
-> Last updated: 2026-04-10 | By: AI Assistant | Session: #10
+> Last updated: 2026-04-18 | By: AI Assistant | Session: catalog-media-hardening
 >
 > AI: update this file at the end of every session when asked.
-> Follow this exact format. Keep it concise - under 80 lines.
+> Follow this exact format. Keep it concise.
 
 ---
 
 ## Completed
-- [x] Project skeleton (Spring Boot 3.5.x, Maven, application.yml)
-- [x] Documentation setup (CLAUDE, PROJECT-RULES, ARCHITECTURE, DATABASE, API_SPEC)
-- [x] ADR-001: Refresh token strategy decided (Cookie + Body)
-- [x] ADR-002: Real-time bidding concurrency (Redis Lua Scripts)
-- [x] ADR-003: Escrow wallet & auto-complete flow (CronJob)
-- [x] ADR-004: Modular monolith architecture
-- [x] Core package setup (ApiResponse, PaginationResponse, exceptions, BaseEntity)
-- [x] SecurityConfig + JwtService + JwtProperties + CustomUserDetailsService
-- [x] Identity entities: User, Role, Permission, RefreshToken, Address, SellerProfile, Province, District, Ward
-- [x] Identity repositories for auth, seller profile, address, and location master data
-- [x] Auth REST APIs: Login, Register, Verify Email, Resend Verification, Refresh, Logout
-- [x] Registration now requires `phoneNumber` to ensure every account has a contact number
-- [x] User Profile APIs: GET/PUT/PATCH `/api/v1/users/me`
-- [x] Seller Profile APIs: GET/POST `/api/v1/users/me/seller-profile`
-- [x] Address APIs: GET/POST `/api/v1/addresses`
-- [x] Optional location APIs: GET `/api/v1/locations/provinces`, `/districts`, `/wards`
-- [x] Startup `seed-if-empty` workflow for Vietnam location master data
-- [x] Bundled local fallback seed and normalization for phone numbers, location codes, and partial user-profile updates
-- [x] Scheduled cleanup job for revoked and expired refresh tokens
-- [x] Authentication controller cleanup: `@CurrentUserId` + MVC argument resolver
-- [x] Identity DTOs reorganized into `dto/request` and `dto/response` with stricter request validation
-- [x] Unit tests added for user profile, seller profile, address, location, and token-cleanup services
-- [x] Cloudinary-ready media foundation: `media_assets`, signed upload intent flow, direct Cloudinary upload contract, avatar attach/remove APIs, and background media cleanup
+- [x] Project skeleton, core shared layer, base docs, and architecture decisions
+- [x] Security foundation: JWT auth, RBAC, refresh token rotation, `@CurrentUserId`
+- [x] Identity phase: auth, current-user profile GET/PUT/PATCH, seller profile, addresses, location APIs
+- [x] Avatar orchestration moved under `identity`; avatar now reuses generic media upload/confirm flow
+- [x] Shared media foundation: `media_assets`, signed Cloudinary upload intent, confirm-by-`assetId`, async cleanup
+- [x] Media cleanup hardening: stale `PENDING`, orphan `ACTIVE`, and Cloudinary delete retry flow
+- [x] Catalog phase: categories, products, product images, appraisal reports, appraisal images
+- [x] Category read API + seed data for 11 wood-art categories
+- [x] Seller catalog workflow: create/update/delete `DRAFT`, submit for appraisal, media-based product images
+- [x] Appraiser workflow: submit immutable appraisal report, certificate code generation, proof-image media flow
+- [x] Catalog read APIs hardened as internal workflow APIs for seller/appraiser only
+- [x] `GET /api/v1/products` now serves seller/appraiser scope only
+- [x] `GET /api/v1/products/{id}` now enforces owner/appraiser-only access
+- [x] Buyer/public product browse responsibility is explicitly deferred to the future auction module
+- [x] Unit-test coverage expanded around catalog access control, image cleanup, image fallback, and avatar refactor
 
 ## In Progress
-- Manual end-to-end verification is available through Postman; automated Maven verification is still limited by local sandbox/tooling issues.
+- Documentation and context consolidation for catalog, media, identity, and project status
+- Phase-3 auction boundary review: what can start now vs. what still depends on finance/deposit contracts
 
 ## Deferred Issues
-- Full controller/integration test coverage is not finished yet.
+- Full controller/integration test coverage
+- Category admin CRUD
+- Finance wallet implementation
+- Auction module implementation
+- Fulfillment/dispute implementation
 
 ## Warnings
-- `mvnw.cmd` is broken in the current environment.
-- `mvn` verification is blocked in the sandbox because Maven tries to use an inaccessible local repository path.
+- `mvnw.cmd` is broken in the current environment
+- Running Maven verification inside sandbox may require elevated execution
 
 ## Next Tasks
-1. **[P9]** Build Phase 2 foundation: `Category`, `Product`, `ProductImage`, `AppraisalReport`
-2. **[P10]** Implement Category CRUD APIs and related validation/response DTOs
-3. **[P11]** Implement Seller draft product creation and submit-for-appraisal flow
-4. **[P12]** Implement Appraiser pending list and appraisal report submission logic
+1. Define Phase 3 auction scope around `APPRAISED` products: public browse/detail, seller create session, auction state model
+2. Freeze the finance contract needed by auction registration, deposit freeze, and settlement
+3. Scaffold auction module after the product-to-auction boundary is fully locked
 
 ## Milestones
 
 ### Phase 0 - Foundation
-- [x] Update `pom.xml`
-- [x] Database & Redis connection in `application.yml`
-- [x] BaseEntity (createdAt, updatedAt)
-- [x] ApiResponse & GlobalExceptionHandler
-- [x] SecurityConfig & JwtProperties
+- [x] Core app skeleton, exception handling, JWT infrastructure, modular-monolith baseline
 
-### Phase 1 - Auth & Identity
-- [x] Entities: User, Role, Permission, Address, SellerProfile, RefreshToken
-- [x] Repositories & DTOs
-- [x] POST `/auth/login`, `/auth/register`, `/auth/verify-email`, `/auth/resend-verification`, `/auth/refresh`, `/auth/logout`
-- [x] CustomUserDetailsService & JwtService
-- [x] User Profile APIs
-- [x] Seller Profile APIs
-- [x] Address APIs
-- [x] Optional location master-data APIs
+### Phase 1 - Identity & Access
+- [x] Auth/session APIs
+- [x] Profile, seller profile, address, and location APIs
+- [x] Avatar APIs under identity using shared media services
 
-### Phase 2 - Catalog & Appraisal
-- [ ] Entities: Category, Product, ProductImage, AppraisalReport
-- [ ] Category CRUD APIs
-- [ ] Seller: Create Draft Product, Submit for Appraisal
-- [ ] Appraiser: Pending list, Submit Appraisal Report logic
+### Phase 2 - Catalog & Appraisal Workflow
+- [x] Category read API + seed data
+- [x] Seller draft product lifecycle with media-backed images
+- [x] Appraiser report submission with immutable appraisal report
+- [x] Internal catalog list/detail rules for seller and appraiser only
 
-### Phase 3 - Finance (Escrow Wallet)
-- [ ] Entities: Wallet, WalletTransaction (with @Version)
-- [ ] Wallet APIs (Get balance, Get history)
-- [ ] Internal Service: Freeze, Unfreeze, Deposit, Deduct methods
+### Phase 3 - Auction Foundation
+- [ ] Auction session domain and APIs for `APPRAISED` products
+- [ ] Public buyer-facing browse/detail read model
+- [ ] Seller create-auction-session flow
+- [ ] Auction status lifecycle and validation rules
 
-### Phase 4 - Real-time Auction (The Core)
-- [ ] Entities: AuctionSession, Bid, AuctionParticipant
-- [ ] Seller: Create Auction Session
-- [ ] Buyer: Register Auction (Freeze deposit)
-- [ ] Redis Lua Script for atomic bidding
-- [ ] POST `/bids` (Redis validation + async MySQL sync)
-- [ ] WebSocket integration (`/topic/auctions/{id}`)
+### Phase 4 - Finance & Realtime Bidding
+- [ ] Wallet and wallet transaction domain
+- [ ] Deposit freeze/unfreeze/deduct services
+- [ ] Auction registration tied to finance
+- [ ] Redis Lua bidding flow + WebSocket broadcast
 
 ### Phase 5 - Fulfillment & Dispute
-- [ ] Entities: Order, Shipment, Dispute
-- [ ] Buyer: Pay remaining balance
-- [ ] Seller: Update shipment status
-- [ ] Scheduled Job: 72h auto-complete (release funds to seller)
-- [ ] Dispute flow (admin resolve)
+- [ ] Order, shipment, dispute domain
+- [ ] Escrow release / refund flows
+- [ ] Auto-complete and dispute resolution

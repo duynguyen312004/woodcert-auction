@@ -141,9 +141,9 @@ The application follows a Package-by-Feature architecture. Each business domain 
 ```text
 feature/
 ├── identity/                # Auth, User, Role, Permission, Address, SellerProfile
-├── catalog/                 # Category, Product, AppraisalReport (Certificates)
-├── finance/                 # Wallet, WalletTransaction (Escrow System)
-├── auction/                 # AuctionSession, Bid, AuctionParticipant
+├── catalog/                 # Internal inventory + appraisal workflow
+├── finance/                 # Wallet, WalletTransaction (Escrow / deposit)
+├── auction/                 # Buyer-facing browse/detail + AuctionSession, Bid, Participant
 └── fulfillment/             # Order, Shipment, Dispute (Tòa án Sàn)
 ```
 
@@ -156,7 +156,7 @@ feature/
 - finance depends on identity (Wallet belongs to User).
 
 - auction depends on:
-  - catalog (Product to bid)
+  - catalog (APPRAISED product as auction input)
   - finance (Freeze deposit)
 
 - fulfillment depends on:
@@ -245,28 +245,32 @@ feature/
 
 ## Media Module
 
-- `feature/media` is the shared integration layer for Cloudinary upload, media metadata, delivery URL generation, and cleanup.
+- `feature/media` is the shared integration layer for Cloudinary upload, media metadata, delivery URL generation, ownership confirmation, and cleanup.
 - Domain tables should keep foreign keys to `media_assets` instead of persisting raw cloud URLs.
-- Backend issues signed upload intents, client uploads directly to Cloudinary, backend confirms and attaches the uploaded asset to a business entity.
+- Business modules own attach/detach orchestration. `identity` owns avatar APIs and calls generic media services instead of letting `media` touch identity repositories.
+- `catalog` owns product-image and appraisal-image APIs and also reuses the generic media services.
+- Backend issues signed upload intents, client uploads directly to Cloudinary, backend confirms uploaded ownership, and the owning business module attaches the asset to its entity.
 - Media deletion is asynchronous: detach first, mark asset `PENDING_DELETE`, then scheduled cleanup calls Cloudinary destroy.
 - Direct Cloudinary upload should send both:
   - `public_id` for stable asset identity and delivery URLs
   - `asset_folder` for Cloudinary Media Library organization
 - Current avatar folder pattern is `woodcert/dev/users/{userId}/avatar`.
-- The same pattern should be extended later for product, appraisal, shipment, and dispute media so the module can stay generic.
+- Product folder pattern is `woodcert/dev/users/{userId}/products`.
+- Appraisal folder pattern is `woodcert/dev/users/{userId}/appraisals`.
+- The same pattern should be extended later for shipment and dispute media so the module can stay generic.
 
 ### Avatar Flow
 
 ```text
 Client -> POST /api/v1/users/me/avatar/upload-intent
--> create media_assets row (PENDING) + sign Cloudinary upload params including assetFolder/publicId
+-> identity module validates current user
+-> media service creates media_assets row (PENDING) + signs Cloudinary upload params including assetFolder/publicId
 
 Client -> upload file directly to Cloudinary
 
 Client -> PUT /api/v1/users/me/avatar
--> backend fetches uploaded metadata from Cloudinary by assetId
--> backend verifies assetId + publicId
--> set users.avatar_media_id
+-> identity module calls media service to verify assetId + publicId ownership
+-> identity module sets users.avatar_media_id
 -> old avatar marked PENDING_DELETE
 
 GET /api/v1/users/me
