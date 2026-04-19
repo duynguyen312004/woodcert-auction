@@ -45,6 +45,19 @@ public enum ErrorCode {
     DUPLICATE_SORT_ORDER(400, "Duplicate sort order values are not allowed"),
     MEDIA_USAGE_TYPE_MISMATCH(400, "Media asset usage type does not match expected type"),
     REJECTION_NOTES_REQUIRED(400, "Appraiser notes are required when rejecting a product"),
+
+    // --- Auction ---
+    AUCTION_SESSION_NOT_FOUND(404, "Auction session not found"),
+    AUCTION_SESSION_NOT_OWNED(403, "You do not own this auction session"),
+    AUCTION_PRODUCT_NOT_APPRAISED(400, "Product must be APPRAISED to create an auction session"),
+    AUCTION_PRODUCT_NOT_OWNED(403, "You do not own this product"),
+    AUCTION_SESSION_CONFLICT(409, "Product already has an active or waiting auction session"),
+    AUCTION_SESSION_NOT_CANCELABLE(400, "Auction session can only be canceled when in WAITING status"),
+    AUCTION_INVALID_TIME_RANGE(400, "Auction duration must be between 1 hour and 30 days"),
+    AUCTION_START_TIME_TOO_SOON(400, "Auction start time must be at least 5 minutes in the future"),
+    AUCTION_STEP_PRICE_TOO_LOW(400, "Step price must be at least 100,000 VND"),
+    AUCTION_DEPOSIT_AMOUNT_INVALID(400, "Deposit amount must be between 1,000,000 VND and 50% of starting price"),
+    AUCTION_RESERVE_PRICE_INVALID(400, "Reserve price must be greater than or equal to starting price"),
     ;
 
     private final int statusCode;

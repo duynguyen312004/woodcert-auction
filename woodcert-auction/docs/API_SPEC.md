@@ -878,7 +878,8 @@ Success Response (200):
 
 ### GET /auctions 🔓
 
-List auction sessions (Public). Can filter by status (WAITING, ACTIVE, ENDED_SUCCESS).
+List public auction sessions. Default statuses are `WAITING` and `ACTIVE`.
+Optional query param `status` accepts `WAITING`, `ACTIVE`, `ENDED_SUCCESS`, or a comma-separated combination.
 
 Success Response (200):
 
@@ -897,9 +898,11 @@ Success Response (200):
         },
         "startingPrice": 30000000.00,
         "currentPrice": 35000000.00,
+        "depositAmount": 5000000.00,
         "startTime": "2026-03-29T20:00:00",
         "endTime": "2026-03-29T21:00:00",
-        "status": "WAITING"
+        "status": "WAITING",
+        "totalParticipants": 0
       }
     ]
   },
@@ -908,9 +911,59 @@ Success Response (200):
 }
 ```
 
+### GET /auctions/{id} 🔓
+
+Get public auction detail. `reservePrice` is intentionally hidden from the response.
+
+Success Response (200):
+
+```json
+{
+  "statusCode": 200,
+  "data": {
+    "id": 205,
+    "status": "WAITING",
+    "startingPrice": 30000000.00,
+    "currentPrice": 30000000.00,
+    "stepPrice": 1000000.00,
+    "depositAmount": 5000000.00,
+    "startTime": "2026-03-29T20:00:00",
+    "endTime": "2026-03-29T21:00:00",
+    "product": {
+      "id": 1001,
+      "title": "Tượng Đạt Ma Sư Tổ Gỗ Sưa Đỏ",
+      "description": "Mô tả chi tiết...",
+      "material": "Gỗ Sưa Đỏ",
+      "dimensions": "120x40x35 cm",
+      "weight": 45.5,
+      "primaryImage": "https://res.cloudinary.com/.../products/1001-main.jpg",
+      "images": [
+        "https://res.cloudinary.com/.../products/1001-main.jpg",
+        "https://res.cloudinary.com/.../products/1001-side.jpg"
+      ],
+      "appraisal": {
+        "certificateCode": "CERT-2026-001",
+        "verifiedMaterial": "Gỗ Sưa Đỏ",
+        "origin": "Việt Nam",
+        "ageEstimation": "Khoảng 40 năm",
+        "conditionGrade": "EXCELLENT",
+        "estimatedValue": 50000000.00,
+        "isAuthentic": true
+      }
+    },
+    "seller": {
+      "storeName": "Xưởng Gỗ ABC",
+      "reputationScore": 4.9
+    }
+  },
+  "message": "Fetch auction successful",
+  "timestamp": "2026-03-28T10:00:00"
+}
+```
+
 ### POST /auctions 🔒
 
-Seller creates a new auction session for an APPRAISED product.
+Seller creates a new auction session for an `APPRAISED` product.
 
 Requires Role: ROLE_SELLER
 
@@ -928,7 +981,65 @@ Request Body:
 }
 ```
 
+Rules:
+- Product must be owned by the seller and already `APPRAISED`
+- A product may have multiple auction sessions over time, but never more than one open `WAITING` / `ACTIVE` session
+- `reservePrice >= startingPrice`
+- `stepPrice >= 100000`
+- `depositAmount >= 1000000` and `depositAmount <= 50% startingPrice`
+- `startTime >= now + 5 minutes`
+- `endTime - startTime` must be between 1 hour and 30 days
+
+### GET /auctions/me 🔒
+
+Seller list of owned auction sessions.
+
+Success Response (200):
+
+```json
+{
+  "statusCode": 200,
+  "data": {
+    "meta": { "page": 1, "pageSize": 10, "pages": 1, "total": 1 },
+    "result": [
+      {
+        "id": 205,
+        "productTitle": "Tượng Đạt Ma Sư Tổ Gỗ Sưa Đỏ",
+        "productId": 1001,
+        "status": "WAITING",
+        "startingPrice": 30000000.00,
+        "depositAmount": 5000000.00,
+        "startTime": "2026-03-29T20:00:00",
+        "endTime": "2026-03-29T21:00:00",
+        "currentPrice": 30000000.00,
+        "participantCount": 0,
+        "createdAt": "2026-03-28T10:00:00"
+      }
+    ]
+  },
+  "message": "Fetch seller auctions successful",
+  "timestamp": "2026-03-28T10:00:00"
+}
+```
+
+### PATCH /auctions/{id}/cancel 🔒
+
+Seller cancels an auction session before it starts. This is a status transition (`WAITING -> CANCELED`), not a hard delete.
+
+Success Response (200):
+
+```json
+{
+  "statusCode": 200,
+  "data": null,
+  "message": "Auction session canceled successfully",
+  "timestamp": "2026-03-28T10:15:00"
+}
+```
+
 ### POST /auctions/{id}/register 🔒
+
+Planned for Phase 3.2 / 3.3. Not implemented in Phase 3.1.
 
 Bidder registers for an auction. This automatically deducts depositAmount from availableBalance to frozenBalance.
 

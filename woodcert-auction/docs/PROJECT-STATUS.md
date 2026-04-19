@@ -1,48 +1,59 @@
 # Project Status
 
-> Last updated: 2026-04-18 | By: AI Assistant | Session: catalog-media-hardening
+> Last updated: 2026-04-18 | By: AI Assistant | Session: phase-3.1-implementation
 >
 > AI: update this file at the end of every session when asked.
-> Follow this exact format. Keep it concise.
+> Follow this exact format. Keep it concise but decision-useful.
 
 ---
 
 ## Completed
-- [x] Project skeleton, core shared layer, base docs, and architecture decisions
-- [x] Security foundation: JWT auth, RBAC, refresh token rotation, `@CurrentUserId`
-- [x] Identity phase: auth, current-user profile GET/PUT/PATCH, seller profile, addresses, location APIs
-- [x] Avatar orchestration moved under `identity`; avatar now reuses generic media upload/confirm flow
-- [x] Shared media foundation: `media_assets`, signed Cloudinary upload intent, confirm-by-`assetId`, async cleanup
-- [x] Media cleanup hardening: stale `PENDING`, orphan `ACTIVE`, and Cloudinary delete retry flow
-- [x] Catalog phase: categories, products, product images, appraisal reports, appraisal images
-- [x] Category read API + seed data for 11 wood-art categories
-- [x] Seller catalog workflow: create/update/delete `DRAFT`, submit for appraisal, media-based product images
-- [x] Appraiser workflow: submit immutable appraisal report, certificate code generation, proof-image media flow
-- [x] Catalog read APIs hardened as internal workflow APIs for seller/appraiser only
-- [x] `GET /api/v1/products` now serves seller/appraiser scope only
-- [x] `GET /api/v1/products/{id}` now enforces owner/appraiser-only access
-- [x] Buyer/public product browse responsibility is explicitly deferred to the future auction module
-- [x] Unit-test coverage expanded around catalog access control, image cleanup, image fallback, and avatar refactor
+- [x] Core app skeleton, shared DTO/exception layer, JWT infrastructure, and modular-monolith baseline
+- [x] Security foundation: JWT auth, RBAC, refresh token rotation, `@CurrentUserId`, and method-level permission checks
+- [x] Identity foundation: auth/session APIs, seller profile APIs, address APIs, and location master-data APIs
+- [x] Current-user profile GET/PUT/PATCH with input hardening and phone normalization
+- [x] Avatar APIs moved under `identity`, using shared media upload/confirm/delete flow
+- [x] Shared media foundation: `media_assets` as source of truth instead of raw cloud URLs in domain tables
+- [x] Shared media foundation: signed Cloudinary upload-intent + confirm-by-`assetId`
+- [x] Shared media foundation: async cleanup with 3 phases for stale `PENDING`, orphan `ACTIVE`, and Cloudinary destroy retry
+- [x] Catalog foundation: entities, repositories, DTOs, services, controllers, and category seed data
+- [x] Seller product workflow: create/update/delete `DRAFT`, attach media-backed images, submit appraisal
+- [x] Appraiser workflow: immutable appraisal report, certificate code generation, proof-image media flow
+- [x] Catalog read APIs hardened as internal workflow APIs
+- [x] `GET /api/v1/products` is no longer public-facing; it now serves seller/appraiser visibility only
+- [x] `GET /api/v1/products/{id}` enforces owner/appraiser-only access with `PRODUCT_NOT_FOUND` fallback
+- [x] Buyer/public product browse-detail responsibility is explicitly deferred to the future `auction` module
+- [x] Catalog-media cleanup hardening: list thumbnail batch loading with fallback to first image when primary flag is missing
+- [x] Test coverage expanded around catalog access control, image replacement/cleanup, image fallback, and avatar refactor
+- [x] Auction foundation: `AuctionSession` domain, seller create/list/cancel flow, and public auction browse/detail APIs
+- [x] Auction boundary rules finalized: one open session per product, `reservePrice >= startingPrice`, min step/deposit, and start/end time guards
+- [x] Public auction detail hides `reservePrice`
+- [x] Seller-side cancel endpoint uses `PATCH /api/v1/auctions/{id}/cancel` because cancellation is a status transition, not a hard delete
 
 ## In Progress
-- Documentation and context consolidation for catalog, media, identity, and project status
-- Phase-3 auction boundary review: what can start now vs. what still depends on finance/deposit contracts
+- Phase 3.2 finance core is the next implementation target
+- Auction runtime remains blocked on wallet freeze/unfreeze/deduct contracts
 
 ## Deferred Issues
 - Full controller/integration test coverage
 - Category admin CRUD
-- Finance wallet implementation
-- Auction module implementation
+- Full finance wallet implementation
+- Auction runtime implementation
 - Fulfillment/dispute implementation
 
 ## Warnings
 - `mvnw.cmd` is broken in the current environment
 - Running Maven verification inside sandbox may require elevated execution
+- `docs/API_SPEC.md` still contains future auction runtime endpoints (`register`, bidding) that are intentionally not implemented in Phase 3.1
+- Do not start fulfillment/dispute before auction winner flow and finance settlement contract are stable
 
 ## Next Tasks
-1. Define Phase 3 auction scope around `APPRAISED` products: public browse/detail, seller create session, auction state model
-2. Freeze the finance contract needed by auction registration, deposit freeze, and settlement
-3. Scaffold auction module after the product-to-auction boundary is fully locked
+1. Build **Phase 3.2 - Finance Core (minimum for auction)** next:
+   wallet domain, wallet history, and internal freeze/unfreeze/deduct contract
+2. Build **Phase 3.3 - Auction Runtime** after finance core:
+   registration, deposit freeze, realtime bidding, close-session logic, and winner snapshot
+3. Defer fulfillment/dispute until auction runtime and finance settlement are stable
+4. Keep catalog stable; avoid reopening catalog scope unless auction integration exposes a real boundary issue
 
 ## Milestones
 
@@ -59,20 +70,50 @@
 - [x] Seller draft product lifecycle with media-backed images
 - [x] Appraiser report submission with immutable appraisal report
 - [x] Internal catalog list/detail rules for seller and appraiser only
+- [x] Catalog is explicitly no longer the buyer/public marketplace read module
 
-### Phase 3 - Auction Foundation
-- [ ] Auction session domain and APIs for `APPRAISED` products
-- [ ] Public buyer-facing browse/detail read model
-- [ ] Seller create-auction-session flow
-- [ ] Auction status lifecycle and validation rules
+### Phase 3.1 - Auction Foundation
+- [x] Introduce `AuctionSession` domain, status enum, repository, service, and controller package
+- [x] Define create-session rules for seller-owned `APPRAISED` products only
+- [x] Freeze business rule for a product already linked to an auction session:
+- [x] multiple sessions over time are allowed
+- [x] more than one open (`WAITING` / `ACTIVE`) session at once is not allowed
+- [x] Define seller-side auction management before start:
+- [x] create session
+- [x] view own sessions
+- [x] cancel session via status transition before start
+- [x] Implement public buyer-facing auction list API
+- [x] Implement public buyer-facing auction detail API
+- [x] Define auction read model fields sourced from:
+- [x] catalog product data
+- [x] appraisal verified data
+- [x] auction session state data
+- [x] Finalize validation rules for:
+- [x] `startingPrice`, `reservePrice`, `stepPrice`
+- [x] `startTime`, `endTime`
+- [x] ownership and product status checks
 
-### Phase 4 - Finance & Realtime Bidding
-- [ ] Wallet and wallet transaction domain
-- [ ] Deposit freeze/unfreeze/deduct services
-- [ ] Auction registration tied to finance
-- [ ] Redis Lua bidding flow + WebSocket broadcast
+### Phase 3.2 - Finance Core For Auction
+- [ ] Introduce `Wallet` and `WalletTransaction` with optimistic locking
+- [ ] Implement internal money operations needed by auction:
+- [ ] deposit
+- [ ] freeze
+- [ ] unfreeze
+- [ ] deduct
+- [ ] Implement `GET /wallets/me`
+- [ ] Implement `GET /wallets/me/transactions`
+- [ ] Add a practical dev/test top-up path so FE and auction testing are not blocked
+- [ ] Freeze transaction/reference types needed by auction registration and settlement
 
-### Phase 5 - Fulfillment & Dispute
+### Phase 3.3 - Auction Runtime
+- [ ] Implement auction registration tied to finance freeze
+- [ ] Introduce `AuctionParticipant`
+- [ ] Implement realtime bid entry flow
+- [ ] Add Redis Lua validation/update path
+- [ ] Add WebSocket broadcast contract
+- [ ] Implement close-session / winner snapshot / terminal status handling
+
+### Phase 4 - Fulfillment & Dispute
 - [ ] Order, shipment, dispute domain
 - [ ] Escrow release / refund flows
 - [ ] Auto-complete and dispute resolution
