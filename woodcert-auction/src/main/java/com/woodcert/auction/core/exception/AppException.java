@@ -11,6 +11,7 @@ import lombok.Getter;
 public class AppException extends RuntimeException {
 
     private final int statusCode;
+    private final ErrorCode errorCode;
 
     /**
      * Create exception with explicit statusCode and message.
@@ -18,6 +19,7 @@ public class AppException extends RuntimeException {
     public AppException(int statusCode, String message) {
         super(message);
         this.statusCode = statusCode;
+        this.errorCode = null;
     }
 
     /**
@@ -27,6 +29,7 @@ public class AppException extends RuntimeException {
     public AppException(ErrorCode errorCode) {
         super(errorCode.getMessage());
         this.statusCode = errorCode.getStatusCode();
+        this.errorCode = errorCode;
     }
 
     /**
@@ -35,5 +38,6 @@ public class AppException extends RuntimeException {
     public AppException(ErrorCode errorCode, String message) {
         super(message);
         this.statusCode = errorCode.getStatusCode();
+        this.errorCode = errorCode;
     }
 }

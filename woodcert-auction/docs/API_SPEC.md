@@ -820,6 +820,7 @@ Request Body:
 ### GET /wallets/me 🔒
 
 Get the current user's wallet balance (Available and Frozen).
+If the wallet does not exist yet, the backend lazily creates a zero-balance wallet on first access.
 
 Success Response (200):
 
@@ -840,6 +841,12 @@ Success Response (200):
 ### GET /wallets/me/transactions 🔒
 
 List wallet transaction history.
+If the wallet does not exist yet, the backend lazily creates it and returns an empty result.
+`amount` is a signed delta against the wallet's available balance:
+- `DEPOSIT` positive
+- `FREEZE` negative
+- `UNFREEZE` positive
+- `PAYMENT` negative
 
 Success Response (200):
 
@@ -871,6 +878,42 @@ Success Response (200):
   },
   "message": "Fetch transactions successful",
   "timestamp": "2026-03-28T10:00:00"
+}
+```
+
+### POST /wallets/me/top-up 🔒
+
+Dev/test endpoint to add funds directly into the current user's wallet until a real deposit flow exists.
+This endpoint is gated by the config flag `finance.wallet.top-up-enabled` and should only be enabled in local/dev environments.
+
+Request Body:
+
+```json
+{
+  "amount": 5000000.00
+}
+```
+
+Notes:
+- Internal wallet mutations currently log only `status = SUCCESS`
+- `PENDING` / `FAILED` are reserved for future real payment-provider deposit flow
+- Wallet core normalizes mutation amounts to scale `2` before validation, idempotency checks, and persistence
+- Internal idempotency uses `operationKey`; a failed wallet operation is terminal and must be retried with a new key
+- Stale pending wallet operations fail closed after `finance.wallet.operation.pending-timeout` (default `PT5M`)
+
+Success Response (200):
+
+```json
+{
+  "statusCode": 200,
+  "data": {
+    "id": 501,
+    "userId": "uuid-1234",
+    "availableBalance": 20000000.00,
+    "frozenBalance": 5000000.00
+  },
+  "message": "Wallet topped up successfully",
+  "timestamp": "2026-04-19T10:00:00"
 }
 ```
 

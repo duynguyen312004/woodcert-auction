@@ -29,15 +29,17 @@
 - [x] Auction boundary rules finalized: one open session per product, `reservePrice >= startingPrice`, min step/deposit, and start/end time guards
 - [x] Public auction detail hides `reservePrice`
 - [x] Seller-side cancel endpoint uses `PATCH /api/v1/auctions/{id}/cancel` because cancellation is a status transition, not a hard delete
+- [x] Finance core: wallet domain, transaction audit log, wallet read APIs, and dev/test top-up path
+- [x] Finance core: internal wallet operations are available for next auction phase (`deposit`, `freeze`, `unfreeze`, `deductFrozen`)
+- [x] Finance core hardened: idempotent wallet mutations, explicit concurrency error, money normalization, and top-up feature flag
 
 ## In Progress
-- Phase 3.2 finance core is the next implementation target
-- Auction runtime remains blocked on wallet freeze/unfreeze/deduct contracts
+- Auction runtime is the next implementation target
+- Realtime auction registration/bidding is now unblocked by wallet freeze/unfreeze/deduct contracts
 
 ## Deferred Issues
 - Full controller/integration test coverage
 - Category admin CRUD
-- Full finance wallet implementation
 - Auction runtime implementation
 - Fulfillment/dispute implementation
 
@@ -48,12 +50,10 @@
 - Do not start fulfillment/dispute before auction winner flow and finance settlement contract are stable
 
 ## Next Tasks
-1. Build **Phase 3.2 - Finance Core (minimum for auction)** next:
-   wallet domain, wallet history, and internal freeze/unfreeze/deduct contract
-2. Build **Phase 3.3 - Auction Runtime** after finance core:
+1. Build **Phase 3.3 - Auction Runtime** next:
    registration, deposit freeze, realtime bidding, close-session logic, and winner snapshot
-3. Defer fulfillment/dispute until auction runtime and finance settlement are stable
-4. Keep catalog stable; avoid reopening catalog scope unless auction integration exposes a real boundary issue
+2. Defer fulfillment/dispute until auction runtime and finance settlement are stable
+3. Keep catalog stable; avoid reopening catalog scope unless auction integration exposes a real boundary issue
 
 ## Milestones
 
@@ -94,16 +94,16 @@
 - [x] ownership and product status checks
 
 ### Phase 3.2 - Finance Core For Auction
-- [ ] Introduce `Wallet` and `WalletTransaction` with optimistic locking
-- [ ] Implement internal money operations needed by auction:
-- [ ] deposit
-- [ ] freeze
-- [ ] unfreeze
-- [ ] deduct
-- [ ] Implement `GET /wallets/me`
-- [ ] Implement `GET /wallets/me/transactions`
-- [ ] Add a practical dev/test top-up path so FE and auction testing are not blocked
-- [ ] Freeze transaction/reference types needed by auction registration and settlement
+- [x] Introduce `Wallet` and `WalletTransaction` with optimistic locking
+- [x] Implement internal money operations needed by auction:
+- [x] deposit
+- [x] freeze
+- [x] unfreeze
+- [x] deduct
+- [x] Implement `GET /wallets/me`
+- [x] Implement `GET /wallets/me/transactions`
+- [x] Add a practical dev/test top-up path so FE and auction testing are not blocked
+- [x] Freeze transaction/reference types needed by auction registration and settlement
 
 ### Phase 3.3 - Auction Runtime
 - [ ] Implement auction registration tied to finance freeze

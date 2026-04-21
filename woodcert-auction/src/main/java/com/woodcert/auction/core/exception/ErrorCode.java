@@ -58,6 +58,18 @@ public enum ErrorCode {
     AUCTION_STEP_PRICE_TOO_LOW(400, "Step price must be at least 100,000 VND"),
     AUCTION_DEPOSIT_AMOUNT_INVALID(400, "Deposit amount must be between 1,000,000 VND and 50% of starting price"),
     AUCTION_RESERVE_PRICE_INVALID(400, "Reserve price must be greater than or equal to starting price"),
+
+    // --- Finance ---
+    WALLET_AMOUNT_INVALID(400, "Wallet amount must be greater than 0"),
+    WALLET_INSUFFICIENT_AVAILABLE_BALANCE(400, "Insufficient available balance"),
+    WALLET_INSUFFICIENT_FROZEN_BALANCE(400, "Insufficient frozen balance"),
+    WALLET_OPERATION_KEY_INVALID(400, "Wallet operation key is required"),
+    WALLET_OPERATION_PAYLOAD_MISMATCH(409, "Operation key was already used with a different wallet mutation payload"),
+    WALLET_OPERATION_IN_PROGRESS(409, "Wallet operation is already in progress, please retry later"),
+    WALLET_OPERATION_ALREADY_FAILED(409, "Wallet operation already failed and cannot be retried with the same operation key"),
+    WALLET_CONCURRENT_MODIFICATION(409, "Wallet was updated concurrently, please retry"),
+    WALLET_TOP_UP_DISABLED(403, "Wallet top-up is disabled in this environment"),
+    WALLET_REFERENCE_INVALID(400, "Wallet reference is invalid for this mutation source"),
     ;
 
     private final int statusCode;

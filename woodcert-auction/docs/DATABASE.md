@@ -563,6 +563,35 @@ Composite PK: (role_id, permission_id)
 
 - Mọi thay đổi số dư ví bắt buộc phải insert 1 dòng vào bảng này
 - Không được cập nhật ví mà không có audit log
+- `amount` là signed delta theo hướng tác động lên `available_balance` của ví
+
+### wallet_operations
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | BIGINT | PK, AUTO_INCREMENT | |
+| operation_key | VARCHAR(100) | NOT NULL, UNIQUE | Idempotency key cho business wallet mutation |
+| wallet_id | BIGINT | NOT NULL, FK → wallets(id) | |
+| amount | DECIMAL(19,2) | NOT NULL | Số tiền business đã normalize |
+| type | VARCHAR(20) | NOT NULL | Enum: DEPOSIT, WITHDRAW, FREEZE, UNFREEZE, PAYMENT |
+| reference_id | BIGINT | NULLABLE | ID auction/order/system reference |
+| reference_type | VARCHAR(20) | NOT NULL | Enum: AUCTION, ORDER, SYSTEM |
+| status | VARCHAR(20) | NOT NULL | Enum: SUCCESS, FAILED, PENDING |
+| failure_code | VARCHAR(100) | NULLABLE | Failure code persisted when operation finalizes as FAILED |
+| failure_message | VARCHAR(255) | NULLABLE | Short internal failure detail for audit/debug |
+| created_at | TIMESTAMP | NOT NULL, DEFAULT CURRENT_TIMESTAMP | |
+| updated_at | TIMESTAMP | NOT NULL, DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP | |
+
+**Indexes:**
+
+- UNIQUE INDEX idx_wallet_operations_operation_key ON wallet_operations(operation_key)
+- INDEX idx_wallet_operations_wallet_id ON wallet_operations(wallet_id)
+
+**Notes:**
+
+- Dùng để chống duplicate business action khi command/event bị retry hoặc xử lý lặp
+- Cùng `operation_key` với payload khác phải bị reject
+- `FAILED` là terminal; caller phải dùng `operation_key` mới nếu muốn retry
+- `PENDING` quá `finance.wallet.operation.pending-timeout` sẽ bị fail-close thành `FAILED`
 
 ### auction_sessions
 | Column | Type | Constraints | Description |
