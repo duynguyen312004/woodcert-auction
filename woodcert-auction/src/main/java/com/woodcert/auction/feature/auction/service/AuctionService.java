@@ -17,4 +17,6 @@ public interface AuctionService {
     PaginationResponse<SellerAuctionListRes> getSellerAuctions(String sellerId, int page, int size);
 
     void cancelAuctionSession(String sellerId, Long auctionId);
+
+    void registerForAuction(String userId, Long auctionId);
 }

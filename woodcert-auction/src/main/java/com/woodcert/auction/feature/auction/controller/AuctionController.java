@@ -68,4 +68,13 @@ public class AuctionController {
         auctionService.cancelAuctionSession(sellerId, id);
         return ResponseEntity.ok(ApiResponse.success(null, "Auction session canceled successfully"));
     }
+
+    @PostMapping("/{id}/register")
+    @PreAuthorize("hasAuthority('JOIN_AUCTION')")
+    public ResponseEntity<ApiResponse<Void>> registerForAuction(
+            @CurrentUserId String userId,
+            @PathVariable Long id) {
+        auctionService.registerForAuction(userId, id);
+        return ResponseEntity.ok(ApiResponse.success(null, "Registration successful"));
+    }
 }

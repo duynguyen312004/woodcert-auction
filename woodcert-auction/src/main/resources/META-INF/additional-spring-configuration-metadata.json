@@ -134,6 +134,36 @@
             "name": "finance.wallet.operation.pending-timeout",
             "type": "java.lang.String",
             "description": "A description for 'finance.wallet.operation.pending-timeout'"
+        },
+        {
+            "name": "auction.scheduler.enabled",
+            "type": "java.lang.String",
+            "description": "A description for 'auction.scheduler.enabled'"
+        },
+        {
+            "name": "auction.redis.state-retention-after-end",
+            "type": "java.lang.String",
+            "description": "A description for 'auction.redis.state-retention-after-end'"
+        },
+        {
+            "name": "auction.bidding.anti-sniper-threshold",
+            "type": "java.lang.String",
+            "description": "A description for 'auction.bidding.anti-sniper-threshold'"
+        },
+        {
+            "name": "auction.scheduler.close-cron",
+            "type": "java.lang.String",
+            "description": "A description for 'auction.scheduler.close-cron'"
+        },
+        {
+            "name": "auction.scheduler.activate-cron",
+            "type": "java.lang.String",
+            "description": "A description for 'auction.scheduler.activate-cron'"
+        },
+        {
+            "name": "auction.bidding.anti-sniper-extension",
+            "type": "java.lang.String",
+            "description": "A description for 'auction.bidding.anti-sniper-extension'"
         }
     ]
 }

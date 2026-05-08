@@ -70,15 +70,16 @@ domain:entity:id:attribute
 
 Examples:
 
-- auction:session:1001:current_price
-- auction:session:1001:end_time
-- auction:session:1001:lock
+- auction:session:1001:state
+- auction:session:1001:bidders
+- auction:register:freeze:1001:user-id
 
 ## 3. Service Layer Rules
 
-- Controller → ONLY call Interface
-- @Service → ONLY on Implementation
-- @Transactional → ONLY on methods writing to DB
+- Controller calls only public feature service interfaces.
+- Public controller-facing services keep the interface + implementation shape, for example `AuctionService` + `AuctionServiceImpl`.
+- Internal feature services may be split by responsibility, for example auction `command`, `query`, `assembler`, `policy`, `runtime`.
+- Write commands use `@Transactional`; read queries use `@Transactional(readOnly = true)`.
 
 Service:
 
@@ -233,6 +234,7 @@ Payload MUST be minimal:
 
 - Save bid log using @Async
 - Sync Redis → MySQL asynchronously
+- Auction read APIs overlay Redis `currentPrice` and `endTime` for `ACTIVE` sessions and fall back to DB snapshots when Redis state or fields are missing
 
 ## 9. Exception Handling
 
@@ -284,9 +286,30 @@ log.info("User {} placed bid {}", userId, amount);
 
 ## 12. Auction Rules (Business Logic)
 
+### Public Visibility
+
+- Default public auction statuses: `WAITING`, `ACTIVE`
+- Explicit public status filter may include only `WAITING`, `ACTIVE`, `ENDED_SUCCESS`
+- `CANCELED` and `ENDED_FAILED` are not public-facing
+
+### Create / Cancel
+
+- Product must be seller-owned and `APPRAISED`
+- A product may have many sessions over time, but at most one open `WAITING` or `ACTIVE` session
+- Create must lock product with `findByIdForUpdate` before conflict check
+- Cancel must lock session with product and is allowed only for `WAITING`
+- Cancel transition is `WAITING -> CANCELED`; never hard delete
+
 ### Bid Validity
 
 new_bid >= current_price + step_price
+
+### Registration
+
+- Registration is allowed in `WAITING`
+- Late join is allowed in `ACTIVE` only while Redis runtime state exists and `now < endTimeEpochMs`
+- Seller cannot register or bid in their own product auction
+- Only `FROZEN` participants can bid
 
 ### Anti-Sniper
 
@@ -299,6 +322,8 @@ if (remaining_time <= 30s)
 
 - Redis handles real-time
 - MySQL only stores final state
+- Public/seller auction lists must load participant counts with one grouped query, not N per-session count queries
+- Auction response image selection must go through `ProductImageHelper`
 
 ## 13. Order & Escrow Rules
 

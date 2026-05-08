@@ -87,3 +87,14 @@ finance:
     top-up-enabled: ${FINANCE_WALLET_TOP_UP_ENABLED:false}
     operation:
       pending-timeout: ${FINANCE_WALLET_OPERATION_PENDING_TIMEOUT:PT5M}
+
+auction:
+  scheduler:
+    enabled: ${AUCTION_SCHEDULER_ENABLED:true}
+    activate-cron: ${AUCTION_SCHEDULER_ACTIVATE_CRON:*/5 * * * * *}
+    close-cron: ${AUCTION_SCHEDULER_CLOSE_CRON:*/5 * * * * *}
+  bidding:
+    anti-sniper-threshold: ${AUCTION_ANTI_SNIPER_THRESHOLD:PT30S}
+    anti-sniper-extension: ${AUCTION_ANTI_SNIPER_EXTENSION:PT60S}
+  redis:
+    state-retention-after-end: ${AUCTION_REDIS_STATE_RETENTION:PT24H}

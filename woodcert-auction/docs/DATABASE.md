@@ -620,8 +620,14 @@ Composite PK: (role_id, permission_id)
 **Notes:**
 
 - Khi status = ACTIVE, Redis là source of truth cho current_price và end_time
-- DB chỉ dùng để sync, audit và chốt phiên
+- DB chỉ dùng để snapshot/fallback, audit và chốt phiên
 - current_price trong MySQL chỉ là snapshot/sync value, không dùng để validate bid realtime
+Additional current implementation notes:
+
+- For `ACTIVE` sessions, read APIs overlay Redis `currentPrice` and `endTime`; missing Redis state/fields fall back to the DB snapshot.
+- Create flow locks the product through `ProductRepository.findByIdForUpdate` to reduce duplicate `WAITING`/`ACTIVE` session races for the same product.
+- Cancel flow locks the session with product through `findByIdWithProductForUpdate`; only `WAITING` can transition to `CANCELED`.
+
 ### auction_participants
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
@@ -635,6 +641,13 @@ Composite PK: (role_id, permission_id)
 
 - UNIQUE INDEX uq_auction_participants_user_session ON auction_participants(user_id, auction_session_id)
 - INDEX idx_auction_participants_session_id ON auction_participants(auction_session_id)
+
+**Notes:**
+
+- Registration is allowed while the session is `WAITING`.
+- Late join is allowed while the session is `ACTIVE` only when Redis runtime state exists and `now < endTimeEpochMs`.
+- For `ACTIVE` sessions, after deposit freeze and `AuctionParticipant(FROZEN)` insert, the userId is added to the Redis bidder set.
+- Auction list APIs must load participant counts with `GROUP BY auction_session_id`, not per-session count loops.
 
 ### bids
 | Column | Type | Constraints | Description |
@@ -800,8 +813,14 @@ Người thắng nhưng không thanh toán: deposit_status = CONFISCATED
 Tiền seller chỉ được nhả khi đơn hoàn tất hoặc dispute được giải quyết theo hướng seller thắng
 Real-time Auction Rules
 Redis là source of truth khi phiên ACTIVE
-bids và auction_sessions.current_price trong MySQL đóng vai trò audit / final snapshot
+auction_sessions.current_price và auction_sessions.end_time trong MySQL đóng vai trò snapshot/fallback; bids là audit log
 Anti-sniper: bid hợp lệ trong 30 giây cuối → cộng thêm 60 giây
+Current runtime notes:
+- `auction_sessions.current_price` and `auction_sessions.end_time` are DB snapshots/fallbacks while status is `ACTIVE`.
+- Redis Lua decides live bid acceptance; MySQL bid rows are async audit logs.
+- Public default auction statuses are `WAITING` and `ACTIVE`; explicit public status filter also permits `ENDED_SUCCESS`.
+- Registration is open during `WAITING` and during valid Redis-backed `ACTIVE` runtime.
+
 Suggested Seed Data
 roles
 ### Roles

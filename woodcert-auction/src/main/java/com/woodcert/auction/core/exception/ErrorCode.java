@@ -48,6 +48,13 @@ public enum ErrorCode {
 
     // --- Auction ---
     AUCTION_SESSION_NOT_FOUND(404, "Auction session not found"),
+    AUCTION_NOT_ACTIVE(400, "Auction session is not currently active"),
+    AUCTION_ALREADY_REGISTERED(409, "You have already registered for this auction"),
+    AUCTION_SESSION_NOT_REGISTRABLE(400, "Auction session is not open for registration"),
+    AUCTION_BIDDER_NOT_REGISTERED(403, "You must register and have a frozen deposit to place a bid"),
+    AUCTION_SELF_BIDDING_NOT_ALLOWED(403, "Seller cannot register or bid in their own auction"),
+    BID_AMOUNT_TOO_LOW(400, "Bid amount must be at least current price plus step price"),
+    BID_AUCTION_ENDED(400, "Auction session has already ended"),
     AUCTION_SESSION_NOT_OWNED(403, "You do not own this auction session"),
     AUCTION_PRODUCT_NOT_APPRAISED(400, "Product must be APPRAISED to create an auction session"),
     AUCTION_PRODUCT_NOT_OWNED(403, "You do not own this product"),

@@ -53,6 +53,16 @@ public class ProductImageHelper {
     }
 
     /**
+     * Resolve all product image URLs in display order.
+     */
+    public List<String> findImageUrls(Product product) {
+        return productImageRepository.findByProductIdOrderBySortOrderAsc(product.getId()).stream()
+                .map(this::buildImageUrl)
+                .filter(java.util.Objects::nonNull)
+                .toList();
+    }
+
+    /**
      * Batch-load list thumbnail URLs for a collection of products.
      * Prefers the primary image; falls back to the first image by sortOrder.
      */

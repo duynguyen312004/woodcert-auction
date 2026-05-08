@@ -119,6 +119,46 @@ Client → POST /api/v1/bids (Session ID, Amount)
 → Return 200 OK
 ```
 
+### Auction Read Flow (Redis Overlay)
+
+```text
+Client -> GET /api/v1/auctions or /api/v1/auctions/{id}
+-> AuctionController
+-> AuctionServiceImpl facade
+-> AuctionQueryService
+-> MySQL query for sessions/products
+-> GROUP BY participant count for list views
+-> For ACTIVE sessions only: read Redis currentPrice/endTime
+-> AuctionResponseAssembler overlays Redis fields when present
+-> If Redis state/field is missing: fall back to MySQL snapshot
+-> Return public/seller DTO
+```
+
+Default public list statuses are `WAITING` and `ACTIVE`. Explicit public status filter accepts only `WAITING`, `ACTIVE`, and `ENDED_SUCCESS`.
+
+### Auction Command Flow (Create/Cancel/Register)
+
+```text
+Create session:
+Controller -> AuctionServiceImpl -> AuctionCommandService
+-> lock Product with PESSIMISTIC_WRITE
+-> validate owner/appraised/rules/conflict
+-> insert WAITING AuctionSession
+
+Cancel session:
+Controller -> AuctionServiceImpl -> AuctionCommandService
+-> lock AuctionSession with Product
+-> allow only WAITING
+-> set CANCELED
+
+Register:
+Controller -> AuctionServiceImpl -> AuctionCommandService
+-> allow WAITING or Redis-valid ACTIVE
+-> freeze deposit
+-> insert AuctionParticipant(FROZEN)
+-> if ACTIVE, add bidder to Redis bidder set
+```
+
 ### Escrow & Auto-Complete Flow (Background Job)
 
 ```text
@@ -157,7 +197,9 @@ feature/
 
 - auction depends on:
   - catalog (APPRAISED product as auction input)
+  - catalog `ProductImageHelper` for auction response images
   - finance (Freeze deposit)
+  - Redis for ACTIVE runtime state
 
 - fulfillment depends on:
   - auction (Winning bid → Order)

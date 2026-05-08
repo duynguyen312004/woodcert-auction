@@ -19,6 +19,7 @@ If we rely solely on a relational database (MySQL) to validate and register thes
 
 ### Option C: Redis as Source of Truth + Lua Scripts (CHOSEN)
 - Store active auction state (`current_price`, `end_time`, `highest_bidder`) in Redis.
+- Store eligible bidder user IDs in a Redis bidder set for each active session.
 - Use a Redis Lua Script to execute the entire validation and update logic atomically.
 
 ## Decision
@@ -30,10 +31,11 @@ If we rely solely on a relational database (MySQL) to validate and register thes
 The script executes the following steps atomically in Redis (single-threaded execution guarantees no race conditions):
 1. Read `current_price`, `step_price`, and `end_time` from the Redis Hash.
 2. Check if current time > `end_time` (Auction ended).
-3. Check if `new_bid >= current_price + step_price`.
-4. If valid, update `current_price` and `highest_bidder`.
-5. **Anti-Sniper Rule:** If `end_time - current_time <= 30` seconds, extend `end_time` by 60 seconds.
-6. Return success (and new `end_time`) or specific error codes.
+3. Check bidder is present in the Redis bidder set.
+4. Check if `new_bid >= current_price + step_price`.
+5. If valid, update `current_price`, `highest_bidder`, and bid trace metadata.
+6. **Anti-Sniper Rule:** If `end_time - current_time <= 30` seconds, extend `end_time` by 60 seconds.
+7. Return success (and new `end_time`) or specific error codes.
 
 ### 2. System Flow
 1. Client sends POST `/api/v1/bids`.
@@ -41,6 +43,7 @@ The script executes the following steps atomically in Redis (single-threaded exe
 3. If Lua script returns SUCCESS:
    - Spring Boot asynchronously (`@Async`) saves the `Bid` record to MySQL for audit logging.
    - Spring Boot broadcasts the `NEW_BID` event via WebSocket to all subscribed clients.
+4. Auction read APIs use Redis `currentPrice` and `endTime` for `ACTIVE` sessions, with MySQL snapshot fallback when Redis data is missing.
 
 ## Consequences
 

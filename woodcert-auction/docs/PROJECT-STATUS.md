@@ -1,6 +1,6 @@
 # Project Status
 
-> Last updated: 2026-04-18 | By: AI Assistant | Session: phase-3.1-implementation
+> Last updated: 2026-05-08 | By: Codex | Session: auction-service-refactor-docs
 >
 > AI: update this file at the end of every session when asked.
 > Follow this exact format. Keep it concise but decision-useful.
@@ -32,28 +32,31 @@
 - [x] Finance core: wallet domain, transaction audit log, wallet read APIs, and dev/test top-up path
 - [x] Finance core: internal wallet operations are available for next auction phase (`deposit`, `freeze`, `unfreeze`, `deductFrozen`)
 - [x] Finance core hardened: idempotent wallet mutations, explicit concurrency error, money normalization, and top-up feature flag
+- [x] Auction runtime complete: registration, Redis-first bidding, activation/close scheduler, WebSocket events, and deposit settlement
+- [x] Auction service refactor: `AuctionServiceImpl` is now a facade over command/query services, response assembler, policy, and runtime snapshot service
+- [x] Auction read model hardened: Redis overlays `ACTIVE` current price/end time with DB fallback
+- [x] Auction create/cancel race hardening: product/session pessimistic locks for simple conflict protection
+- [x] Auction list performance: participant counts use grouped query instead of per-session count loop
+- [x] Auction media reuse: response assembly uses `ProductImageHelper`
 
 ## In Progress
-- Auction runtime is the next implementation target
-- Realtime auction registration/bidding is now unblocked by wallet freeze/unfreeze/deduct contracts
+- Fulfillment/order flow is the next major domain after auction winner settlement is stable
 
 ## Deferred Issues
 - Full controller/integration test coverage
 - Category admin CRUD
-- Auction runtime implementation
 - Fulfillment/dispute implementation
+- Repair job for rare close-time partial settlement after terminal DB commit
 
 ## Warnings
-- `mvnw.cmd` is broken in the current environment
-- Running Maven verification inside sandbox may require elevated execution
-- `docs/API_SPEC.md` still contains future auction runtime endpoints (`register`, bidding) that are intentionally not implemented in Phase 3.1
+- `.\mvnw.cmd -Dtest=!WoodcertAuctionApplicationTests test` passed after the auction service refactor
+- `.\mvnw.cmd clean test` still requires a reachable MySQL instance for `WoodcertAuctionApplicationTests.contextLoads`
 - Do not start fulfillment/dispute before auction winner flow and finance settlement contract are stable
 
 ## Next Tasks
-1. Build **Phase 3.3 - Auction Runtime** next:
-   registration, deposit freeze, realtime bidding, close-session logic, and winner snapshot
-2. Defer fulfillment/dispute until auction runtime and finance settlement are stable
-3. Keep catalog stable; avoid reopening catalog scope unless auction integration exposes a real boundary issue
+1. Add fulfillment/order flow on top of `ENDED_SUCCESS` auction results
+2. Add integration coverage for auction controller/runtime paths with test DB + Redis
+3. Add repair path for terminal sessions with remaining `FROZEN` deposits
 
 ## Milestones
 
@@ -105,13 +108,27 @@
 - [x] Add a practical dev/test top-up path so FE and auction testing are not blocked
 - [x] Freeze transaction/reference types needed by auction registration and settlement
 
-### Phase 3.3 - Auction Runtime
-- [ ] Implement auction registration tied to finance freeze
-- [ ] Introduce `AuctionParticipant`
-- [ ] Implement realtime bid entry flow
-- [ ] Add Redis Lua validation/update path
-- [ ] Add WebSocket broadcast contract
-- [ ] Implement close-session / winner snapshot / terminal status handling
+### Phase 3.3 - Auction Runtime ✅ COMPLETE
+- [x] `AuctionParticipant` entity + `DepositStatus` enum + `AuctionParticipantRepository`
+- [x] `Bid` entity + `BidStatus` enum + `BidRepository`
+- [x] `AuctionSessionRepository` — added scheduler queries with PESSIMISTIC_WRITE lock
+- [x] Auction registration: `POST /auctions/{id}/register` — freeze deposit + insert participant
+- [x] `AuctionRedisService` — Redis session hash + bidder set management
+- [x] `BidLuaScript` — atomic bid validation + anti-sniper (30s/60s) via Lua
+- [x] `BidService` + `BidServiceImpl` — Redis-first bid flow
+- [x] `BidPersistenceService` — async best-effort bid audit log
+- [x] `BidController` — `POST /api/v1/bids` with `CREATE_BID` permission
+- [x] `AuctionBroadcastService` — SESSION_ACTIVATED, NEW_BID, SESSION_ENDED via STOMP
+- [x] `AuctionSessionScheduler` — activate every 5s, close every 5s with idempotent settlement
+- [x] `WebSocketConfig` + `AsyncConfig` + SecurityConfig WebSocket permit
+- [x] `AuctionProperties` config class + yaml auction block
+- [x] ErrorCode: AUCTION_NOT_ACTIVE, AUCTION_ALREADY_REGISTERED, AUCTION_SESSION_NOT_REGISTRABLE, AUCTION_BIDDER_NOT_REGISTERED, AUCTION_SELF_BIDDING_NOT_ALLOWED, BID_AMOUNT_TOO_LOW, BID_AUCTION_ENDED
+- [x] `CONTEXT.md` + `AUCTION_RUNTIME_INVARIANTS.md` + `AUCTION_RUNTIME_SEQUENCE.md`
+- [x] `AuctionServiceImpl` facade split into command/query/assembler/policy/runtime services
+- [x] Redis overlay for `ACTIVE` read responses with DB fallback
+- [x] Product/session pessimistic locks for create/cancel race protection
+- [x] Grouped participant counts for public/seller auction lists
+- [x] Auction response image selection reused through `ProductImageHelper`
 
 ### Phase 4 - Fulfillment & Dispute
 - [ ] Order, shipment, dispute domain

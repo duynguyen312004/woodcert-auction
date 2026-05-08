@@ -923,6 +923,7 @@ Success Response (200):
 
 List public auction sessions. Default statuses are `WAITING` and `ACTIVE`.
 Optional query param `status` accepts `WAITING`, `ACTIVE`, `ENDED_SUCCESS`, or a comma-separated combination.
+For `ACTIVE` sessions, `currentPrice` and `endTime` are overlaid from Redis runtime state when available; MySQL snapshot values are used as fallback when Redis fields are missing.
 
 Success Response (200):
 
@@ -957,6 +958,8 @@ Success Response (200):
 ### GET /auctions/{id} 🔓
 
 Get public auction detail. `reservePrice` is intentionally hidden from the response.
+Public detail is available only for `WAITING`, `ACTIVE`, and `ENDED_SUCCESS` sessions. `CANCELED` and `ENDED_FAILED` return not found.
+For `ACTIVE` sessions, `currentPrice` and `endTime` are read from Redis when available, with DB snapshot fallback.
 
 Success Response (200):
 
@@ -1027,6 +1030,7 @@ Request Body:
 Rules:
 - Product must be owned by the seller and already `APPRAISED`
 - A product may have multiple auction sessions over time, but never more than one open `WAITING` / `ACTIVE` session
+- Creation locks the product row before ownership/appraisal/conflict checks to prevent duplicate open sessions under concurrent requests
 - `reservePrice >= startingPrice`
 - `stepPrice >= 100000`
 - `depositAmount >= 1000000` and `depositAmount <= 50% startingPrice`
@@ -1036,6 +1040,7 @@ Rules:
 ### GET /auctions/me 🔒
 
 Seller list of owned auction sessions.
+For `ACTIVE` sessions, `currentPrice` and `endTime` are overlaid from Redis runtime state when available.
 
 Success Response (200):
 
@@ -1068,6 +1073,7 @@ Success Response (200):
 ### PATCH /auctions/{id}/cancel 🔒
 
 Seller cancels an auction session before it starts. This is a status transition (`WAITING -> CANCELED`), not a hard delete.
+Cancellation locks the session with its product and is allowed only while status is `WAITING`.
 
 Success Response (200):
 
@@ -1082,9 +1088,9 @@ Success Response (200):
 
 ### POST /auctions/{id}/register 🔒
 
-Planned for Phase 3.2 / 3.3. Not implemented in Phase 3.1.
-
-Bidder registers for an auction. This automatically deducts depositAmount from availableBalance to frozenBalance.
+Bidder registers for an auction. This freezes `depositAmount` from `availableBalance` into `frozenBalance`.
+Registration is allowed while the session is `WAITING`, or while it is `ACTIVE` and Redis runtime state still exists with `now < endTimeEpochMs`.
+For `ACTIVE` late joins, the user is inserted into the Redis bidder set after the deposit is frozen and the participant row is persisted.
 
 Request Body: Empty.
 
@@ -1101,7 +1107,8 @@ Success Response (200):
 
 Errors:
 
-- 400: Insufficient available balance.
+- 400: insufficient available balance, already registered, session not registrable, or active Redis state no longer valid.
+- 403: seller cannot register for their own auction.
 
 ### POST /bids 🔒 (Real-time Entry Point)
 
