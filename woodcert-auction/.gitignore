@@ -1,0 +1,15 @@
+# Build output
+target/
+build/
+
+# Maven wrapper local artifact
+.mvn/wrapper/maven-wrapper.jar
+
+# Local Spring config
+src/main/resources/application-local.yml
+
+# Local tooling / exports
+docs/postman/
+
+# Optional generated helper file
+HELP.md

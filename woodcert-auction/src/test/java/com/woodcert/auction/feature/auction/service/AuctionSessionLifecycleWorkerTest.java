@@ -183,6 +183,110 @@ class AuctionSessionLifecycleWorkerTest {
         verify(auctionRedisService).removeSession(SESSION_ID);
     }
 
+    @Test
+    @DisplayName("should refund every frozen participant when finalized as failed")
+    void settleFinalizedSession_failedRefundsAll() {
+        AuctionParticipant bidder1 = createParticipant("bidder-1", new BigDecimal("1000.00"));
+        AuctionParticipant bidder2 = createParticipant("bidder-2", new BigDecimal("1000.00"));
+        when(auctionParticipantRepository.findByAuctionSessionIdAndDepositStatus(SESSION_ID, DepositStatus.FROZEN))
+                .thenReturn(List.of(bidder1, bidder2));
+
+        worker.settleFinalizedSession(new AuctionSessionLifecycleWorker.CloseResult(
+                SESSION_ID,
+                AuctionSessionStatus.ENDED_FAILED,
+                new BigDecimal("150.00"),
+                Instant.parse("2026-05-01T10:00:00Z"),
+                "bidder-1"
+        ));
+
+        verify(walletService).unfreezeFunds("bidder-1", "auction:close:refund:10:bidder-1",
+                new BigDecimal("1000.00"), SESSION_ID, WalletReferenceType.AUCTION);
+        verify(walletService).unfreezeFunds("bidder-2", "auction:close:refund:10:bidder-2",
+                new BigDecimal("1000.00"), SESSION_ID, WalletReferenceType.AUCTION);
+        assertThat(bidder1.getDepositStatus()).isEqualTo(DepositStatus.REFUNDED);
+        assertThat(bidder2.getDepositStatus()).isEqualTo(DepositStatus.REFUNDED);
+        verify(auctionRedisService).removeSession(SESSION_ID);
+    }
+
+    @Test
+    @DisplayName("should deduct winner deposit by highest bidder id even when winner bid id is unavailable")
+    void settleFinalizedSession_successWithMissingWinnerBidIdStillDeductsWinner() {
+        AuctionParticipant winner = createParticipant("winner-1", new BigDecimal("1000.00"));
+        when(auctionParticipantRepository.findByAuctionSessionIdAndDepositStatus(SESSION_ID, DepositStatus.FROZEN))
+                .thenReturn(List.of(winner));
+
+        worker.settleFinalizedSession(new AuctionSessionLifecycleWorker.CloseResult(
+                SESSION_ID,
+                AuctionSessionStatus.ENDED_SUCCESS,
+                new BigDecimal("250.00"),
+                Instant.parse("2026-05-01T10:00:00Z"),
+                "winner-1"
+        ));
+
+        verify(walletService).deductFrozenFunds("winner-1", "auction:close:deduct:10:winner-1",
+                new BigDecimal("1000.00"), SESSION_ID, WalletReferenceType.AUCTION);
+        assertThat(winner.getDepositStatus()).isEqualTo(DepositStatus.DEDUCTED);
+    }
+
+    @Test
+    @DisplayName("should leave failed participant frozen and continue settling others")
+    void settleFinalizedSession_participantFailureContinuesOthers() {
+        AuctionParticipant failedWinner = createParticipant("winner-1", new BigDecimal("1000.00"));
+        AuctionParticipant loser = createParticipant("loser-1", new BigDecimal("1000.00"));
+        when(auctionParticipantRepository.findByAuctionSessionIdAndDepositStatus(SESSION_ID, DepositStatus.FROZEN))
+                .thenReturn(List.of(failedWinner, loser));
+        doThrow(new RuntimeException("wallet down")).when(walletService).deductFrozenFunds(
+                "winner-1",
+                "auction:close:deduct:10:winner-1",
+                new BigDecimal("1000.00"),
+                SESSION_ID,
+                WalletReferenceType.AUCTION);
+
+        worker.settleFinalizedSession(new AuctionSessionLifecycleWorker.CloseResult(
+                SESSION_ID,
+                AuctionSessionStatus.ENDED_SUCCESS,
+                new BigDecimal("250.00"),
+                Instant.parse("2026-05-01T10:00:00Z"),
+                "winner-1"
+        ));
+
+        assertThat(failedWinner.getDepositStatus()).isEqualTo(DepositStatus.FROZEN);
+        assertThat(loser.getDepositStatus()).isEqualTo(DepositStatus.REFUNDED);
+        verify(auctionParticipantRepository, never()).save(failedWinner);
+        verify(auctionParticipantRepository).save(loser);
+        verify(auctionRedisService).removeSession(SESSION_ID);
+    }
+
+    @Test
+    @DisplayName("should ignore not-due waiting session activation")
+    void activateDueSession_notDueReturnsEmpty() {
+        Instant now = Instant.parse("2026-05-01T09:00:00Z");
+        AuctionSession session = createSession(AuctionSessionStatus.WAITING, Instant.parse("2026-05-01T09:01:00Z"), Instant.parse("2026-05-01T10:00:00Z"));
+        when(auctionSessionRepository.findByIdForUpdate(SESSION_ID)).thenReturn(Optional.of(session));
+
+        var result = worker.activateDueSession(SESSION_ID, now);
+
+        assertThat(result).isEmpty();
+        assertThat(session.getStatus()).isEqualTo(AuctionSessionStatus.WAITING);
+        verify(auctionRedisService, never()).loadSession(any(), any());
+        verify(auctionSessionRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    @DisplayName("should ignore wrong-status close attempt")
+    void finalizeDueSession_wrongStatusReturnsEmpty() {
+        Instant now = Instant.parse("2026-05-01T10:00:00Z");
+        AuctionSession session = createSession(AuctionSessionStatus.WAITING, Instant.parse("2026-05-01T08:00:00Z"), Instant.parse("2026-05-01T09:59:00Z"));
+        when(auctionSessionRepository.findByIdForUpdate(SESSION_ID)).thenReturn(Optional.of(session));
+
+        var result = worker.finalizeDueSession(SESSION_ID, now);
+
+        assertThat(result).isEmpty();
+        assertThat(session.getStatus()).isEqualTo(AuctionSessionStatus.WAITING);
+        verify(auctionRedisService, never()).getSessionState(any());
+        verify(auctionSessionRepository, never()).saveAndFlush(any());
+    }
+
     private AuctionSession createSession(AuctionSessionStatus status, Instant startTime, Instant endTime) {
         AuctionSession session = new AuctionSession();
         session.setId(SESSION_ID);

@@ -1,0 +1,28 @@
+# FE Architecture Rule
+
+Always follow `docs/ARCHITECTURE.md`.
+
+## Required structure
+
+```text
+src/
+  app/
+  shared/
+  features/
+  assets/
+```
+
+## Hard constraints
+
+- This project is hybrid feature-first.
+- `app/` is for composition only.
+- `shared/` is for reusable infrastructure and primitives only.
+- `features/` owns business workflows, pages, feature hooks, and route exports.
+- `features/admin` exists structurally but is deferred.
+- Do not introduce root-level `services/`, `pages/`, or `context/` as architecture primitives.
+
+## Routing
+
+- Each feature may export route objects or route arrays.
+- `app/router/` only composes feature route exports and wrappers.
+- Do not move feature page logic into `app/router/`.

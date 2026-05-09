@@ -1,2 +1,5 @@
-/mvnw text eol=lf
+* text=auto
 *.cmd text eol=crlf
+*.bat text eol=crlf
+*.sh text eol=lf
+/woodcert-auction/mvnw text eol=lf

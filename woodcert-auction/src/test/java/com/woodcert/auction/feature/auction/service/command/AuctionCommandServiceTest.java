@@ -33,6 +33,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -195,6 +196,86 @@ class AuctionCommandServiceTest {
         commandService.registerForAuction(BIDDER_ID, AUCTION_ID);
 
         verify(auctionRedisService).addBidder(AUCTION_ID, BIDDER_ID);
+    }
+
+    @Test
+    void registerForAuction_activeMissingRedis_throwsNotActiveBeforeFreeze() {
+        AuctionSession session = session(AuctionSessionStatus.ACTIVE);
+        session.setProduct(product(ProductStatus.APPRAISED));
+        when(auctionSessionRepository.findByIdWithProductForUpdate(AUCTION_ID)).thenReturn(Optional.of(session));
+        when(auctionRedisService.getEndTimeEpochMs(AUCTION_ID)).thenReturn(null);
+
+        assertAppException(
+                () -> commandService.registerForAuction(BIDDER_ID, AUCTION_ID),
+                ErrorCode.AUCTION_NOT_ACTIVE);
+
+        verify(walletService, never()).freezeFunds(any(), any(), any(), any(), any());
+        verify(auctionParticipantRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void registerForAuction_activeExpiredRedis_throwsNotActiveBeforeFreeze() {
+        AuctionSession session = session(AuctionSessionStatus.ACTIVE);
+        session.setProduct(product(ProductStatus.APPRAISED));
+        when(auctionSessionRepository.findByIdWithProductForUpdate(AUCTION_ID)).thenReturn(Optional.of(session));
+        when(auctionRedisService.getEndTimeEpochMs(AUCTION_ID)).thenReturn(Instant.now().minusSeconds(1).toEpochMilli());
+
+        assertAppException(
+                () -> commandService.registerForAuction(BIDDER_ID, AUCTION_ID),
+                ErrorCode.AUCTION_NOT_ACTIVE);
+
+        verify(walletService, never()).freezeFunds(any(), any(), any(), any(), any());
+        verify(auctionParticipantRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void registerForAuction_activeAddBidderFailure_throwsAfterParticipantInsert() {
+        AuctionSession session = session(AuctionSessionStatus.ACTIVE);
+        session.setProduct(product(ProductStatus.APPRAISED));
+        when(auctionSessionRepository.findByIdWithProductForUpdate(AUCTION_ID)).thenReturn(Optional.of(session));
+        when(auctionRedisService.getEndTimeEpochMs(AUCTION_ID)).thenReturn(Instant.now().plusSeconds(600).toEpochMilli());
+        when(auctionParticipantRepository.existsByAuctionSessionIdAndUserId(AUCTION_ID, BIDDER_ID)).thenReturn(false);
+        when(auctionRedisService.addBidder(AUCTION_ID, BIDDER_ID)).thenReturn(false);
+
+        assertAppException(
+                () -> commandService.registerForAuction(BIDDER_ID, AUCTION_ID),
+                ErrorCode.AUCTION_NOT_ACTIVE);
+
+        verify(walletService).freezeFunds(
+                BIDDER_ID,
+                "auction:register:freeze:" + AUCTION_ID + ":" + BIDDER_ID,
+                session.getDepositAmount(),
+                AUCTION_ID,
+                WalletReferenceType.AUCTION);
+        verify(auctionParticipantRepository).saveAndFlush(any(AuctionParticipant.class));
+    }
+
+    @Test
+    void registerForAuction_sellerOwnAuction_throwsSelfBidding() {
+        AuctionSession session = session(AuctionSessionStatus.WAITING);
+        session.setProduct(product(ProductStatus.APPRAISED));
+        when(auctionSessionRepository.findByIdWithProductForUpdate(AUCTION_ID)).thenReturn(Optional.of(session));
+
+        assertAppException(
+                () -> commandService.registerForAuction(SELLER_ID, AUCTION_ID),
+                ErrorCode.AUCTION_SELF_BIDDING_NOT_ALLOWED);
+
+        verify(walletService, never()).freezeFunds(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void registerForAuction_duplicatePreCheck_throwsAlreadyRegistered() {
+        AuctionSession session = session(AuctionSessionStatus.WAITING);
+        session.setProduct(product(ProductStatus.APPRAISED));
+        when(auctionSessionRepository.findByIdWithProductForUpdate(AUCTION_ID)).thenReturn(Optional.of(session));
+        when(auctionParticipantRepository.existsByAuctionSessionIdAndUserId(AUCTION_ID, BIDDER_ID)).thenReturn(true);
+
+        assertAppException(
+                () -> commandService.registerForAuction(BIDDER_ID, AUCTION_ID),
+                ErrorCode.AUCTION_ALREADY_REGISTERED);
+
+        verify(walletService, never()).freezeFunds(any(), any(), any(), any(), any());
+        verify(auctionParticipantRepository, never()).saveAndFlush(any());
     }
 
     @Test

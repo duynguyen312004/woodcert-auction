@@ -1,0 +1,21 @@
+# FE Coding Rule
+
+Always follow `docs/PROJECT-RULES.md` and `docs/UI_GUIDELINES.md`.
+
+## State boundaries
+
+- TanStack Query for all backend data.
+- Zustand only for auth/session/UI flags.
+- Never duplicate server state into Zustand.
+
+## UI boundaries
+
+- Tailwind CSS + shadcn/ui only.
+- Wrap shared primitives when feature behavior or project styling must be standardized.
+- Every major screen must handle loading, empty, error, and success states.
+
+## Form and feature rules
+
+- Keep feature-specific components, hooks, and forms inside the owning feature.
+- Do not place feature business logic into shared UI primitives.
+- Prefer predictable operational UI over decorative complexity.

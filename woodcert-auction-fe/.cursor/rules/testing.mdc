@@ -1,0 +1,26 @@
+# FE Testing Rule
+
+Always follow `docs/TESTING_STRATEGY.md`.
+
+## Official stack
+
+- Vitest
+- React Testing Library
+- MSW
+- Playwright
+
+## Minimum required coverage
+
+- Axios refresh and retry flow
+- auth/session transitions
+- websocket cache patch and reconciliation
+- reconnect and refetch recovery
+- countdown and server-time offset logic
+- seller auction form validation
+- media uploader state machine
+
+## Rules
+
+- Mock network boundaries, not internal implementation details, when testing feature integration.
+- Verify REST reconciliation even when realtime is involved.
+- Do not add untested auth or bidding logic changes.

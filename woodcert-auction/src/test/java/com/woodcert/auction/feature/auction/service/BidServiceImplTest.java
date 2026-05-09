@@ -156,6 +156,115 @@ class BidServiceImplTest {
         verify(bidPersistenceService).saveBid(any(), eq(AUCTION_ID), eq(BIDDER_ID), eq(new BigDecimal("150.00")), eq(BidStatus.REJECTED_TIME), any());
     }
 
+    @Test
+    @DisplayName("should reject non-active session before Lua")
+    void placeBid_nonActive_rejectedBeforeLua() {
+        AuctionSession session = createActiveSession();
+        session.setStatus(AuctionSessionStatus.WAITING);
+        when(auctionSessionRepository.findByIdWithProduct(AUCTION_ID)).thenReturn(Optional.of(session));
+
+        assertThatThrownBy(() -> bidService.placeBid(BIDDER_ID, new CreateBidReq(AUCTION_ID, new BigDecimal("120.00"))))
+                .isInstanceOf(AppException.class)
+                .satisfies(throwable ->
+                        assertThat(((AppException) throwable).getErrorCode()).isEqualTo(ErrorCode.AUCTION_NOT_ACTIVE));
+
+        verify(redisTemplate, never()).execute(any(), anyList(), any(), any(), any(), any(), any(), any());
+        verify(bidPersistenceService, never()).saveBid(any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("should reject seller self-bid before Lua")
+    void placeBid_sellerSelfBid_rejectedBeforeLua() {
+        AuctionSession session = createActiveSession();
+        when(auctionSessionRepository.findByIdWithProduct(AUCTION_ID)).thenReturn(Optional.of(session));
+
+        assertThatThrownBy(() -> bidService.placeBid(SELLER_ID, new CreateBidReq(AUCTION_ID, new BigDecimal("120.00"))))
+                .isInstanceOf(AppException.class)
+                .satisfies(throwable ->
+                        assertThat(((AppException) throwable).getErrorCode()).isEqualTo(ErrorCode.AUCTION_SELF_BIDDING_NOT_ALLOWED));
+
+        verify(redisTemplate, never()).execute(any(), anyList(), any(), any(), any(), any(), any(), any());
+        verify(bidPersistenceService, never()).saveBid(any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("should map Lua NOT_REGISTERED to business error without bid row")
+    void placeBid_notRegistered_rejectedWithoutBidRow() {
+        AuctionSession session = createActiveSession();
+        when(auctionSessionRepository.findByIdWithProduct(AUCTION_ID)).thenReturn(Optional.of(session));
+        when(bidLuaScript.buildKeys(AUCTION_ID)).thenReturn(List.of("state", "bidders"));
+        when(bidLuaScript.getScript()).thenReturn(new DefaultRedisScript<>());
+        doReturn(List.of("NOT_REGISTERED", "100.00", String.valueOf(session.getEndTime().toEpochMilli())))
+                .when(redisTemplate).execute(any(), anyList(), any(), any(), any(), any(), any(), any());
+
+        assertThatThrownBy(() -> bidService.placeBid(BIDDER_ID, new CreateBidReq(AUCTION_ID, new BigDecimal("120.00"))))
+                .isInstanceOf(AppException.class)
+                .satisfies(throwable ->
+                        assertThat(((AppException) throwable).getErrorCode()).isEqualTo(ErrorCode.AUCTION_BIDDER_NOT_REGISTERED));
+
+        verify(bidPersistenceService, never()).saveBid(any(), any(), any(), any(), any(), any());
+        verify(auctionBroadcastService, never()).broadcastNewBid(any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("should map Lua SELF_BID to business error without bid row")
+    void placeBid_selfBidFromLua_rejectedWithoutBidRow() {
+        AuctionSession session = createActiveSession();
+        when(auctionSessionRepository.findByIdWithProduct(AUCTION_ID)).thenReturn(Optional.of(session));
+        when(bidLuaScript.buildKeys(AUCTION_ID)).thenReturn(List.of("state", "bidders"));
+        when(bidLuaScript.getScript()).thenReturn(new DefaultRedisScript<>());
+        doReturn(List.of("SELF_BID", "100.00", String.valueOf(session.getEndTime().toEpochMilli())))
+                .when(redisTemplate).execute(any(), anyList(), any(), any(), any(), any(), any(), any());
+
+        assertThatThrownBy(() -> bidService.placeBid(BIDDER_ID, new CreateBidReq(AUCTION_ID, new BigDecimal("120.00"))))
+                .isInstanceOf(AppException.class)
+                .satisfies(throwable ->
+                        assertThat(((AppException) throwable).getErrorCode()).isEqualTo(ErrorCode.AUCTION_SELF_BIDDING_NOT_ALLOWED));
+
+        verify(bidPersistenceService, never()).saveBid(any(), any(), any(), any(), any(), any());
+        verify(auctionBroadcastService, never()).broadcastNewBid(any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("should swallow DB snapshot sync failure after accepted bid")
+    void placeBid_validBid_snapshotSyncFailureStillSucceeds() {
+        AuctionSession session = createActiveSession();
+        CreateBidReq request = new CreateBidReq(AUCTION_ID, new BigDecimal("140.00"));
+        Instant newEndTime = Instant.parse("2026-05-01T10:03:00Z");
+
+        when(auctionSessionRepository.findByIdWithProduct(AUCTION_ID)).thenReturn(Optional.of(session));
+        when(bidLuaScript.buildKeys(AUCTION_ID)).thenReturn(List.of("state", "bidders"));
+        when(bidLuaScript.getScript()).thenReturn(new DefaultRedisScript<>());
+        doReturn(List.of("OK", "140.00", String.valueOf(newEndTime.toEpochMilli())))
+                .when(redisTemplate).execute(any(), anyList(), any(), any(), any(), any(), any(), any());
+        doThrow(new RuntimeException("db snapshot down")).when(auctionSessionRepository).findById(AUCTION_ID);
+
+        BidResultRes result = bidService.placeBid(BIDDER_ID, request);
+
+        assertThat(result.currentPrice()).isEqualByComparingTo("140.00");
+        verify(auctionBroadcastService).broadcastNewBid(AUCTION_ID, new BigDecimal("140.00"), BIDDER_ID, newEndTime);
+        verify(bidPersistenceService).saveBid(any(), eq(AUCTION_ID), eq(BIDDER_ID), eq(new BigDecimal("140.00")), eq(BidStatus.VALID), any());
+    }
+
+    @Test
+    @DisplayName("should map unexpected Lua result to uncategorized error")
+    void placeBid_unexpectedLuaResult_rejected() {
+        AuctionSession session = createActiveSession();
+        when(auctionSessionRepository.findByIdWithProduct(AUCTION_ID)).thenReturn(Optional.of(session));
+        when(bidLuaScript.buildKeys(AUCTION_ID)).thenReturn(List.of("state", "bidders"));
+        when(bidLuaScript.getScript()).thenReturn(new DefaultRedisScript<>());
+        doReturn(List.of("WEIRD", "100.00", String.valueOf(session.getEndTime().toEpochMilli())))
+                .when(redisTemplate).execute(any(), anyList(), any(), any(), any(), any(), any(), any());
+
+        assertThatThrownBy(() -> bidService.placeBid(BIDDER_ID, new CreateBidReq(AUCTION_ID, new BigDecimal("120.00"))))
+                .isInstanceOf(AppException.class)
+                .satisfies(throwable ->
+                        assertThat(((AppException) throwable).getErrorCode()).isEqualTo(ErrorCode.UNCATEGORIZED));
+
+        verify(bidPersistenceService, never()).saveBid(any(), any(), any(), any(), any(), any());
+        verify(auctionBroadcastService, never()).broadcastNewBid(any(), any(), any(), any());
+    }
+
     private AuctionSession createActiveSession() {
         Product product = new Product();
         product.setSellerId(SELLER_ID);
