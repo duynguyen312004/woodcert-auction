@@ -19,8 +19,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -62,7 +60,13 @@ class AuthServiceImplTest {
     private EmailVerificationProperties emailVerificationProperties;
 
     @Mock
-    private ObjectProvider<JavaMailSender> mailSenderProvider;
+    private IdentityTokenService identityTokenService;
+
+    @Mock
+    private IdentityEmailService identityEmailService;
+
+    @Mock
+    private PasswordResetService passwordResetService;
 
     @InjectMocks
     private AuthServiceImpl authService;
@@ -85,6 +89,8 @@ class AuthServiceImplTest {
         when(roleRepository.findByName("ROLE_BIDDER")).thenReturn(Optional.of(bidderRole));
         when(passwordEncoder.encode("Password123")).thenReturn("hashed-password");
         when(emailVerificationProperties.getTokenTtlSeconds()).thenReturn(900L);
+        when(identityTokenService.generateRawToken()).thenReturn("verification-token");
+        when(identityTokenService.hash("verification-token")).thenReturn("verification-hash");
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
             User user = invocation.getArgument(0);
             user.setId("user-1");
@@ -115,6 +121,7 @@ class AuthServiceImplTest {
         token.setUser(user);
         token.setExpiresAt(Instant.now().plusSeconds(3600));
 
+        when(identityTokenService.hash("raw-token")).thenReturn("hash");
         when(emailVerificationTokenRepository.findByTokenHash(any())).thenReturn(Optional.of(token));
         when(emailVerificationTokenRepository.save(any(EmailVerificationToken.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -139,6 +146,8 @@ class AuthServiceImplTest {
         when(emailVerificationTokenRepository.findTopByUserAndVerifiedAtIsNullOrderByCreatedAtDesc(user))
                 .thenReturn(Optional.empty());
         when(emailVerificationProperties.getTokenTtlSeconds()).thenReturn(900L);
+        when(identityTokenService.generateRawToken()).thenReturn("verification-token");
+        when(identityTokenService.hash("verification-token")).thenReturn("verification-hash");
         when(emailVerificationTokenRepository.save(any(EmailVerificationToken.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 

@@ -68,14 +68,36 @@ src/
     auth/
     account/
     auction/
+      api/
+      components/
+      hooks/
+      routes.tsx
+      types.ts
+      index.ts
     bidding/
     wallet/
     catalog/
+      api/
+      components/
+      hooks/
+      routes.tsx
+      index.ts
+    home/
+      components/
+      pages/
+      routes.tsx
     appraisal/
     seller/
     admin/        # deferred
   assets/
 ```
+
+### Feature Ownership Notes
+
+- `features/auction` owns all auction domain code: `ArtAuctionCard`, `AuctionListContent`, `usePublicAuctions`, types.
+- `features/catalog` owns category domain: `CategoryFilter`, `useCategories`, `Category` type.
+- `features/home` owns only landing page composition: `HomePage`, `HomeHero`, `FeaturedAuctionsSection`. It imports from auction and catalog — never the reverse.
+- Cross-feature imports flow inward only: `home → auction`, `home → catalog`. Feature-to-feature dependencies in the other direction are not allowed.
 
 ### Ownership Rules
 

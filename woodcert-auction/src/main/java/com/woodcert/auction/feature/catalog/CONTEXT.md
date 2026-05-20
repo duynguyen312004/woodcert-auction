@@ -1,5 +1,5 @@
 # Catalog - Bối Cảnh Triển Khai
-> Viết ngày: 2026-04-12 | Cập nhật: 2026-04-18 | Tác giả: AI Assistant + Duy Nguyen
+> Viết ngày: 2026-04-12 | Cập nhật: 2026-05-14 | Tác giả: AI Assistant + Duy Nguyen
 
 ## Bối Cảnh Nghiệp Vụ
 `catalog` là module quản lý sản phẩm và quy trình kiểm định của WoodCert Auction. Module này phụ trách vòng đời sản phẩm từ khi seller tạo bản nháp, gửi thẩm định, cho đến khi appraiser xác nhận hoặc từ chối. Sản phẩm chỉ có thể được đấu giá khi đã qua kiểm định thành công (status = APPRAISED).
@@ -24,6 +24,9 @@
 - **Digital signature là SHA-256 hash** của payload gồm productId, appraiserId, verifiedMaterial, estimatedValue, isAuthentic, certificateCode, timestamp.
 - **`@CurrentUserId`** được dùng cho các product read APIs nội bộ để buộc authenticated user context.
 - **User-centric media storage**: ảnh lưu tại `{baseFolder}/users/{userId}/products` và `{baseFolder}/users/{userId}/appraisals`.
+- **Auction read enrichment**: buyer/public auction list/detail vẫn do `auction` module sở hữu, nhưng có thể đọc catalog category, appraisal report, và product image data để dựng read model.
+- **Buyer material truth**: auction/public responses nên ưu tiên `AppraisalReport.verifiedMaterial`; chỉ fallback về `Product.material` khi chưa có dữ liệu kiểm định.
+- **Image URL contract**: `ProductImageHelper` tiếp tục là helper chuẩn cho primary image và all image URLs khi module khác cần hiển thị sản phẩm.
 
 ## API Endpoints
 
@@ -104,6 +107,11 @@ feature/catalog/controller/
 - `AppraisalServiceImplTest`: cover approve/reject, duplicate mediaId, wrong usageType, immutable report flow.
 
 ## Nhật Ký
+### 2026-05-14 | Auction Read Boundary Support
+- Giữ catalog là module nguồn cho product/category/appraisal/image data, nhưng mapping buyer/public auction response nằm ở `feature/auction`.
+- `AuctionQueryService` chịu trách nhiệm orchestration enrichment; `AuctionResponseAssembler` không được truy cập catalog repositories.
+- Public auction filters theo `material`, `categoryName`, và price range dùng dữ liệu snapshot trong DB trước khi Redis overlay active price/end time.
+
 ### 2026-04-18 | Catalog Internal Read APIs
 - Đổi `GET /api/v1/products` thành internal workflow list API cho seller/appraiser, bỏ public mode và bỏ `isMine`.
 - Appraiser xem được tất cả `PENDING_APPRAISAL`, và chỉ xem `APPRAISED`/`REJECTED` nếu chính họ là người đã submit appraisal report.

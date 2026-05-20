@@ -7,8 +7,10 @@ import com.woodcert.auction.feature.auction.dto.response.AuctionListRes;
 import com.woodcert.auction.feature.auction.dto.response.SellerAuctionListRes;
 import com.woodcert.auction.feature.auction.service.command.AuctionCommandService;
 import com.woodcert.auction.feature.auction.service.query.AuctionQueryService;
+import com.woodcert.auction.feature.auction.service.query.PublicAuctionSearchCriteria;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -18,6 +20,7 @@ import java.time.Instant;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -49,12 +52,23 @@ class AuctionServiceImplTest {
         PaginationResponse<AuctionListRes> expected = new PaginationResponse<>(
                 new PaginationResponse.Meta(1, 10, 0, 0),
                 List.of());
-        when(queryService.getPublicAuctions(1, 10, null)).thenReturn(expected);
+        when(queryService.getPublicAuctions(any(PublicAuctionSearchCriteria.class))).thenReturn(expected);
 
-        var result = auctionService.getPublicAuctions(1, 10, null);
+        var result = auctionService.getPublicAuctions(
+                1, 10, "ACTIVE", "rosewood", "Fine sculpture",
+                new BigDecimal("1000000"), new BigDecimal("5000000"));
 
         assertThat(result).isSameAs(expected);
-        verify(queryService).getPublicAuctions(1, 10, null);
+        ArgumentCaptor<PublicAuctionSearchCriteria> captor =
+                ArgumentCaptor.forClass(PublicAuctionSearchCriteria.class);
+        verify(queryService).getPublicAuctions(captor.capture());
+        assertThat(captor.getValue().page()).isEqualTo(1);
+        assertThat(captor.getValue().size()).isEqualTo(10);
+        assertThat(captor.getValue().status()).isEqualTo("ACTIVE");
+        assertThat(captor.getValue().material()).isEqualTo("rosewood");
+        assertThat(captor.getValue().categoryName()).isEqualTo("Fine sculpture");
+        assertThat(captor.getValue().priceMin()).isEqualByComparingTo("1000000");
+        assertThat(captor.getValue().priceMax()).isEqualByComparingTo("5000000");
     }
 
     @Test

@@ -15,9 +15,12 @@ import com.woodcert.auction.feature.auction.service.policy.AuctionPolicy;
 import com.woodcert.auction.feature.auction.service.runtime.AuctionRuntimeSnapshot;
 import com.woodcert.auction.feature.catalog.entity.Product;
 import com.woodcert.auction.feature.catalog.entity.ProductStatus;
+import com.woodcert.auction.feature.catalog.repository.AppraisalReportRepository;
 import com.woodcert.auction.feature.catalog.repository.ProductRepository;
+import com.woodcert.auction.feature.catalog.service.ProductImageHelper;
 import com.woodcert.auction.feature.finance.entity.WalletReferenceType;
 import com.woodcert.auction.feature.finance.service.WalletService;
+import com.woodcert.auction.feature.identity.service.SellerSummaryQueryService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,6 +30,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -57,6 +61,12 @@ class AuctionCommandServiceTest {
     private AuctionResponseAssembler responseAssembler;
     @Mock
     private WalletService walletService;
+    @Mock
+    private ProductImageHelper productImageHelper;
+    @Mock
+    private AppraisalReportRepository appraisalReportRepository;
+    @Mock
+    private SellerSummaryQueryService sellerSummaryQueryService;
 
     private final AuctionPolicy auctionPolicy = new AuctionPolicy();
 
@@ -71,7 +81,10 @@ class AuctionCommandServiceTest {
                 auctionRedisService,
                 responseAssembler,
                 auctionPolicy,
-                walletService);
+                walletService,
+                productImageHelper,
+                appraisalReportRepository,
+                sellerSummaryQueryService);
     }
 
     @Test
@@ -85,7 +98,18 @@ class AuctionCommandServiceTest {
             session.setId(AUCTION_ID);
             return session;
         });
-        when(responseAssembler.toDetailRes(any(AuctionSession.class), any(Product.class), any(AuctionRuntimeSnapshot.class)))
+        when(appraisalReportRepository.findByProductId(PRODUCT_ID)).thenReturn(Optional.empty());
+        when(sellerSummaryQueryService.findSellerSummary(SELLER_ID)).thenReturn(Optional.empty());
+        when(productImageHelper.findPrimaryImageUrl(product)).thenReturn(null);
+        when(productImageHelper.findImageUrls(product)).thenReturn(List.of());
+        when(responseAssembler.toDetailRes(
+                any(AuctionSession.class),
+                any(Product.class),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(AuctionRuntimeSnapshot.class)))
                 .thenReturn(expected);
 
         AuctionDetailRes result = commandService.createAuctionSession(SELLER_ID, validRequest());

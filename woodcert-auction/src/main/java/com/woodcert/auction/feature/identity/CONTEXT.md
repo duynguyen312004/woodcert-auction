@@ -1,5 +1,5 @@
 # Identity - Bối Cảnh Triển Khai
-> Viết ngày: 2026-03-30 | Cập nhật: 2026-04-18 | Tác giả: AI Assistant + Duy Nguyen
+> Viết ngày: 2026-03-30 | Cập nhật: 2026-05-14 | Tác giả: AI Assistant + Duy Nguyen
 
 ## Bối Cảnh Nghiệp Vụ
 `identity` là module nền tảng của WoodCert Auction. Module này phụ trách xác thực, JWT session lifecycle, RBAC, hồ sơ người dùng, seller profile, địa chỉ giao hàng, location master-data và avatar hiện tại của user.
@@ -16,7 +16,7 @@
 - Location master-data được seed-if-empty khi khởi động; runtime chỉ đọc từ DB nội bộ.
 
 ## Phạm Vi Đã Hoàn Thành
-- Auth APIs: `POST /api/v1/auth/login`, `/register`, `/verify-email`, `/resend-verification`, `/refresh`, `/logout`
+- Auth APIs: `POST /api/v1/auth/login`, `/register`, `/verify-email`, `/resend-verification`, `/forgot-password`, `/reset-password`, `/refresh`, `/logout`
 - User profile APIs: `GET/PUT/PATCH /api/v1/users/me`
 - Avatar APIs:
   - `POST /api/v1/users/me/avatar/upload-intent`
@@ -40,6 +40,15 @@
 - `mvnw.cmd` hiện lỗi trong môi trường local hiện tại; chạy Maven thường phải dùng `mvn`.
 
 ## Nhật Ký Refactor
+### 2026-05-14 | Password Reset and Safe Mail Logging
+- `AuthServiceImpl` giữ vai trò facade cho auth/session; logic reset mật khẩu được tách sang `PasswordResetService`.
+- `IdentityTokenService` sở hữu tạo raw token và hash SHA-256 cho refresh token, email verification token, password reset token.
+- `IdentityEmailService` sở hữu compose/gửi email verification/reset. Khi thiếu SMTP, log không được chứa raw token, reset link, hoặc verification link.
+- `password_reset_tokens` chi luu `token_hash`, `expires_at`, `used_at`, `created_at`; schema hien tai khong co `updated_at`.
+- Forgot-password trả response 200 chung cho email không tồn tại, user bị banned, và cooldown no-op để tránh dò email.
+- Reset thành công cập nhật BCrypt password, đánh dấu token đã dùng, và revoke refresh tokens còn active.
+- Auction read model lấy seller display/reputation qua `SellerSummaryQueryService`, không inject repository identity trực tiếp từ auction.
+
 ### 2026-04-18 | Avatar Ownership Belongs To Identity
 - Chuyển `UserAvatarController` ra khỏi `feature/media` về `feature/identity`.
 - Thêm `UserAvatarService` và `UserAvatarServiceImpl` để identity tự sở hữu avatar business flow.

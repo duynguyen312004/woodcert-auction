@@ -164,6 +164,51 @@
             "name": "auction.bidding.anti-sniper-extension",
             "type": "java.lang.String",
             "description": "A description for 'auction.bidding.anti-sniper-extension'"
+        },
+        {
+            "name": "identity.password-reset.reset-link-base-url",
+            "type": "java.lang.String",
+            "description": "Base URL for password reset links sent to users."
+        },
+        {
+            "name": "identity.password-reset.from-address",
+            "type": "java.lang.String",
+            "description": "From address used for password reset emails when SMTP is configured."
+        },
+        {
+            "name": "identity.password-reset.token-ttl-seconds",
+            "type": "java.lang.Long",
+            "description": "Time to live for a raw password reset token in seconds."
+        },
+        {
+            "name": "identity.password-reset.subject",
+            "type": "java.lang.String",
+            "description": "Email subject line for password reset messages."
+        },
+        {
+            "name": "identity.refresh-cookie.secure",
+            "type": "java.lang.Boolean",
+            "description": "Whether the refresh token cookie should include the Secure attribute."
+        },
+        {
+            "name": "identity.refresh-cookie.path",
+            "type": "java.lang.String",
+            "description": "Path attribute used for the refresh token cookie."
+        },
+        {
+            "name": "identity.refresh-cookie.max-age",
+            "type": "java.lang.Integer",
+            "description": "Max-Age attribute for the refresh token cookie in seconds."
+        },
+        {
+            "name": "identity.password-reset.request-cooldown-seconds",
+            "type": "java.lang.Long",
+            "description": "Minimum delay between password reset requests for the same account in seconds."
+        },
+        {
+            "name": "identity.refresh-cookie.same-site",
+            "type": "java.lang.String",
+            "description": "SameSite attribute used for the refresh token cookie."
         }
     ]
 }

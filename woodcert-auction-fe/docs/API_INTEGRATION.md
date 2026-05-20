@@ -1,5 +1,34 @@
 # API Integration
 
+## Frontend Implementation Status (API Usage)
+
+The following tables document which Backend Endpoints have been successfully mapped to real API integration in the Frontend. **Currently, there is no mock data used in the project**. All configured API flows call directly down to the BE via `apiClient`.
+
+### 1. Authentication (Fully Implemented)
+
+| Feature             | Endpoint                         | Service File / Status              |
+| ------------------- | -------------------------------- | ---------------------------------- |
+| Register            | `POST /auth/register`            | ✅ `auth.ts` / Real API            |
+| Login               | `POST /auth/login`               | ✅ `auth.ts` / Real API            |
+| Refresh Token       | `POST /auth/refresh`             | ✅ `client.ts` / Axios Interceptor |
+| Logout              | `POST /auth/logout`              | ✅ `auth.ts` / Real API            |
+| Verify Email        | `GET /auth/verify-email`         | ✅ `auth.ts` / Real API            |
+| Resend Verification | `POST /auth/resend-verification` | ✅ `auth.ts` / Real API            |
+| Forgot Password     | `POST /auth/forgot-password`     | ✅ `auth.ts` / Real API            |
+| Reset Password      | `POST /auth/reset-password`      | ✅ `auth.ts` / Real API            |
+
+### 2. Catalog & Auction Experience (Partially Implemented)
+
+| Feature        | Endpoint             | Service File / Status         |
+| -------------- | -------------------- | ----------------------------- |
+| Get Categories | `GET /categories`    | ✅ `categories.ts` / Real API |
+| Get Auctions   | `GET /auctions`      | ✅ `auctions.ts` / Real API   |
+| Auction Detail | `GET /auctions/{id}` | ❌ Pending Implementation     |
+
+_Note: All other APIs including Wallet, Buyer Flow (Bid), Admin, Appraiser flows are currently pending routing and React Query mapping._
+
+---
+
 ## Backend Response Contract
 
 All REST responses are wrapped as:
@@ -9,9 +38,19 @@ type ApiResponse<T> = {
   statusCode: number;
   message: string;
   data: T;
+  errorCode?: string; // tên enum ErrorCode (BE), chỉ xuất hiện khi có lỗi nghiệp vụ (AppException)
   timestamp: string;
 };
 ```
+
+#### errorCode — mã lỗi máy đọc được
+
+Khi BE ném `AppException(ErrorCode.XYZ)`, response sẽ có `errorCode: "XYZ"` khớp với tên enum `ErrorCode` trong BE.  
+FE đọc qua `normalizeApiError` → `ApiError.code` và phân nhánh UI theo mã đó thay vì so sánh chuỗi message.
+
+Ví dụ: `ACCOUNT_UNVERIFIED`, `EMAIL_VERIFICATION_RESEND_TOO_SOON`, `PASSWORD_RESET_TOKEN_EXPIRED`.
+
+> **Lưu ý cookie refresh:** Endpoint `POST /auth/refresh` dùng cookie `HttpOnly` để gửi refresh token. Trên localhost HTTP cookie `Secure` bị trình duyệt chặn; tắt flag `Secure` trong `application-local.yml` hoặc dùng HTTPS proxy khi test.
 
 Paginated responses use:
 

@@ -295,6 +295,30 @@ Quản lý phiên đăng nhập và bảo mật JWT tokens.
 - Gọi refresh endpoint với token này để lấy access token mới
 - Access token thường short-lived (15 min), refresh token long-lived (7 days)	
 
+### password_reset_tokens
+
+One-time password reset tokens. Raw tokens are sent only by email; the database stores only SHA-256 hashes.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | BIGINT | PK, AUTO_INCREMENT | Unique token row id |
+| token_hash | CHAR(64) | NOT NULL, UNIQUE | SHA-256 hash of the raw reset token |
+| user_id | VARCHAR(36) | NOT NULL, FK -> users(id) | Owner account |
+| expires_at | TIMESTAMP | NOT NULL | Token expiry time |
+| used_at | TIMESTAMP | NULLABLE | Set when the token is consumed |
+| created_at | TIMESTAMP | NOT NULL, DEFAULT CURRENT_TIMESTAMP | Audit create time |
+
+**Indexes:**
+
+- UNIQUE INDEX idx_password_reset_tokens_token_hash ON password_reset_tokens(token_hash)
+- INDEX idx_password_reset_tokens_user_id ON password_reset_tokens(user_id)
+
+**Notes:**
+
+- Never persist or log the raw token, reset link, or verification link.
+- Forgot-password returns a generic 200 response for unknown, banned, and cooldown cases to avoid email enumeration.
+- A successful reset marks the token as used and revokes active refresh tokens for the account.
+
 ### users
 
 
@@ -427,6 +451,8 @@ Composite PK: (role_id, permission_id)
 | identity_card_number | VARCHAR(20) | NOT NULL, UNIQUE | CCCD/CMND |
 | tax_code | VARCHAR(50) | NULLABLE | Mã số thuế |
 | reputation_score | DECIMAL(3,2) | NOT NULL, DEFAULT 5.00 | Điểm uy tín người bán |
+| created_at | TIMESTAMP | NOT NULL, DEFAULT CURRENT_TIMESTAMP | Thời điểm tạo hồ sơ người bán |
+| updated_at | TIMESTAMP | NOT NULL, DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP | Thời điểm cập nhật hồ sơ người bán |
 
 ### categories
 | Column | Type | Constraints | Description |
@@ -843,9 +869,9 @@ roles
 - BAN_USER
 ### Table List
 
-Total tables: 25
+Total tables: 27
 
-**Infrastructure & Location (12 tables):**
+**Infrastructure & Location (13 tables):**
 - users
 - media_assets
 - addresses
@@ -858,6 +884,7 @@ Total tables: 25
 - user_roles
 - seller_profiles
 - refresh_tokens
+- password_reset_tokens
 
 **Catalog & Appraisal (5 tables):**
 - categories
@@ -866,9 +893,10 @@ Total tables: 25
 - appraisal_reports
 - appraisal_images
 
-**Finance (2 tables):**
+**Finance (3 tables):**
 - wallets
 - wallet_transactions
+- wallet_operations
 
 **Auction & Bidding (3 tables):**
 - auction_sessions
@@ -880,7 +908,7 @@ Total tables: 25
 - shipments
 - disputes
 
-**Note:** Total 25 tables including all join tables, master data, and operational tables. Updated count reflects addition of `media_assets` plus the location hierarchy and refresh tokens for JWT management.
+**Note:** Total 27 tables including all join tables, master data, and operational tables. Updated count reflects `password_reset_tokens`, `media_assets`, the location hierarchy, and token/session management tables.
 
 ### Recommended Schema Strategy
 

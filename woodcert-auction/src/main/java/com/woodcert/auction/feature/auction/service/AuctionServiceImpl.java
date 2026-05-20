@@ -7,8 +7,11 @@ import com.woodcert.auction.feature.auction.dto.response.AuctionListRes;
 import com.woodcert.auction.feature.auction.dto.response.SellerAuctionListRes;
 import com.woodcert.auction.feature.auction.service.command.AuctionCommandService;
 import com.woodcert.auction.feature.auction.service.query.AuctionQueryService;
+import com.woodcert.auction.feature.auction.service.query.PublicAuctionSearchCriteria;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+
+import java.math.BigDecimal;
 
 @Service
 @RequiredArgsConstructor
@@ -23,8 +26,12 @@ public class AuctionServiceImpl implements AuctionService {
     }
 
     @Override
-    public PaginationResponse<AuctionListRes> getPublicAuctions(int page, int size, String status) {
-        return queryService.getPublicAuctions(page, size, status);
+    public PaginationResponse<AuctionListRes> getPublicAuctions(
+            int page, int size, String status,
+            String material, String categoryName,
+            BigDecimal priceMin, BigDecimal priceMax) {
+        return queryService.getPublicAuctions(new PublicAuctionSearchCriteria(
+                page, size, status, material, categoryName, priceMin, priceMax));
     }
 
     @Override

@@ -1,3 +1,10 @@
 import type { RouteObject } from "react-router";
 
-export const auctionRoutes: RouteObject[] = [];
+import { AuctionListPage } from "./pages/AuctionListPage";
+
+export const auctionRoutes: RouteObject[] = [
+  {
+    path: "auctions",
+    element: <AuctionListPage />,
+  },
+];

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.woodcert.auction.feature.identity.entity.SellerProfile;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 
 /**
  * Seller profile response.
@@ -14,7 +15,9 @@ public record SellerProfileRes(
         String storeName,
         String identityCardNumber,
         String taxCode,
-        BigDecimal reputationScore
+        BigDecimal reputationScore,
+        Instant createdAt,
+        Instant updatedAt
 ) {
     public static SellerProfileRes fromEntity(SellerProfile sellerProfile) {
         return new SellerProfileRes(
@@ -22,7 +25,9 @@ public record SellerProfileRes(
                 sellerProfile.getStoreName(),
                 sellerProfile.getIdentityCardNumber(),
                 sellerProfile.getTaxCode(),
-                sellerProfile.getReputationScore()
+                sellerProfile.getReputationScore(),
+                sellerProfile.getCreatedAt(),
+                sellerProfile.getUpdatedAt()
         );
     }
 }

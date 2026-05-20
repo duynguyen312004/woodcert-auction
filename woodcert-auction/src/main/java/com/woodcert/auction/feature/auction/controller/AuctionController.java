@@ -15,6 +15,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
+
 /**
  * Auction foundation endpoints: public browse/detail and seller create/cancel/list.
  */
@@ -29,8 +31,13 @@ public class AuctionController {
     public ResponseEntity<ApiResponse<PaginationResponse<AuctionListRes>>> getPublicAuctions(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) String status) {
-        PaginationResponse<AuctionListRes> result = auctionService.getPublicAuctions(page, size, status);
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String material,
+            @RequestParam(required = false) String categoryName,
+            @RequestParam(required = false) BigDecimal priceMin,
+            @RequestParam(required = false) BigDecimal priceMax) {
+        PaginationResponse<AuctionListRes> result = auctionService.getPublicAuctions(
+                page, size, status, material, categoryName, priceMin, priceMax);
         return ResponseEntity.ok(ApiResponse.success(result, "Fetch auctions successful"));
     }
 

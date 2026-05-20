@@ -14,6 +14,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
 
+import java.time.Instant;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -66,6 +67,7 @@ class UserAvatarControllerTest {
                 "https://res.cloudinary.com/avatar",
                 "ACTIVE",
                 List.of("ROLE_BIDDER"),
+                Instant.parse("2026-03-28T10:00:00Z"),
                 false);
 
         when(userAvatarService.attachCurrentUserAvatar("user-1", request)).thenReturn(profile);
@@ -89,6 +91,7 @@ class UserAvatarControllerTest {
                 null,
                 "ACTIVE",
                 List.of("ROLE_BIDDER"),
+                Instant.parse("2026-03-28T10:00:00Z"),
                 false);
 
         when(userAvatarService.clearCurrentUserAvatar("user-1")).thenReturn(profile);

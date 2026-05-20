@@ -9,37 +9,27 @@ import com.woodcert.auction.feature.auction.entity.AuctionSession;
 import com.woodcert.auction.feature.auction.service.runtime.AuctionRuntimeSnapshot;
 import com.woodcert.auction.feature.catalog.entity.AppraisalReport;
 import com.woodcert.auction.feature.catalog.entity.Product;
-import com.woodcert.auction.feature.catalog.repository.AppraisalReportRepository;
-import com.woodcert.auction.feature.catalog.service.ProductImageHelper;
-import com.woodcert.auction.feature.identity.entity.SellerProfile;
-import com.woodcert.auction.feature.identity.entity.User;
-import com.woodcert.auction.feature.identity.repository.SellerProfileRepository;
-import com.woodcert.auction.feature.identity.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
+import com.woodcert.auction.feature.identity.service.SellerSummaryQueryService;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 
 @Component
-@RequiredArgsConstructor
 public class AuctionResponseAssembler {
-
-    private final ProductImageHelper productImageHelper;
-    private final AppraisalReportRepository appraisalReportRepository;
-    private final UserRepository userRepository;
-    private final SellerProfileRepository sellerProfileRepository;
 
     public AuctionListRes toListRes(
             AuctionSession session,
             Product product,
             String primaryImage,
+            String categoryName,
+            AppraisalReport appraisalReport,
+            SellerSummaryQueryService.SellerSummary sellerSummary,
             long participantCount,
             AuctionRuntimeSnapshot snapshot) {
         AuctionListRes.ProductSummary productSummary = product != null
-                ? AuctionListRes.ProductSummary.fromEntity(product, primaryImage)
+                ? AuctionListRes.ProductSummary.fromEntity(product, primaryImage, categoryName, appraisalReport)
                 : null;
 
         return new AuctionListRes(
@@ -51,7 +41,8 @@ public class AuctionResponseAssembler {
                 session.getStartTime(),
                 endTime(session, snapshot),
                 session.getStatus(),
-                participantCount
+                participantCount,
+                buildListSellerSummary(sellerSummary)
         );
     }
 
@@ -78,11 +69,11 @@ public class AuctionResponseAssembler {
     public AuctionDetailRes toDetailRes(
             AuctionSession session,
             Product product,
+            String primaryImage,
+            List<String> imageUrls,
+            AppraisalReport appraisalReport,
+            SellerSummaryQueryService.SellerSummary sellerSummary,
             AuctionRuntimeSnapshot snapshot) {
-        String primaryImage = productImageHelper.findPrimaryImageUrl(product);
-        List<String> imageUrls = productImageHelper.findImageUrls(product);
-
-        AppraisalReport appraisalReport = appraisalReportRepository.findByProductId(product.getId()).orElse(null);
         AuctionAppraisalRes appraisalRes = AuctionAppraisalRes.fromEntity(appraisalReport);
 
         String publicMaterial = appraisalReport != null && appraisalReport.getVerifiedMaterial() != null
@@ -96,9 +87,6 @@ public class AuctionResponseAssembler {
                 imageUrls,
                 appraisalRes);
 
-        User seller = userRepository.findById(product.getSellerId()).orElse(null);
-        SellerProfile sellerProfile = sellerProfileRepository.findById(product.getSellerId()).orElse(null);
-
         return new AuctionDetailRes(
                 session.getId(),
                 session.getStatus(),
@@ -109,7 +97,7 @@ public class AuctionResponseAssembler {
                 session.getStartTime(),
                 endTime(session, snapshot),
                 productSummary,
-                buildSellerSummary(seller, sellerProfile)
+                buildSellerSummary(sellerSummary)
         );
     }
 
@@ -125,15 +113,23 @@ public class AuctionResponseAssembler {
                 : session.getEndTime();
     }
 
-    private AuctionDetailRes.SellerSummary buildSellerSummary(User seller, SellerProfile profile) {
-        if (seller == null && profile == null) {
+    private AuctionDetailRes.SellerSummary buildSellerSummary(SellerSummaryQueryService.SellerSummary sellerSummary) {
+        if (sellerSummary == null) {
             return null;
         }
 
-        String storeName = profile != null
-                ? profile.getStoreName()
-                : Optional.ofNullable(seller).map(User::getFullName).orElse(null);
-        BigDecimal reputationScore = profile != null ? profile.getReputationScore() : null;
-        return new AuctionDetailRes.SellerSummary(storeName, reputationScore);
+        return new AuctionDetailRes.SellerSummary(
+                sellerSummary.displayName(),
+                sellerSummary.reputationScore());
+    }
+
+    private AuctionListRes.SellerSummary buildListSellerSummary(SellerSummaryQueryService.SellerSummary sellerSummary) {
+        if (sellerSummary == null) {
+            return null;
+        }
+
+        return new AuctionListRes.SellerSummary(
+                sellerSummary.displayName(),
+                sellerSummary.reputationScore());
     }
 }

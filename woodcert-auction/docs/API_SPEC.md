@@ -1,6 +1,6 @@
 ﻿# API Specification
 
-> All endpoints return `ApiResponse<T>` wrapper.
+> All endpoints return `ApiResponse<T>` wrapper. Error responses created from `AppException` include nullable `errorCode` for machine-readable handling.
 > Update this file whenever endpoints change.
 
 ---
@@ -152,6 +152,66 @@ Errors:
 - 400: Validation failed
 - 429: Please wait before requesting another verification email
 
+### POST /auth/forgot-password 🔓
+
+Request a password reset link. The backend always returns the same 200 response to avoid email enumeration. If the account exists and is eligible, a hashed one-time token is stored and the raw token is sent only through email.
+
+Request Body:
+
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+Success Response (200):
+
+```json
+{
+  "statusCode": 200,
+  "data": null,
+  "message": "If the account exists, a password reset link has been sent to the registered email.",
+  "timestamp": "2026-03-28T10:10:00"
+}
+```
+
+Notes:
+
+- Request cooldown is enforced per account, while the public response remains the same.
+- Raw reset tokens and reset links must not be logged.
+
+Errors:
+
+- 400: Validation failed
+
+### POST /auth/reset-password 🔓
+
+Complete password reset using the one-time token from email. Successful reset marks the token as used, updates the BCrypt password hash, and revokes active refresh tokens for the account.
+
+Request Body:
+
+```json
+{
+  "token": "raw-token-from-email",
+  "newPassword": "newPassword123"
+}
+```
+
+Success Response (200):
+
+```json
+{
+  "statusCode": 200,
+  "data": null,
+  "message": "Password reset successfully. Please log in.",
+  "timestamp": "2026-03-28T10:12:00"
+}
+```
+
+Errors:
+
+- 400: Missing token, weak password, invalid token, used token, or expired token. Error responses include `errorCode` when raised by `AppException`.
+
 ### POST /auth/refresh 🔓
 
 Get a new access token using the refresh token.
@@ -175,7 +235,7 @@ Success Response (200):
 }
 ```
 
-(Also sets new refresh_token cookie)
+(Also sets a new `refresh_token` cookie with `HttpOnly`, configured `Secure`, `SameSite=Lax`, `Path=/api/v1/auth`, and `Max-Age=604800` by default.)
 
 Errors:
 
@@ -217,6 +277,7 @@ Success Response (200):
     "avatarUrl": "https://s3.../avatar.jpg",
     "status": "ACTIVE",
     "roles": ["ROLE_BIDDER", "ROLE_SELLER"],
+    "createdAt": "2026-03-28T10:00:00Z",
     "hasSellerProfile": true
   },
   "message": "Fetch user profile successful",
@@ -259,6 +320,7 @@ Success Response (200):
     "avatarUrl": "https://s3.../new-avatar.jpg",
     "status": "ACTIVE",
     "roles": ["ROLE_BIDDER"],
+    "createdAt": "2026-03-28T10:00:00Z",
     "hasSellerProfile": false
   },
   "message": "User profile updated successfully",
@@ -296,6 +358,7 @@ Success Response (200):
     "avatarUrl": null,
     "status": "ACTIVE",
     "roles": ["ROLE_BIDDER"],
+    "createdAt": "2026-03-28T10:00:00Z",
     "hasSellerProfile": false
   },
   "message": "User profile patched successfully",
@@ -388,7 +451,9 @@ Success Response (200):
     "storeName": "Xưởng Gỗ Mỹ Nghệ ABC",
     "identityCardNumber": "001099012345",
     "taxCode": "0101234567",
-    "reputationScore": 5.00
+    "reputationScore": 5.00,
+    "createdAt": "2026-03-30T10:00:00Z",
+    "updatedAt": "2026-03-30T10:00:00Z"
   },
   "message": "Fetch seller profile successful",
   "timestamp": "2026-03-30T10:00:00"
@@ -423,7 +488,9 @@ Success Response (201):
     "storeName": "Xưởng Gỗ Mỹ Nghệ ABC",
     "identityCardNumber": "001099012345",
     "taxCode": "0101234567",
-    "reputationScore": 5.00
+    "reputationScore": 5.00,
+    "createdAt": "2026-03-28T10:00:00Z",
+    "updatedAt": "2026-03-28T10:00:00Z"
   },
   "message": "Seller profile created. Please re-login to update roles.",
   "timestamp": "2026-03-28T10:00:00"
@@ -922,8 +989,24 @@ Success Response (200):
 ### GET /auctions 🔓
 
 List public auction sessions. Default statuses are `WAITING` and `ACTIVE`.
-Optional query param `status` accepts `WAITING`, `ACTIVE`, `ENDED_SUCCESS`, or a comma-separated combination.
-For `ACTIVE` sessions, `currentPrice` and `endTime` are overlaid from Redis runtime state when available; MySQL snapshot values are used as fallback when Redis fields are missing.
+
+Query Parameters:
+
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| page | int | 1 | Page number |
+| size | int | 10 | Items per page |
+| status | string | WAITING,ACTIVE | Accepts `WAITING`, `ACTIVE`, `ENDED_SUCCESS`, or a comma-separated combination |
+| material | string | null | Case-insensitive material filter against the persisted product/appraisal data |
+| categoryName | string | null | Exact category-name filter; unknown category returns an empty page |
+| priceMin | decimal | null | Minimum persisted `current_price` snapshot |
+| priceMax | decimal | null | Maximum persisted `current_price` snapshot |
+
+For `ACTIVE` sessions, `currentPrice` and `endTime` are overlaid from Redis runtime state when available; MySQL snapshot values are used as fallback when Redis fields are missing. `priceMin` and `priceMax` filter the persisted DB snapshot before Redis overlay, so live Redis price can differ from the filter boundary.
+
+Errors:
+
+- 400: Invalid `status`, or `priceMin > priceMax` (`errorCode = INVALID_REQUEST`)
 
 Success Response (200):
 
@@ -938,7 +1021,13 @@ Success Response (200):
         "product": {
           "id": 1001,
           "title": "Tượng Đạt Ma Sư Tổ Gỗ Sưa Đỏ",
-          "primaryImage": "https://s3.../dat-ma-1.jpg"
+          "primaryImage": "https://res.cloudinary.com/.../products/1001-main.jpg",
+          "material": "Gỗ Sưa Đỏ",
+          "categoryName": "Tượng Gỗ Phong Thủy",
+          "conditionGrade": "EXCELLENT",
+          "certificateCode": "CERT-2026-001",
+          "isAuthentic": true,
+          "sellerAccuracy": 5.00
         },
         "startingPrice": 30000000.00,
         "currentPrice": 35000000.00,
@@ -946,7 +1035,11 @@ Success Response (200):
         "startTime": "2026-03-29T20:00:00",
         "endTime": "2026-03-29T21:00:00",
         "status": "WAITING",
-        "totalParticipants": 0
+        "totalParticipants": 0,
+        "seller": {
+          "name": "Xưởng Gỗ ABC",
+          "reputationScore": 4.9
+        }
       }
     ]
   },

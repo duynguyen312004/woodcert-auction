@@ -1,9 +1,11 @@
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import { RouterProvider } from "react-router";
 
 import { ErrorBoundary } from "@/app/providers/ErrorBoundary";
 import { QueryProvider } from "@/app/providers/QueryProvider";
 import { router } from "@/app/router";
+import { initializeAuth } from "@/shared/auth/auth-initializer";
+import { NotificationProvider } from "@/shared/ui/notification";
 
 function AppFallback() {
   return (
@@ -14,11 +16,17 @@ function AppFallback() {
 }
 
 export function App() {
+  useEffect(() => {
+    initializeAuth();
+  }, []);
+
   return (
     <ErrorBoundary>
       <Suspense fallback={<AppFallback />}>
         <QueryProvider>
-          <RouterProvider router={router} />
+          <NotificationProvider>
+            <RouterProvider router={router} />
+          </NotificationProvider>
         </QueryProvider>
       </Suspense>
     </ErrorBoundary>

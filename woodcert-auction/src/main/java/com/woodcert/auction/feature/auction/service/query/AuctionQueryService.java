@@ -11,13 +11,19 @@ import com.woodcert.auction.feature.auction.entity.AuctionSessionStatus;
 import com.woodcert.auction.feature.auction.repository.AuctionParticipantCountView;
 import com.woodcert.auction.feature.auction.repository.AuctionParticipantRepository;
 import com.woodcert.auction.feature.auction.repository.AuctionSessionRepository;
+import com.woodcert.auction.feature.auction.repository.AuctionSessionSpecification;
 import com.woodcert.auction.feature.auction.service.assembler.AuctionResponseAssembler;
 import com.woodcert.auction.feature.auction.service.policy.AuctionPolicy;
 import com.woodcert.auction.feature.auction.service.runtime.AuctionRuntimeSnapshot;
 import com.woodcert.auction.feature.auction.service.runtime.AuctionRuntimeSnapshotService;
+import com.woodcert.auction.feature.catalog.entity.AppraisalReport;
+import com.woodcert.auction.feature.catalog.entity.Category;
 import com.woodcert.auction.feature.catalog.entity.Product;
+import com.woodcert.auction.feature.catalog.repository.AppraisalReportRepository;
+import com.woodcert.auction.feature.catalog.repository.CategoryRepository;
 import com.woodcert.auction.feature.catalog.repository.ProductRepository;
 import com.woodcert.auction.feature.catalog.service.ProductImageHelper;
+import com.woodcert.auction.feature.identity.service.SellerSummaryQueryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -27,11 +33,14 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -43,37 +52,67 @@ public class AuctionQueryService {
     private final AuctionSessionRepository auctionSessionRepository;
     private final AuctionParticipantRepository auctionParticipantRepository;
     private final ProductRepository productRepository;
+    private final AppraisalReportRepository appraisalReportRepository;
+    private final CategoryRepository categoryRepository;
+    private final SellerSummaryQueryService sellerSummaryQueryService;
     private final ProductImageHelper productImageHelper;
     private final AuctionRuntimeSnapshotService runtimeSnapshotService;
     private final AuctionResponseAssembler responseAssembler;
     private final AuctionPolicy auctionPolicy;
 
     @Transactional(readOnly = true)
-    public PaginationResponse<AuctionListRes> getPublicAuctions(int page, int size, String status) {
+    public PaginationResponse<AuctionListRes> getPublicAuctions(PublicAuctionSearchCriteria criteria) {
+
         Pageable pageable = PageRequest.of(
-                Math.max(0, page - 1),
-                Math.min(Math.max(size, 1), 50),
+                Math.max(0, criteria.page() - 1),
+                Math.min(Math.max(criteria.size(), 1), 50),
                 Sort.by(Sort.Direction.ASC, "startTime"));
 
-        List<AuctionSessionStatus> statuses = resolvePublicStatuses(status);
-        Page<AuctionSession> sessionPage = auctionSessionRepository.findAllPublicAuctions(statuses, pageable);
+        validatePriceRange(criteria.priceMin(), criteria.priceMax());
+
+        List<AuctionSessionStatus> statuses = resolvePublicStatuses(criteria.status());
+        List<String> materials = parseMaterials(criteria.material());
+        Optional<Integer> categoryId = resolveCategoryId(criteria.categoryName());
+        if (categoryId.isEmpty() && hasText(criteria.categoryName())) {
+            return PaginationResponse.of(new PageImpl<>(List.of(), pageable, 0));
+        }
+
+        boolean hasFilter = !materials.isEmpty() || categoryId.isPresent()
+                || criteria.priceMin() != null || criteria.priceMax() != null;
+
+        Page<AuctionSession> sessionPage = hasFilter
+                ? auctionSessionRepository.findAll(
+                        AuctionSessionSpecification.publicAuctionsFilter(
+                                statuses, materials, categoryId.orElse(null), criteria.priceMin(), criteria.priceMax()),
+                        pageable)
+                : auctionSessionRepository.findAllPublicAuctions(statuses, pageable);
 
         List<AuctionSession> sessions = sessionPage.getContent();
         Map<Long, Product> productsById = loadProductsById(
                 sessions.stream().map(AuctionSession::getProductId).toList());
+        List<Product> products = List.copyOf(productsById.values());
         Map<Long, String> primaryImages = productImageHelper.batchLoadPrimaryImageUrls(productsById.values());
+        Map<Long, AppraisalReport> appraisalReports = loadAppraisalReportsByProductId(
+                products.stream().map(Product::getId).toList());
+        Map<Integer, Category> categories = loadCategoriesById(
+                products.stream().map(Product::getCategoryId).toList());
+        Map<String, SellerSummaryQueryService.SellerSummary> sellers = sellerSummaryQueryService.findSellerSummaries(
+                products.stream().map(Product::getSellerId).toList());
         Map<Long, Long> participantCounts = loadParticipantCounts(
                 sessions.stream().map(AuctionSession::getId).toList());
         Map<Long, AuctionRuntimeSnapshot> snapshots = runtimeSnapshotService.loadSnapshots(sessions);
 
         Page<AuctionListRes> responsePage = new PageImpl<>(
                 sessions.stream()
-                        .map(session -> responseAssembler.toListRes(
+                        .map(session -> toListRes(
                                 session,
-                                productsById.get(session.getProductId()),
-                                primaryImages.get(session.getProductId()),
-                                participantCounts.getOrDefault(session.getId(), 0L),
-                                snapshots.get(session.getId())))
+                                productsById,
+                                primaryImages,
+                                categories,
+                                appraisalReports,
+                                sellers,
+                                participantCounts,
+                                snapshots))
                         .toList(),
                 pageable,
                 sessionPage.getTotalElements());
@@ -94,7 +133,19 @@ public class AuctionQueryService {
                 : productRepository.findById(session.getProductId())
                         .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
 
-        return responseAssembler.toDetailRes(session, product, runtimeSnapshotService.loadSnapshot(session));
+        AppraisalReport appraisalReport = appraisalReportRepository.findByProductId(product.getId()).orElse(null);
+        SellerSummaryQueryService.SellerSummary seller = sellerSummaryQueryService
+                .findSellerSummary(product.getSellerId())
+                .orElse(null);
+
+        return responseAssembler.toDetailRes(
+                session,
+                product,
+                productImageHelper.findPrimaryImageUrl(product),
+                productImageHelper.findImageUrls(product),
+                appraisalReport,
+                seller,
+                runtimeSnapshotService.loadSnapshot(session));
     }
 
     @Transactional(readOnly = true)
@@ -128,6 +179,37 @@ public class AuctionQueryService {
         return PaginationResponse.of(responsePage);
     }
 
+    private List<String> parseMaterials(String material) {
+        if (material == null || material.isBlank()) {
+            return List.of();
+        }
+        return Arrays.stream(material.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .map(s -> s.toLowerCase(Locale.ROOT))
+                .distinct()
+                .toList();
+    }
+
+    private Optional<Integer> resolveCategoryId(String categoryName) {
+        if (!hasText(categoryName)) {
+            return Optional.empty();
+        }
+        return categoryRepository.findByNameIgnoreCase(categoryName.trim())
+                .map(com.woodcert.auction.feature.catalog.entity.Category::getId)
+                .or(Optional::empty);
+    }
+
+    private void validatePriceRange(BigDecimal priceMin, BigDecimal priceMax) {
+        if (priceMin != null && priceMax != null && priceMin.compareTo(priceMax) > 0) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "priceMin must be less than or equal to priceMax");
+        }
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+
     private List<AuctionSessionStatus> resolvePublicStatuses(String statusFilter) {
         if (statusFilter == null || statusFilter.isBlank()) {
             return auctionPolicy.defaultPublicStatuses();
@@ -156,6 +238,34 @@ public class AuctionQueryService {
                         LinkedHashMap::new));
     }
 
+    private Map<Long, AppraisalReport> loadAppraisalReportsByProductId(Collection<Long> productIds) {
+        if (productIds == null || productIds.isEmpty()) {
+            return Map.of();
+        }
+        return appraisalReportRepository.findByProductIdIn(productIds).stream()
+                .collect(Collectors.toMap(
+                        AppraisalReport::getProductId,
+                        Function.identity(),
+                        (left, right) -> left,
+                        LinkedHashMap::new));
+    }
+
+    private Map<Integer, Category> loadCategoriesById(Collection<Integer> categoryIds) {
+        if (categoryIds == null || categoryIds.isEmpty()) {
+            return Map.of();
+        }
+        List<Integer> ids = categoryIds.stream()
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+        return StreamSupport.stream(categoryRepository.findAllById(ids).spliterator(), false)
+                .collect(Collectors.toMap(Category::getId, Function.identity(), (left, right) -> left,
+                        LinkedHashMap::new));
+    }
+
     private Map<Long, Long> loadParticipantCounts(Collection<Long> sessionIds) {
         if (sessionIds == null || sessionIds.isEmpty()) {
             return Map.of();
@@ -167,5 +277,36 @@ public class AuctionQueryService {
                         AuctionParticipantCountView::getParticipantCount,
                         (left, right) -> left,
                         LinkedHashMap::new));
+    }
+
+    private AuctionListRes toListRes(
+            AuctionSession session,
+            Map<Long, Product> productsById,
+            Map<Long, String> primaryImages,
+            Map<Integer, Category> categories,
+            Map<Long, AppraisalReport> appraisalReports,
+            Map<String, SellerSummaryQueryService.SellerSummary> sellers,
+            Map<Long, Long> participantCounts,
+            Map<Long, AuctionRuntimeSnapshot> snapshots) {
+        Product product = productsById.get(session.getProductId());
+        String categoryName = Optional.ofNullable(product)
+                .map(Product::getCategoryId)
+                .map(categories::get)
+                .map(Category::getName)
+                .orElse(null);
+        SellerSummaryQueryService.SellerSummary seller = Optional.ofNullable(product)
+                .map(Product::getSellerId)
+                .map(sellers::get)
+                .orElse(null);
+
+        return responseAssembler.toListRes(
+                session,
+                product,
+                primaryImages.get(session.getProductId()),
+                categoryName,
+                appraisalReports.get(session.getProductId()),
+                seller,
+                participantCounts.getOrDefault(session.getId(), 0L),
+                snapshots.get(session.getId()));
     }
 }

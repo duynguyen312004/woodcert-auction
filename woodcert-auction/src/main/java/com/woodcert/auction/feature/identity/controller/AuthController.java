@@ -1,21 +1,27 @@
 package com.woodcert.auction.feature.identity.controller;
 
+import com.woodcert.auction.core.config.RefreshCookieProperties;
 import com.woodcert.auction.core.dto.ApiResponse;
+import com.woodcert.auction.feature.identity.dto.request.ForgotPasswordReq;
 import com.woodcert.auction.feature.identity.dto.request.LoginReq;
 import com.woodcert.auction.feature.identity.dto.request.RefreshReq;
 import com.woodcert.auction.feature.identity.dto.request.ResendVerificationReq;
 import com.woodcert.auction.feature.identity.dto.request.RegisterReq;
+import com.woodcert.auction.feature.identity.dto.request.ResetPasswordReq;
 import com.woodcert.auction.feature.identity.dto.response.AuthRes;
 import com.woodcert.auction.feature.identity.dto.response.RefreshRes;
 import com.woodcert.auction.feature.identity.dto.response.RegisterRes;
 import com.woodcert.auction.feature.identity.service.AuthService;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.ResponseCookie;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.Duration;
 
 /**
  * Authentication REST controller.
@@ -28,10 +34,9 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final RefreshCookieProperties cookieProperties;
 
     private static final String REFRESH_TOKEN_COOKIE = "refresh_token";
-    private static final String COOKIE_PATH = "/api/v1/auth";
-    private static final int COOKIE_MAX_AGE = 604800; // 7 days
 
     /**
      * POST /api/v1/auth/login
@@ -136,23 +141,49 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success(null, "Logged out successfully"));
     }
 
+    /**
+     * POST /api/v1/auth/forgot-password
+     * Initiate password reset. Always returns 200 to avoid email enumeration.
+     */
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ApiResponse<Void>> forgotPassword(@RequestBody @Valid ForgotPasswordReq request) {
+        authService.requestPasswordReset(request.email());
+        return ResponseEntity.ok(
+                ApiResponse.success(null,
+                        "If the account exists, a password reset link has been sent to the registered email."));
+    }
+
+    /**
+     * POST /api/v1/auth/reset-password
+     * Complete password reset with token + new password.
+     */
+    @PostMapping("/reset-password")
+    public ResponseEntity<ApiResponse<Void>> resetPassword(@RequestBody @Valid ResetPasswordReq request) {
+        authService.resetPassword(request.token(), request.newPassword());
+        return ResponseEntity.ok(ApiResponse.success(null, "Password reset successfully. Please log in."));
+    }
+
     // --- Cookie helpers ---
 
     private void setRefreshTokenCookie(HttpServletResponse response, String refreshToken) {
-        Cookie cookie = new Cookie(REFRESH_TOKEN_COOKIE, refreshToken);
-        cookie.setHttpOnly(true);
-        cookie.setSecure(true);
-        cookie.setPath(COOKIE_PATH);
-        cookie.setMaxAge(COOKIE_MAX_AGE);
-        response.addCookie(cookie);
+        ResponseCookie cookie = baseRefreshCookie(refreshToken)
+                .maxAge(Duration.ofSeconds(Math.max(0, cookieProperties.getMaxAge())))
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
 
     private void clearRefreshTokenCookie(HttpServletResponse response) {
-        Cookie cookie = new Cookie(REFRESH_TOKEN_COOKIE, null);
-        cookie.setHttpOnly(true);
-        cookie.setSecure(true);
-        cookie.setPath(COOKIE_PATH);
-        cookie.setMaxAge(0);
-        response.addCookie(cookie);
+        ResponseCookie cookie = baseRefreshCookie("")
+                .maxAge(Duration.ZERO)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    }
+
+    private ResponseCookie.ResponseCookieBuilder baseRefreshCookie(String value) {
+        return ResponseCookie.from(REFRESH_TOKEN_COOKIE, value)
+                .httpOnly(true)
+                .secure(cookieProperties.isSecure())
+                .sameSite(cookieProperties.getSameSite())
+                .path(cookieProperties.getPath());
     }
 }

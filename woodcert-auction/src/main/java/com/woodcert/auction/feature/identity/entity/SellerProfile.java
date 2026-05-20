@@ -1,5 +1,6 @@
 package com.woodcert.auction.feature.identity.entity;
 
+import com.woodcert.auction.core.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -15,7 +16,22 @@ import java.math.BigDecimal;
 @Setter
 @Entity
 @Table(name = "seller_profiles")
-public class SellerProfile {
+@AttributeOverrides({
+        @AttributeOverride(
+                name = "createdAt",
+                column = @Column(
+                        name = "created_at",
+                        nullable = false,
+                        updatable = false,
+                        columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")),
+        @AttributeOverride(
+                name = "updatedAt",
+                column = @Column(
+                        name = "updated_at",
+                        nullable = false,
+                        columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"))
+})
+public class SellerProfile extends BaseEntity {
 
     @Id
     @Column(name = "user_id", length = 36)

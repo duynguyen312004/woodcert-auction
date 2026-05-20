@@ -23,6 +23,8 @@ public enum ErrorCode {
     EMAIL_VERIFICATION_TOKEN_EXPIRED(400, "Email verification token has expired"),
     EMAIL_ALREADY_VERIFIED(409, "Email is already verified"),
     EMAIL_VERIFICATION_RESEND_TOO_SOON(429, "Please wait before requesting another verification email"),
+    PASSWORD_RESET_TOKEN_INVALID(400, "Password reset token is invalid or has already been used"),
+    PASSWORD_RESET_TOKEN_EXPIRED(400, "Password reset token has expired"),
 
     // --- Resource ---
     RESOURCE_NOT_FOUND(404, "Resource not found"),

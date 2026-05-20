@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.woodcert.auction.feature.identity.entity.Role;
 import com.woodcert.auction.feature.identity.entity.User;
 
+import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
 
@@ -19,6 +20,7 @@ public record UserProfileRes(
         String avatarUrl,
         String status,
         List<String> roles,
+        Instant createdAt,
         boolean hasSellerProfile
 ) {
     public static UserProfileRes fromEntity(User user, boolean hasSellerProfile, String avatarUrl) {
@@ -35,6 +37,7 @@ public record UserProfileRes(
                 avatarUrl,
                 user.getStatus().name(),
                 roles,
+                user.getCreatedAt(),
                 hasSellerProfile
         );
     }

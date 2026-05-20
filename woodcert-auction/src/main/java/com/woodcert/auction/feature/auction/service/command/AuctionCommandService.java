@@ -14,10 +14,14 @@ import com.woodcert.auction.feature.auction.service.AuctionRedisService;
 import com.woodcert.auction.feature.auction.service.assembler.AuctionResponseAssembler;
 import com.woodcert.auction.feature.auction.service.policy.AuctionPolicy;
 import com.woodcert.auction.feature.auction.service.runtime.AuctionRuntimeSnapshot;
+import com.woodcert.auction.feature.catalog.entity.AppraisalReport;
 import com.woodcert.auction.feature.catalog.entity.Product;
+import com.woodcert.auction.feature.catalog.repository.AppraisalReportRepository;
 import com.woodcert.auction.feature.catalog.repository.ProductRepository;
+import com.woodcert.auction.feature.catalog.service.ProductImageHelper;
 import com.woodcert.auction.feature.finance.entity.WalletReferenceType;
 import com.woodcert.auction.feature.finance.service.WalletService;
+import com.woodcert.auction.feature.identity.service.SellerSummaryQueryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -36,6 +40,9 @@ public class AuctionCommandService {
     private final AuctionResponseAssembler responseAssembler;
     private final AuctionPolicy auctionPolicy;
     private final WalletService walletService;
+    private final ProductImageHelper productImageHelper;
+    private final AppraisalReportRepository appraisalReportRepository;
+    private final SellerSummaryQueryService sellerSummaryQueryService;
 
     @Transactional
     public AuctionDetailRes createAuctionSession(String sellerId, CreateAuctionSessionReq request) {
@@ -64,7 +71,7 @@ public class AuctionCommandService {
         AuctionSession savedSession = auctionSessionRepository.save(session);
         savedSession.setProduct(product);
 
-        return responseAssembler.toDetailRes(savedSession, product, AuctionRuntimeSnapshot.empty());
+        return toDetailRes(savedSession, product);
     }
 
     @Transactional
@@ -140,5 +147,21 @@ public class AuctionCommandService {
         if (!runtimeEndTime.isAfter(Instant.now())) {
             throw new AppException(ErrorCode.AUCTION_NOT_ACTIVE);
         }
+    }
+
+    private AuctionDetailRes toDetailRes(AuctionSession session, Product product) {
+        AppraisalReport appraisalReport = appraisalReportRepository.findByProductId(product.getId()).orElse(null);
+        SellerSummaryQueryService.SellerSummary seller = sellerSummaryQueryService
+                .findSellerSummary(product.getSellerId())
+                .orElse(null);
+
+        return responseAssembler.toDetailRes(
+                session,
+                product,
+                productImageHelper.findPrimaryImageUrl(product),
+                productImageHelper.findImageUrls(product),
+                appraisalReport,
+                seller,
+                AuctionRuntimeSnapshot.empty());
     }
 }

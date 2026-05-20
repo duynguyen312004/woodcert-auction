@@ -101,6 +101,8 @@ Cac cot:
 - tax_code             VARCHAR(50)   Ma so thue (ca nhan hoac doanh nghiep).
 - reputation_score     DECIMAL(3,2)  Diem uy tin (VD: 4.85), default: 5.00,
                                       tinh toan dua tren danh gia giao dich.
+- created_at           TIMESTAMP     Thoi gian tao ho so nguoi ban.
+- updated_at           TIMESTAMP     Thoi gian cap nhat ho so nguoi ban.
 
 
 

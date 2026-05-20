@@ -1,6 +1,6 @@
 # Project Status
 
-> Last updated: 2026-05-08 | By: Codex | Session: auction-service-refactor-docs
+> Last updated: 2026-05-14 | By: Codex | Session: backend-cleanup-refactor
 >
 > AI: update this file at the end of every session when asked.
 > Follow this exact format. Keep it concise but decision-useful.
@@ -38,6 +38,11 @@
 - [x] Auction create/cancel race hardening: product/session pessimistic locks for simple conflict protection
 - [x] Auction list performance: participant counts use grouped query instead of per-session count loop
 - [x] Auction media reuse: response assembly uses `ProductImageHelper`
+- [x] Auth password reset flow implemented and refactored into `PasswordResetService`, `IdentityTokenService`, and `IdentityEmailService`
+- [x] Password reset tokens are stored as SHA-256 hashes, request cooldown is enforced, raw reset/verification links are not logged, and reset success revokes refresh tokens
+- [x] Refresh cookie emission now uses `ResponseCookie` with explicit HttpOnly/Secure/SameSite/Path/Max-Age behavior
+- [x] Public auction list filters hardened for status, material, categoryName, priceMin, and priceMax
+- [x] Auction read enrichment boundary cleaned: seller summaries come from identity service and `AuctionResponseAssembler` is a pure mapper
 
 ## In Progress
 - Fulfillment/order flow is the next major domain after auction winner settlement is stable
@@ -49,6 +54,7 @@
 - Repair job for rare close-time partial settlement after terminal DB commit
 
 ## Warnings
+- `mvn test` passed on 2026-05-14 after the backend cleanup/refactor (204 tests)
 - `.\mvnw.cmd -Dtest=!WoodcertAuctionApplicationTests test` passed after the auction service refactor
 - `.\mvnw.cmd clean test` still requires a reachable MySQL instance for `WoodcertAuctionApplicationTests.contextLoads`
 - Do not start fulfillment/dispute before auction winner flow and finance settlement contract are stable
@@ -65,6 +71,7 @@
 
 ### Phase 1 - Identity & Access
 - [x] Auth/session APIs
+- [x] Forgot/reset password with hashed one-time tokens, cooldown, and refresh-token revocation
 - [x] Profile, seller profile, address, and location APIs
 - [x] Avatar APIs under identity using shared media services
 
@@ -129,6 +136,7 @@
 - [x] Product/session pessimistic locks for create/cancel race protection
 - [x] Grouped participant counts for public/seller auction lists
 - [x] Auction response image selection reused through `ProductImageHelper`
+- [x] Public auction filters and read enrichment boundary cleanup
 
 ### Phase 4 - Fulfillment & Dispute
 - [ ] Order, shipment, dispute domain

@@ -18,6 +18,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Instant;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -55,6 +56,7 @@ class UserProfileServiceImplTest {
         assertEquals("user-1", result.id());
         assertEquals("user@example.com", result.email());
         assertEquals(2, result.roles().size());
+        assertEquals(Instant.parse("2026-03-28T10:00:00Z"), result.createdAt());
         assertTrue(result.hasSellerProfile());
     }
 
@@ -171,6 +173,7 @@ class UserProfileServiceImplTest {
         user.setPhoneNumber(phoneNumber);
         user.setStatus(UserStatus.ACTIVE);
         user.setRoles(Set.of(bidderRole, sellerRole));
+        user.setCreatedAt(Instant.parse("2026-03-28T10:00:00Z"));
         return user;
     }
 }

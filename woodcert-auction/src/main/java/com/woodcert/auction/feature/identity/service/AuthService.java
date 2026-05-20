@@ -47,4 +47,15 @@ public interface AuthService {
      * @param rawRefreshToken the raw (unhashed) refresh token
      */
     void logout(String rawRefreshToken);
+
+    /**
+     * Initiate password reset flow. Always returns 200 to prevent email enumeration.
+     * If the email is registered, a reset link is sent.
+     */
+    void requestPasswordReset(String email);
+
+    /**
+     * Complete password reset. Validates token, updates password, invalidates token.
+     */
+    void resetPassword(String rawToken, String newPassword);
 }

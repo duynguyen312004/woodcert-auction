@@ -1,8 +1,8 @@
 package com.woodcert.auction.feature.identity.service;
 
+import com.woodcert.auction.core.config.EmailVerificationProperties;
 import com.woodcert.auction.core.exception.AppException;
 import com.woodcert.auction.core.exception.ErrorCode;
-import com.woodcert.auction.core.config.EmailVerificationProperties;
 import com.woodcert.auction.core.security.JwtService;
 import com.woodcert.auction.feature.identity.dto.request.LoginReq;
 import com.woodcert.auction.feature.identity.dto.request.RegisterReq;
@@ -19,11 +19,8 @@ import com.woodcert.auction.feature.identity.repository.RefreshTokenRepository;
 import com.woodcert.auction.feature.identity.repository.RoleRepository;
 import com.woodcert.auction.feature.identity.repository.UserRepository;
 import com.woodcert.auction.feature.identity.util.IdentityNormalizationUtils;
-import org.springframework.beans.factory.ObjectProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -31,15 +28,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -59,7 +50,9 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final EmailVerificationProperties emailVerificationProperties;
-    private final ObjectProvider<JavaMailSender> mailSenderProvider;
+    private final IdentityTokenService identityTokenService;
+    private final IdentityEmailService identityEmailService;
+    private final PasswordResetService passwordResetService;
 
     @Override
     @Transactional
@@ -144,7 +137,8 @@ public class AuthServiceImpl implements AuthService {
             throw new AppException(ErrorCode.EMAIL_VERIFICATION_TOKEN_INVALID);
         }
 
-        EmailVerificationToken verificationToken = emailVerificationTokenRepository.findByTokenHash(hashToken(rawToken))
+        EmailVerificationToken verificationToken = emailVerificationTokenRepository
+                .findByTokenHash(identityTokenService.hash(rawToken))
                 .orElseThrow(() -> new AppException(ErrorCode.EMAIL_VERIFICATION_TOKEN_INVALID));
 
         if (verificationToken.getVerifiedAt() != null) {
@@ -202,7 +196,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public RefreshRes refresh(String rawRefreshToken) {
-        String tokenHash = hashToken(rawRefreshToken);
+        String tokenHash = identityTokenService.hash(rawRefreshToken);
 
         RefreshToken storedToken = refreshTokenRepository.findByToken(tokenHash)
                 .orElseThrow(() -> new AppException(ErrorCode.TOKEN_INVALID));
@@ -238,12 +232,22 @@ public class AuthServiceImpl implements AuthService {
             return;
         }
 
-        String tokenHash = hashToken(rawRefreshToken);
+        String tokenHash = identityTokenService.hash(rawRefreshToken);
         refreshTokenRepository.findByToken(tokenHash).ifPresent(token -> {
             token.setRevoked(true);
             refreshTokenRepository.save(token);
             log.info("User {} logged out", token.getUser().getEmail());
         });
+    }
+
+    @Override
+    public void requestPasswordReset(String email) {
+        passwordResetService.requestPasswordReset(email);
+    }
+
+    @Override
+    public void resetPassword(String rawToken, String newPassword) {
+        passwordResetService.resetPassword(rawToken, newPassword);
     }
 
     // --- Private helpers ---
@@ -253,7 +257,7 @@ public class AuthServiceImpl implements AuthService {
      */
     private void saveRefreshToken(User user, String rawToken) {
         RefreshToken refreshToken = new RefreshToken();
-        refreshToken.setToken(hashToken(rawToken));
+        refreshToken.setToken(identityTokenService.hash(rawToken));
         refreshToken.setUser(user);
         refreshToken.setExpiresAt(Instant.now().plusSeconds(jwtService.getRefreshTokenExpiration()));
         refreshToken.setRevoked(false);
@@ -265,80 +269,15 @@ public class AuthServiceImpl implements AuthService {
      * email.
      */
     private void issueAndSendVerificationToken(User user) {
-        String rawToken = UUID.randomUUID().toString();
+        String rawToken = identityTokenService.generateRawToken();
 
         EmailVerificationToken verificationToken = new EmailVerificationToken();
-        verificationToken.setTokenHash(hashToken(rawToken));
+        verificationToken.setTokenHash(identityTokenService.hash(rawToken));
         verificationToken.setUser(user);
         verificationToken.setExpiresAt(Instant.now().plusSeconds(emailVerificationProperties.getTokenTtlSeconds()));
         verificationToken.setVerifiedAt(null);
         emailVerificationTokenRepository.save(verificationToken);
 
-        sendVerificationEmail(user, rawToken);
+        identityEmailService.sendVerificationEmail(user, rawToken);
     }
-
-    /**
-     * Send the verification email if SMTP is configured.
-     * If no mail sender is available, log the link so the dev environment remains
-     * usable.
-     */
-    private void sendVerificationEmail(User user, String rawToken) {
-        String verificationUrl = buildVerificationUrl(rawToken);
-        JavaMailSender mailSender = mailSenderProvider.getIfAvailable();
-
-        if (mailSender == null) {
-            log.warn("Mail sender is not configured. Verification link for {}: {}", user.getEmail(), verificationUrl);
-            return;
-        }
-
-        try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            if (hasText(emailVerificationProperties.getFromAddress())) {
-                message.setFrom(emailVerificationProperties.getFromAddress());
-            }
-            message.setTo(user.getEmail());
-            message.setSubject(emailVerificationProperties.getSubject());
-            message.setText("""
-                    Hello %s,
-
-                    Please verify your email address by clicking the link below:
-                    %s
-
-                    This link expires in %d minutes.
-                    """.formatted(
-                    user.getFullName(),
-                    verificationUrl,
-                    Math.max(1, emailVerificationProperties.getTokenTtlSeconds() / 60)));
-            mailSender.send(message);
-        } catch (Exception ex) {
-            log.warn(
-                    "Failed to send verification email to {}. The account was created, but the message could not be delivered.",
-                    user.getEmail(), ex);
-        }
-    }
-
-    private String buildVerificationUrl(String rawToken) {
-        return emailVerificationProperties.getVerificationLinkBaseUrl()
-                + "?token="
-                + URLEncoder.encode(rawToken, StandardCharsets.UTF_8);
-    }
-
-    /**
-     * Hash a raw token using SHA-256.
-     * Stored in DB as CHAR(64) hex string.
-     */
-    private String hashToken(String rawToken) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(rawToken.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(hash);
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("SHA-256 algorithm not available", e);
-        }
-    }
-
-    private boolean hasText(String value) {
-        return value != null && !value.trim().isEmpty();
-    }
-
 }

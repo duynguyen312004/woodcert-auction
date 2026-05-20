@@ -23,3 +23,10 @@ nbdist/
 
 ### Common logs ###
 *.log
+
+
+#cursor 
+.cursor/
+
+#
+design.md

@@ -29,14 +29,16 @@ public class GlobalExceptionHandler {
 
     /**
      * Handle AppException — all business logic exceptions.
+     * Includes machine-readable errorCode when the exception was created from an ErrorCode enum.
      */
     @ExceptionHandler(AppException.class)
     public ResponseEntity<ApiResponse<Void>> handleAppException(AppException ex) {
         log.warn("AppException: statusCode={}, message={}", ex.getStatusCode(), ex.getMessage());
 
+        String errorCode = ex.getErrorCode() != null ? ex.getErrorCode().name() : null;
         return ResponseEntity
                 .status(ex.getStatusCode())
-                .body(ApiResponse.error(ex.getStatusCode(), ex.getMessage()));
+                .body(ApiResponse.error(ex.getStatusCode(), ex.getMessage(), errorCode));
     }
 
     /**

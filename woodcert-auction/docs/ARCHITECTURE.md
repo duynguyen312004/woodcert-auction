@@ -89,6 +89,36 @@ Client → POST /api/v1/auth/refresh (refresh token)
 
 ---
 
+### Password Reset Flow
+
+```text
+Forgot password:
+Client -> POST /api/v1/auth/forgot-password
+-> AuthController
+-> AuthService facade
+-> PasswordResetService
+-> Find eligible ACTIVE account by normalized email
+-> Enforce per-account cooldown
+-> Generate raw one-time token and store only SHA-256 hash
+-> IdentityEmailService sends reset link when SMTP is configured
+-> Return generic 200 response for all non-validation cases
+
+Reset password:
+Client -> POST /api/v1/auth/reset-password
+-> Hash submitted raw token
+-> Validate token exists, unused, and not expired
+-> Update BCrypt password hash
+-> Mark reset token used
+-> Revoke active refresh tokens for the account
+-> Return success
+```
+
+Refresh tokens are returned in cookies built with `ResponseCookie`, including `HttpOnly`, configured `Secure`, configured `SameSite`, `Path`, and `Max-Age`.
+
+Raw password-reset tokens, reset links, and email-verification links must not be written to application logs, including local fallback paths when SMTP is not configured.
+
+---
+
 ### JWT Strategy
 
 The system does not implement a full OAuth2 Authorization Server.
@@ -119,22 +149,25 @@ Client → POST /api/v1/bids (Session ID, Amount)
 → Return 200 OK
 ```
 
-### Auction Read Flow (Redis Overlay)
+### Auction Read Flow (Criteria + Redis Overlay)
 
 ```text
 Client -> GET /api/v1/auctions or /api/v1/auctions/{id}
 -> AuctionController
 -> AuctionServiceImpl facade
 -> AuctionQueryService
--> MySQL query for sessions/products
+-> PublicAuctionSearchCriteria captures list filters
+-> MySQL query for sessions/products with optional material/category/price filters
+-> Catalog enrichment loads category, appraisal, and product image read data in bulk
+-> Identity enrichment loads seller summaries through SellerSummaryQueryService
 -> GROUP BY participant count for list views
 -> For ACTIVE sessions only: read Redis currentPrice/endTime
--> AuctionResponseAssembler overlays Redis fields when present
+-> AuctionResponseAssembler maps DTOs and overlays Redis fields when present
 -> If Redis state/field is missing: fall back to MySQL snapshot
 -> Return public/seller DTO
 ```
 
-Default public list statuses are `WAITING` and `ACTIVE`. Explicit public status filter accepts only `WAITING`, `ACTIVE`, and `ENDED_SUCCESS`.
+Default public list statuses are `WAITING` and `ACTIVE`. Explicit public status filter accepts only `WAITING`, `ACTIVE`, and `ENDED_SUCCESS`. Unknown `categoryName` returns an empty page, while `priceMin > priceMax` returns `INVALID_REQUEST`. Price filters use the persisted DB snapshot before Redis overlay.
 
 ### Auction Command Flow (Create/Cancel/Register)
 
@@ -197,7 +230,8 @@ feature/
 
 - auction depends on:
   - catalog (APPRAISED product as auction input)
-  - catalog `ProductImageHelper` for auction response images
+  - catalog repositories/helpers for product, category, appraisal, and product-image read enrichment
+  - identity `SellerSummaryQueryService` for seller display/reputation read enrichment
   - finance (Freeze deposit)
   - Redis for ACTIVE runtime state
 

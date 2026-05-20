@@ -14,7 +14,8 @@ This module manages the complete lifecycle of an auction session:
 Internal implementation is split by responsibility:
 - `command.AuctionCommandService`: create, cancel, register.
 - `query.AuctionQueryService`: public list/detail and seller list.
-- `assembler.AuctionResponseAssembler`: response DTO construction and Redis snapshot overlay.
+- `query.PublicAuctionSearchCriteria`: internal criteria record for public list filters.
+- `assembler.AuctionResponseAssembler`: pure response DTO mapping and Redis snapshot overlay; it must not access repositories.
 - `policy.AuctionPolicy`: auction rule constants and validation.
 - `runtime.AuctionRuntimeSnapshotService`: read-only Redis runtime snapshot for `ACTIVE` sessions.
 
@@ -34,6 +35,10 @@ Read APIs overlay Redis values only when `status = ACTIVE`. If Redis state or in
 ## Public Visibility
 - Default public auction list statuses: `WAITING`, `ACTIVE`.
 - Explicit public status filter accepts only: `WAITING`, `ACTIVE`, `ENDED_SUCCESS`.
+- Public list supports `material`, `categoryName`, `priceMin`, and `priceMax` filters.
+- Unknown `categoryName` returns an empty page.
+- `priceMin > priceMax` returns `INVALID_REQUEST`.
+- `priceMin`/`priceMax` filter persisted MySQL `current_price` snapshot before Redis overlay.
 - `CANCELED` and `ENDED_FAILED` are not public-facing.
 - Public detail hides `reservePrice`.
 
@@ -72,6 +77,12 @@ TTL = `(endTime - now) + stateRetentionAfterEnd`.
 Auction responses must reuse `ProductImageHelper` for product image URLs:
 - list views use batch primary image loading.
 - detail view uses helper methods for primary image and all image URLs.
+
+Catalog/category/appraisal enrichment belongs in `AuctionQueryService` or command/query orchestration, not in the assembler.
+
+### Identity (`SellerSummaryQueryService`)
+Auction read code must obtain seller display name and reputation through `SellerSummaryQueryService`.
+Do not inject `UserRepository` or `SellerProfileRepository` directly into auction read services.
 
 ### WebSocket (`AuctionBroadcastService`)
 - Endpoint: `/ws-auction` (SockJS)

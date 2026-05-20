@@ -6,11 +6,16 @@ import com.woodcert.auction.feature.auction.dto.response.AuctionDetailRes;
 import com.woodcert.auction.feature.auction.dto.response.AuctionListRes;
 import com.woodcert.auction.feature.auction.dto.response.SellerAuctionListRes;
 
+import java.math.BigDecimal;
+
 public interface AuctionService {
 
     AuctionDetailRes createAuctionSession(String sellerId, CreateAuctionSessionReq request);
 
-    PaginationResponse<AuctionListRes> getPublicAuctions(int page, int size, String status);
+    PaginationResponse<AuctionListRes> getPublicAuctions(
+            int page, int size, String status,
+            String material, String categoryName,
+            BigDecimal priceMin, BigDecimal priceMax);
 
     AuctionDetailRes getPublicAuctionDetail(Long auctionId);
 

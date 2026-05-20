@@ -1,6 +1,6 @@
 # Project Status
 
-> Last updated: 2026-05-09 | By: Codex | Session: fe-foundation-scaffold
+> Last updated: 2026-05-13 | By: AI Agent | Session: auth-session-recovery-fix
 >
 > Update this file at the end of FE planning or implementation sessions.
 > Keep it concise and decision-useful.
@@ -23,10 +23,18 @@
 - [x] React Router v7 route composition scaffolded
 - [x] Shared Axios client, auth store, QueryClient provider, typed env config, and app shell created
 - [x] ESLint, Prettier, Husky, lint-staged, Vitest, MSW, and Playwright configured
+- [x] Auth UI and logic (Login, Register, Verify Email) fully implemented in Vietnamese, integrating real BE APIs
+- [x] ProtectedRoute component with three-state guard (`loading` → `anonymous` → `authenticated`)
+- [x] Session recovery via silent refresh at app boot (`shared/auth/auth-initializer.ts`)
+- [x] Backend refresh-cookie properties made configurable (`RefreshCookieProperties`), `Secure` flag disabled in local profile
+- [x] Feature ownership refactored: auction hooks/components in `features/auction`, catalog hooks/components in `features/catalog`, `features/home` is pure composition only
+- [x] `features/catalog` has public `index.ts` (`CategoryFilter`, `useCategories`, `Category` type)
+- [x] `features/auction` has public `index.ts` (`AuctionListContent`, `usePublicAuctions`, `ArtAuctionCard`, types)
+- [x] Query keys aligned to convention: `["auctions", "list", params]`, `["catalog", "categories"]`
 
 ## In Progress
 
-- Next major step is implementing the public auction list/detail experience
+- Auction detail page (`GET /auctions/{id}`) and route `/auctions/:id`
 
 ## Deferred
 
@@ -39,15 +47,16 @@
 
 - Backend auction runtime is ready for FE integration, and FE foundation code now exists
 - Backend docs contain some legacy status notes that should later be reconciled with the current passing test suite
-- Cookie-authenticated refresh flow requires backend CORS and CSRF behavior to stay aligned with FE docs
+- CSRF mitigation for cookie-authenticated flows relies on `SameSite` behavior; stronger CSRF token strategy is deferred
 
 ## Next Tasks
 
-1. Implement public auction list and detail
-2. Implement buyer wallet, registration, and bidding room
-3. Implement seller and appraiser workflows
-4. Add websocket runtime only when auction detail or bidding room lifecycle is implemented
-5. Expand automated coverage as feature flows are added
+1. Auction detail: `GET /auctions/{id}` → page at `/auctions/:id`, wire `ProtectedRoute` for register/bid actions
+2. Auction list page at `/auctions` with server-side filter by status/category and pagination
+3. Wallet: `GET /wallets/me` → replace hardcoded balance in `Header`; `WalletWidget` receives real data from `features/wallet`
+4. Implement buyer wallet and bidding room (Phase 3)
+5. Add websocket runtime scoped to bidding room route
+6. Expand automated coverage as feature flows are added
 
 ## Milestones
 
@@ -69,14 +78,16 @@
 
 ### Phase 2 - Public Auction Experience
 
-- [ ] Category data wiring
-- [ ] Auction list
-- [ ] Auction detail
-- [ ] Auction countdown display
+- [x] Category data wiring (`GET /categories` → `useCategories` → `CategoryFilter`)
+- [x] Auction list (`GET /auctions` → `usePublicAuctions` → `AuctionListContent` on home page)
+- [ ] Auction list page at `/auctions` with full filter/pagination
+- [ ] Auction detail page at `/auctions/:id`
+- [ ] Auction countdown display (server-time offset — `shared/time/`)
 
 ### Phase 3 - Buyer Runtime
 
-- [ ] Login and session recovery
+- [x] Login and session recovery
+- [x] Registration and verify email
 - [ ] Wallet and transactions
 - [ ] Auction registration
 - [ ] Realtime bidding room

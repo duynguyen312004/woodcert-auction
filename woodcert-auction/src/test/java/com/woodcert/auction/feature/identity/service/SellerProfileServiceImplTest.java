@@ -17,6 +17,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.Optional;
 
@@ -70,6 +71,8 @@ class SellerProfileServiceImplTest {
         when(sellerProfileRepository.save(any(SellerProfile.class))).thenAnswer(invocation -> {
             SellerProfile sellerProfile = invocation.getArgument(0);
             sellerProfile.setUserId(user.getId());
+            sellerProfile.setCreatedAt(Instant.parse("2026-03-28T10:00:00Z"));
+            sellerProfile.setUpdatedAt(Instant.parse("2026-03-28T10:00:00Z"));
             return sellerProfile;
         });
 
@@ -77,6 +80,7 @@ class SellerProfileServiceImplTest {
 
         assertEquals("user-1", result.userId());
         assertEquals("Xuong go ABC", result.storeName());
+        assertEquals(Instant.parse("2026-03-28T10:00:00Z"), result.createdAt());
         assertTrue(user.getRoles().stream().anyMatch(role -> "ROLE_SELLER".equals(role.getName())));
     }
 
