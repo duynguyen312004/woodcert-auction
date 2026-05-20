@@ -1,13 +1,5 @@
-import { apiClient } from "@/shared/api/client";
-import type { ApiResponse } from "@/shared/api/types";
-import { setAccessToken, useAuthStore } from "@/shared/auth/auth-store";
-
-type RefreshPayload = {
-  accessToken?: string;
-  token?: string;
-};
-
-type RefreshResult = RefreshPayload | string | null;
+import { refreshAccessToken } from "@/shared/api/client";
+import { useAuthStore } from "@/shared/auth/auth-store";
 
 let initializationPromise: Promise<void> | null = null;
 let hasInitialized = false;
@@ -27,22 +19,7 @@ let hasInitialized = false;
  */
 async function runAuthInitialization(): Promise<void> {
   try {
-    const response = await apiClient.request<ApiResponse<RefreshResult>>({
-      method: "POST",
-      url: "/auth/refresh",
-      withCredentials: true,
-      skipAuthRefresh: true,
-    });
-
-    const result = response.data.data;
-    const nextAccessToken =
-      typeof result === "string" ? result : (result?.accessToken ?? result?.token);
-
-    if (nextAccessToken) {
-      setAccessToken(nextAccessToken);
-    } else {
-      useAuthStore.getState().setStatus("anonymous");
-    }
+    await refreshAccessToken();
   } catch {
     // Cookie absent, expired, or revoked — start as anonymous.
     useAuthStore.getState().setStatus("anonymous");

@@ -4,6 +4,7 @@ import { RouterProvider } from "react-router";
 import { ErrorBoundary } from "@/app/providers/ErrorBoundary";
 import { QueryProvider } from "@/app/providers/QueryProvider";
 import { router } from "@/app/router";
+import { AuthSessionEffects } from "@/shared/auth/AuthSessionEffects";
 import { initializeAuth } from "@/shared/auth/auth-initializer";
 import { NotificationProvider } from "@/shared/ui/notification";
 
@@ -25,6 +26,7 @@ export function App() {
       <Suspense fallback={<AppFallback />}>
         <QueryProvider>
           <NotificationProvider>
+            <AuthSessionEffects />
             <RouterProvider router={router} />
           </NotificationProvider>
         </QueryProvider>

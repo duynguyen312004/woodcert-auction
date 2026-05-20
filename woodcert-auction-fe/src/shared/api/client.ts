@@ -53,7 +53,7 @@ async function requestRefreshToken() {
   return nextAccessToken;
 }
 
-function getSharedRefreshPromise() {
+export function refreshAccessToken() {
   refreshPromise ??= requestRefreshToken().finally(() => {
     refreshPromise = null;
   });
@@ -104,7 +104,7 @@ apiClient.interceptors.response.use(
     originalConfig._retry = true;
 
     try {
-      const nextAccessToken = await getSharedRefreshPromise();
+      const nextAccessToken = await refreshAccessToken();
       originalConfig.headers.Authorization = `Bearer ${nextAccessToken}`;
       originalConfig.withCredentials = true;
 
