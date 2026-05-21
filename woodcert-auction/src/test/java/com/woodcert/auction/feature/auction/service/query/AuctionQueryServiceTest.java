@@ -46,6 +46,12 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+/**
+ * Test unit cho phần đọc dữ liệu đấu giá.
+ *
+ * Bao phủ kiểm tra filter/trạng thái, ghép dữ liệu danh sách public, đếm người
+ * tham gia ở danh sách seller và truyền dữ liệu runtime vào assembler.
+ */
 @ExtendWith(MockitoExtension.class)
 class AuctionQueryServiceTest {
 
@@ -212,12 +218,28 @@ class AuctionQueryServiceTest {
                 .thenReturn(List.of(countView(AUCTION_ID, 5L)));
         when(runtimeSnapshotService.loadSnapshots(List.of(session))).thenReturn(Map.of(AUCTION_ID, snapshot));
 
-        queryService.getSellerAuctions("seller-1", 1, 10);
+        queryService.getSellerAuctions("seller-1", 1, 10, null);
 
         ArgumentCaptor<AuctionRuntimeSnapshot> snapshotCaptor = ArgumentCaptor.forClass(AuctionRuntimeSnapshot.class);
         verify(responseAssembler).toSellerListRes(eq(session), eq("Wood statue"), eq(5L), snapshotCaptor.capture());
         assertThat(snapshotCaptor.getValue()).isSameAs(snapshot);
         verify(auctionParticipantRepository).countByAuctionSessionIdsGrouped(List.of(AUCTION_ID));
+    }
+
+    @Test
+    void getSellerAuctions_filtersByStatusWhenProvided() {
+        when(auctionSessionRepository.findByProductSellerIdAndStatus(eq("seller-1"), eq(AuctionSessionStatus.ACTIVE), any()))
+                .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 10), 0));
+        when(runtimeSnapshotService.loadSnapshots(List.of())).thenReturn(Map.of());
+
+        var result = queryService.getSellerAuctions("seller-1", 1, 10, "ACTIVE");
+
+        assertThat(result.result()).isEmpty();
+        verify(auctionSessionRepository).findByProductSellerIdAndStatus(
+                eq("seller-1"),
+                eq(AuctionSessionStatus.ACTIVE),
+                any());
+        verify(auctionSessionRepository, never()).findByProductSellerId(eq("seller-1"), any());
     }
 
     private AuctionSession session(AuctionSessionStatus status) {

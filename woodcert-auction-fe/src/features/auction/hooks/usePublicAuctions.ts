@@ -1,14 +1,21 @@
+/**
+ * Hook lấy danh sách đấu giá public.
+ *
+ * Hook này đổi filter trên UI thành query param cho backend, lấy dữ liệu phân
+ * trang và tạo thêm danh sách option cho bộ lọc.
+ */
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
 import { getPublicAuctions } from "../api/auctions";
-import type { ArtAuction, AuctionFilters, AuctionStatus } from "../types";
+import type { ArtAuction, AuctionFilters } from "../types";
 
 const EMPTY_AUCTIONS: ArtAuction[] = [];
 
 export function usePublicAuctions(filters: AuctionFilters = {}, page = 1, size = 9) {
   const { status, categoryName, woodType, materials, priceMin, priceMax } = filters;
 
+  // Backend nhận nhiều chất liệu bằng một chuỗi, ngăn cách bởi dấu phẩy.
   const materialParam = materials && materials.length > 0 ? materials.join(",") : undefined;
 
   const auctionsQuery = useQuery({
@@ -21,7 +28,7 @@ export function usePublicAuctions(filters: AuctionFilters = {}, page = 1, size =
       getPublicAuctions({
         page,
         size,
-        status: status as AuctionStatus | undefined,
+        status,
         material: materialParam,
         categoryName,
         priceMin,
@@ -45,6 +52,7 @@ export function usePublicAuctions(filters: AuctionFilters = {}, page = 1, size =
   const visibleAuctions = useMemo(() => {
     let result = allAuctions;
 
+    // Khi đã lọc chất liệu ở server thì tránh lọc chồng thêm trên dữ liệu cũ.
     if (categoryName && !materialParam) {
       result = result.filter((a) => a.categoryName.toLowerCase() === categoryName.toLowerCase());
     }

@@ -348,7 +348,16 @@ AND delivered_at <= NOW() - 72h
 AND NOT EXISTS (dispute)
 ```
 
-## 14. AI Strict Rules (MOST IMPORTANT)
+## 14. Quy tắc chú thích
+
+- File mới nên có comment ngắn ở đầu file/class để nói file đó dùng làm gì và được gọi trong luồng nào.
+- Controller, service, repository, DTO, policy, scheduler, runtime helper và test quan trọng nên có comment mô tả vai trò chính.
+- Method hoặc query khó hiểu nên có comment ngắn giải thích vì sao cần làm vậy, nhất là lock, transaction, Redis runtime, grouped query, status mapping.
+- Hằng số khó hiểu phải có comment nói rõ ý nghĩa hoặc ngưỡng giá trị.
+- Comment viết bằng tiếng Việt tự nhiên, đơn giản, không viết dài và không nhắc lại code quá hiển nhiên.
+- Khi AI tạo file mới hoặc thêm use case mới, mặc định phải thêm comment theo các rule trên.
+
+## 15. AI Strict Rules (MOST IMPORTANT)
 
 AI MUST:
 
@@ -359,6 +368,7 @@ AI MUST:
 - Use @Version where required
 - Use BigDecimal for money
 - Respect Redis-first architecture for bidding
+- Thêm comment tiếng Việt ngắn gọn cho file, method và hằng số quan trọng mới
 
 AI MUST NOT:
 
@@ -368,7 +378,7 @@ AI MUST NOT:
 - Skip transaction logs
 - Use MySQL for real-time bidding logic
 
-## 15. Commit Checklist
+## 16. Commit Checklist
 
 Before finishing:
 
@@ -379,14 +389,15 @@ Before finishing:
 - Money uses BigDecimal
 - Redis used for bidding logic
 - No business logic in Controller
+- New important files/classes/constants have clear Vietnamese comments
 
-## 16. Auth Injection
+## 17. Auth Injection
 
 - Controllers SHOULD use `@CurrentUserId String userId` when they need the authenticated user id
 - Do not inject `Jwt` directly into controllers just to read `sub`
 - The extraction logic belongs in MVC argument resolver infrastructure under `core/auth`
 
-## 17. Media & Uploads
+## 18. Media & Uploads
 
 - Always persist `media_assets` as the source of truth, avoiding raw Cloudinary URLs in database domain tables.
 - Media deletion is asynchronous: background jobs cleanup Cloudinary resources instead of relying on frontend deletes.

@@ -1,3 +1,9 @@
+/**
+ * Test nhanh cách accountApi gọi request.
+ *
+ * Test thay adapter của Axios để kiểm tra đúng endpoint, method và payload mà
+ * không cần chạy backend hay mock React Query.
+ */
 import {
   AxiosHeaders,
   type AxiosAdapter,
@@ -136,5 +142,43 @@ describe("accountApi avatar endpoints", () => {
     apiClient.defaults.adapter = adapter;
 
     await expect(accountApi.deleteAvatar()).resolves.toMatchObject({ avatarUrl: null });
+  });
+
+  it("creates a seller profile with nullable tax code", async () => {
+    const adapter: AxiosAdapter = async (config) => {
+      expect(config.method).toBe("post");
+      expect(config.url).toBe("/users/me/seller-profile");
+      expect(parseRequestBody(config)).toEqual({
+        storeName: "WoodCert Studio",
+        identityCardNumber: "012345678901",
+        taxCode: null,
+      });
+
+      return createResponse(
+        config,
+        201,
+        createApiResponse(
+          {
+            userId: "user-1",
+            storeName: "WoodCert Studio",
+            identityCardNumber: "012345678901",
+            taxCode: null,
+            reputationScore: 5,
+            createdAt: "2026-05-21T00:00:00Z",
+            updatedAt: "2026-05-21T00:00:00Z",
+          },
+          201,
+        ),
+      );
+    };
+    apiClient.defaults.adapter = adapter;
+
+    await expect(
+      accountApi.createSellerProfile({
+        storeName: "WoodCert Studio",
+        identityCardNumber: "012345678901",
+        taxCode: "",
+      }),
+    ).resolves.toMatchObject({ storeName: "WoodCert Studio" });
   });
 });

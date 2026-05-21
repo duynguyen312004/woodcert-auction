@@ -1,10 +1,18 @@
+/**
+ * Card đấu giá dùng ở các màn public.
+ *
+ * Component này có cả kiểu nền tối ở trang home và kiểu sáng ở trang danh sách.
+ * Phần badge thời gian nằm ở đây để card tự đổi khi phiên sắp kết thúc.
+ */
 import { ShieldCheck } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 
+import { formatTimeRemaining } from "@/shared/hooks/useCountdown";
 import { formatVND } from "@/shared/lib/format";
 import { cn } from "@/shared/lib/utils";
 
+import { AUCTION_STATUS_LABEL } from "../constants/auctionStatus";
 import type { ArtAuction } from "../types";
 
 interface ArtAuctionCardProps {
@@ -14,29 +22,11 @@ interface ArtAuctionCardProps {
 
 const ENDING_SOON_MS = 6 * 60 * 60 * 1000;
 
-function formatTimeRemaining(targetTime: string, now: number) {
-  const targetTimestamp = new Date(targetTime).getTime();
-  if (Number.isNaN(targetTimestamp)) return "--:--:--";
-  const remainingMs = Math.max(0, targetTimestamp - now);
-  if (remainingMs === 0) return "Đã kết thúc";
-
-  const totalSeconds = Math.floor(remainingMs / 1000);
-  const days = Math.floor(totalSeconds / 86400);
-  const hours = Math.floor((totalSeconds % 86400) / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-
-  if (days > 0) {
-    return `${days} ngày ${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
-  }
-
-  return [hours, minutes, seconds].map((v) => v.toString().padStart(2, "0")).join(" : ");
-}
-
+// Nếu còn dưới 6 tiếng thì hiển thị trạng thái "sắp kết thúc".
 function getStatusBadge(auction: ArtAuction, now: number, theme: "dark" | "light") {
   if (auction.status === "WAITING") {
     return {
-      label: "Sắp mở",
+      label: AUCTION_STATUS_LABEL.WAITING,
       className: theme === "light" ? "bg-stone-400 text-white" : "bg-sky-500 text-white",
       dot: false,
     };
@@ -55,14 +45,14 @@ function getStatusBadge(auction: ArtAuction, now: number, theme: "dark" | "light
     }
 
     return {
-      label: "Đang diễn ra",
+      label: AUCTION_STATUS_LABEL.ACTIVE,
       className: theme === "light" ? "bg-[#B5533E] text-white" : "bg-emerald-500 text-white",
       dot: theme === "dark",
     };
   }
 
   return {
-    label: "Đã kết thúc",
+    label: AUCTION_STATUS_LABEL[auction.status],
     className: theme === "light" ? "bg-stone-300 text-stone-600" : "bg-white/20 text-white/80",
     dot: false,
   };
@@ -84,7 +74,7 @@ export function ArtAuctionCard({ auction, cardTheme = "dark" }: ArtAuctionCardPr
 
   const timeRemaining = useMemo(() => {
     const target = auction.status === "WAITING" ? auction.startTime : auction.endTime;
-    return formatTimeRemaining(target, now);
+    return formatTimeRemaining(target, now, { separator: " : ", showDays: true });
   }, [auction.status, auction.startTime, auction.endTime, now]);
 
   const badge = useMemo(() => getStatusBadge(auction, now, cardTheme), [auction, now, cardTheme]);

@@ -1,6 +1,12 @@
+/**
+ * Kiểu dữ liệu và schema validate cho phần tài khoản.
+ *
+ * Các type mô phỏng dữ liệu backend trả về. Zod schema được dùng chung cho form
+ * cập nhật profile và form đăng ký seller.
+ */
 import { z } from "zod";
 
-// ── API response types ──────────────────────────────────────────
+// Kiểu dữ liệu API trả về.
 
 export interface UserProfile {
   id: string;
@@ -20,7 +26,6 @@ export interface SellerProfile {
   identityCardNumber: string;
   taxCode: string | null;
   reputationScore: number;
-  status?: "PENDING" | "APPROVED" | "REJECTED";
   createdAt: string;
   updatedAt: string;
 }
@@ -43,9 +48,11 @@ export interface AvatarUploadIntentPayload {
   fileSize: number;
 }
 
-// ── Zod schemas & inferred types ────────────────────────────────
+// Schema Zod và type suy ra từ schema.
 
 const humanNameRegex = /^[\p{L}\s'.-]+$/u;
+
+// Chấp nhận số Việt Nam dạng 0... hoặc +84...
 const vietnamesePhoneRegex = /^(0|\+84)(3|5|7|8|9)\d{8}$/;
 
 export const updateProfileSchema = z.object({
@@ -62,3 +69,28 @@ export const updateProfileSchema = z.object({
 });
 
 export type UpdateProfilePayload = z.infer<typeof updateProfileSchema>;
+
+const storeNameRegex = /^[\p{L}\d\s'.&-]+$/u;
+
+// CMND thường có 9 số, CCCD thường có 12 số.
+const identityCardNumberRegex = /^\d{9}(\d{3})?$/;
+
+// Mã số thuế có thể để trống, 10 số hoặc dạng chi nhánh có hậu tố -NNN.
+const taxCodeRegex = /^(\d{10}(-\d{3})?)?$/;
+
+export const createSellerProfileSchema = z.object({
+  storeName: z
+    .string()
+    .min(2, "Tên cửa hàng phải có từ 2 đến 100 ký tự.")
+    .max(100, "Tên cửa hàng phải có từ 2 đến 100 ký tự.")
+    .regex(storeNameRegex, "Tên cửa hàng chứa ký tự không hợp lệ."),
+  identityCardNumber: z
+    .string()
+    .regex(identityCardNumberRegex, "CCCD/CMND phải gồm đúng 9 hoặc 12 chữ số."),
+  taxCode: z
+    .string()
+    .max(50, "Mã số thuế không được vượt quá 50 ký tự.")
+    .regex(taxCodeRegex, "Mã số thuế phải có 10 chữ số hoặc dạng chi nhánh hợp lệ."),
+});
+
+export type CreateSellerProfilePayload = z.infer<typeof createSellerProfileSchema>;

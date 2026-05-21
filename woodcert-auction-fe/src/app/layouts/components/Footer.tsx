@@ -1,8 +1,15 @@
+/**
+ * Footer của phần trang công khai.
+ *
+ * PublicLayout dùng file này ở cuối các trang chính. Footer gom các link khám
+ * phá, link đăng ký seller và form nhận tin để các trang không phải viết lại.
+ */
 import type { FormEvent } from "react";
 import { useState } from "react";
 import { Link } from "react-router";
 
 import logoUrl from "@/assets/brand/logo.jpg";
+import { SELLER_PATHS } from "@/features/seller/constants/routes";
 
 const EXPLORE_LINKS = [
   { label: "Đấu giá đang mở", to: "/auctions" },
@@ -12,10 +19,9 @@ const EXPLORE_LINKS = [
 ];
 
 const SERVICE_LINKS = [
-  { label: "Đăng ký nghệ nhân", to: "#" },
-  { label: "Kiểm định WoodCert", to: "#" },
-  { label: "Vận chuyển chuyên nghiệp", to: "#" },
-  { label: "Tư vấn sưu tầm", to: "#" },
+  { label: "Đăng ký người bán", to: SELLER_PATHS.register },
+  { label: "Quản lý tài khoản", to: "/account" },
+  { label: "Tham gia đấu giá", to: "/auctions" },
 ];
 
 export function Footer() {
@@ -30,7 +36,7 @@ export function Footer() {
     <footer className="border-t border-white/10 bg-card/20 py-16">
       <div className="mx-auto max-w-[1280px] px-6">
         <div className="grid grid-cols-1 gap-12 md:grid-cols-4">
-          {/* Col 1: Brand */}
+          {/* Cột 1: thương hiệu */}
           <div className="md:col-span-1">
             <Link to="/" className="group mb-6 inline-flex items-center gap-3">
               <div className="relative h-7 w-7 overflow-hidden rounded ring-1 ring-primary/30 transition-all group-hover:ring-primary/60">
@@ -46,7 +52,7 @@ export function Footer() {
             </p>
           </div>
 
-          {/* Col 2: Khám phá */}
+          {/* Cột 2: khám phá */}
           <div>
             <h5 className="mb-6 text-sm font-bold uppercase tracking-widest text-foreground">
               Khám phá
@@ -65,7 +71,7 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Col 3: Dịch vụ */}
+          {/* Cột 3: dịch vụ */}
           <div>
             <h5 className="mb-6 text-sm font-bold uppercase tracking-widest text-foreground">
               Dịch vụ
@@ -84,7 +90,7 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Col 4: Newsletter */}
+          {/* Cột 4: nhận tin */}
           <div>
             <h5 className="mb-6 text-sm font-bold uppercase tracking-widest text-foreground">
               Bản tin
@@ -111,22 +117,11 @@ export function Footer() {
           </div>
         </div>
 
-        {/* Bottom bar */}
+        {/* Thanh cuối footer */}
         <div className="mt-16 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-8 md:flex-row">
           <p className="text-xs text-muted-foreground">
             © 2026 WoodCert Auction. Bản quyền thuộc về WoodCert Vietnam.
           </p>
-          <div className="flex gap-8 text-xs text-muted-foreground">
-            <Link to="#" className="transition-colors hover:text-foreground">
-              Điều khoản
-            </Link>
-            <Link to="#" className="transition-colors hover:text-foreground">
-              Chính sách bảo mật
-            </Link>
-            <Link to="#" className="transition-colors hover:text-foreground">
-              Quy chế đấu giá
-            </Link>
-          </div>
         </div>
       </div>
     </footer>

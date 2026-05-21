@@ -223,7 +223,16 @@ Minimum coverage areas:
 - media upload flow state machine
 - seller auction form validation
 
-## 13. Docker and Environment Rules
+## 13. Quy tắc chú thích
+
+- File mới nên có comment ngắn ở đầu file để nói file đó dùng làm gì và nằm trong luồng nào.
+- Component, hook, API client, mapper, route config, constants quan trọng nên có comment giải thích vai trò chính.
+- Hằng số khó hiểu phải có comment nói rõ lý do tồn tại hoặc ngưỡng giá trị, ví dụ thời gian đếm ngược, status mapping, query key.
+- Comment viết bằng tiếng Việt tự nhiên, ngắn gọn, tránh câu dài kiểu dịch máy.
+- Không comment lại điều quá rõ như `setState`, render JSX đơn giản, import/export bình thường.
+- Khi tạo file mới bằng AI, mặc định phải thêm comment theo các rule trên nếu file có logic hoặc là điểm nối quan trọng trong luồng.
+
+## 14. Docker and Environment Rules
 
 - Package manager is `pnpm`.
 - Production runtime is static files behind nginx.
@@ -231,7 +240,7 @@ Minimum coverage areas:
 - `nginx.conf` must support SPA route fallback.
 - Runtime env strategy must be documented clearly before implementation.
 
-## 14. Final Rule
+## 15. Final Rule
 
 This FE is part of a financial and realtime auction system.
 

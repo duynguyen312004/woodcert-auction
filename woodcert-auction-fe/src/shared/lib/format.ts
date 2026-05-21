@@ -1,12 +1,21 @@
+/**
+ * Các hàm định dạng dùng chung ở giao diện.
+ *
+ * Các màn đấu giá, catalog, seller và tài khoản dùng file này để hiển thị số
+ * tiền, phần trăm và ngày tháng theo kiểu Việt Nam. Tạo sẵn bộ định dạng ở đây để
+ * component không phải tự tạo lại nhiều lần.
+ */
 const VND_FORMATTER = new Intl.NumberFormat("vi-VN", {
   maximumFractionDigits: 0,
 });
 
+// Dùng khi muốn hiển thị tiền theo chuẩn tiền tệ của trình duyệt.
 const VND_CURRENCY_FORMATTER = new Intl.NumberFormat("vi-VN", {
   style: "currency",
   currency: "VND",
 });
 
+// Dùng cho card, bảng và dashboard khi cần số tiền gọn hơn.
 const VND_COMPACT_FORMATTER = new Intl.NumberFormat("vi-VN", {
   style: "currency",
   currency: "VND",
@@ -19,8 +28,17 @@ const PERCENT_FORMATTER = new Intl.NumberFormat("vi-VN", {
   maximumFractionDigits: 2,
 });
 
+const DATE_FORMATTER = new Intl.DateTimeFormat("vi-VN", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+});
+
+/**
+ * Định dạng số tiền VND dạng đơn giản, ví dụ: 1.000.000 đ.
+ */
 export function formatVND(value: number): string {
-  return VND_FORMATTER.format(value) + " đ";
+  return VND_FORMATTER.format(value) + " \u0111";
 }
 
 export function formatCurrencyVND(value: number): string {
@@ -34,4 +52,9 @@ export function formatCompactVND(value: number): string {
 
 export function formatPercent(value: number): string {
   return PERCENT_FORMATTER.format(value);
+}
+
+export function formatDate(value: string | undefined): string {
+  if (!value) return "\u2014";
+  return DATE_FORMATTER.format(new Date(value));
 }

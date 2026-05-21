@@ -18,7 +18,11 @@ import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
 
 /**
- * Auction foundation endpoints: public browse/detail and seller create/cancel/list.
+ * Controller chính của module đấu giá.
+ *
+ * Người dùng public dùng để xem danh sách và chi tiết phiên. Seller đã đăng nhập
+ * dùng để tạo, xem và hủy phiên của mình. Buyer dùng endpoint đăng ký trước khi
+ * tham gia đấu giá.
  */
 @RestController
 @RequestMapping("/api/v1/auctions")
@@ -36,6 +40,7 @@ public class AuctionController {
             @RequestParam(required = false) String categoryName,
             @RequestParam(required = false) BigDecimal priceMin,
             @RequestParam(required = false) BigDecimal priceMax) {
+        // Danh sách public nhận các filter từ trang duyệt đấu giá.
         PaginationResponse<AuctionListRes> result = auctionService.getPublicAuctions(
                 page, size, status, material, categoryName, priceMin, priceMax);
         return ResponseEntity.ok(ApiResponse.success(result, "Fetch auctions successful"));
@@ -46,13 +51,16 @@ public class AuctionController {
     public ResponseEntity<ApiResponse<PaginationResponse<SellerAuctionListRes>>> getSellerAuctions(
             @CurrentUserId String sellerId,
             @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        PaginationResponse<SellerAuctionListRes> result = auctionService.getSellerAuctions(sellerId, page, size);
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String status) {
+        // Danh sách seller luôn lấy theo tài khoản đang đăng nhập.
+        PaginationResponse<SellerAuctionListRes> result = auctionService.getSellerAuctions(sellerId, page, size, status);
         return ResponseEntity.ok(ApiResponse.success(result, "Fetch seller auctions successful"));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<AuctionDetailRes>> getPublicAuctionDetail(@PathVariable Long id) {
+        // Chi tiết này dùng chung cho trang buyer và màn preview của seller.
         AuctionDetailRes result = auctionService.getPublicAuctionDetail(id);
         return ResponseEntity.ok(ApiResponse.success(result, "Fetch auction successful"));
     }
@@ -62,6 +70,7 @@ public class AuctionController {
     public ResponseEntity<ApiResponse<AuctionDetailRes>> createAuctionSession(
             @CurrentUserId String sellerId,
             @RequestBody @Valid CreateAuctionSessionReq request) {
+        // Tạo phiên sau khi request đã validate và người dùng có quyền seller.
         AuctionDetailRes result = auctionService.createAuctionSession(sellerId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.created(result, "Auction session created successfully"));
@@ -72,6 +81,7 @@ public class AuctionController {
     public ResponseEntity<ApiResponse<Void>> cancelAuctionSession(
             @CurrentUserId String sellerId,
             @PathVariable Long id) {
+        // Service sẽ kiểm tra quyền sở hữu và trạng thái trước khi hủy.
         auctionService.cancelAuctionSession(sellerId, id);
         return ResponseEntity.ok(ApiResponse.success(null, "Auction session canceled successfully"));
     }
@@ -81,6 +91,7 @@ public class AuctionController {
     public ResponseEntity<ApiResponse<Void>> registerForAuction(
             @CurrentUserId String userId,
             @PathVariable Long id) {
+        // Đăng ký buyer vào phiên trước khi cho phép tham gia đặt giá.
         auctionService.registerForAuction(userId, id);
         return ResponseEntity.ok(ApiResponse.success(null, "Registration successful"));
     }

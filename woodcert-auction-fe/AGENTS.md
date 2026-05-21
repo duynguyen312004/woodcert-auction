@@ -32,6 +32,7 @@ Before making any code change, read these files first:
 - REST remains the source of truth. WebSocket may hot-patch cache, then must reconcile through refetch.
 - Access token is memory-first. Respect `withCredentials: true` and backend refresh-cookie assumptions.
 - Follow the test stack in `docs/TESTING_STRATEGY.md`: Vitest, React Testing Library, MSW, Playwright.
+- Khi tạo file mới hoặc thêm logic quan trọng, thêm comment tiếng Việt ngắn gọn theo `docs/PROJECT-RULES.md`.
 
 ## Documentation Discipline
 

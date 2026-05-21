@@ -24,6 +24,12 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+/**
+ * Test unit cho AuctionService facade.
+ *
+ * Nhóm test này kiểm tra service có chuyển đúng việc sang service ghi/đọc dữ liệu
+ * và gom filter từ controller vào criteria đúng không.
+ */
 @ExtendWith(MockitoExtension.class)
 class AuctionServiceImplTest {
 
@@ -87,12 +93,12 @@ class AuctionServiceImplTest {
         PaginationResponse<SellerAuctionListRes> expected = new PaginationResponse<>(
                 new PaginationResponse.Meta(1, 10, 0, 0),
                 List.of());
-        when(queryService.getSellerAuctions("seller-1", 1, 10)).thenReturn(expected);
+        when(queryService.getSellerAuctions("seller-1", 1, 10, "ACTIVE")).thenReturn(expected);
 
-        var result = auctionService.getSellerAuctions("seller-1", 1, 10);
+        var result = auctionService.getSellerAuctions("seller-1", 1, 10, "ACTIVE");
 
         assertThat(result).isSameAs(expected);
-        verify(queryService).getSellerAuctions("seller-1", 1, 10);
+        verify(queryService).getSellerAuctions("seller-1", 1, 10, "ACTIVE");
     }
 
     @Test

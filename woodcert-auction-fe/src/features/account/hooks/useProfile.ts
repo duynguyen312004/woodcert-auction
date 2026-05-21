@@ -6,8 +6,7 @@ export const PROFILE_QUERY_KEY = ["account", "profile"] as const;
 export const SELLER_PROFILE_QUERY_KEY = ["account", "seller-profile"] as const;
 
 /**
- * useProfile — Lấy thông tin profile người dùng đang đăng nhập.
- * Query key: ["account", "profile"]
+ * Lấy profile của người dùng đang đăng nhập.
  */
 export function useProfile() {
   return useQuery({
@@ -18,9 +17,9 @@ export function useProfile() {
 }
 
 /**
- * useSellerProfile — Lấy hồ sơ người bán.
- * Trả về undefined nếu người dùng chưa đăng ký làm người bán (404 → isError).
- * Query key: ["account", "seller-profile"]
+ * Lấy hồ sơ seller của người dùng hiện tại.
+ *
+ * Nếu chưa đăng ký seller thì backend trả 404 và query sẽ ở trạng thái lỗi.
  */
 export function useSellerProfile() {
   return useQuery({

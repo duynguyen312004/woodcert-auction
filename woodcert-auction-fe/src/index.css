@@ -1,9 +1,26 @@
+/*
+ * File Tailwind và theme chung của WoodCert.
+ *
+ * Toàn bộ giao diện dùng file này: marketplace, tài khoản và khu seller. Màu
+ * thương hiệu và animation để ở đây để component không phải hardcode lại.
+ */
 @import "tailwindcss";
 @import "tw-animate-css";
 
 @theme {
   --font-serif: "Playfair Display", ui-serif, Georgia, serif;
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  /* Bảng màu thương hiệu WoodCert dùng chung cho seller, card đấu giá... */
+  --color-warm-ivory: #f6f0e6;
+  --color-ink-blue: #2e4a62;
+  --color-brushed-brass: #d6a84f;
+  --color-verdigris: #2f7d68;
+  --color-terracotta: #b5533e;
+  --color-seller-sidebar: #1f1b15;
+  --color-seller-overlay: #39342d;
+  --color-muted-warm: #8d877c;
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -30,14 +47,14 @@
 
 :root {
   --radius: 0.5rem;
-  /* Charcoal / Onyx Theme */
+  /* Giao diện nền tối kiểu than/onyx. */
   --background: oklch(0.22 0.01 250);
   --foreground: oklch(0.96 0 0);
   --card: oklch(0.26 0.01 250);
   --card-foreground: oklch(0.96 0 0);
   --popover: oklch(0.22 0.01 250);
   --popover-foreground: oklch(0.96 0 0);
-  /* Amber Accent (Gold vibe) */
+  /* Màu nhấn vàng hổ phách. */
   --primary: oklch(0.82 0.16 80);
   --primary-foreground: oklch(0.2 0 0);
   --secondary: oklch(0.3 0.01 250);

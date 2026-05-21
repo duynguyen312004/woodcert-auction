@@ -1,3 +1,9 @@
+/**
+ * Sidebar thông tin tài khoản ở trang profile.
+ *
+ * Hiển thị thông tin người dùng, vai trò, thao tác upload/gỡ avatar và các nút
+ * bảo mật tài khoản.
+ */
 import { Camera, ChevronRight, Key, Loader2, LogOut, Trash2 } from "lucide-react";
 import { useRef, type ChangeEventHandler } from "react";
 import { Link, useNavigate } from "react-router";
@@ -12,6 +18,16 @@ import type { UserProfile } from "../types";
 interface ProfileSidebarProps {
   profile: UserProfile;
 }
+
+const ROLE_LABEL: Record<string, string> = {
+  BUYER: "Người mua",
+  SELLER: "Người bán",
+  APPRAISER: "Thẩm định viên",
+  ADMIN: "Quản trị viên",
+};
+
+// Nếu tài khoản có nhiều role thì ưu tiên role có quyền cao hơn.
+const ROLE_PRIORITY = ["ROLE_ADMIN", "ROLE_APPRAISER", "ROLE_SELLER", "ROLE_BIDDER"];
 
 function AvatarFallback({ name }: { name: string }) {
   const initials = name
@@ -56,7 +72,7 @@ export function ProfileSidebar({ profile }: ProfileSidebarProps) {
     try {
       await uploadAvatar(file);
     } catch {
-      // The mutation onError handler displays the notification.
+      // onError của mutation đã hiển thị thông báo lỗi.
     }
   };
 
@@ -64,20 +80,13 @@ export function ProfileSidebar({ profile }: ProfileSidebarProps) {
     try {
       await removeAvatar();
     } catch {
-      // The mutation onError handler displays the notification.
+      // onError của mutation đã hiển thị thông báo lỗi.
     }
   };
 
-  const roleLabel: Record<string, string> = {
-    BUYER: "Người mua",
-    SELLER: "Người bán",
-    APPRAISER: "Thẩm định viên",
-    ADMIN: "Quản trị viên",
-  };
-
-  const rolePriority = ["ROLE_ADMIN", "ROLE_APPRAISER", "ROLE_SELLER", "ROLE_BIDDER"];
   const primaryRole =
-    rolePriority.find((role) => profile.roles.includes(role)) ?? profile.roles[0] ?? "";
+    ROLE_PRIORITY.find((role) => profile.roles.includes(role)) ?? profile.roles[0] ?? "";
+  // UI cũ gọi là BUYER, còn backend dùng ROLE_BIDDER.
   const legacyRole = primaryRole.replace(/^ROLE_/, "").replace("BIDDER", "BUYER");
 
   return (
@@ -169,7 +178,7 @@ export function ProfileSidebar({ profile }: ProfileSidebarProps) {
 
         <h2 className="font-serif text-xl font-bold text-foreground">{profile.fullName}</h2>
         <p className="mt-1 text-[11px] font-bold uppercase text-primary">
-          {roleLabel[legacyRole] ?? primaryRole}
+          {ROLE_LABEL[legacyRole] ?? primaryRole}
         </p>
       </div>
 

@@ -1,8 +1,15 @@
+/**
+ * Thanh lọc gọn cho danh sách đấu giá public.
+ *
+ * Parent giữ state filter và gọi API. Component này chỉ hiển thị các nút lọc
+ * theo trạng thái, danh mục và loại gỗ.
+ */
 import type { ReactNode } from "react";
 import { Gavel, Layers, SlidersHorizontal, TreePine, X } from "lucide-react";
 
 import { cn } from "@/shared/lib/utils";
 
+import { AUCTION_STATUS_FILTER_OPTIONS } from "../constants/auctionStatus";
 import type { AuctionFilters } from "../types";
 
 type AuctionFilterBarProps = {
@@ -90,11 +97,6 @@ function PillGroup({ options, value, onChange, isLoading, emptyLabel = "Tất c�
   );
 }
 
-const STATUS_OPTIONS: { value: string; label: string }[] = [
-  { value: "ACTIVE", label: "Đang đấu giá" },
-  { value: "WAITING", label: "Chuẩn bị mở" },
-];
-
 export function AuctionFilterBar({
   filters,
   onChange,
@@ -139,7 +141,7 @@ export function AuctionFilterBar({
         <div className="py-3.5">
           <FilterRow icon={<Gavel className="h-3.5 w-3.5" />} label="Trạng thái">
             <PillGroup
-              options={STATUS_OPTIONS}
+              options={AUCTION_STATUS_FILTER_OPTIONS}
               value={status}
               onChange={(val) =>
                 onChange({ ...filters, status: val as "ACTIVE" | "WAITING" | undefined })

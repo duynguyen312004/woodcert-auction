@@ -45,6 +45,13 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+/**
+ * Service đọc dữ liệu cho các màn đấu giá.
+ *
+ * Luồng danh sách/chi tiết public và danh sách seller dùng service này để ghép
+ * phiên đấu giá với sản phẩm, ảnh, kiểm định, seller, số người tham gia và giá
+ * theo runtime.
+ */
 @Service
 @RequiredArgsConstructor
 public class AuctionQueryService {
@@ -63,6 +70,7 @@ public class AuctionQueryService {
     @Transactional(readOnly = true)
     public PaginationResponse<AuctionListRes> getPublicAuctions(PublicAuctionSearchCriteria criteria) {
 
+        // Giới hạn page size để phần ghép dữ liệu danh sách không quá nặng.
         Pageable pageable = PageRequest.of(
                 Math.max(0, criteria.page() - 1),
                 Math.min(Math.max(criteria.size(), 1), 50),
@@ -74,6 +82,7 @@ public class AuctionQueryService {
         List<String> materials = parseMaterials(criteria.material());
         Optional<Integer> categoryId = resolveCategoryId(criteria.categoryName());
         if (categoryId.isEmpty() && hasText(criteria.categoryName())) {
+            // Tên danh mục không tồn tại thì trả trang rỗng, không query toàn bộ.
             return PaginationResponse.of(new PageImpl<>(List.of(), pageable, 0));
         }
 
@@ -88,6 +97,7 @@ public class AuctionQueryService {
                 : auctionSessionRepository.findAllPublicAuctions(statuses, pageable);
 
         List<AuctionSession> sessions = sessionPage.getContent();
+        // Lấy dữ liệu liên quan theo lô để tránh gọi database lặp lại quá nhiều.
         Map<Long, Product> productsById = loadProductsById(
                 sessions.stream().map(AuctionSession::getProductId).toList());
         List<Product> products = List.copyOf(productsById.values());
@@ -125,6 +135,7 @@ public class AuctionQueryService {
         AuctionSession session = auctionSessionRepository.findByIdWithProduct(auctionId)
                 .orElseThrow(() -> new AppException(ErrorCode.AUCTION_SESSION_NOT_FOUND));
         if (!auctionPolicy.isPubliclyVisible(session.getStatus())) {
+            // Phiên không public cũng trả không tìm thấy, giống như phiên không tồn tại.
             throw new AppException(ErrorCode.AUCTION_SESSION_NOT_FOUND);
         }
 
@@ -149,13 +160,17 @@ public class AuctionQueryService {
     }
 
     @Transactional(readOnly = true)
-    public PaginationResponse<SellerAuctionListRes> getSellerAuctions(String sellerId, int page, int size) {
+    public PaginationResponse<SellerAuctionListRes> getSellerAuctions(String sellerId, int page, int size, String status) {
+        // Màn quản lý seller ưu tiên phiên mới tạo trước.
         Pageable pageable = PageRequest.of(
                 Math.max(0, page - 1),
                 Math.min(Math.max(size, 1), 50),
                 Sort.by(Sort.Direction.DESC, "createdAt"));
 
-        Page<AuctionSession> sessionPage = auctionSessionRepository.findByProductSellerId(sellerId, pageable);
+        AuctionSessionStatus statusFilter = resolveSellerStatus(status);
+        Page<AuctionSession> sessionPage = statusFilter == null
+                ? auctionSessionRepository.findByProductSellerId(sellerId, pageable)
+                : auctionSessionRepository.findByProductSellerIdAndStatus(sellerId, statusFilter, pageable);
         List<AuctionSession> sessions = sessionPage.getContent();
         Map<Long, Product> productsById = loadProductsById(
                 sessions.stream().map(AuctionSession::getProductId).toList());
@@ -179,6 +194,18 @@ public class AuctionQueryService {
         return PaginationResponse.of(responsePage);
     }
 
+    private AuctionSessionStatus resolveSellerStatus(String statusFilter) {
+        if (!hasText(statusFilter)) {
+            return null;
+        }
+
+        try {
+            return AuctionSessionStatus.valueOf(statusFilter.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Invalid auction status filter: " + statusFilter);
+        }
+    }
+
     private List<String> parseMaterials(String material) {
         if (material == null || material.isBlank()) {
             return List.of();
@@ -191,6 +218,9 @@ public class AuctionQueryService {
                 .toList();
     }
 
+    /**
+     * Đổi tên danh mục từ UI sang id trong database để dùng cho specification.
+     */
     private Optional<Integer> resolveCategoryId(String categoryName) {
         if (!hasText(categoryName)) {
             return Optional.empty();
@@ -229,6 +259,9 @@ public class AuctionQueryService {
         return statuses;
     }
 
+    /**
+     * Load product theo lô và giữ bản ghi đầu tiên nếu có id bị lặp.
+     */
     private Map<Long, Product> loadProductsById(List<Long> productIds) {
         if (productIds == null || productIds.isEmpty()) {
             return Map.of();
@@ -279,6 +312,9 @@ public class AuctionQueryService {
                         LinkedHashMap::new));
     }
 
+    /**
+     * Bước cuối để gom dữ liệu thành response cho card đấu giá public.
+     */
     private AuctionListRes toListRes(
             AuctionSession session,
             Map<Long, Product> productsById,

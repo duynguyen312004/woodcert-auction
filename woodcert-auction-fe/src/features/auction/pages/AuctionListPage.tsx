@@ -1,3 +1,9 @@
+/**
+ * Trang danh sách đấu giá public.
+ *
+ * Trang này gom tab trạng thái, bộ lọc bên trái, phân trang và hook lấy dữ liệu.
+ * Đây là luồng chính để người mua duyệt phiên trước khi mở trang chi tiết.
+ */
 import { useMemo, useState } from "react";
 
 import { useCategories } from "@/features/catalog/hooks/useCategories";
@@ -10,36 +16,24 @@ import {
   type SidebarFilters,
 } from "../components/AuctionSidebarFilter";
 import { usePublicAuctions } from "../hooks/usePublicAuctions";
-import type { AuctionStatus } from "../types";
-
-type StatusTab = "ALL" | "ACTIVE" | "WAITING" | "ENDED";
-
-const TABS: { id: StatusTab; label: string }[] = [
-  { id: "ALL", label: "Tất cả" },
-  { id: "ACTIVE", label: "Đang đấu giá" },
-  { id: "WAITING", label: "Sắp mở" },
-  { id: "ENDED", label: "Đã chốt" },
-];
+import {
+  AUCTION_STATUS_TABS,
+  auctionTabToStatus,
+  type AuctionStatusTab,
+} from "../constants/auctionStatus";
 
 const PAGE_SIZE = 9;
 
-function tabToStatus(tab: StatusTab): AuctionStatus | undefined {
-  if (tab === "ACTIVE") return "ACTIVE";
-  if (tab === "WAITING") return "WAITING";
-  if (tab === "ENDED") return "ENDED_SUCCESS";
-  return undefined;
-}
-
 export function AuctionListPage() {
-  const [activeTab, setActiveTab] = useState<StatusTab>("ALL");
+  const [activeTab, setActiveTab] = useState<AuctionStatusTab>("ALL");
   const [page, setPage] = useState(1);
   const [sidebarFilters, setSidebarFilters] = useState<SidebarFilters>(defaultSidebarFilters);
 
-  const statusFilter = tabToStatus(activeTab);
+  const statusFilter = auctionTabToStatus(activeTab);
 
   const { auctionsQuery, allAuctions, availableWoodTypes, paginationMeta } = usePublicAuctions(
     {
-      status: statusFilter === "ACTIVE" || statusFilter === "WAITING" ? statusFilter : undefined,
+      status: statusFilter,
       materials: sidebarFilters.selectedWoodTypes,
       categoryName: sidebarFilters.selectedCategories[0],
       priceMin: sidebarFilters.appliedPriceMin,
@@ -59,7 +53,7 @@ export function AuctionListPage() {
 
   const totalPages = paginationMeta?.pages ?? 1;
 
-  const handleTabChange = (tab: StatusTab) => {
+  const handleTabChange = (tab: AuctionStatusTab) => {
     setActiveTab(tab);
     setPage(1);
     setSidebarFilters(defaultSidebarFilters);
@@ -78,7 +72,7 @@ export function AuctionListPage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-[1440px] px-6 py-10 lg:px-10">
-        {/* Page title */}
+        {/* Tiêu đề trang */}
         <div className="mb-10">
           <h1 className="mb-3 font-serif text-3xl font-bold text-foreground lg:text-4xl">
             Phiên đấu giá đang diễn ra
@@ -88,9 +82,9 @@ export function AuctionListPage() {
             xảo đến nội thất nghệ thuật độc bản.
           </p>
 
-          {/* Status tabs */}
+          {/* Tab trạng thái */}
           <div className="mt-8 flex gap-8 overflow-x-auto border-b border-white/10 pb-px">
-            {TABS.map((tab) => (
+            {AUCTION_STATUS_TABS.map((tab) => (
               <button
                 key={tab.id}
                 type="button"
@@ -108,9 +102,9 @@ export function AuctionListPage() {
           </div>
         </div>
 
-        {/* Main layout: sidebar + card area */}
+        {/* Layout chính: sidebar và khu vực card */}
         <div className="flex gap-6 lg:gap-8">
-          {/* Left sidebar */}
+          {/* Sidebar bên trái */}
           <AuctionSidebarFilter
             availableCategories={categoryNames}
             isCategoriesLoading={categoriesQuery.isLoading}
@@ -120,7 +114,7 @@ export function AuctionListPage() {
             onChange={handleSidebarChange}
           />
 
-          {/* Card area — warm ivory bg matching stitch */}
+          {/* Khu vực card, dùng nền sáng cho trang danh sách */}
           <div className="min-w-0 flex-1 rounded-lg bg-[#F6F0E6] p-6 lg:p-8">
             <AuctionListContent
               auctions={displayAuctions}
@@ -129,7 +123,7 @@ export function AuctionListPage() {
               cardTheme="light"
             />
 
-            {/* Pagination */}
+            {/* Phân trang */}
             {!auctionsQuery.isLoading && (
               <div className="mt-14 flex flex-col items-center gap-6">
                 {page < totalPages && (
@@ -193,6 +187,7 @@ export function AuctionListPage() {
 }
 
 function buildPageNumbers(current: number, total: number): (number | "...")[] {
+  // Giữ phân trang gọn nhưng vẫn có trang đầu, trang gần hiện tại và trang cuối.
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
 
   const pages: (number | "...")[] = [1];

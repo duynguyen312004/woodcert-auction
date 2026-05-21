@@ -17,8 +17,15 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+/**
+ * Test integration cho bảo mật endpoint đấu giá.
+ *
+ * Test này kiểm tra endpoint nào public, endpoint nào cần quyền trong JWT và
+ * subject đang đăng nhập có được dùng đúng làm actor id khi đăng ký phiên không.
+ */
 class AuctionSecurityIntegrationTest extends AuctionIntegrationTestBase {
 
     @Test
@@ -81,6 +88,25 @@ class AuctionSecurityIntegrationTest extends AuctionIntegrationTestBase {
                 .isPresent();
         assertThat(auctionParticipantRepository.findByAuctionSessionIdAndUserId(session.getId(), seller.getId()))
                 .isEmpty();
+    }
+
+    @Test
+    void sellerAuctionListAcceptsStatusFilter() throws Exception {
+        User seller = createSeller("seller-security-filter@example.com");
+        Product activeProduct = createAppraisedProduct(seller.getId());
+        Product waitingProduct = createAppraisedProduct(seller.getId());
+        createSession(activeProduct, AuctionSessionStatus.ACTIVE,
+                Instant.now().minusSeconds(60), Instant.now().plusSeconds(3600), new BigDecimal("12000000.00"));
+        createSession(waitingProduct, AuctionSessionStatus.WAITING,
+                Instant.now().plusSeconds(3600), Instant.now().plusSeconds(7200), new BigDecimal("12000000.00"));
+
+        mockMvc.perform(get("/api/v1/auctions/me")
+                        .param("status", "ACTIVE")
+                        .with(jwt().jwt(jwt -> jwt.subject(seller.getId()))
+                                .authorities(authorities("CREATE_AUCTION_SESSION"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.meta.total").value(1))
+                .andExpect(jsonPath("$.data.result[0].status").value("ACTIVE"));
     }
 
     private CreateAuctionSessionReq createRequest(Long productId) {

@@ -6,11 +6,11 @@ import { ProfileSidebar } from "../components/ProfileSidebar";
 import { SellerStatusCard } from "../components/SellerStatusCard";
 import { useProfile, useSellerProfile } from "../hooks/useProfile";
 
-// ── Skeleton loader ───────────────────────────────────────────
+// Khung loading cho trang profile.
 function ProfileSkeleton() {
   return (
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-3" aria-busy="true" aria-label="Đang tải">
-      {/* Sidebar skeleton */}
+      {/* Khung loading của sidebar */}
       <div className="space-y-6 lg:col-span-1">
         <div className="flex flex-col items-center rounded-xl border border-border/40 bg-card p-8">
           <div className="mb-5 h-36 w-36 animate-pulse rounded-full bg-muted" />
@@ -20,7 +20,7 @@ function ProfileSkeleton() {
         <div className="h-32 animate-pulse rounded-xl border border-border/40 bg-card" />
       </div>
 
-      {/* Main content skeleton */}
+      {/* Khung loading của nội dung chính */}
       <div className="space-y-6 lg:col-span-2">
         <div className="h-52 animate-pulse rounded-xl border border-border/40 bg-card" />
         <div className="h-28 animate-pulse rounded-xl border border-border/40 bg-card" />
@@ -29,7 +29,7 @@ function ProfileSkeleton() {
   );
 }
 
-// ── Error state ───────────────────────────────────────────────
+// Trạng thái lỗi khi không tải được profile.
 function ProfileError({ onRetry }: { onRetry: () => void }) {
   return (
     <div className="flex flex-col items-center gap-4 py-20 text-center">
@@ -45,7 +45,7 @@ function ProfileError({ onRetry }: { onRetry: () => void }) {
   );
 }
 
-// ── Page component ────────────────────────────────────────────
+// Component chính của trang.
 export function AccountPage() {
   const profile = useProfile();
   const sellerProfile = useSellerProfile();
@@ -72,7 +72,7 @@ export function AccountPage() {
 
   return (
     <div className="container mx-auto max-w-[1040px] animate-fade-in px-4 py-10">
-      {/* Page header */}
+      {/* Tiêu đề trang */}
       <header className="mb-8 border-b border-border/40 pb-6">
         <h1 className="font-serif text-3xl font-bold tracking-tight text-foreground">
           Hồ sơ cá nhân
@@ -82,14 +82,14 @@ export function AccountPage() {
         </p>
       </header>
 
-      {/* 3-col layout: 1 sidebar + 2 main content */}
+      {/* Bố cục 3 cột: 1 cột sidebar và 2 cột nội dung */}
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-        {/* Left column: Sidebar */}
+        {/* Cột trái: sidebar */}
         <div className="lg:col-span-1">
           <ProfileSidebar profile={profile.data} />
         </div>
 
-        {/* Right column: Info + Seller */}
+        {/* Cột phải: thông tin tài khoản và seller */}
         <div className="space-y-6 lg:col-span-2">
           <ProfileInfoSection profile={profile.data} />
 
@@ -100,7 +100,7 @@ export function AccountPage() {
         </div>
       </div>
 
-      {/* Loading overlay khi đang update */}
+      {/* Overlay nhỏ khi đang cập nhật dữ liệu */}
       {profile.isFetching && !profile.isPending && (
         <div
           role="status"
