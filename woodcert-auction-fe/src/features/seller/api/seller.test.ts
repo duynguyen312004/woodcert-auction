@@ -69,6 +69,7 @@ describe("sellerApi", () => {
               category: { id: 1, name: "Nội thất" },
               material: "Gỗ lim",
               status: "APPRAISED",
+              saleStatus: "AVAILABLE",
               primaryImage: "https://cdn.example/product.jpg",
               createdAt: "2026-05-20T10:00:00Z",
             },
@@ -86,6 +87,7 @@ describe("sellerApi", () => {
           woodType: "Gỗ lim",
           imageUrl: "https://cdn.example/product.jpg",
           status: "APPRAISED",
+          saleStatus: "AVAILABLE",
         },
       ],
     });
@@ -131,6 +133,93 @@ describe("sellerApi", () => {
           imageUrl: null,
         },
       ],
+    });
+  });
+
+  it("fetches product detail with media ids for draft editing", async () => {
+    const adapter: AxiosAdapter = async (config) => {
+      expect(config.method).toBe("get");
+      expect(config.url).toBe("/products/101");
+
+      return createResponse(
+        config,
+        200,
+        createApiResponse({
+          id: 101,
+          title: "Tượng gỗ",
+          description: "Bản nháp",
+          material: "Gỗ hương",
+          dimensions: "30x20x10",
+          weight: "2.5",
+          status: "DRAFT",
+          saleStatus: "AVAILABLE",
+          category: { id: 1, name: "Tượng", slug: "tuong", parentId: null, description: null },
+          images: [
+            {
+              id: 11,
+              mediaId: 501,
+              imageUrl: "https://cdn.example/product.jpg",
+              isPrimary: true,
+              sortOrder: 0,
+            },
+          ],
+          createdAt: "2026-05-20T10:00:00Z",
+        }),
+      );
+    };
+    apiClient.defaults.adapter = adapter;
+
+    await expect(sellerApi.getProductDetail(101)).resolves.toMatchObject({
+      id: 101,
+      status: "DRAFT",
+      images: [{ mediaId: 501, imageUrl: "https://cdn.example/product.jpg" }],
+    });
+  });
+
+  it("updates product draft with PUT payload", async () => {
+    const payload = {
+      categoryId: 1,
+      title: "Tượng gỗ cập nhật",
+      material: "Gỗ hương",
+      images: [{ mediaId: 501, isPrimary: true, sortOrder: 0 }],
+    };
+
+    const adapter: AxiosAdapter = async (config) => {
+      expect(config.method).toBe("put");
+      expect(config.url).toBe("/products/101");
+      expect(JSON.parse(config.data as string)).toEqual(payload);
+
+      return createResponse(
+        config,
+        200,
+        createApiResponse({
+          id: 101,
+          title: payload.title,
+          description: null,
+          material: payload.material,
+          dimensions: null,
+          weight: null,
+          status: "DRAFT",
+          saleStatus: "AVAILABLE",
+          category: { id: 1, name: "Tượng", slug: "tuong", parentId: null, description: null },
+          images: [
+            {
+              id: 11,
+              mediaId: 501,
+              imageUrl: "https://cdn.example/product.jpg",
+              isPrimary: true,
+              sortOrder: 0,
+            },
+          ],
+          createdAt: "2026-05-20T10:00:00Z",
+        }),
+      );
+    };
+    apiClient.defaults.adapter = adapter;
+
+    await expect(sellerApi.updateProduct(101, payload)).resolves.toMatchObject({
+      id: 101,
+      title: payload.title,
     });
   });
 });

@@ -34,8 +34,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Authentication service implementation.
- * Handles login, registration, token refresh (with rotation), and logout.
+ * Service xử lý xác thực.
+ * Phụ trách đăng nhập, đăng ký, xác minh email, refresh token có rotation và logout.
  */
 @Slf4j
 @Service
@@ -57,9 +57,10 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public AuthRes login(LoginReq request) {
+        // Bước 1: Chuẩn hóa email để authentication và truy vấn DB dùng cùng một định dạng.
         String normalizedEmail = IdentityNormalizationUtils.normalizeEmail(request.email());
 
-        // Authenticate via Spring Security AuthenticationManager
+        // Bước 2: Xác thực mật khẩu qua Spring Security AuthenticationManager.
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(normalizedEmail, request.password()));
@@ -67,11 +68,11 @@ public class AuthServiceImpl implements AuthService {
             throw new AppException(ErrorCode.INVALID_CREDENTIALS);
         }
 
-        // Load user with roles + permissions
+        // Bước 3: Đọc user kèm role để sinh JWT và trả role cho client.
         User user = userRepository.findByEmail(normalizedEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.INVALID_CREDENTIALS));
 
-        // Check user status
+        // Bước 4: Chặn tài khoản bị khóa hoặc chưa xác minh email.
         if (user.getStatus() == UserStatus.BANNED) {
             throw new AppException(ErrorCode.ACCOUNT_BANNED);
         }
@@ -79,11 +80,11 @@ public class AuthServiceImpl implements AuthService {
             throw new AppException(ErrorCode.ACCOUNT_UNVERIFIED);
         }
 
-        // Generate tokens
+        // Bước 5: Sinh access token và refresh token thô cho phiên đăng nhập mới.
         String accessToken = jwtService.generateAccessToken(user);
         String rawRefreshToken = jwtService.generateRefreshToken();
 
-        // Save hashed refresh token to DB
+        // Bước 6: Chỉ lưu hash của refresh token để hạn chế rủi ro nếu DB bị lộ.
         saveRefreshToken(user, rawRefreshToken);
 
         List<String> roles = user.getRoles().stream()
@@ -96,12 +97,13 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public RegisterRes register(RegisterReq request) {
+        // Bước 1: Chuẩn hóa email, họ tên và số điện thoại trước khi kiểm tra trùng.
         String normalizedEmail = IdentityNormalizationUtils.normalizeEmail(request.email());
         String normalizedFullName = request.fullName().trim();
         String normalizedPhoneNumber = IdentityNormalizationUtils
                 .normalizeVietnamesePhoneNullable(request.phoneNumber());
 
-        // Check duplicates
+        // Bước 2: Chặn email hoặc số điện thoại đã tồn tại.
         if (userRepository.existsByEmail(normalizedEmail)) {
             throw new AppException(ErrorCode.DUPLICATE_RESOURCE, "Email already exists");
         }
@@ -109,12 +111,12 @@ public class AuthServiceImpl implements AuthService {
             throw new AppException(ErrorCode.DUPLICATE_RESOURCE, "Phone number already exists");
         }
 
-        // Find default role
+        // Bước 3: Lấy role mặc định cho người dùng mới.
         Role bidderRole = roleRepository.findByName("ROLE_BIDDER")
                 .orElseThrow(
                         () -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Default role ROLE_BIDDER not found"));
 
-        // Create user
+        // Bước 4: Tạo user ở trạng thái UNVERIFIED và gắn role bidder.
         User user = new User();
         user.setEmail(normalizedEmail);
         user.setPasswordHash(passwordEncoder.encode(request.password()));
@@ -124,6 +126,8 @@ public class AuthServiceImpl implements AuthService {
         user.setRoles(Set.of(bidderRole));
 
         user = userRepository.save(user);
+
+        // Bước 5: Sinh token xác minh email, lưu hash và gửi email xác minh.
         issueAndSendVerificationToken(user);
 
         log.info("User {} registered successfully", user.getEmail());
@@ -133,14 +137,17 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void verifyEmail(String rawToken) {
+        // Bước 1: Kiểm tra token thô từ email có được gửi lên hay không.
         if (rawToken == null || rawToken.isBlank()) {
             throw new AppException(ErrorCode.EMAIL_VERIFICATION_TOKEN_INVALID);
         }
 
+        // Bước 2: Hash token thô rồi tìm bản ghi token đang lưu trong DB.
         EmailVerificationToken verificationToken = emailVerificationTokenRepository
                 .findByTokenHash(identityTokenService.hash(rawToken))
                 .orElseThrow(() -> new AppException(ErrorCode.EMAIL_VERIFICATION_TOKEN_INVALID));
 
+        // Bước 3: Chặn token đã dùng hoặc đã hết hạn.
         if (verificationToken.getVerifiedAt() != null) {
             throw new AppException(ErrorCode.EMAIL_ALREADY_VERIFIED);
         }
@@ -148,6 +155,7 @@ public class AuthServiceImpl implements AuthService {
             throw new AppException(ErrorCode.EMAIL_VERIFICATION_TOKEN_EXPIRED);
         }
 
+        // Bước 4: Nếu user đã ACTIVE thì đánh dấu token đã xử lý và trả lỗi đã xác minh.
         User user = verificationToken.getUser();
         if (user.getStatus() == UserStatus.ACTIVE) {
             verificationToken.setVerifiedAt(Instant.now());
@@ -155,6 +163,7 @@ public class AuthServiceImpl implements AuthService {
             throw new AppException(ErrorCode.EMAIL_ALREADY_VERIFIED);
         }
 
+        // Bước 5: Kích hoạt user, đánh dấu token hiện tại đã dùng và xóa token xác minh cũ chưa dùng.
         user.setStatus(UserStatus.ACTIVE);
         userRepository.save(user);
 
@@ -168,16 +177,19 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void resendVerificationEmail(String email) {
+        // Bước 1: Chuẩn hóa email; email không hợp lệ được bỏ qua để tránh lộ thông tin tài khoản.
         String normalizedEmail = IdentityNormalizationUtils.normalizeEmail(email);
         if (normalizedEmail == null) {
             return;
         }
 
         userRepository.findByEmail(normalizedEmail).ifPresent(user -> {
+            // Bước 2: Chỉ gửi lại cho tài khoản vẫn đang UNVERIFIED.
             if (user.getStatus() != UserStatus.UNVERIFIED) {
                 return;
             }
 
+            // Bước 3: Kiểm tra cooldown để tránh spam email xác minh.
             emailVerificationTokenRepository.findTopByUserAndVerifiedAtIsNullOrderByCreatedAtDesc(user)
                     .ifPresent(latestToken -> {
                         Instant cooldownDeadline = latestToken.getCreatedAt()
@@ -187,6 +199,7 @@ public class AuthServiceImpl implements AuthService {
                         }
                     });
 
+            // Bước 4: Xóa token xác minh cũ chưa dùng rồi phát hành token mới.
             emailVerificationTokenRepository.deleteByUserAndVerifiedAtIsNull(user);
             issueAndSendVerificationToken(user);
             log.info("Verification email resent for user {}", user.getEmail());
@@ -196,12 +209,13 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public RefreshRes refresh(String rawRefreshToken) {
+        // Bước 1: Hash refresh token thô để tìm token đã lưu.
         String tokenHash = identityTokenService.hash(rawRefreshToken);
 
         RefreshToken storedToken = refreshTokenRepository.findByToken(tokenHash)
                 .orElseThrow(() -> new AppException(ErrorCode.TOKEN_INVALID));
 
-        // Validate token
+        // Bước 2: Kiểm tra token chưa bị revoke và chưa hết hạn.
         if (storedToken.isRevoked()) {
             throw new AppException(ErrorCode.TOKEN_INVALID);
         }
@@ -209,16 +223,16 @@ public class AuthServiceImpl implements AuthService {
             throw new AppException(ErrorCode.TOKEN_EXPIRED);
         }
 
-        // Revoke old token (rotation)
+        // Bước 3: Revoke refresh token cũ để thực hiện token rotation.
         storedToken.setRevoked(true);
         refreshTokenRepository.save(storedToken);
 
-        // Generate new tokens
+        // Bước 4: Sinh access token mới và refresh token mới cho cùng user.
         User user = storedToken.getUser();
         String newAccessToken = jwtService.generateAccessToken(user);
         String newRawRefreshToken = jwtService.generateRefreshToken();
 
-        // Save new hashed refresh token
+        // Bước 5: Lưu hash của refresh token mới và trả token thô cho client.
         saveRefreshToken(user, newRawRefreshToken);
 
         log.info("Token refreshed for user {}", user.getEmail());
@@ -228,10 +242,12 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void logout(String rawRefreshToken) {
+        // Bước 1: Logout là idempotent; token rỗng thì không cần xử lý.
         if (rawRefreshToken == null || rawRefreshToken.isBlank()) {
             return;
         }
 
+        // Bước 2: Hash token và revoke nếu token đang tồn tại trong DB.
         String tokenHash = identityTokenService.hash(rawRefreshToken);
         refreshTokenRepository.findByToken(tokenHash).ifPresent(token -> {
             token.setRevoked(true);
@@ -250,10 +266,10 @@ public class AuthServiceImpl implements AuthService {
         passwordResetService.resetPassword(rawToken, newPassword);
     }
 
-    // --- Private helpers ---
+    // --- Helper nội bộ ---
 
     /**
-     * Save a hashed refresh token to DB.
+     * Lưu refresh token dưới dạng hash vào DB.
      */
     private void saveRefreshToken(User user, String rawToken) {
         RefreshToken refreshToken = new RefreshToken();
@@ -265,10 +281,10 @@ public class AuthServiceImpl implements AuthService {
     }
 
     /**
-     * Create a new verification token, persist it, and send the corresponding
-     * email.
+     * Tạo token xác minh email mới, lưu hash và gửi email chứa token thô.
      */
     private void issueAndSendVerificationToken(User user) {
+        // Bước 1: Sinh token thô để gửi qua email, nhưng chỉ lưu hash vào DB.
         String rawToken = identityTokenService.generateRawToken();
 
         EmailVerificationToken verificationToken = new EmailVerificationToken();
@@ -278,6 +294,7 @@ public class AuthServiceImpl implements AuthService {
         verificationToken.setVerifiedAt(null);
         emailVerificationTokenRepository.save(verificationToken);
 
+        // Bước 2: Gửi email xác minh cho user sau khi token đã được lưu.
         identityEmailService.sendVerificationEmail(user, rawToken);
     }
 }

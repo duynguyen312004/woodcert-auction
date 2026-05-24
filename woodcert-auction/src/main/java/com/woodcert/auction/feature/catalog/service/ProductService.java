@@ -5,6 +5,7 @@ import com.woodcert.auction.feature.catalog.dto.request.CreateProductReq;
 import com.woodcert.auction.feature.catalog.dto.request.UpdateProductReq;
 import com.woodcert.auction.feature.catalog.dto.response.ProductDetailRes;
 import com.woodcert.auction.feature.catalog.dto.response.ProductListRes;
+import com.woodcert.auction.feature.media.dto.request.ConfirmMediaUploadReq;
 import com.woodcert.auction.feature.media.dto.request.CreateMediaUploadIntentReq;
 import com.woodcert.auction.feature.media.dto.response.MediaUploadIntentRes;
 
@@ -17,6 +18,11 @@ public interface ProductService {
      * Create a signed Cloudinary upload intent for a product image.
      */
     MediaUploadIntentRes createProductImageUploadIntent(String sellerId, CreateMediaUploadIntentReq request);
+
+    /**
+     * Confirm a product image upload owned by the current seller.
+     */
+    void confirmProductImageUpload(String sellerId, ConfirmMediaUploadReq request);
 
     /**
      * Create a new DRAFT product with images referencing confirmed media assets.
@@ -47,7 +53,8 @@ public interface ProductService {
             int page,
             int size,
             Integer categoryId,
-            String status);
+            String status,
+            String saleStatus);
 
     /**
      * Get internal catalog product details including images and appraisal report.

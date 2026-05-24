@@ -21,15 +21,15 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Bid flow:
- * 1. Coarse checks in DB (existence, status, seller-block).
- * 2. Generate bidTraceId.
- * 3. Execute Lua script atomically in Redis.
- * 4. On Lua success: broadcast NEW_BID, then best-effort persist bid row + DB snapshot.
- * 5. On Lua rejection: best-effort persist the rejected bid row, return error.
+ * Luồng đặt giá:
+ * 1. Kiểm tra sơ bộ trong DB: phiên tồn tại, đang ACTIVE và bidder không phải seller.
+ * 2. Sinh bidTraceId để truy vết một lần đặt giá.
+ * 3. Chạy Lua script trong Redis để xử lý giá realtime theo cơ chế atomic.
+ * 4. Nếu Lua chấp nhận: broadcast NEW_BID, sau đó best-effort lưu bid và snapshot DB.
+ * 5. Nếu Lua từ chối: best-effort lưu bid bị từ chối rồi trả lỗi nghiệp vụ.
  *
- * Lua success = runtime acceptance. DB persistence is secondary only.
- * Broadcast does NOT wait for DB persistence.
+ * Redis là nguồn quyết định tại thời điểm đặt giá; lưu DB là bước phụ trợ sau đó.
+ * Broadcast không chờ lưu DB xong để tránh làm chậm realtime.
  */
 @Slf4j
 @Service
@@ -49,7 +49,7 @@ public class BidServiceImpl implements BidService {
         Long auctionSessionId = request.auctionSessionId();
         BigDecimal bidAmount = request.bidAmount();
 
-        // --- Coarse DB checks (no lock needed — Redis is the realtime authority) ---
+        // Bước 1: Kiểm tra sơ bộ bằng DB; không lock vì Redis mới là nguồn quyết định realtime.
         AuctionSession session = auctionSessionRepository.findByIdWithProduct(auctionSessionId)
                 .orElseThrow(() -> new AppException(ErrorCode.AUCTION_SESSION_NOT_FOUND));
 
@@ -62,7 +62,7 @@ public class BidServiceImpl implements BidService {
             throw new AppException(ErrorCode.AUCTION_SELF_BIDDING_NOT_ALLOWED);
         }
 
-        // --- Execute Lua script ---
+        // Bước 2: Chuẩn bị dữ liệu truyền vào Lua gồm trace id, thời điểm đặt giá và cấu hình anti-sniper.
         String bidTraceId = UUID.randomUUID().toString();
         Instant bidTime = Instant.now();
 
@@ -70,6 +70,7 @@ public class BidServiceImpl implements BidService {
         long sniperThMs = auctionProperties.getBidding().getAntiSniperThreshold().toMillis();
         long sniperExtMs = auctionProperties.getBidding().getAntiSniperExtension().toMillis();
 
+        // Bước 3: Chạy Lua script để kiểm tra đăng ký, giá tối thiểu và gia hạn thời gian một cách atomic.
         List<String> keys = bidLuaScript.buildKeys(auctionSessionId);
         List<Object> result = redisTemplate.execute(
                 bidLuaScript.getScript(),
@@ -82,10 +83,12 @@ public class BidServiceImpl implements BidService {
                 bidTraceId
         );
 
+        // Bước 4: Tách kết quả Lua thành mã trạng thái, giá mới và thời điểm kết thúc mới.
         String resultCode = result != null && !result.isEmpty() ? result.get(0).toString() : "ERROR";
         String newPriceStr = result != null && result.size() > 1 ? result.get(1).toString() : null;
         String newEndTimeStr = result != null && result.size() > 2 ? result.get(2).toString() : null;
 
+        // Bước 5: Điều hướng kết quả: bid hợp lệ đi tiếp, bid bị từ chối trả lỗi nghiệp vụ tương ứng.
         return switch (resultCode) {
             case "OK" -> handleBidAccepted(auctionSessionId, bidderId, bidTraceId, bidAmount,
                     bidTime, newPriceStr, newEndTimeStr);
@@ -116,18 +119,20 @@ public class BidServiceImpl implements BidService {
     private BidResultRes handleBidAccepted(Long auctionSessionId, String bidderId, String bidTraceId,
                                             BigDecimal bidAmount, Instant bidTime,
                                             String newPriceStr, String newEndTimeStr) {
+        // Bước 1: Chuẩn hóa dữ liệu Redis trả về thành kiểu dữ liệu domain.
         BigDecimal newPrice = new BigDecimal(newPriceStr);
         long newEndTimeMs = Long.parseLong(newEndTimeStr);
         Instant newEndTime = Instant.ofEpochMilli(newEndTimeMs);
 
-        // If anti-sniper extended end time, update Redis TTL
+        // Bước 2: Nếu anti-sniper kéo dài phiên đấu giá thì cập nhật TTL Redis theo endTime mới.
         if (newEndTimeMs > 0) {
             auctionRedisService.extendTtl(auctionSessionId, newEndTime);
         }
 
-        // Broadcast NEW_BID immediately — does not wait for DB persistence
+        // Bước 3: Broadcast giá mới ngay cho client, không chờ các bước lưu DB phía sau.
         broadcastService.broadcastNewBid(auctionSessionId, newPrice, bidderId, newEndTime);
 
+        // Bước 4: Best-effort lưu bid và đồng bộ snapshot phiên đấu giá về DB.
         persistBidBestEffort(bidTraceId, auctionSessionId, bidderId, bidAmount, BidStatus.VALID, bidTime);
         syncSessionSnapshotBestEffort(auctionSessionId, newPrice, bidderId, newEndTime);
 
@@ -137,8 +142,8 @@ public class BidServiceImpl implements BidService {
     }
 
     /**
-     * Best-effort sync of Redis state back to DB after a successful bid.
-     * Failures are logged and swallowed — never affects bid acceptance.
+     * Đồng bộ best-effort trạng thái Redis về DB sau khi bid thành công.
+     * Nếu lỗi thì chỉ log lại, không làm thay đổi kết quả chấp nhận bid.
      */
     private void syncSessionSnapshotBestEffort(Long auctionSessionId, BigDecimal newPrice,
                                                String highestBidderId, Instant newEndTime) {

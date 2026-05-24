@@ -1,6 +1,7 @@
 package com.woodcert.auction.feature.catalog.repository;
 
 import com.woodcert.auction.feature.catalog.entity.Product;
+import com.woodcert.auction.feature.catalog.entity.ProductSaleStatus;
 import com.woodcert.auction.feature.catalog.entity.ProductStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
@@ -42,11 +43,13 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             SELECT p FROM Product p
             WHERE p.sellerId = :sellerId
               AND (:status IS NULL OR p.status = :status)
+              AND (:saleStatus IS NULL OR p.saleStatus = :saleStatus)
               AND (:categoryId IS NULL OR p.categoryId = :categoryId)
             """)
     Page<Product> findCatalogProductsForSeller(
             @Param("sellerId") String sellerId,
             @Param("status") ProductStatus status,
+            @Param("saleStatus") ProductSaleStatus saleStatus,
             @Param("categoryId") Integer categoryId,
             Pageable pageable);
 
@@ -55,6 +58,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             FROM Product p
             LEFT JOIN p.appraisalReport ar
             WHERE (:status IS NULL OR p.status = :status)
+              AND (:saleStatus IS NULL OR p.saleStatus = :saleStatus)
               AND (:categoryId IS NULL OR p.categoryId = :categoryId)
               AND (
                    p.status = :pendingStatus
@@ -64,6 +68,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     Page<Product> findCatalogProductsForAppraiser(
             @Param("appraiserId") String appraiserId,
             @Param("status") ProductStatus status,
+            @Param("saleStatus") ProductSaleStatus saleStatus,
             @Param("categoryId") Integer categoryId,
             @Param("pendingStatus") ProductStatus pendingStatus,
             @Param("reviewedStatuses") Collection<ProductStatus> reviewedStatuses,

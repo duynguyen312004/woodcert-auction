@@ -1,19 +1,15 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import axios from "axios";
 
 import { isApiError, normalizeApiError } from "@/shared/api/errors";
+import { uploadToCloudinary } from "@/shared/lib/cloudinaryUpload";
 import { useNotification } from "@/shared/ui/notification";
 import { accountApi } from "../api/account";
-import type { AvatarUploadIntent, AvatarUploadIntentPayload } from "../types";
+import type { AvatarUploadIntentPayload } from "../types";
 import { PROFILE_QUERY_KEY } from "./useProfile";
 
 export const AVATAR_MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 const ALLOWED_AVATAR_CONTENT_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
-
-type CloudinaryUploadResponse = {
-  asset_id?: string;
-};
 
 export function validateAvatarFile(file: File) {
   if (!ALLOWED_AVATAR_CONTENT_TYPES.has(file.type)) {
@@ -31,30 +27,6 @@ export function createAvatarUploadIntentPayload(file: File): AvatarUploadIntentP
     contentType: file.type,
     fileSize: file.size,
   };
-}
-
-export async function uploadAvatarFileToCloudinary(
-  intent: AvatarUploadIntent,
-  file: File,
-): Promise<string> {
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("api_key", intent.apiKey);
-  formData.append("timestamp", String(intent.timestamp));
-  formData.append("signature", intent.signature);
-  formData.append("public_id", intent.publicId);
-  formData.append("asset_folder", intent.assetFolder);
-
-  const response = await axios.post<CloudinaryUploadResponse>(intent.uploadUrl, formData, {
-    withCredentials: false,
-  });
-  const assetId = response.data.asset_id?.trim();
-
-  if (!assetId) {
-    throw new Error("Cloudinary upload response did not include asset_id.");
-  }
-
-  return assetId;
 }
 
 function getErrorMessage(error: unknown) {
@@ -76,7 +48,7 @@ export function useAvatarUpload() {
       const intent = await accountApi.requestAvatarUploadIntent(
         createAvatarUploadIntentPayload(file),
       );
-      const assetId = await uploadAvatarFileToCloudinary(intent, file);
+      const assetId = await uploadToCloudinary(intent, file);
 
       return accountApi.confirmAvatarUpload(intent.mediaId, assetId);
     },

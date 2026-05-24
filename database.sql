@@ -138,6 +138,7 @@ Cac cot:
 - dimensions        VARCHAR(100)  Kich thuoc (Dai x Rong x Cao).
 - weight            DECIMAL(10,2) Trong luong (kg) de tinh phi van chuyen.
 - status            ENUM          DRAFT, PENDING_APPRAISAL, REJECTED, APPRAISED.
+- sale_status       ENUM          AVAILABLE, IN_AUCTION, SOLD. Trang thai kha nang ban cua san pham vat ly.
 - submitted_at      TIMESTAMP     Thoi diem Seller bam "Gui kiem dinh".
 - rejected_reason   TEXT          Ly do tu choi (chi co khi status = REJECTED).
 - created_at        TIMESTAMP     Thoi gian tao.

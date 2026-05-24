@@ -11,6 +11,7 @@ import com.woodcert.auction.feature.catalog.repository.AppraisalReportRepository
 import com.woodcert.auction.feature.catalog.repository.ProductRepository;
 import com.woodcert.auction.feature.identity.repository.UserRepository;
 import com.woodcert.auction.feature.media.config.CloudinaryProperties;
+import com.woodcert.auction.feature.media.dto.request.ConfirmMediaUploadReq;
 import com.woodcert.auction.feature.media.dto.request.CreateMediaUploadIntentReq;
 import com.woodcert.auction.feature.media.dto.response.MediaUploadIntentRes;
 import com.woodcert.auction.feature.media.entity.MediaAsset;
@@ -47,15 +48,25 @@ public class AppraisalServiceImpl implements AppraisalService {
     @Override
     @Transactional
     public MediaUploadIntentRes createAppraisalImageUploadIntent(String appraiserId, CreateMediaUploadIntentReq request) {
+        // Bước 1: Kiểm tra appraiser tồn tại trước khi cấp intent upload ảnh chứng minh.
         ensureUserExists(appraiserId);
+
+        // Bước 2: Tạo ngữ cảnh upload riêng cho ảnh thẩm định để media service kiểm soát usage type.
         MediaUploadContext context = buildAppraisalImageContext(appraiserId);
         return mediaAssetService.createUploadIntent(context, request);
     }
 
     @Override
     @Transactional
+    public void confirmAppraisalImageUpload(String appraiserId, ConfirmMediaUploadReq request) {
+        // Catalog owns the appraisal-image use case; media only verifies the generic uploaded asset.
+        mediaAssetService.confirmOwnedUpload(appraiserId, request);
+    }
+
+    @Override
+    @Transactional
     public AppraisalSubmitRes submitAppraisal(String appraiserId, Long productId, CreateAppraisalReq request) {
-        // Validate product exists and is PENDING_APPRAISAL
+        // Bước 1: Đọc sản phẩm và chỉ cho phép thẩm định khi sản phẩm đang chờ appraisal.
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
 
@@ -63,26 +74,25 @@ public class AppraisalServiceImpl implements AppraisalService {
             throw new AppException(ErrorCode.PRODUCT_NOT_PENDING);
         }
 
-        // Check no existing appraisal — AppraisalReport is immutable once submitted
+        // Bước 2: Chặn tạo báo cáo lần hai vì appraisal report được xem là immutable sau khi nộp.
         if (appraisalReportRepository.existsByProductId(productId)) {
             throw new AppException(ErrorCode.PRODUCT_ALREADY_APPRAISED);
         }
 
-        // Business validation: reject requires appraiser notes
+        // Bước 3: Nếu từ chối tính xác thực thì bắt buộc có ghi chú giải thích cho seller.
         if (Boolean.FALSE.equals(request.isAuthentic())) {
             if (request.appraiserNotes() == null || request.appraiserNotes().isBlank()) {
                 throw new AppException(ErrorCode.REJECTION_NOTES_REQUIRED);
             }
         }
 
-        // Validate proof images (if provided)
+        // Bước 4: Kiểm tra ảnh chứng minh nếu appraiser gửi kèm.
         validateAppraisalProofImages(request.proofImages(), appraiserId);
 
-        // Step 1: Save report with temporary certificate code (UUID-based)
-        // This avoids the race condition of count() + 1
+        // Bước 5: Lưu report với mã chứng nhận tạm dựa trên UUID để tránh race condition kiểu count() + 1.
         String tempCertCode = "PENDING-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
 
-        // Build digital signature from report data
+        // Bước 6: Tạo chữ ký số từ dữ liệu cốt lõi của báo cáo để truy vết tính toàn vẹn.
         String digitalSignature = generateDigitalSignature(
                 productId, appraiserId, request.verifiedMaterial(),
                 request.estimatedValue(), request.isAuthentic(), tempCertCode
@@ -104,12 +114,12 @@ public class AppraisalServiceImpl implements AppraisalService {
         report.setAppraisedAt(Instant.now());
         report = appraisalReportRepository.save(report);
 
-        // Step 2: Update certificate code with ID-based format (race-condition safe)
+        // Bước 7: Sau khi có report id, cập nhật mã chứng nhận chính thức theo năm và id.
         String certificateCode = String.format("CERT-%d-%05d", Year.now().getValue(), report.getId());
         report.setCertificateCode(certificateCode);
         report = appraisalReportRepository.save(report);
 
-        // Save proof images
+        // Bước 8: Lưu các ảnh chứng minh vào bảng appraisal_images nếu có.
         if (request.proofImages() != null && !request.proofImages().isEmpty()) {
             List<AppraisalImage> appraisalImages = new ArrayList<>();
             for (AppraisalImageReq imgReq : request.proofImages()) {
@@ -122,7 +132,7 @@ public class AppraisalServiceImpl implements AppraisalService {
             appraisalImageRepository.saveAll(appraisalImages);
         }
 
-        // Update product status
+        // Bước 9: Cập nhật trạng thái sản phẩm dựa trên kết quả thẩm định.
         ProductStatus newStatus;
         if (request.isAuthentic()) {
             newStatus = ProductStatus.APPRAISED;
@@ -140,20 +150,20 @@ public class AppraisalServiceImpl implements AppraisalService {
     }
 
     // =========================================================================
-    // Validation helpers
+    // Helper kiểm tra dữ liệu
     // =========================================================================
 
     /**
-     * Validate appraisal proof images:
-     * - No duplicate mediaId references
-     * - Each asset owned by the appraiser, ACTIVE, and of type APPRAISAL_IMAGE
+     * Kiểm tra ảnh chứng minh của báo cáo thẩm định:
+     * - Không trùng mediaId.
+     * - Từng asset thuộc appraiser, đã ACTIVE và đúng type APPRAISAL_IMAGE.
      */
     private void validateAppraisalProofImages(List<AppraisalImageReq> proofImages, String appraiserId) {
         if (proofImages == null || proofImages.isEmpty()) {
             return;
         }
 
-        // No duplicate mediaId
+        // Bước 1: Chặn một media asset bị dùng nhiều lần trong cùng báo cáo.
         Set<Long> mediaIds = new HashSet<>();
         for (AppraisalImageReq imgReq : proofImages) {
             if (!mediaIds.add(imgReq.mediaId())) {
@@ -161,7 +171,7 @@ public class AppraisalServiceImpl implements AppraisalService {
             }
         }
 
-        // Validate each asset
+        // Bước 2: Kiểm tra quyền sở hữu, trạng thái upload và usage type của từng asset.
         for (AppraisalImageReq imgReq : proofImages) {
             MediaAsset asset = mediaAssetService.getOwnedAssetOrThrow(imgReq.mediaId(), appraiserId);
             if (asset.getStatus() != MediaStatus.ACTIVE) {
@@ -179,12 +189,13 @@ public class AppraisalServiceImpl implements AppraisalService {
     // =========================================================================
 
     /**
-     * Generate digital signature by SHA-256 hashing the key report data.
+     * Tạo chữ ký số bằng cách hash SHA-256 các dữ liệu chính của báo cáo.
      */
     private String generateDigitalSignature(
             Long productId, String appraiserId, String verifiedMaterial,
             BigDecimal estimatedValue, boolean isAuthentic, String certificateCode) {
         try {
+            // Bước 1: Ghép payload theo thứ tự cố định để cùng dữ liệu sẽ cho cùng cấu trúc hash.
             String payload = String.join("|",
                     String.valueOf(productId),
                     appraiserId,
@@ -194,6 +205,8 @@ public class AppraisalServiceImpl implements AppraisalService {
                     certificateCode,
                     Instant.now().toString()
             );
+
+            // Bước 2: Hash payload và trả về chuỗi hex để lưu cùng appraisal report.
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hashBytes = digest.digest(payload.getBytes(StandardCharsets.UTF_8));
             return HexFormat.of().formatHex(hashBytes);

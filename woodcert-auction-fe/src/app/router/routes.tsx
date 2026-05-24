@@ -10,16 +10,16 @@ import { SellerLayout } from "@/app/layouts/SellerLayout";
 import { PublicLayout } from "@/app/layouts/PublicLayout";
 import { ProtectedRoute } from "@/app/router/ProtectedRoute";
 import { SellerPortalGuard } from "@/app/router/SellerPortalGuard";
-import { accountRoutes } from "@/features/account/routes";
+import { accountRoutes } from "@/features/account";
 import { adminRoutes } from "@/features/admin/routes";
 import { appraisalRoutes } from "@/features/appraisal/routes";
 import { auctionRoutes } from "@/features/auction/routes";
-import { authRoutes } from "@/features/auth/routes";
+import { authRoutes } from "@/features/auth";
 import { biddingRoutes } from "@/features/bidding/routes";
-import { catalogRoutes } from "@/features/catalog/routes";
+import { catalogRoutes } from "@/features/catalog";
 import { homeRoutes } from "@/features/home/routes";
-import { sellerRegisterRoutes, sellerRoutes } from "@/features/seller/routes";
-import { walletRoutes } from "@/features/wallet/routes";
+import { sellerRegisterRoutes, sellerRoutes } from "@/features/seller";
+import { walletRoutes } from "@/features/wallet";
 
 export const routes: RouteObject[] = [
   ...authRoutes,

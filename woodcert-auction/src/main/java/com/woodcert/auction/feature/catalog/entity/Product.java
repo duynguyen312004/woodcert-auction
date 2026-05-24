@@ -22,7 +22,8 @@ import java.util.List;
 @Table(name = "products", indexes = {
         @Index(name = "idx_products_seller_id", columnList = "seller_id"),
         @Index(name = "idx_products_category_id", columnList = "category_id"),
-        @Index(name = "idx_products_status", columnList = "status")
+        @Index(name = "idx_products_status", columnList = "status"),
+        @Index(name = "idx_products_sale_status", columnList = "sale_status")
 })
 public class Product extends BaseEntity {
 
@@ -54,6 +55,10 @@ public class Product extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 30)
     private ProductStatus status;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "sale_status", nullable = false, length = 30, columnDefinition = "varchar(30) default 'AVAILABLE'")
+    private ProductSaleStatus saleStatus = ProductSaleStatus.AVAILABLE;
 
     @Column(name = "submitted_at")
     private Instant submittedAt;

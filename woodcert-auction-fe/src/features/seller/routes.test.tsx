@@ -27,6 +27,7 @@ describe("seller routes", () => {
         "seller/profile",
         "seller/products",
         "seller/products/new",
+        "seller/products/:productId/edit",
         "seller/auctions",
         "seller/auctions/new",
         "seller/appraisals",

@@ -5,6 +5,7 @@ import com.woodcert.auction.core.exception.ErrorCode;
 import com.woodcert.auction.feature.auction.dto.request.CreateAuctionSessionReq;
 import com.woodcert.auction.feature.auction.entity.AuctionSessionStatus;
 import com.woodcert.auction.feature.catalog.entity.Product;
+import com.woodcert.auction.feature.catalog.entity.ProductSaleStatus;
 import com.woodcert.auction.feature.catalog.entity.ProductStatus;
 import org.springframework.stereotype.Component;
 
@@ -52,6 +53,10 @@ public class AuctionPolicy {
 
         if (product.getStatus() != ProductStatus.APPRAISED) {
             throw new AppException(ErrorCode.AUCTION_PRODUCT_NOT_APPRAISED);
+        }
+
+        if (product.getSaleStatus() != ProductSaleStatus.AVAILABLE) {
+            throw new AppException(ErrorCode.AUCTION_PRODUCT_NOT_AVAILABLE);
         }
     }
 

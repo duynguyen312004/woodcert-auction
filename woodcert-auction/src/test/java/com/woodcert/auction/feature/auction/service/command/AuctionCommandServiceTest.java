@@ -14,6 +14,7 @@ import com.woodcert.auction.feature.auction.service.assembler.AuctionResponseAss
 import com.woodcert.auction.feature.auction.service.policy.AuctionPolicy;
 import com.woodcert.auction.feature.auction.service.runtime.AuctionRuntimeSnapshot;
 import com.woodcert.auction.feature.catalog.entity.Product;
+import com.woodcert.auction.feature.catalog.entity.ProductSaleStatus;
 import com.woodcert.auction.feature.catalog.entity.ProductStatus;
 import com.woodcert.auction.feature.catalog.repository.AppraisalReportRepository;
 import com.woodcert.auction.feature.catalog.repository.ProductRepository;
@@ -115,7 +116,9 @@ class AuctionCommandServiceTest {
         AuctionDetailRes result = commandService.createAuctionSession(SELLER_ID, validRequest());
 
         assertThat(result).isSameAs(expected);
+        assertThat(product.getSaleStatus()).isEqualTo(ProductSaleStatus.IN_AUCTION);
         verify(productRepository).findByIdForUpdate(PRODUCT_ID);
+        verify(productRepository).save(product);
     }
 
     @Test
@@ -127,6 +130,17 @@ class AuctionCommandServiceTest {
         assertAppException(
                 () -> commandService.createAuctionSession(SELLER_ID, validRequest()),
                 ErrorCode.AUCTION_SESSION_CONFLICT);
+    }
+
+    @Test
+    void createAuctionSession_soldProduct_throws() {
+        Product product = product(ProductStatus.APPRAISED);
+        product.setSaleStatus(ProductSaleStatus.SOLD);
+        when(productRepository.findByIdForUpdate(PRODUCT_ID)).thenReturn(Optional.of(product));
+
+        assertAppException(
+                () -> commandService.createAuctionSession(SELLER_ID, validRequest()),
+                ErrorCode.AUCTION_PRODUCT_NOT_AVAILABLE);
     }
 
     @Test
@@ -170,12 +184,15 @@ class AuctionCommandServiceTest {
     @Test
     void cancelAuctionSession_success_usesLockedSession() {
         AuctionSession session = session(AuctionSessionStatus.WAITING);
-        session.setProduct(product(ProductStatus.APPRAISED));
+        Product product = product(ProductStatus.APPRAISED);
+        product.setSaleStatus(ProductSaleStatus.IN_AUCTION);
+        session.setProduct(product);
         when(auctionSessionRepository.findByIdWithProductForUpdate(AUCTION_ID)).thenReturn(Optional.of(session));
 
         commandService.cancelAuctionSession(SELLER_ID, AUCTION_ID);
 
         assertThat(session.getStatus()).isEqualTo(AuctionSessionStatus.CANCELED);
+        assertThat(product.getSaleStatus()).isEqualTo(ProductSaleStatus.AVAILABLE);
         verify(auctionSessionRepository).findByIdWithProductForUpdate(AUCTION_ID);
     }
 
@@ -322,6 +339,7 @@ class AuctionCommandServiceTest {
         product.setSellerId(SELLER_ID);
         product.setTitle("Wood statue");
         product.setStatus(status);
+        product.setSaleStatus(ProductSaleStatus.AVAILABLE);
         return product;
     }
 

@@ -8,7 +8,7 @@ import { AlertTriangle, ArrowRight, Gavel, PackagePlus, RefreshCw, Star } from "
 import { useMemo } from "react";
 import { Link, useNavigate } from "react-router";
 
-import { useProfile, useSellerProfile } from "@/features/account/hooks/useProfile";
+import { useProfile, useSellerProfile } from "@/features/account";
 
 import { ActiveAuctionWidget } from "../components/ActiveAuctionWidget";
 import { KpiCard } from "../components/KpiCard";
@@ -49,7 +49,7 @@ export function SellerDashboardPage() {
         <button
           type="button"
           onClick={refetch}
-          className="flex items-center gap-2 px-4 py-2 border border-ink-blue/30 rounded-lg text-sm font-semibold text-ink-blue hover:bg-ink-blue/5 transition-colors"
+          className="flex cursor-pointer items-center gap-2 px-4 py-2 border border-ink-blue/30 rounded-lg text-sm font-semibold text-ink-blue hover:bg-ink-blue/5 transition-colors"
         >
           <RefreshCw className="size-4" />
           Thử lại
@@ -94,7 +94,7 @@ export function SellerDashboardPage() {
             type="button"
             onClick={() => navigate(SELLER_PATHS.profile)}
             aria-label="Xem hồ sơ người bán"
-            className="size-9 rounded-full bg-cover bg-center border-2 border-brushed-brass overflow-hidden bg-[#eae1d6] flex items-center justify-center transition-opacity hover:opacity-80"
+            className="size-9 cursor-pointer rounded-full bg-cover bg-center border-2 border-brushed-brass overflow-hidden bg-[#eae1d6] flex items-center justify-center transition-opacity hover:opacity-80"
             style={profile?.avatarUrl ? { backgroundImage: `url(${profile.avatarUrl})` } : {}}
           >
             {!profile?.avatarUrl && (
@@ -152,7 +152,7 @@ export function SellerDashboardPage() {
                 <button
                   type="button"
                   onClick={() => navigate(SELLER_PATHS.newProduct)}
-                  className="h-32 bg-brushed-brass text-[#181612] rounded-xl flex flex-col items-center justify-center gap-3 transition-transform active:scale-95 hover:brightness-105 shadow-md"
+                  className="h-32 cursor-pointer bg-brushed-brass text-[#181612] rounded-xl flex flex-col items-center justify-center gap-3 transition-transform active:scale-95 hover:brightness-105 shadow-md"
                 >
                   <PackagePlus className="size-7" />
                   <span className="font-bold text-sm">Đăng sản phẩm mới</span>
@@ -160,7 +160,7 @@ export function SellerDashboardPage() {
                 <button
                   type="button"
                   onClick={() => navigate(SELLER_PATHS.newAuction)}
-                  className="h-32 bg-ink-blue text-white rounded-xl flex flex-col items-center justify-center gap-3 transition-transform active:scale-95 hover:brightness-110 shadow-md"
+                  className="h-32 cursor-pointer bg-ink-blue text-white rounded-xl flex flex-col items-center justify-center gap-3 transition-transform active:scale-95 hover:brightness-110 shadow-md"
                 >
                   <Gavel className="size-7" />
                   <span className="font-bold text-sm">Tạo phiên đấu giá</span>
@@ -180,7 +180,7 @@ export function SellerDashboardPage() {
               <h3 className="font-serif text-xl font-bold text-ink-blue">Sản phẩm gần đây</h3>
               <Link
                 to={SELLER_PATHS.products}
-                className="text-sm font-bold text-ink-blue/50 hover:text-ink-blue transition-colors flex items-center gap-1"
+                className="flex cursor-pointer items-center gap-1 text-sm font-bold text-ink-blue/50 transition-colors hover:text-ink-blue"
               >
                 Xem tất cả <ArrowRight className="size-4" />
               </Link>
@@ -215,7 +215,7 @@ export function SellerDashboardPage() {
                           <p className="text-sm text-muted-warm">Chưa có sản phẩm nào.</p>
                           <Link
                             to={SELLER_PATHS.newProduct}
-                            className="text-sm font-bold text-brushed-brass hover:underline"
+                            className="cursor-pointer text-sm font-bold text-brushed-brass hover:underline"
                           >
                             Đăng sản phẩm đầu tiên →
                           </Link>

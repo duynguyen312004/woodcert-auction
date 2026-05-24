@@ -6,7 +6,6 @@ import com.woodcert.auction.feature.catalog.service.ProductService;
 import com.woodcert.auction.feature.media.dto.request.ConfirmMediaUploadReq;
 import com.woodcert.auction.feature.media.dto.request.CreateMediaUploadIntentReq;
 import com.woodcert.auction.feature.media.dto.response.MediaUploadIntentRes;
-import com.woodcert.auction.feature.media.service.MediaAssetService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -24,7 +23,6 @@ import org.springframework.web.bind.annotation.*;
 public class ProductMediaController {
 
     private final ProductService productService;
-    private final MediaAssetService mediaAssetService;
 
     /**
      * Seller: Create a signed Cloudinary upload intent for a product image.
@@ -47,7 +45,7 @@ public class ProductMediaController {
     public ResponseEntity<ApiResponse<Void>> confirmUpload(
             @CurrentUserId String userId,
             @RequestBody @Valid ConfirmMediaUploadReq request) {
-        mediaAssetService.confirmOwnedUpload(userId, request);
+        productService.confirmProductImageUpload(userId, request);
         return ResponseEntity.ok(ApiResponse.success(null, "Product image confirmed successfully"));
     }
 }

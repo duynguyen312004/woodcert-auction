@@ -6,7 +6,7 @@
  */
 import { useMemo, useState } from "react";
 
-import { useCategories } from "@/features/catalog/hooks/useCategories";
+import { useCategories } from "@/features/catalog";
 import { cn } from "@/shared/lib/utils";
 
 import { AuctionListContent } from "../components/AuctionListContent";

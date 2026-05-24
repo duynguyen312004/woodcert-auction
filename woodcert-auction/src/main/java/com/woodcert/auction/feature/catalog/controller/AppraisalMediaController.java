@@ -6,7 +6,6 @@ import com.woodcert.auction.feature.catalog.service.AppraisalService;
 import com.woodcert.auction.feature.media.dto.request.ConfirmMediaUploadReq;
 import com.woodcert.auction.feature.media.dto.request.CreateMediaUploadIntentReq;
 import com.woodcert.auction.feature.media.dto.response.MediaUploadIntentRes;
-import com.woodcert.auction.feature.media.service.MediaAssetService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -24,7 +23,6 @@ import org.springframework.web.bind.annotation.*;
 public class AppraisalMediaController {
 
     private final AppraisalService appraisalService;
-    private final MediaAssetService mediaAssetService;
 
     /**
      * Appraiser: Create a signed Cloudinary upload intent for an appraisal proof image.
@@ -47,7 +45,7 @@ public class AppraisalMediaController {
     public ResponseEntity<ApiResponse<Void>> confirmUpload(
             @CurrentUserId String userId,
             @RequestBody @Valid ConfirmMediaUploadReq request) {
-        mediaAssetService.confirmOwnedUpload(userId, request);
+        appraisalService.confirmAppraisalImageUpload(userId, request);
         return ResponseEntity.ok(ApiResponse.success(null, "Appraisal image confirmed successfully"));
     }
 }

@@ -28,7 +28,7 @@ export function ActiveAuctionWidget({ auction }: { auction: SellerAuction | null
         </div>
         <Link
           to={SELLER_PATHS.newAuction}
-          className="flex items-center gap-1 text-sm font-bold text-brushed-brass hover:underline"
+          className="flex cursor-pointer items-center gap-1 text-sm font-bold text-brushed-brass hover:underline"
         >
           Tạo phiên <ArrowRight className="size-4" />
         </Link>
@@ -85,7 +85,7 @@ export function ActiveAuctionWidget({ auction }: { auction: SellerAuction | null
           </div>
           <Link
             to={SELLER_PATHS.auctions}
-            className="flex items-center gap-1 text-sm font-bold text-brushed-brass hover:underline"
+            className="flex cursor-pointer items-center gap-1 text-sm font-bold text-brushed-brass hover:underline"
           >
             Xem chi tiết <ArrowRight className="size-4" />
           </Link>

@@ -59,6 +59,7 @@ public enum ErrorCode {
     BID_AUCTION_ENDED(400, "Auction session has already ended"),
     AUCTION_SESSION_NOT_OWNED(403, "You do not own this auction session"),
     AUCTION_PRODUCT_NOT_APPRAISED(400, "Product must be APPRAISED to create an auction session"),
+    AUCTION_PRODUCT_NOT_AVAILABLE(409, "Product is not available for auction"),
     AUCTION_PRODUCT_NOT_OWNED(403, "You do not own this product"),
     AUCTION_SESSION_CONFLICT(409, "Product already has an active or waiting auction session"),
     AUCTION_SESSION_NOT_CANCELABLE(400, "Auction session can only be canceled when in WAITING status"),

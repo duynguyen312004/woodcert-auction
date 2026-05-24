@@ -35,16 +35,19 @@ public class UserProfileServiceImpl implements UserProfileService {
     @Override
     @Transactional
     public UserProfileRes updateCurrentUserProfile(String userId, UpdateUserProfileReq request) {
+        // Bước 1: Đọc user hiện tại và chuẩn hóa số điện thoại nếu request có gửi lên.
         User user = findUser(userId);
 
         String normalizedPhone = request.phoneNumber() == null
                 ? null
                 : IdentityNormalizationUtils.normalizeVietnamesePhoneNullable(request.phoneNumber());
 
+        // Bước 2: Chặn số điện thoại đã thuộc user khác.
         if (normalizedPhone != null && hasPhoneConflict(normalizedPhone, userId)) {
             throw new AppException(ErrorCode.DUPLICATE_RESOURCE, "Phone number already exists");
         }
 
+        // Bước 3: Chỉ cập nhật các field được gửi lên trong request.
         if (request.fullName() != null) {
             user.setFullName(request.fullName().trim());
         }
@@ -55,6 +58,7 @@ public class UserProfileServiceImpl implements UserProfileService {
             user.setPhoneNumber(normalizedPhone);
         }
 
+        // Bước 4: Lưu user và trả profile kèm cờ đã có seller profile hay chưa.
         boolean hasSellerProfile = sellerProfileRepository.existsById(userId);
         return toUserProfile(userRepository.save(user), hasSellerProfile);
     }
@@ -62,18 +66,22 @@ public class UserProfileServiceImpl implements UserProfileService {
     @Override
     @Transactional
     public UserProfileRes patchCurrentUserProfile(String userId, PatchUserProfileReq request) {
+        // Bước 1: PATCH phải có ít nhất một field để tránh request rỗng.
         if (request == null || !request.hasAnyField()) {
             throw new AppException(ErrorCode.INVALID_REQUEST, "At least one field must be provided");
         }
 
+        // Bước 2: Đọc user hiện tại trước khi áp từng field patch.
         User user = findUser(userId);
 
+        // Bước 3: Nếu patch fullName thì kiểm tra kiểu dữ liệu, format và độ dài trước khi lưu.
         if (request.fullName() != null) {
             String fullName = requireTextValue(request.fullName(), "fullName");
             validateFullName(fullName);
             user.setFullName(fullName.trim());
         }
 
+        // Bước 4: Nếu patch phoneNumber thì không cho null/rỗng, chuẩn hóa và kiểm tra trùng.
         if (request.phoneNumber() != null) {
             if (request.phoneNumber().isNull() || request.phoneNumber().asText().trim().isEmpty()) {
                 throw new AppException(ErrorCode.INVALID_REQUEST, "Phone number cannot be empty");
@@ -88,6 +96,7 @@ public class UserProfileServiceImpl implements UserProfileService {
             }
         }
 
+        // Bước 5: Lưu user và trả DTO đã gắn avatar URL cùng trạng thái seller profile.
         boolean hasSellerProfile = sellerProfileRepository.existsById(userId);
         return toUserProfile(userRepository.save(user), hasSellerProfile);
     }

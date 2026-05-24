@@ -2,8 +2,8 @@ import { Loader2, LogOut, UserCircle2 } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 
-import { useProfile } from "@/features/account/hooks/useProfile";
-import { authApi } from "@/features/auth/api/auth";
+import { useProfile } from "@/features/account";
+import { authApi } from "@/features/auth";
 import { clearAuthSession } from "@/shared/auth/auth-store";
 import { Button } from "@/shared/ui/button";
 import {

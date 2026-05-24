@@ -33,22 +33,30 @@ public class UserAvatarServiceImpl implements UserAvatarService {
     @Override
     @Transactional
     public MediaUploadIntentRes createCurrentUserAvatarUploadIntent(String userId, CreateMediaUploadIntentReq request) {
+        // Bước 1: Kiểm tra user tồn tại trước khi cấp intent upload avatar.
         ensureUserExists(userId);
+
+        // Bước 2: Tạo intent upload với folder và giới hạn dung lượng dành riêng cho avatar.
         return mediaAssetService.createUploadIntent(buildAvatarContext(userId), request);
     }
 
     @Override
     @Transactional
     public UserProfileRes attachCurrentUserAvatar(String userId, ConfirmMediaUploadReq request) {
+        // Bước 1: Đọc user hiện tại và giữ lại avatar cũ để dọn nếu bị thay thế.
         User user = findUser(userId);
         MediaAsset currentAvatar = user.getAvatarMedia();
+
+        // Bước 2: Xác nhận upload thuộc user hiện tại trước khi gắn vào profile.
         MediaAsset uploadedAvatar = mediaAssetService.confirmOwnedUpload(userId, request);
 
+        // Bước 3: Gắn avatar mới; nếu avatar cũ khác avatar mới thì đánh dấu xóa media cũ.
         user.setAvatarMedia(uploadedAvatar);
         if (currentAvatar != null && !currentAvatar.getId().equals(uploadedAvatar.getId())) {
             mediaAssetService.markPendingDelete(currentAvatar);
         }
 
+        // Bước 4: Lưu user và trả profile với URL avatar mới.
         boolean hasSellerProfile = sellerProfileRepository.existsById(userId);
         User savedUser = userRepository.save(user);
         return UserProfileRes.fromEntity(savedUser, hasSellerProfile, mediaUrlBuilder.buildAvatarUrl(uploadedAvatar));
@@ -57,13 +65,17 @@ public class UserAvatarServiceImpl implements UserAvatarService {
     @Override
     @Transactional
     public UserProfileRes clearCurrentUserAvatar(String userId) {
+        // Bước 1: Đọc user và avatar hiện tại.
         User user = findUser(userId);
         MediaAsset currentAvatar = user.getAvatarMedia();
+
+        // Bước 2: Nếu có avatar thì bỏ liên kết khỏi user và đánh dấu media để dọn sau.
         if (currentAvatar != null) {
             user.setAvatarMedia(null);
             mediaAssetService.markPendingDelete(currentAvatar);
         }
 
+        // Bước 3: Lưu user và trả profile không còn avatar URL.
         boolean hasSellerProfile = sellerProfileRepository.existsById(userId);
         User savedUser = userRepository.save(user);
         return UserProfileRes.fromEntity(savedUser, hasSellerProfile, null);

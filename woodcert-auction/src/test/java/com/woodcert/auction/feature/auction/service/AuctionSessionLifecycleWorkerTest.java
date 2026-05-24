@@ -9,6 +9,9 @@ import com.woodcert.auction.feature.auction.entity.DepositStatus;
 import com.woodcert.auction.feature.auction.repository.AuctionParticipantRepository;
 import com.woodcert.auction.feature.auction.repository.AuctionSessionRepository;
 import com.woodcert.auction.feature.auction.repository.BidRepository;
+import com.woodcert.auction.feature.catalog.entity.Product;
+import com.woodcert.auction.feature.catalog.entity.ProductSaleStatus;
+import com.woodcert.auction.feature.catalog.repository.ProductRepository;
 import com.woodcert.auction.feature.finance.entity.WalletReferenceType;
 import com.woodcert.auction.feature.finance.service.WalletService;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,6 +44,7 @@ class AuctionSessionLifecycleWorkerTest {
     @Mock private AuctionSessionRepository auctionSessionRepository;
     @Mock private AuctionParticipantRepository auctionParticipantRepository;
     @Mock private BidRepository bidRepository;
+    @Mock private ProductRepository productRepository;
     @Mock private AuctionRedisService auctionRedisService;
     @Mock private WalletService walletService;
 
@@ -52,6 +56,7 @@ class AuctionSessionLifecycleWorkerTest {
                 auctionSessionRepository,
                 auctionParticipantRepository,
                 bidRepository,
+                productRepository,
                 auctionRedisService,
                 walletService
         );
@@ -144,6 +149,8 @@ class AuctionSessionLifecycleWorkerTest {
         when(auctionRedisService.getSessionState(SESSION_ID)).thenReturn(Map.of());
         when(bidRepository.findTopByAuctionSessionIdAndStatusOrderByBidAmountDescBidTimeDescIdDesc(SESSION_ID, BidStatus.VALID))
                 .thenReturn(Optional.of(latestValidBid));
+        Product product = availableProduct();
+        when(productRepository.findByIdForUpdate(100L)).thenReturn(Optional.of(product));
 
         var result = worker.finalizeDueSession(SESSION_ID, now);
 
@@ -153,6 +160,7 @@ class AuctionSessionLifecycleWorkerTest {
         assertThat(session.getCurrentPrice()).isEqualByComparingTo("250.00");
         assertThat(session.getHighestBidderId()).isEqualTo("bidder-2");
         assertThat(session.getWinnerBidId()).isEqualTo(700L);
+        assertThat(product.getSaleStatus()).isEqualTo(ProductSaleStatus.SOLD);
     }
 
     @Test
@@ -290,6 +298,7 @@ class AuctionSessionLifecycleWorkerTest {
     private AuctionSession createSession(AuctionSessionStatus status, Instant startTime, Instant endTime) {
         AuctionSession session = new AuctionSession();
         session.setId(SESSION_ID);
+        session.setProductId(100L);
         session.setStatus(status);
         session.setStartTime(startTime);
         session.setEndTime(endTime);
@@ -299,6 +308,13 @@ class AuctionSessionLifecycleWorkerTest {
         session.setStepPrice(new BigDecimal("10.00"));
         session.setDepositAmount(new BigDecimal("1000.00"));
         return session;
+    }
+
+    private Product availableProduct() {
+        Product product = new Product();
+        product.setId(100L);
+        product.setSaleStatus(ProductSaleStatus.IN_AUCTION);
+        return product;
     }
 
     private AuctionParticipant createParticipant(String userId, BigDecimal depositAmount) {

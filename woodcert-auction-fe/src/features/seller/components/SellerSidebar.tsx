@@ -6,7 +6,7 @@
 import { Gavel, LayoutDashboard, Package, ShieldCheck, UserCircle } from "lucide-react";
 import { Link, useLocation } from "react-router";
 
-import { useProfile, useSellerProfile } from "@/features/account/hooks/useProfile";
+import { useProfile, useSellerProfile } from "@/features/account";
 import { cn } from "@/shared/lib/utils";
 
 import { SELLER_PATHS } from "../constants/routes";
@@ -18,6 +18,18 @@ const NAV_ITEMS = [
   { label: "Kiểm định", icon: ShieldCheck, to: SELLER_PATHS.appraisals },
   { label: "Hồ sơ", icon: UserCircle, to: SELLER_PATHS.profile },
 ] as const;
+
+function isNavItemActive(pathname: string, to: string) {
+  if (to === SELLER_PATHS.dashboard) {
+    return pathname === to;
+  }
+
+  if (to === SELLER_PATHS.products) {
+    return pathname === to || pathname.startsWith(`${to}/`);
+  }
+
+  return pathname === to || pathname.startsWith(`${to}/`);
+}
 
 export function SellerSidebar() {
   const location = useLocation();
@@ -48,10 +60,7 @@ export function SellerSidebar() {
 
         <nav className="flex flex-col gap-1 flex-1" aria-label="Seller navigation">
           {NAV_ITEMS.map(({ label, icon: Icon, to }) => {
-            const isActive =
-              to === SELLER_PATHS.dashboard
-                ? location.pathname === to
-                : location.pathname.startsWith(to);
+            const isActive = isNavItemActive(location.pathname, to);
 
             return (
               <Link

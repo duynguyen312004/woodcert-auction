@@ -39,10 +39,11 @@ public class ProductController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) Integer categoryId,
             @RequestParam(required = false) String status,
+            @RequestParam(required = false) String saleStatus,
             @CurrentUserId String userId) {
         boolean isAppraiser = hasAuthority("APPROVE_PRODUCT");
         PaginationResponse<ProductListRes> result = productService.getCatalogProducts(
-                userId, isAppraiser, page, size, categoryId, status);
+                userId, isAppraiser, page, size, categoryId, status, saleStatus);
         return ResponseEntity.ok(ApiResponse.success(result, "Fetch products successful"));
     }
 

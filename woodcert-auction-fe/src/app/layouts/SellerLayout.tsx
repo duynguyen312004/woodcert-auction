@@ -6,7 +6,7 @@
  */
 import { Outlet } from "react-router";
 
-import { SellerSidebar } from "@/features/seller/components/SellerSidebar";
+import { SellerSidebar } from "@/features/seller";
 
 export function SellerLayout() {
   return (

@@ -1,6 +1,7 @@
 package com.woodcert.auction.feature.catalog.dto.response;
 
 import com.woodcert.auction.feature.catalog.entity.Product;
+import com.woodcert.auction.feature.catalog.entity.ProductSaleStatus;
 import com.woodcert.auction.feature.catalog.entity.ProductStatus;
 
 import java.math.BigDecimal;
@@ -20,6 +21,7 @@ public record ProductDetailRes(
         String dimensions,
         BigDecimal weight,
         ProductStatus status,
+        ProductSaleStatus saleStatus,
         CategoryRes category,
         List<ProductImageRes> images,
         AppraisalReportRes appraisalReport,
@@ -43,6 +45,7 @@ public record ProductDetailRes(
                 product.getDimensions(),
                 product.getWeight(),
                 product.getStatus(),
+                product.getSaleStatus(),
                 categoryRes,
                 imageResponses,
                 appraisalReportRes,

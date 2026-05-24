@@ -8,7 +8,7 @@ import type { ReactNode } from "react";
 import { ArrowRight, LayoutDashboard, Package, ShieldCheck } from "lucide-react";
 import { Link } from "react-router";
 
-import { SELLER_PATHS } from "@/features/seller/constants/routes";
+import { SELLER_PATHS } from "@/shared/constants";
 import { Button } from "@/shared/ui/button";
 
 import type { SellerProfile } from "../types";

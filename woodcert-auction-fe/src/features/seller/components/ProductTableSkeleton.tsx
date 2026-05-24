@@ -3,7 +3,7 @@
  *
  * Dùng lúc dữ liệu đang tải để bảng không bị nhảy layout trước khi có dòng thật.
  */
-export function ProductTableSkeleton() {
+export function ProductTableSkeleton({ columns = 4 }: { columns?: 4 | 5 }) {
   return (
     <>
       {Array.from({ length: 4 }).map((_, index) => (
@@ -20,6 +20,11 @@ export function ProductTableSkeleton() {
           <td className="px-6 py-4">
             <div className="h-5 w-20 animate-pulse rounded-full bg-gray-200" />
           </td>
+          {columns === 5 && (
+            <td className="px-6 py-4">
+              <div className="h-4 w-20 animate-pulse rounded bg-gray-200" />
+            </td>
+          )}
           <td className="px-6 py-4 text-right">
             <div className="ml-auto h-5 w-5 animate-pulse rounded bg-gray-200" />
           </td>

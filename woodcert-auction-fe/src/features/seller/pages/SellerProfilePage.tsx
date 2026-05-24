@@ -14,7 +14,7 @@ import {
   Star,
 } from "lucide-react";
 
-import { useProfile, useSellerProfile } from "@/features/account/hooks/useProfile";
+import { useProfile, useSellerProfile } from "@/features/account";
 import { formatDate } from "@/shared/lib/format";
 import { cn } from "@/shared/lib/utils";
 

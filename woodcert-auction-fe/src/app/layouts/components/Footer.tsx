@@ -9,7 +9,7 @@ import { useState } from "react";
 import { Link } from "react-router";
 
 import logoUrl from "@/assets/brand/logo.jpg";
-import { SELLER_PATHS } from "@/features/seller/constants/routes";
+import { SELLER_PATHS } from "@/shared/constants";
 
 const EXPLORE_LINKS = [
   { label: "Đấu giá đang mở", to: "/auctions" },

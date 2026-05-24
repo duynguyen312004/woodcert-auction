@@ -27,11 +27,13 @@ public class SellerSummaryQueryServiceImpl implements SellerSummaryQueryService 
     @Override
     @Transactional(readOnly = true)
     public Map<String, SellerSummary> findSellerSummaries(Collection<String> sellerIds) {
+        // Bước 1: Chuẩn hóa danh sách seller id, bỏ null/rỗng và loại trùng để giảm query thừa.
         List<String> ids = normalizeIds(sellerIds);
         if (ids.isEmpty()) {
             return Map.of();
         }
 
+        // Bước 2: Batch-load user và seller profile để tránh N+1 query khi dựng danh sách auction/product.
         Map<String, User> users = StreamSupport.stream(userRepository.findAllById(ids).spliterator(), false)
                 .collect(Collectors.toMap(User::getId, Function.identity(), (left, right) -> left,
                         LinkedHashMap::new));
@@ -40,6 +42,7 @@ public class SellerSummaryQueryServiceImpl implements SellerSummaryQueryService 
                 .collect(Collectors.toMap(SellerProfile::getUserId, Function.identity(), (left, right) -> left,
                         LinkedHashMap::new));
 
+        // Bước 3: Ghép user/profile theo thứ tự id đầu vào để response ổn định.
         Map<String, SellerSummary> result = new LinkedHashMap<>();
         for (String id : ids) {
             User user = users.get(id);

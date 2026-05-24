@@ -10,10 +10,23 @@ import { useMemo } from "react";
 import { sellerApi } from "../api/seller";
 import type { ProductStatus } from "../types";
 
-export function useSellerProducts(params?: { page?: number; size?: number; status?: string }) {
+export function useSellerProducts(params?: {
+  page?: number;
+  size?: number;
+  status?: string;
+  saleStatus?: string;
+}) {
   return useQuery({
     queryKey: ["seller", "products", params] as const,
     queryFn: () => sellerApi.getMyProducts(params),
+  });
+}
+
+export function useSellerProductDetail(productId: number | undefined) {
+  return useQuery({
+    queryKey: ["seller", "product", productId] as const,
+    queryFn: () => sellerApi.getProductDetail(productId as number),
+    enabled: productId !== undefined,
   });
 }
 

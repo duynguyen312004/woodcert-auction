@@ -3,8 +3,8 @@ import { useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router";
 
 import logoUrl from "@/assets/brand/logo.jpg";
-import { useWalletBalance } from "@/features/wallet/hooks/useWalletBalance";
-import { authApi } from "@/features/auth/api/auth";
+import { authApi } from "@/features/auth";
+import { useWalletBalance } from "@/features/wallet";
 import { clearAuthSession, useAuthStore } from "@/shared/auth/auth-store";
 
 import { UserMenu } from "./UserMenu";

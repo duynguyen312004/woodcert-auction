@@ -1,6 +1,7 @@
 package com.woodcert.auction.feature.catalog.dto.response;
 
 import com.woodcert.auction.feature.catalog.entity.Product;
+import com.woodcert.auction.feature.catalog.entity.ProductSaleStatus;
 import com.woodcert.auction.feature.catalog.entity.ProductStatus;
 
 import java.time.Instant;
@@ -17,6 +18,7 @@ public record ProductListRes(
         CategoryRes category,
         String material,
         ProductStatus status,
+        ProductSaleStatus saleStatus,
         String primaryImage,
         Instant createdAt
 ) {
@@ -34,6 +36,7 @@ public record ProductListRes(
                 categoryRes,
                 product.getMaterial(),
                 product.getStatus(),
+                product.getSaleStatus(),
                 primaryImageUrl,
                 product.getCreatedAt()
         );

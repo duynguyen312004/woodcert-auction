@@ -10,6 +10,7 @@ import com.woodcert.auction.feature.catalog.dto.response.*;
 import com.woodcert.auction.feature.catalog.entity.AppraisalReport;
 import com.woodcert.auction.feature.catalog.entity.Product;
 import com.woodcert.auction.feature.catalog.entity.ProductImage;
+import com.woodcert.auction.feature.catalog.entity.ProductSaleStatus;
 import com.woodcert.auction.feature.catalog.entity.ProductStatus;
 import com.woodcert.auction.feature.catalog.repository.CategoryRepository;
 import com.woodcert.auction.feature.catalog.repository.ProductImageRepository;
@@ -19,6 +20,7 @@ import com.woodcert.auction.feature.identity.entity.User;
 import com.woodcert.auction.feature.identity.repository.SellerProfileRepository;
 import com.woodcert.auction.feature.identity.repository.UserRepository;
 import com.woodcert.auction.feature.media.config.CloudinaryProperties;
+import com.woodcert.auction.feature.media.dto.request.ConfirmMediaUploadReq;
 import com.woodcert.auction.feature.media.dto.request.CreateMediaUploadIntentReq;
 import com.woodcert.auction.feature.media.dto.response.MediaUploadIntentRes;
 import com.woodcert.auction.feature.media.entity.MediaAsset;
@@ -64,18 +66,30 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional
     public MediaUploadIntentRes createProductImageUploadIntent(String sellerId, CreateMediaUploadIntentReq request) {
+        // Bước 1: Kiểm tra seller tồn tại trước khi cấp quyền upload ảnh sản phẩm.
         ensureUserExists(sellerId);
+
+        // Bước 2: Tạo ngữ cảnh upload để media service giới hạn folder, dung lượng và loại file.
         MediaUploadContext context = buildProductImageContext(sellerId);
         return mediaAssetService.createUploadIntent(context, request);
     }
 
     @Override
     @Transactional
+    public void confirmProductImageUpload(String sellerId, ConfirmMediaUploadReq request) {
+        // Catalog owns the product-image use case; media only verifies the generic uploaded asset.
+        mediaAssetService.confirmOwnedUpload(sellerId, request);
+    }
+
+    @Override
+    @Transactional
     public ProductDetailRes createProduct(String sellerId, CreateProductReq request) {
+        // Bước 1: Kiểm tra category, bộ ảnh và media asset trước khi tạo bản ghi sản phẩm.
         validateCategoryExists(request.categoryId());
         validateProductImages(request.images());
         validateMediaAssetsForProduct(request.images(), sellerId);
 
+        // Bước 2: Chuẩn hóa dữ liệu nhập và lưu sản phẩm ở trạng thái nháp.
         Product product = new Product();
         product.setSellerId(sellerId);
         product.setCategoryId(request.categoryId());
@@ -85,29 +99,34 @@ public class ProductServiceImpl implements ProductService {
         product.setDimensions(trimOrNull(request.dimensions()));
         product.setWeight(request.weight());
         product.setStatus(ProductStatus.DRAFT);
+        product.setSaleStatus(ProductSaleStatus.AVAILABLE);
         product = productRepository.save(product);
 
+        // Bước 3: Gắn các media đã upload vào bảng ảnh sản phẩm theo đúng thứ tự hiển thị.
         saveProductImages(product.getId(), request.images());
 
         log.info("Product {} created by seller {} with {} images",
                 product.getId(), sellerId, request.images().size());
 
+        // Bước 4: Đọc lại chi tiết để trả về kèm seller, category, ảnh và appraisal report nếu có.
         return buildProductDetailRes(product);
     }
 
     @Override
     @Transactional
     public ProductDetailRes updateProduct(String sellerId, Long productId, UpdateProductReq request) {
+        // Bước 1: Chỉ cho phép seller sửa sản phẩm của mình khi sản phẩm còn ở trạng thái nháp.
         Product product = getOwnedDraftProduct(sellerId, productId);
 
+        // Bước 2: Kiểm tra dữ liệu thay thế giống luồng tạo mới để tránh ảnh/media không hợp lệ.
         validateCategoryExists(request.categoryId());
         validateProductImages(request.images());
         validateMediaAssetsForProduct(request.images(), sellerId);
 
-        // Replace images: diff-based cleanup + full replacement
+        // Bước 3: Thay bộ ảnh, đồng thời đánh dấu media bị gỡ để job dọn Cloudinary xử lý sau.
         replaceProductImages(productId, request.images());
 
-        // Update product fields
+        // Bước 4: Cập nhật các trường mô tả sau khi đã chắc chắn dữ liệu liên quan hợp lệ.
         product.setCategoryId(request.categoryId());
         product.setTitle(request.title().trim());
         product.setDescription(request.description());
@@ -119,15 +138,17 @@ public class ProductServiceImpl implements ProductService {
         log.info("Product {} updated by seller {} with {} images",
                 productId, sellerId, request.images().size());
 
+        // Bước 5: Trả về snapshot chi tiết mới nhất cho màn hình seller.
         return buildProductDetailRes(product);
     }
 
     @Override
     @Transactional
     public void deleteProduct(String sellerId, Long productId) {
+        // Bước 1: Chỉ xóa sản phẩm nháp thuộc đúng seller hiện tại.
         Product product = getOwnedDraftProduct(sellerId, productId);
 
-        // Mark all product images' media assets for Cloudinary cleanup
+        // Bước 2: Lấy toàn bộ ảnh đang gắn với sản phẩm để đánh dấu media cần dọn khỏi Cloudinary.
         List<ProductImage> images = productImageRepository
                 .findByProductIdOrderBySortOrderAsc(productId);
 
@@ -136,7 +157,7 @@ public class ProductServiceImpl implements ProductService {
                     .ifPresent(mediaAssetService::markPendingDelete);
         }
 
-        // Hard delete product (cascade removes product_images rows)
+        // Bước 3: Xóa cứng sản phẩm; cascade sẽ xóa các dòng product_images liên quan.
         productRepository.delete(product);
 
         log.info("Product {} deleted by seller {}, {} media assets queued for cleanup",
@@ -146,8 +167,10 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional
     public void submitForAppraisal(String sellerId, Long productId) {
+        // Bước 1: Đảm bảo seller chỉ gửi thẩm định sản phẩm nháp của chính mình.
         Product product = getOwnedDraftProduct(sellerId, productId);
 
+        // Bước 2: Chuyển trạng thái sang hàng chờ thẩm định và ghi thời điểm nộp.
         product.setStatus(ProductStatus.PENDING_APPRAISAL);
         product.setSubmittedAt(Instant.now());
         productRepository.save(product);
@@ -162,29 +185,40 @@ public class ProductServiceImpl implements ProductService {
             int page,
             int size,
             Integer categoryId,
-            String status) {
+            String status,
+            String saleStatus) {
 
-        // Appraiser sees work queue (submittedAt ASC), seller sees newest first
+        // Bước 1: Chọn thứ tự đọc dữ liệu theo vai trò: appraiser xử lý hàng chờ cũ trước,
+        // seller xem sản phẩm mới tạo trước.
         Sort sort = isAppraiser
                 ? Sort.by(Sort.Direction.ASC, "submittedAt")
                 : Sort.by(Sort.Direction.DESC, "createdAt");
 
+        // Bước 2: Chuẩn hóa phân trang để API không đọc quá 50 bản ghi mỗi lần.
         Pageable pageable = PageRequest.of(
                 Math.max(0, page - 1),
                 Math.min(Math.max(size, 1), 50),
                 sort
         );
 
+        // Bước 3: Chuyển filter dạng chuỗi từ request sang enum nội bộ.
         ProductStatus productStatus = null;
         if (status != null && !status.isBlank()) {
             productStatus = parseStatus(status);
         }
 
+        ProductSaleStatus productSaleStatus = null;
+        if (saleStatus != null && !saleStatus.isBlank()) {
+            productSaleStatus = parseSaleStatus(saleStatus);
+        }
+
+        // Bước 4: Chọn query theo vai trò để áp đúng quyền nhìn thấy dữ liệu.
         Page<Product> productPage;
         if (isAppraiser) {
             productPage = productRepository.findCatalogProductsForAppraiser(
                     userId,
                     productStatus,
+                    productSaleStatus,
                     categoryId,
                     ProductStatus.PENDING_APPRAISAL,
                     APPRAISER_REVIEWED_STATUSES,
@@ -194,15 +228,17 @@ public class ProductServiceImpl implements ProductService {
             productPage = productRepository.findCatalogProductsForSeller(
                     userId,
                     productStatus,
+                    productSaleStatus,
                     categoryId,
                     pageable
             );
         }
 
-        // Batch-load primary images in 1 query instead of N queries
+        // Bước 5: Batch-load ảnh đại diện để tránh N+1 query khi map danh sách sản phẩm.
         Map<Long, String> primaryImageUrls = productImageHelper
                 .batchLoadPrimaryImageUrls(productPage.getContent());
 
+        // Bước 6: Ghép dữ liệu sản phẩm với URL ảnh đại diện rồi đóng gói pagination.
         Page<ProductListRes> resultPage = productPage.map(product -> {
             String primaryImageUrl = primaryImageUrls.get(product.getId());
             return ProductListRes.fromEntity(product, primaryImageUrl);
@@ -212,40 +248,44 @@ public class ProductServiceImpl implements ProductService {
     }
 
     /**
-     * Get internal catalog product detail with restricted access.
+     * Lấy chi tiết sản phẩm nội bộ và áp quyền truy cập theo seller/appraiser.
      */
     @Override
     public ProductDetailRes getProductDetail(Long productId, String userId, boolean isAppraiser) {
+        // Bước 1: Đọc sản phẩm kèm category và appraisal report để đủ dữ liệu kiểm tra quyền.
         Product product = productRepository.findByIdWithCategoryAndAppraisalReport(productId)
                 .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
 
+        // Bước 2: Chặn truy cập nếu user không phải chủ sản phẩm hoặc appraiser hợp lệ.
         enforceProductDetailAccess(product, userId, isAppraiser);
 
+        // Bước 3: Ghép dữ liệu chi tiết để trả về cho màn hình catalog nội bộ.
         return buildProductDetailRes(product);
     }
 
     // =========================================================================
-    // Image replacement helper — extracted for clarity and testability
+    // Helper thay ảnh sản phẩm, tách riêng để dễ đọc và dễ test
     // =========================================================================
 
     /**
-     * Full-replacement strategy for product images:
-     * 1. Compare old vs new mediaIds to find removed images
-     * 2. Mark removed images' media assets for Cloudinary cleanup (PENDING_DELETE)
-     * 3. Delete all existing image rows
-     * 4. Insert the new image set
+     * Chiến lược thay toàn bộ ảnh sản phẩm:
+     * 1. So sánh mediaId cũ và mới để tìm ảnh đã bị gỡ.
+     * 2. Đánh dấu media của ảnh bị gỡ sang PENDING_DELETE để dọn Cloudinary.
+     * 3. Xóa toàn bộ dòng ảnh hiện tại.
+     * 4. Ghi lại bộ ảnh mới theo request.
      *
-     * This ensures kept images are NOT marked for deletion, only genuinely removed ones.
+     * Cách này bảo đảm ảnh được giữ lại không bị đánh dấu xóa nhầm.
      */
     private void replaceProductImages(Long productId, List<ProductImageReq> newImages) {
         List<ProductImage> existingImages = productImageRepository
                 .findByProductIdOrderBySortOrderAsc(productId);
 
+        // Bước 1: Gom mediaId mới thành set để tra cứu nhanh ảnh nào còn được giữ.
         Set<Long> newMediaIds = newImages.stream()
                 .map(ProductImageReq::mediaId)
                 .collect(Collectors.toSet());
 
-        // Mark removed images for cleanup — kept images are NOT touched
+        // Bước 2: Chỉ đánh dấu xóa những media không còn xuất hiện trong request mới.
         for (ProductImage oldImage : existingImages) {
             if (!newMediaIds.contains(oldImage.getMediaId())) {
                 mediaAssetRepository.findById(oldImage.getMediaId())
@@ -253,24 +293,24 @@ public class ProductServiceImpl implements ProductService {
             }
         }
 
-        // Replace all image rows
+        // Bước 3: Xóa bảng liên kết ảnh cũ và ghi lại toàn bộ bộ ảnh mới.
         productImageRepository.deleteByProductId(productId);
         productImageRepository.flush();
         saveProductImages(productId, newImages);
     }
 
     // =========================================================================
-    // Validation helpers
+    // Helper kiểm tra dữ liệu
     // =========================================================================
 
     /**
-     * Validate product image list invariants:
-     * - Exactly one primary image
-     * - No duplicate mediaId references
-     * - No duplicate sortOrder values
+     * Kiểm tra các ràng buộc của danh sách ảnh sản phẩm:
+     * - Có đúng một ảnh đại diện.
+     * - Không trùng mediaId.
+     * - Không trùng sortOrder.
      */
     private void validateProductImages(List<ProductImageReq> images) {
-        // Exactly 1 primary
+        // Bước 1: Đếm ảnh đại diện để bảo đảm UI luôn có một ảnh chính duy nhất.
         long primaryCount = images.stream()
                 .filter(img -> Boolean.TRUE.equals(img.isPrimary()))
                 .count();
@@ -278,7 +318,7 @@ public class ProductServiceImpl implements ProductService {
             throw new AppException(ErrorCode.INVALID_PRIMARY_IMAGE);
         }
 
-        // No duplicate mediaId
+        // Bước 2: Chặn cùng một media asset bị gắn nhiều lần vào một sản phẩm.
         Set<Long> mediaIds = new HashSet<>();
         for (ProductImageReq img : images) {
             if (!mediaIds.add(img.mediaId())) {
@@ -286,7 +326,7 @@ public class ProductServiceImpl implements ProductService {
             }
         }
 
-        // No duplicate sortOrder
+        // Bước 3: Chặn trùng thứ tự hiển thị để danh sách ảnh render ổn định.
         Set<Integer> sortOrders = new HashSet<>();
         for (ProductImageReq img : images) {
             if (!sortOrders.add(img.sortOrder())) {
@@ -296,10 +336,10 @@ public class ProductServiceImpl implements ProductService {
     }
 
     /**
-     * Validate each referenced media asset:
-     * - Owned by the given seller
-     * - Status is ACTIVE (upload confirmed)
-     * - Usage type is PRODUCT_IMAGE
+     * Kiểm tra từng media asset được tham chiếu:
+     * - Thuộc seller hiện tại.
+     * - Đã upload thành công và ở trạng thái ACTIVE.
+     * - Đúng usage type PRODUCT_IMAGE.
      */
     private void validateMediaAssetsForProduct(List<ProductImageReq> images, String sellerId) {
         for (ProductImageReq imgReq : images) {
@@ -322,14 +362,14 @@ public class ProductServiceImpl implements ProductService {
     }
 
     // =========================================================================
-    // Access control
+    // Kiểm soát quyền truy cập
     // =========================================================================
 
     /**
-     * Enforce visibility rules for internal catalog detail:
-     * - owner → any status
-     * - appraiser can view PENDING_APPRAISAL, plus APPRAISED/REJECTED they reviewed
-     * - everyone else → PRODUCT_NOT_FOUND
+     * Áp quy tắc nhìn thấy chi tiết sản phẩm nội bộ:
+     * - Chủ sản phẩm được xem mọi trạng thái.
+     * - Appraiser được xem sản phẩm đang chờ thẩm định và sản phẩm họ đã review.
+     * - Các trường hợp còn lại trả PRODUCT_NOT_FOUND để tránh lộ dữ liệu.
      */
     private void enforceProductDetailAccess(Product product, String userId, boolean isAppraiser) {
         boolean isOwner = product.getSellerId().equals(userId);
@@ -353,6 +393,7 @@ public class ProductServiceImpl implements ProductService {
     // =========================================================================
 
     private ProductDetailRes buildProductDetailRes(Product product) {
+        // Bước 1: Đọc thông tin seller và seller profile để tạo khối seller summary.
         User seller = userRepository.findById(product.getSellerId())
                 .orElse(null);
         SellerProfile sellerProfile = seller != null
@@ -362,6 +403,7 @@ public class ProductServiceImpl implements ProductService {
                 ? SellerSummaryRes.fromEntities(seller, sellerProfile)
                 : null;
 
+        // Bước 2: Đọc toàn bộ ảnh sản phẩm và dựng URL ảnh từ thông tin media.
         List<ProductImage> images = productImageRepository.findByProductIdOrderBySortOrderAsc(product.getId());
         List<ProductImageRes> imageResponses = images.stream()
                 .map(img -> {
@@ -370,16 +412,19 @@ public class ProductServiceImpl implements ProductService {
                 })
                 .toList();
 
+        // Bước 3: Nếu đã có báo cáo thẩm định thì map kèm vào response chi tiết.
         AppraisalReportRes appraisalReportRes = null;
         if (product.getAppraisalReport() != null) {
             appraisalReportRes = AppraisalReportRes.fromEntity(product.getAppraisalReport());
         }
 
+        // Bước 4: Bổ sung category khi entity đầu vào chưa được fetch join category.
         if (product.getCategory() == null && product.getCategoryId() != null) {
             categoryRepository.findById(product.getCategoryId())
                     .ifPresent(product::setCategory);
         }
 
+        // Bước 5: Gom product, seller, ảnh và appraisal report thành DTO trả về.
         return ProductDetailRes.fromEntity(product, sellerSummary, imageResponses, appraisalReportRes);
     }
 
@@ -406,7 +451,8 @@ public class ProductServiceImpl implements ProductService {
     }
 
     /**
-     * Validate ownership + DRAFT status in one shot. Used by update, delete, submit.
+     * Kiểm tra quyền sở hữu và trạng thái DRAFT trong cùng một bước.
+     * Dùng cho các luồng update, delete và submit.
      */
     private Product getOwnedDraftProduct(String sellerId, Long productId) {
         Product product = productRepository.findById(productId)
@@ -447,6 +493,14 @@ public class ProductServiceImpl implements ProductService {
             return ProductStatus.valueOf(status.toUpperCase());
         } catch (IllegalArgumentException e) {
             throw new AppException(ErrorCode.INVALID_REQUEST, "Invalid product status: " + status);
+        }
+    }
+
+    private ProductSaleStatus parseSaleStatus(String saleStatus) {
+        try {
+            return ProductSaleStatus.valueOf(saleStatus.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Invalid product sale status: " + saleStatus);
         }
     }
 

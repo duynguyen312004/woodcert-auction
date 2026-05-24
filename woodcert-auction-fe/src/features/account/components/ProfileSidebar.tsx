@@ -8,7 +8,7 @@ import { Camera, ChevronRight, Key, Loader2, LogOut, Trash2 } from "lucide-react
 import { useRef, type ChangeEventHandler } from "react";
 import { Link, useNavigate } from "react-router";
 
-import { authApi } from "@/features/auth/api/auth";
+import { authApi } from "@/features/auth";
 import { clearAuthSession } from "@/shared/auth/auth-store";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";

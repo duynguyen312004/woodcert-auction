@@ -8,8 +8,8 @@
 import { Loader2, ShieldAlert } from "lucide-react";
 import { Navigate, Outlet, useLocation } from "react-router";
 
-import { useProfile, useSellerProfile } from "@/features/account/hooks/useProfile";
-import { SELLER_PATHS } from "@/features/seller/constants/routes";
+import { useProfile, useSellerProfile } from "@/features/account";
+import { SELLER_PATHS } from "@/shared/constants";
 import { isApiError } from "@/shared/api/errors";
 import { clearAuthSession, useAuthStore } from "@/shared/auth/auth-store";
 import { Button } from "@/shared/ui/button";

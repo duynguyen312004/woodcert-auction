@@ -488,31 +488,31 @@ class ProductServiceImplTest {
         @DisplayName("should list seller-owned products when requester is not appraiser")
         void getCatalogProducts_sellerScope() {
             Product product = createDraftProduct();
-            when(productRepository.findCatalogProductsForSeller(eq(SELLER_ID), isNull(), isNull(), any()))
+            when(productRepository.findCatalogProductsForSeller(eq(SELLER_ID), isNull(), isNull(), isNull(), any()))
                     .thenReturn(new PageImpl<>(List.of(product), PageRequest.of(0, 10), 1));
             when(productImageHelper.batchLoadPrimaryImageUrls(anyList()))
                     .thenReturn(Map.of());
 
-            var result = productService.getCatalogProducts(SELLER_ID, false, 1, 10, null, null);
+            var result = productService.getCatalogProducts(SELLER_ID, false, 1, 10, null, null, null);
 
             assertThat(result.result()).hasSize(1);
-            verify(productRepository).findCatalogProductsForSeller(eq(SELLER_ID), isNull(), isNull(), any());
+            verify(productRepository).findCatalogProductsForSeller(eq(SELLER_ID), isNull(), isNull(), isNull(), any());
             verify(productRepository, never()).findCatalogProductsForAppraiser(
-                    anyString(), any(), any(), any(), anyList(), any());
+                    anyString(), any(), any(), any(), any(), anyList(), any());
         }
 
         @Test
         @DisplayName("should filter seller-owned products by status and category")
         void getCatalogProducts_sellerStatusAndCategoryFilter() {
             when(productRepository.findCatalogProductsForSeller(
-                    eq(SELLER_ID), eq(ProductStatus.PENDING_APPRAISAL), eq(2), any()))
+                    eq(SELLER_ID), eq(ProductStatus.PENDING_APPRAISAL), isNull(), eq(2), any()))
                     .thenReturn(new PageImpl<>(Collections.emptyList(), PageRequest.of(0, 10), 0));
 
-            var result = productService.getCatalogProducts(SELLER_ID, false, 1, 10, 2, "pending_appraisal");
+            var result = productService.getCatalogProducts(SELLER_ID, false, 1, 10, 2, "pending_appraisal", null);
 
             assertThat(result.result()).isEmpty();
             verify(productRepository).findCatalogProductsForSeller(
-                    eq(SELLER_ID), eq(ProductStatus.PENDING_APPRAISAL), eq(2), any());
+                    eq(SELLER_ID), eq(ProductStatus.PENDING_APPRAISAL), isNull(), eq(2), any());
         }
 
         @Test
@@ -523,6 +523,7 @@ class ProductServiceImplTest {
                     eq("appraiser-id"),
                     isNull(),
                     isNull(),
+                    isNull(),
                     eq(ProductStatus.PENDING_APPRAISAL),
                     anyList(),
                     any()))
@@ -530,11 +531,12 @@ class ProductServiceImplTest {
             when(productImageHelper.batchLoadPrimaryImageUrls(anyList()))
                     .thenReturn(Map.of());
 
-            var result = productService.getCatalogProducts("appraiser-id", true, 1, 10, null, null);
+            var result = productService.getCatalogProducts("appraiser-id", true, 1, 10, null, null, null);
 
             assertThat(result.result()).hasSize(1);
             verify(productRepository).findCatalogProductsForAppraiser(
                     eq("appraiser-id"),
+                    isNull(),
                     isNull(),
                     isNull(),
                     eq(ProductStatus.PENDING_APPRAISAL),
@@ -549,17 +551,19 @@ class ProductServiceImplTest {
                     eq("appraiser-id"),
                     eq(ProductStatus.APPRAISED),
                     isNull(),
+                    isNull(),
                     eq(ProductStatus.PENDING_APPRAISAL),
                     anyList(),
                     any()))
                     .thenReturn(new PageImpl<>(Collections.emptyList(), PageRequest.of(0, 10), 0));
 
-            var result = productService.getCatalogProducts("appraiser-id", true, 1, 10, null, "appraised");
+            var result = productService.getCatalogProducts("appraiser-id", true, 1, 10, null, "appraised", null);
 
             assertThat(result.result()).isEmpty();
             verify(productRepository).findCatalogProductsForAppraiser(
                     eq("appraiser-id"),
                     eq(ProductStatus.APPRAISED),
+                    isNull(),
                     isNull(),
                     eq(ProductStatus.PENDING_APPRAISAL),
                     anyList(),

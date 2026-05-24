@@ -7,7 +7,7 @@ import { MoreHorizontal, PackagePlus } from "lucide-react";
 import { useState } from "react";
 
 import type { SellerProduct } from "../types";
-import { ProductStatusBadge } from "./ProductStatusBadge";
+import { ProductSaleStatusBadge, ProductStatusBadge } from "./ProductStatusBadge";
 
 export function ProductRow({ product }: { product: SellerProduct }) {
   const [imgFailed, setImgFailed] = useState(false);
@@ -35,12 +35,17 @@ export function ProductRow({ product }: { product: SellerProduct }) {
       </td>
       <td className="px-6 py-4 text-sm text-muted-warm">{product.woodType || "—"}</td>
       <td className="px-6 py-4">
-        <ProductStatusBadge status={product.status} />
+        <div className="flex flex-wrap gap-1.5">
+          <ProductStatusBadge status={product.status} />
+          {product.saleStatus !== "AVAILABLE" && (
+            <ProductSaleStatusBadge status={product.saleStatus} />
+          )}
+        </div>
       </td>
       <td className="px-6 py-4 text-right">
         <button
           type="button"
-          className="text-ink-blue/40 transition-colors hover:text-brushed-brass"
+          className="cursor-pointer text-ink-blue/40 transition-colors hover:text-brushed-brass"
           aria-label={`Thao tác cho ${product.title}`}
         >
           <MoreHorizontal className="size-5" />

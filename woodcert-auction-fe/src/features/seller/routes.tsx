@@ -8,7 +8,9 @@ import type { RouteObject } from "react-router";
 
 import { SELLER_ROUTE_PATHS } from "./constants/routes";
 import { SellerDashboardPage } from "./pages/SellerDashboardPage";
+import { SellerNewProductPage } from "./pages/SellerNewProductPage";
 import { SellerPlaceholderPage } from "./pages/SellerPlaceholderPage";
+import { SellerProductsPage } from "./pages/SellerProductsPage";
 import { SellerProfilePage } from "./pages/SellerProfilePage";
 import { SellerRegisterPage } from "./pages/SellerRegisterPage";
 
@@ -23,21 +25,15 @@ export const sellerRoutes: RouteObject[] = [
   },
   {
     path: SELLER_ROUTE_PATHS.products,
-    element: (
-      <SellerPlaceholderPage
-        title="Quản lý sản phẩm"
-        description="Màn hình danh sách, tạo và cập nhật sản phẩm seller sẽ được triển khai ở bước CRUD tiếp theo."
-      />
-    ),
+    element: <SellerProductsPage />,
   },
   {
     path: SELLER_ROUTE_PATHS.newProduct,
-    element: (
-      <SellerPlaceholderPage
-        title="Đăng sản phẩm mới"
-        description="Form tạo sản phẩm và upload ảnh sẽ dùng API product hiện có trong bước tiếp theo."
-      />
-    ),
+    element: <SellerNewProductPage />,
+  },
+  {
+    path: SELLER_ROUTE_PATHS.editProduct,
+    element: <SellerNewProductPage />,
   },
   {
     path: SELLER_ROUTE_PATHS.auctions,

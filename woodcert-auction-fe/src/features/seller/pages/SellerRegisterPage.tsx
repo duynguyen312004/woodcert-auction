@@ -11,24 +11,21 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router";
 
-import { accountApi } from "@/features/account/api/account";
 import {
+  accountApi,
+  createSellerProfileSchema,
   PROFILE_QUERY_KEY,
   SELLER_PROFILE_QUERY_KEY,
-  useProfile,
-} from "@/features/account/hooks/useProfile";
-import {
-  createSellerProfileSchema,
   type CreateSellerProfilePayload,
-} from "@/features/account/types";
+  useProfile,
+} from "@/features/account";
 import { isApiError } from "@/shared/api/errors";
 import { clearAuthSession } from "@/shared/auth/auth-store";
+import { SELLER_PATHS } from "@/shared/constants";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { NotificationCard } from "@/shared/ui/notification";
-
-import { SELLER_PATHS } from "../constants/routes";
 
 function SuccessState() {
   return (

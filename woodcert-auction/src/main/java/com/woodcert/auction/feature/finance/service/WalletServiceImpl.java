@@ -64,9 +64,12 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional
     public WalletRes topUpWallet(String userId, TopUpWalletReq request) {
+        // Bước 1: Kiểm tra cấu hình cho phép nạp tiền thủ công trong môi trường hiện tại.
         if (!financeProperties.isWalletTopUpEnabled()) {
             throw new AppException(ErrorCode.WALLET_TOP_UP_DISABLED);
         }
+
+        // Bước 2: Tạo operation key duy nhất để luồng nạp tiền đi qua cơ chế idempotent chung.
         depositFunds(userId, generateTopUpOperationKey(userId), request.amount(), null, DEFAULT_TOP_UP_REFERENCE);
         return WalletRes.fromEntity(getOrCreateWallet(userId));
     }
@@ -79,7 +82,10 @@ public class WalletServiceImpl implements WalletService {
             BigDecimal amount,
             Long referenceId,
             WalletReferenceType referenceType) {
+        // Bước 1: Chuẩn hóa số tiền nạp về định dạng tiền tệ dương.
         BigDecimal normalizedAmount = normalizePositiveAmount(amount);
+
+        // Bước 2: Gửi mutation cộng số dư available qua executor idempotent chung.
         executeIdempotentMutation(
                 userId,
                 operationKey,
@@ -100,7 +106,10 @@ public class WalletServiceImpl implements WalletService {
             BigDecimal amount,
             Long referenceId,
             WalletReferenceType referenceType) {
+        // Bước 1: Chuẩn hóa số tiền cần đóng băng trước khi kiểm tra số dư.
         BigDecimal normalizedAmount = normalizePositiveAmount(amount);
+
+        // Bước 2: Trừ available và cộng frozen trong cùng mutation idempotent.
         executeIdempotentMutation(
                 userId,
                 operationKey,
@@ -127,7 +136,10 @@ public class WalletServiceImpl implements WalletService {
             BigDecimal amount,
             Long referenceId,
             WalletReferenceType referenceType) {
+        // Bước 1: Chuẩn hóa số tiền cần mở đóng băng.
         BigDecimal normalizedAmount = normalizePositiveAmount(amount);
+
+        // Bước 2: Chuyển tiền từ frozen về available trong cùng mutation idempotent.
         executeIdempotentMutation(
                 userId,
                 operationKey,
@@ -154,7 +166,10 @@ public class WalletServiceImpl implements WalletService {
             BigDecimal amount,
             Long referenceId,
             WalletReferenceType referenceType) {
+        // Bước 1: Chuẩn hóa số tiền cần thu từ phần đang bị đóng băng.
         BigDecimal normalizedAmount = normalizePositiveAmount(amount);
+
+        // Bước 2: Trừ frozen để ghi nhận thanh toán, không cộng lại available.
         executeIdempotentMutation(
                 userId,
                 operationKey,
@@ -181,10 +196,12 @@ public class WalletServiceImpl implements WalletService {
             WalletTransactionType transactionType,
             Consumer<Wallet> mutation,
             BigDecimal signedAvailableDelta) {
+        // Bước 1: Chuẩn hóa operation key, kiểm tra reference và lấy ví hiện tại hoặc tạo ví mới.
         String normalizedOperationKey = normalizeOperationKey(operationKey);
         validateReference(referenceType, referenceId);
         Wallet wallet = getOrCreateWallet(userId);
 
+        // Bước 2: Reserve operation để cùng một operationKey không bị xử lý lặp lại.
         WalletOperation reservedOperation = walletOperationLifecycleService.reserveOrReuseOperation(
                 wallet.getId(),
                 normalizedOperationKey,
@@ -198,18 +215,22 @@ public class WalletServiceImpl implements WalletService {
             return;
         }
 
+        // Bước 3: Đăng ký hook kết thúc transaction để chỉ mark SUCCESS sau khi commit thật sự thành công.
         boolean finalizedAfterCommit = registerOperationCompletionHooks(reservedOperation.getId());
 
         try {
+            // Bước 4: Áp mutation lên số dư ví, lưu ví và ghi lịch sử giao dịch cùng transaction DB.
             mutation.accept(wallet);
             walletRepository.saveAndFlush(wallet);
             logTransaction(wallet, signedAvailableDelta, transactionType, referenceId, referenceType);
             if (!finalizedAfterCommit) {
+                // Bước 5: Nếu không có transaction synchronization thì mark SUCCESS ngay sau khi lưu dữ liệu.
                 walletOperationLifecycleService.markSuccess(reservedOperation.getId());
                 log.info("Wallet mutation {} applied for user {} with operationKey={}",
                         transactionType, userId, normalizedOperationKey);
             }
         } catch (ObjectOptimisticLockingFailureException | OptimisticLockException ex) {
+            // Bước 6: Ghi trạng thái FAILED rõ nguyên nhân khi có xung đột optimistic locking.
             walletOperationLifecycleService.markFailed(
                     reservedOperation.getId(),
                     ErrorCode.WALLET_CONCURRENT_MODIFICATION.name(),
@@ -217,6 +238,7 @@ public class WalletServiceImpl implements WalletService {
             );
             throw new AppException(ErrorCode.WALLET_CONCURRENT_MODIFICATION);
         } catch (AppException ex) {
+            // Bước 7: Lỗi nghiệp vụ được lưu lại theo error code để lần gọi sau có thể truy vết.
             walletOperationLifecycleService.markFailed(
                     reservedOperation.getId(),
                     resolveFailureCode(ex),
@@ -224,6 +246,7 @@ public class WalletServiceImpl implements WalletService {
             );
             throw ex;
         } catch (RuntimeException ex) {
+            // Bước 8: Lỗi runtime ngoài dự kiến vẫn phải mark FAILED trước khi ném tiếp.
             walletOperationLifecycleService.markFailed(
                     reservedOperation.getId(),
                     ErrorCode.UNCATEGORIZED.name(),

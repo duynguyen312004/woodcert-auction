@@ -3,12 +3,21 @@
  *
  * Các hook dashboard dùng file này để lấy sản phẩm và phiên đấu giá của seller
  * hiện tại. Mapper đổi dữ liệu backend sang dạng gọn hơn cho card và bảng.
+ * Các hàm createProduct và submitAppraisal phục vụ form đăng sản phẩm.
  */
 import { apiClient } from "@/shared/api/client";
 import type { ApiResponse, PaginationResponse } from "@/shared/api/types";
 import { unwrapApiResponse } from "@/shared/api/unwrap";
 
-import type { ProductStatus, SellerAuction, SellerAuctionStatus, SellerProduct } from "../types";
+import type {
+  CreateProductPayload,
+  ProductDetail,
+  ProductStatus,
+  SellerAuction,
+  SellerAuctionStatus,
+  SellerProduct,
+  UpdateProductPayload,
+} from "../types";
 
 type SellerProductDto = {
   id: number;
@@ -16,6 +25,7 @@ type SellerProductDto = {
   category?: unknown;
   material: string | null;
   status: ProductStatus;
+  saleStatus: SellerProduct["saleStatus"];
   primaryImage: string | null;
   createdAt: string;
 };
@@ -50,6 +60,7 @@ function mapSellerProduct(dto: SellerProductDto): SellerProduct {
     title: dto.title,
     woodType: dto.material,
     status: dto.status,
+    saleStatus: dto.saleStatus,
     imageUrl: dto.primaryImage,
     createdAt: dto.createdAt,
   };
@@ -74,6 +85,7 @@ export const sellerApi = {
     page?: number;
     size?: number;
     status?: string;
+    saleStatus?: string;
   }): Promise<PaginationResponse<SellerProduct>> => {
     const response = await apiClient.get<ApiResponse<PaginationResponse<SellerProductDto>>>(
       "/products",
@@ -100,5 +112,30 @@ export const sellerApi = {
       ...data,
       result: data.result.map(mapSellerAuction),
     };
+  },
+
+  createProduct: async (payload: CreateProductPayload): Promise<{ id: number }> => {
+    const response = await apiClient.post<ApiResponse<{ id: number }>>("/products", payload);
+    return unwrapApiResponse(response);
+  },
+
+  getProductDetail: async (productId: number): Promise<ProductDetail> => {
+    const response = await apiClient.get<ApiResponse<ProductDetail>>(`/products/${productId}`);
+    return unwrapApiResponse(response);
+  },
+
+  updateProduct: async (
+    productId: number,
+    payload: UpdateProductPayload,
+  ): Promise<ProductDetail> => {
+    const response = await apiClient.put<ApiResponse<ProductDetail>>(
+      `/products/${productId}`,
+      payload,
+    );
+    return unwrapApiResponse(response);
+  },
+
+  submitAppraisal: async (productId: number): Promise<void> => {
+    await apiClient.post(`/products/${productId}/submit-appraisal`);
   },
 };

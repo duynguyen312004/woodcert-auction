@@ -39,19 +39,24 @@ public class AddressServiceImpl implements AddressService {
     @Override
     @Transactional
     public AddressRes createAddress(String userId, CreateAddressReq request) {
+        // Bước 1: Đọc user để gắn địa chỉ mới vào đúng chủ sở hữu.
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "User not found"));
 
+        // Bước 2: Chuẩn hóa mã tỉnh/huyện/xã trước khi kiểm tra quan hệ phân cấp.
         String normalizedProvinceCode = IdentityNormalizationUtils.normalizeProvinceCode(request.provinceCode());
         String normalizedDistrictCode = IdentityNormalizationUtils.normalizeDistrictCode(request.districtCode());
         String normalizedWardCode = IdentityNormalizationUtils.normalizeWardCode(request.wardCode());
 
+        // Bước 3: Kiểm tra huyện thuộc tỉnh và xã thuộc huyện để tránh địa chỉ sai dữ liệu master.
         validateLocationHierarchy(normalizedProvinceCode, normalizedDistrictCode, normalizedWardCode);
 
+        // Bước 4: Nếu địa chỉ mới là mặc định thì bỏ cờ mặc định ở các địa chỉ cũ của user.
         if (request.isDefault()) {
             addressRepository.clearDefaultByUserId(userId);
         }
 
+        // Bước 5: Tạo địa chỉ mới với dữ liệu đã trim/chuẩn hóa rồi lưu DB.
         Address address = new Address();
         address.setUser(user);
         address.setReceiverName(request.receiverName().trim());
