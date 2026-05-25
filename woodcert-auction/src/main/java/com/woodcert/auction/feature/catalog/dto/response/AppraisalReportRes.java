@@ -5,10 +5,11 @@ import com.woodcert.auction.feature.catalog.entity.ConditionGrade;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 
 /**
- * Appraisal report response DTO for public/buyer view.
- * Does NOT expose appraiserNotes or sellerAccuracy — those are internal data.
+ * Appraisal report response DTO. Internal-only fields stay null/empty unless
+ * the current viewer is the appraiser who submitted the report.
  */
 public record AppraisalReportRes(
         String certificateCode,
@@ -19,9 +20,19 @@ public record AppraisalReportRes(
         BigDecimal estimatedValue,
         boolean isAuthentic,
         String digitalSignature,
-        Instant appraisedAt
+        Instant appraisedAt,
+        String appraiserNotes,
+        BigDecimal sellerAccuracy,
+        List<AppraisalImageRes> proofImages
 ) {
     public static AppraisalReportRes fromEntity(AppraisalReport report) {
+        return fromEntity(report, false, List.of());
+    }
+
+    public static AppraisalReportRes fromEntity(
+            AppraisalReport report,
+            boolean includeInternalFields,
+            List<AppraisalImageRes> proofImages) {
         if (report == null) {
             return null;
         }
@@ -34,7 +45,10 @@ public record AppraisalReportRes(
                 report.getEstimatedValue(),
                 report.isAuthentic(),
                 report.getDigitalSignature(),
-                report.getAppraisedAt()
+                report.getAppraisedAt(),
+                includeInternalFields ? report.getAppraiserNotes() : null,
+                includeInternalFields ? report.getSellerAccuracy() : null,
+                includeInternalFields && proofImages != null ? proofImages : List.of()
         );
     }
 }

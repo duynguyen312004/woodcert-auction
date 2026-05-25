@@ -7,6 +7,7 @@ package com.woodcert.auction.feature.catalog.entity;
 public enum ProductStatus {
     DRAFT,
     PENDING_APPRAISAL,
+    UNDER_APPRAISAL,
     REJECTED,
     APPRAISED
 }

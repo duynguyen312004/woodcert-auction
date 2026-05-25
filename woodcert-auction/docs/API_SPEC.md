@@ -451,7 +451,7 @@ Success Response (200):
     "storeName": "Xưởng Gỗ Mỹ Nghệ ABC",
     "identityCardNumber": "001099012345",
     "taxCode": "0101234567",
-    "reputationScore": 5.00,
+    "reputationScore": 5.0,
     "createdAt": "2026-03-30T10:00:00Z",
     "updatedAt": "2026-03-30T10:00:00Z"
   },
@@ -488,7 +488,7 @@ Success Response (201):
     "storeName": "Xưởng Gỗ Mỹ Nghệ ABC",
     "identityCardNumber": "001099012345",
     "taxCode": "0101234567",
-    "reputationScore": 5.00,
+    "reputationScore": 5.0,
     "createdAt": "2026-03-28T10:00:00Z",
     "updatedAt": "2026-03-28T10:00:00Z"
   },
@@ -646,7 +646,7 @@ List catalog products visible to the current authenticated user.
 
 Access rules:
 - Seller: sees their own products in all statuses
-- Appraiser: sees all `PENDING_APPRAISAL`, plus `APPRAISED` / `REJECTED` products that were appraised by that same appraiser
+- Appraiser: sees all `PENDING_APPRAISAL`, expired `UNDER_APPRAISAL` claims, their own active `UNDER_APPRAISAL` claims, plus `APPRAISED` / `REJECTED` products that were appraised by that same appraiser
 - Public: not allowed
 
 Query Parameters:
@@ -687,7 +687,7 @@ Get internal catalog product detail, including images and appraisal report.
 
 Access rules:
 - Owner: can view any status
-- Appraiser: can view `PENDING_APPRAISAL`, plus `APPRAISED` / `REJECTED` only if `appraisalReport.appraiserId == currentUserId`
+- Appraiser: can view `PENDING_APPRAISAL`, visible `UNDER_APPRAISAL` claims, plus `APPRAISED` / `REJECTED` only if `appraisalReport.appraiserId == currentUserId`
 - Other cases: `PRODUCT_NOT_FOUND`
 
 Success Response (200):
@@ -728,8 +728,17 @@ Success Response (200):
       "estimatedValue": 50000000.00,
       "isAuthentic": true,
       "appraiserNotes": "Bề mặt và vân gỗ đồng nhất.",
-      "sellerAccuracy": 5.00,
-      "digitalSignature": "abc123xyz..."
+      "sellerAccuracy": 5.0,
+      "digitalSignature": "abc123xyz...",
+      "appraisedAt": "2026-04-18T11:00:00",
+      "proofImages": [
+        {
+          "id": 701,
+          "mediaId": 301,
+          "description": "Chụp cận cảnh vân gỗ",
+          "imageUrl": "https://res.cloudinary.com/.../appraisals/proof.jpg"
+        }
+      ]
     },
     "createdAt": "2026-04-18T08:00:00"
   },
@@ -737,6 +746,8 @@ Success Response (200):
   "timestamp": "2026-04-18T10:00:00"
 }
 ```
+
+Internal appraisal fields (`appraiserNotes`, `sellerAccuracy`, `proofImages`) are populated only for the appraiser who submitted the report. Seller-facing product detail keeps `sellerAccuracy` hidden.
 
 ### POST /products 🔒
 
@@ -820,6 +831,18 @@ Request Body:
 }
 ```
 
+### POST /products/{id}/appraisal-claim 🔒
+
+Appraiser claims a visible pending or expired-claim product before submitting an appraisal report. Product status becomes `UNDER_APPRAISAL`, and the claim expires after `catalog.appraisal.claim-timeout` (default `PT24H`).
+
+Request Body: empty.
+
+### DELETE /products/{id}/appraisal-claim 🔒
+
+Appraiser releases their own active appraisal claim. Product status returns to `PENDING_APPRAISAL`.
+
+Request Body: empty.
+
 ### POST /products/{id}/appraise 🔒
 
 Appraiser submits the official appraisal report. Product becomes `APPRAISED` or `REJECTED`.
@@ -835,7 +858,7 @@ Request Body:
   "conditionGrade": "EXCELLENT",
   "estimatedValue": 15000000.00,
   "appraiserNotes": "Tượng không nứt nẻ, PU bóng mờ đẹp.",
-  "sellerAccuracy": 5,
+  "sellerAccuracy": 4.5,
   "proofImages": [
     { "mediaId": 301, "description": "Chụp cận cảnh vân gỗ" }
   ]
@@ -862,8 +885,11 @@ Notes:
 - `AppraisalReport` is immutable once submitted
 - If `isAuthentic = false`, product status becomes `REJECTED`
 - `appraiserNotes` is required when rejecting
+- `sellerAccuracy` is required, uses dot decimal notation such as `4.5`, and is included in the seller reputation average
+- Seller `reputationScore` is recalculated from all appraisal `sellerAccuracy` values and rounded to 1 decimal place
 - `digitalSignature` is generated internally by the backend
-- Appraisers can fetch their pending/reviewed workflow through `GET /products`
+- `digitalSignature` hashes the final `certificateCode` and fixed `appraisedAt`
+- Appraisers can fetch their queue, active claims, and reviewed workflow through `GET /products`
 
 ### POST /appraisals/images/upload-intent 🔒
 
@@ -1027,7 +1053,7 @@ Success Response (200):
           "conditionGrade": "EXCELLENT",
           "certificateCode": "CERT-2026-001",
           "isAuthentic": true,
-          "sellerAccuracy": 5.00
+          "sellerAccuracy": 5.0
         },
         "startingPrice": 30000000.00,
         "currentPrice": 35000000.00,

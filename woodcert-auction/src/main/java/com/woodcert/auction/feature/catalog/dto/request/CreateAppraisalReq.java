@@ -33,6 +33,7 @@ public record CreateAppraisalReq(
 
         String appraiserNotes,
 
+        @NotNull(message = "Seller accuracy is required")
         @DecimalMin(value = "1", message = "Seller accuracy must be between 1 and 5")
         @DecimalMax(value = "5", message = "Seller accuracy must be between 1 and 5")
         BigDecimal sellerAccuracy,

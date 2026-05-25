@@ -14,34 +14,13 @@ import { isApiError } from "@/shared/api/errors";
 import { clearAuthSession, useAuthStore } from "@/shared/auth/auth-store";
 import { Button } from "@/shared/ui/button";
 
-type TokenClaims = {
-  roles?: unknown;
-  permissions?: unknown;
-};
-
-// Chỉ đọc phần claims cần cho điều hướng giao diện, không dùng để xác thực bảo mật.
-function decodeAccessTokenClaims(accessToken: string | null): TokenClaims | null {
-  if (!accessToken) return null;
-
-  const [, payload] = accessToken.split(".");
-  if (!payload) return null;
-
-  try {
-    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
-    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
-    return JSON.parse(window.atob(padded)) as TokenClaims;
-  } catch {
-    return null;
-  }
-}
+import { tokenHasPermission, tokenHasRole } from "@/shared/auth/decode-token";
 
 // Vào khu seller cần có role seller hoặc quyền tạo sản phẩm.
 function tokenHasSellerAuthority(accessToken: string | null) {
-  const claims = decodeAccessTokenClaims(accessToken);
-  const roles = Array.isArray(claims?.roles) ? claims.roles : [];
-  const permissions = Array.isArray(claims?.permissions) ? claims.permissions : [];
-
-  return roles.includes("ROLE_SELLER") || permissions.includes("CREATE_PRODUCT");
+  return (
+    tokenHasRole(accessToken, "ROLE_SELLER") || tokenHasPermission(accessToken, "CREATE_PRODUCT")
+  );
 }
 
 function ReloginRequiredState() {

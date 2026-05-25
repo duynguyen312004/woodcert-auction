@@ -25,7 +25,31 @@ The following tables document which Backend Endpoints have been successfully map
 | Get Auctions   | `GET /auctions`      | ✅ `auctions.ts` / Real API   |
 | Auction Detail | `GET /auctions/{id}` | ❌ Pending Implementation     |
 
-_Note: All other APIs including Wallet, Buyer Flow (Bid), Admin, Appraiser flows are currently pending routing and React Query mapping._
+_Note: Wallet, Buyer Flow (Bid), and Admin flows are still pending._
+
+### 3. Appraiser Workflow (Fully Implemented)
+
+| Feature                      | Endpoint                                 | Service File / Status        |
+| ---------------------------- | ---------------------------------------- | ---------------------------- |
+| Hàng chờ kiểm định           | `GET /products?status=PENDING_APPRAISAL` | ✅ `appraisal.ts` / Real API |
+| Tab đang kiểm định           | `GET /products?status=UNDER_APPRAISAL`   | ✅ `appraisal.ts` / Real API |
+| Đã xử lý (APPRAISED)         | `GET /products?status=APPRAISED`         | ✅ `appraisal.ts` / Real API |
+| Đã xử lý (REJECTED)          | `GET /products?status=REJECTED`          | ✅ `appraisal.ts` / Real API |
+| Chi tiết sản phẩm            | `GET /products/{id}`                     | ✅ `appraisal.ts` / Real API |
+| Nhận kiểm định (claim)       | `POST /products/{id}/appraisal-claim`    | ✅ `appraisal.ts` / Real API |
+| Trả về hàng chờ (release)    | `DELETE /products/{id}/appraisal-claim`  | ✅ `appraisal.ts` / Real API |
+| Nộp báo cáo (approve/reject) | `POST /products/{id}/appraise`           | ✅ `appraisal.ts` / Real API |
+| Upload ảnh bằng chứng        | `POST /appraisals/images/upload-intent`  | ✅ `appraisal.ts` / Real API |
+| Confirm upload ảnh           | `PUT /appraisals/images/confirm`         | ✅ `appraisal.ts` / Real API |
+
+**Ghi chú quan trọng về appraisal report:**
+
+- `GET /products/{id}` trả về `appraisalReport` với các field nội bộ (`appraiserNotes`, `sellerAccuracy`, `proofImages`) **chỉ khi** người xem là appraiser đã xử lý báo cáo đó (`appraiserId == viewerUserId`). Seller và public không thấy các field này.
+- `proofImages` trả về `{ id, mediaId, description, imageUrl }[]`.
+- `imageUrl` trong `proofImages` được tạo từ Cloudinary delivery helper (khác với product image URL builder).
+- Route reviewed hỗ trợ query param `?status=APPRAISED|REJECTED` để pre-select tab sau submit.
+- Claim timeout được cấu hình qua `catalog.appraisalClaimTimeout` (mặc định 24 giờ). Claim hết hạn có thể được nhận lại bởi appraiser bất kỳ.
+- `digitalSignature` được hash SHA-256 từ `productId|appraiserId|verifiedMaterial|estimatedValue|isAuthentic|certificateCode|appraisedAt` — `appraisedAt` cố định tại thời điểm nộp, không thay đổi khi cập nhật cert code.
 
 ---
 
@@ -153,6 +177,8 @@ Seller and appraiser:
 - `PUT /products/{id}`
 - `DELETE /products/{id}`
 - `POST /products/{id}/submit-appraisal`
+- `POST /products/{id}/appraisal-claim`
+- `DELETE /products/{id}/appraisal-claim`
 - `POST /products/{id}/appraise`
 - `POST /auctions`
 - `GET /auctions/me`

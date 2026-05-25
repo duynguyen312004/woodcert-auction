@@ -63,6 +63,15 @@ public class Product extends BaseEntity {
     @Column(name = "submitted_at")
     private Instant submittedAt;
 
+    @Column(name = "appraisal_claimed_by", length = 36)
+    private String appraisalClaimedBy;
+
+    @Column(name = "appraisal_claimed_at")
+    private Instant appraisalClaimedAt;
+
+    @Column(name = "appraisal_claim_expires_at")
+    private Instant appraisalClaimExpiresAt;
+
     @Column(name = "rejected_reason", columnDefinition = "TEXT")
     private String rejectedReason;
 

@@ -6,7 +6,12 @@
  */
 import { z } from "zod";
 
-export type ProductStatus = "DRAFT" | "PENDING_APPRAISAL" | "REJECTED" | "APPRAISED";
+export type ProductStatus =
+  | "DRAFT"
+  | "PENDING_APPRAISAL"
+  | "UNDER_APPRAISAL"
+  | "REJECTED"
+  | "APPRAISED";
 
 export type ProductSaleStatus = "AVAILABLE" | "IN_AUCTION" | "SOLD";
 
@@ -70,6 +75,11 @@ export interface ProductDetail {
     description?: string | null;
   } | null;
   images: ProductDetailImage[];
+  submittedAt?: string | null;
+  appraisalClaimedBy?: string | null;
+  appraisalClaimedAt?: string | null;
+  appraisalClaimExpiresAt?: string | null;
+  rejectedReason?: string | null;
   createdAt: string;
 }
 

@@ -92,6 +92,7 @@ export function SellerProductsPage() {
       {
         DRAFT: 0,
         PENDING_APPRAISAL: 0,
+        UNDER_APPRAISAL: 0,
         REJECTED: 0,
         APPRAISED: 0,
       },

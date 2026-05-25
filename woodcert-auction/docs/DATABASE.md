@@ -450,7 +450,7 @@ Composite PK: (role_id, permission_id)
 | store_name | VARCHAR(100) | NOT NULL | Tên gian hàng / xưởng gỗ |
 | identity_card_number | VARCHAR(20) | NOT NULL, UNIQUE | CCCD/CMND |
 | tax_code | VARCHAR(50) | NULLABLE | Mã số thuế |
-| reputation_score | DECIMAL(3,2) | NOT NULL, DEFAULT 5.00 | Điểm uy tín người bán |
+| reputation_score | DECIMAL(3,2) | NOT NULL, DEFAULT 5.00 | Điểm uy tín người bán; seller mới mặc định 5.00, sau appraisal tính bằng AVG(seller_accuracy) và làm tròn 1 chữ số |
 | created_at | TIMESTAMP | NOT NULL, DEFAULT CURRENT_TIMESTAMP | Thời điểm tạo hồ sơ người bán |
 | updated_at | TIMESTAMP | NOT NULL, DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP | Thời điểm cập nhật hồ sơ người bán |
 
@@ -521,7 +521,7 @@ Composite PK: (role_id, permission_id)
 | estimated_value | DECIMAL(19,2) | NOT NULL | Định giá VNĐ |
 | is_authentic | BOOLEAN | NOT NULL | Hàng thật / không đạt |
 | appraiser_notes | TEXT | NULLABLE | Ghi chú kiểm định |
-| seller_accuracy | DECIMAL(3,2) | NULLABLE | Điểm trung thực seller (1-5) |
+| seller_accuracy | DECIMAL(3,2) | NOT NULL | Điểm trung thực seller (1-5), dùng dấu chấm thập phân như 4.5 |
 | digital_signature | VARCHAR(255) | NOT NULL | Hash xác thực |
 | appraised_at | TIMESTAMP | NOT NULL | Thời điểm duyệt |
 
@@ -537,6 +537,7 @@ Composite PK: (role_id, permission_id)
 **Notes:**
 
 - Dữ liệu buyer nhìn thấy về chất liệu / tình trạng phải lấy từ bảng này, không lấy từ products.material
+- `seller_accuracy` là input bắt buộc khi appraiser submit appraisal và được dùng để tính lại `seller_profiles.reputation_score`
 
 ### appraisal_images
 | Column | Type | Constraints | Description |
@@ -831,6 +832,7 @@ Product Truth Model
 products chứa dữ liệu seller tự khai
 appraisal_reports chứa dữ liệu đã kiểm định
 Buyer chỉ nên thấy các field xác thực từ appraisal_reports cho chất liệu, tình trạng, định giá
+Seller reputation được tính từ trung bình toàn bộ appraisal_reports.seller_accuracy của seller, bao gồm cả APPRAISED và REJECTED, làm tròn 1 chữ số
 Catalog list/detail hiện là internal workflow APIs cho seller/appraiser; buyer-facing browse/detail nên đi qua auction read model sau này
 Escrow Rules
 Khi tham gia đấu giá: tiền cọc chuyển từ available_balance → frozen_balance

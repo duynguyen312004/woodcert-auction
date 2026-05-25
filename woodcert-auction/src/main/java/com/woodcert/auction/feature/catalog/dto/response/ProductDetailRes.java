@@ -25,6 +25,11 @@ public record ProductDetailRes(
         CategoryRes category,
         List<ProductImageRes> images,
         AppraisalReportRes appraisalReport,
+        Instant submittedAt,
+        String appraisalClaimedBy,
+        Instant appraisalClaimedAt,
+        Instant appraisalClaimExpiresAt,
+        String rejectedReason,
         Instant createdAt
 ) {
     public static ProductDetailRes fromEntity(
@@ -49,6 +54,11 @@ public record ProductDetailRes(
                 categoryRes,
                 imageResponses,
                 appraisalReportRes,
+                product.getSubmittedAt(),
+                product.getAppraisalClaimedBy(),
+                product.getAppraisalClaimedAt(),
+                product.getAppraisalClaimExpiresAt(),
+                product.getRejectedReason(),
                 product.getCreatedAt()
         );
     }

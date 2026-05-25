@@ -6,11 +6,13 @@ import com.woodcert.auction.feature.catalog.dto.request.CreateProductReq;
 import com.woodcert.auction.feature.catalog.dto.request.ProductImageReq;
 import com.woodcert.auction.feature.catalog.dto.request.UpdateProductReq;
 import com.woodcert.auction.feature.catalog.dto.response.ProductDetailRes;
+import com.woodcert.auction.feature.catalog.entity.AppraisalImage;
 import com.woodcert.auction.feature.catalog.entity.AppraisalReport;
 import com.woodcert.auction.feature.catalog.entity.Category;
 import com.woodcert.auction.feature.catalog.entity.Product;
 import com.woodcert.auction.feature.catalog.entity.ProductImage;
 import com.woodcert.auction.feature.catalog.entity.ProductStatus;
+import com.woodcert.auction.feature.catalog.repository.AppraisalImageRepository;
 import com.woodcert.auction.feature.catalog.repository.CategoryRepository;
 import com.woodcert.auction.feature.catalog.repository.ProductImageRepository;
 import com.woodcert.auction.feature.catalog.repository.ProductRepository;
@@ -23,6 +25,7 @@ import com.woodcert.auction.feature.media.entity.MediaStatus;
 import com.woodcert.auction.feature.media.entity.MediaUsageType;
 import com.woodcert.auction.feature.media.repository.MediaAssetRepository;
 import com.woodcert.auction.feature.media.service.MediaAssetService;
+import com.woodcert.auction.feature.media.util.MediaUrlBuilder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -50,6 +53,7 @@ import static org.mockito.Mockito.*;
 class ProductServiceImplTest {
 
     @Mock private ProductRepository productRepository;
+    @Mock private AppraisalImageRepository appraisalImageRepository;
     @Mock private ProductImageRepository productImageRepository;
     @Mock private CategoryRepository categoryRepository;
     @Mock private UserRepository userRepository;
@@ -58,6 +62,7 @@ class ProductServiceImplTest {
     @Mock private MediaAssetRepository mediaAssetRepository;
     @Mock private ProductImageHelper productImageHelper;
     @Mock private CloudinaryProperties cloudinaryProperties;
+    @Mock private MediaUrlBuilder mediaUrlBuilder;
 
     @InjectMocks
     private ProductServiceImpl productService;
@@ -88,8 +93,17 @@ class ProductServiceImplTest {
 
     private AppraisalReport createAppraisalReport(String appraiserId) {
         AppraisalReport report = new AppraisalReport();
+        report.setId(42L);
         report.setProductId(PRODUCT_ID);
         report.setAppraiserId(appraiserId);
+        report.setCertificateCode("CERT-2026-00042");
+        report.setVerifiedMaterial("Dalbergia tonkinensis");
+        report.setEstimatedValue(new BigDecimal("15000000"));
+        report.setAuthentic(true);
+        report.setAppraiserNotes("Verified grain and finish.");
+        report.setSellerAccuracy(new BigDecimal("4.5"));
+        report.setDigitalSignature("abc123");
+        report.setAppraisedAt(java.time.Instant.now());
         return report;
     }
 
@@ -498,7 +512,7 @@ class ProductServiceImplTest {
             assertThat(result.result()).hasSize(1);
             verify(productRepository).findCatalogProductsForSeller(eq(SELLER_ID), isNull(), isNull(), isNull(), any());
             verify(productRepository, never()).findCatalogProductsForAppraiser(
-                    anyString(), any(), any(), any(), any(), anyList(), any());
+                    anyString(), any(), any(), any(), any(), any(), anyList(), any(), any());
         }
 
         @Test
@@ -525,7 +539,9 @@ class ProductServiceImplTest {
                     isNull(),
                     isNull(),
                     eq(ProductStatus.PENDING_APPRAISAL),
+                    eq(ProductStatus.UNDER_APPRAISAL),
                     anyList(),
+                    any(),
                     any()))
                     .thenReturn(new PageImpl<>(List.of(product), PageRequest.of(0, 10), 1));
             when(productImageHelper.batchLoadPrimaryImageUrls(anyList()))
@@ -540,7 +556,9 @@ class ProductServiceImplTest {
                     isNull(),
                     isNull(),
                     eq(ProductStatus.PENDING_APPRAISAL),
+                    eq(ProductStatus.UNDER_APPRAISAL),
                     anyList(),
+                    any(),
                     any());
         }
 
@@ -553,7 +571,9 @@ class ProductServiceImplTest {
                     isNull(),
                     isNull(),
                     eq(ProductStatus.PENDING_APPRAISAL),
+                    eq(ProductStatus.UNDER_APPRAISAL),
                     anyList(),
+                    any(),
                     any()))
                     .thenReturn(new PageImpl<>(Collections.emptyList(), PageRequest.of(0, 10), 0));
 
@@ -566,7 +586,9 @@ class ProductServiceImplTest {
                     isNull(),
                     isNull(),
                     eq(ProductStatus.PENDING_APPRAISAL),
+                    eq(ProductStatus.UNDER_APPRAISAL),
                     anyList(),
+                    any(),
                     any());
         }
     }
@@ -619,6 +641,52 @@ class ProductServiceImplTest {
 
             ProductDetailRes result = productService.getProductDetail(PRODUCT_ID, "appraiser-id", true);
             assertThat(result).isNotNull();
+        }
+
+        @Test
+        @DisplayName("APPRAISED product - reviewing appraiser sees internal report fields")
+        void getDetail_appraised_reviewingAppraiserSeesInternalFields() {
+            Product product = createProductWithStatus(ProductStatus.APPRAISED);
+            product.setCategory(new Category());
+            product.setAppraisalReport(createAppraisalReport("appraiser-id"));
+
+            MediaAsset proofAsset = createActiveProductMediaAsset(200L);
+            AppraisalImage proofImage = new AppraisalImage();
+            proofImage.setId(7L);
+            proofImage.setAppraisalReportId(42L);
+            proofImage.setMediaId(200L);
+            proofImage.setDescription("End-grain close-up");
+            proofImage.setMediaAsset(proofAsset);
+
+            when(productRepository.findByIdWithCategoryAndAppraisalReport(PRODUCT_ID)).thenReturn(Optional.of(product));
+            when(appraisalImageRepository.findByAppraisalReportIdOrderByIdAsc(42L)).thenReturn(List.of(proofImage));
+            when(mediaUrlBuilder.buildAppraisalImageUrl(proofAsset)).thenReturn("https://cdn.example/proof.jpg");
+
+            ProductDetailRes result = productService.getProductDetail(PRODUCT_ID, "appraiser-id", true);
+
+            assertThat(result.appraisalReport()).isNotNull();
+            assertThat(result.appraisalReport().appraiserNotes()).isEqualTo("Verified grain and finish.");
+            assertThat(result.appraisalReport().sellerAccuracy()).isEqualByComparingTo("4.5");
+            assertThat(result.appraisalReport().proofImages()).hasSize(1);
+            assertThat(result.appraisalReport().proofImages().get(0).imageUrl())
+                    .isEqualTo("https://cdn.example/proof.jpg");
+        }
+
+        @Test
+        @DisplayName("APPRAISED product - owner does not see internal report fields")
+        void getDetail_appraised_ownerDoesNotSeeInternalFields() {
+            Product product = createProductWithStatus(ProductStatus.APPRAISED);
+            product.setCategory(new Category());
+            product.setAppraisalReport(createAppraisalReport("appraiser-id"));
+            when(productRepository.findByIdWithCategoryAndAppraisalReport(PRODUCT_ID)).thenReturn(Optional.of(product));
+
+            ProductDetailRes result = productService.getProductDetail(PRODUCT_ID, SELLER_ID, false);
+
+            assertThat(result.appraisalReport()).isNotNull();
+            assertThat(result.appraisalReport().appraiserNotes()).isNull();
+            assertThat(result.appraisalReport().sellerAccuracy()).isNull();
+            assertThat(result.appraisalReport().proofImages()).isEmpty();
+            verify(appraisalImageRepository, never()).findByAppraisalReportIdOrderByIdAsc(any());
         }
 
         @Test

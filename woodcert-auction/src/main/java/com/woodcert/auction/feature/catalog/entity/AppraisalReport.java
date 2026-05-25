@@ -67,7 +67,7 @@ public class AppraisalReport {
     @Column(name = "appraiser_notes", columnDefinition = "TEXT")
     private String appraiserNotes;
 
-    @Column(name = "seller_accuracy", precision = 3, scale = 2)
+    @Column(name = "seller_accuracy", nullable = false, precision = 3, scale = 2)
     private BigDecimal sellerAccuracy;
 
     @Column(name = "digital_signature", nullable = false, length = 255)

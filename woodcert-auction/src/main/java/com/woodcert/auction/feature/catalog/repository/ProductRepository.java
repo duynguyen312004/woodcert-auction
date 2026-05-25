@@ -12,6 +12,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.Optional;
 
@@ -57,12 +58,38 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             SELECT DISTINCT p
             FROM Product p
             LEFT JOIN p.appraisalReport ar
-            WHERE (:status IS NULL OR p.status = :status)
-              AND (:saleStatus IS NULL OR p.saleStatus = :saleStatus)
+            WHERE (:saleStatus IS NULL OR p.saleStatus = :saleStatus)
               AND (:categoryId IS NULL OR p.categoryId = :categoryId)
               AND (
-                   p.status = :pendingStatus
-                   OR (p.status IN :reviewedStatuses AND ar.appraiserId = :appraiserId)
+                   (
+                       :status IS NULL
+                       AND (
+                           p.status = :pendingStatus
+                           OR (p.status = :underStatus AND p.appraisalClaimExpiresAt <= :now)
+                           OR (p.status = :underStatus
+                               AND p.appraisalClaimedBy = :appraiserId
+                               AND p.appraisalClaimExpiresAt > :now)
+                           OR (p.status IN :reviewedStatuses AND ar.appraiserId = :appraiserId)
+                       )
+                   )
+                   OR (
+                       :status = :pendingStatus
+                       AND (
+                           p.status = :pendingStatus
+                           OR (p.status = :underStatus AND p.appraisalClaimExpiresAt <= :now)
+                       )
+                   )
+                   OR (
+                       :status = :underStatus
+                       AND p.status = :underStatus
+                       AND p.appraisalClaimedBy = :appraiserId
+                       AND p.appraisalClaimExpiresAt > :now
+                   )
+                   OR (
+                       :status IN :reviewedStatuses
+                       AND p.status = :status
+                       AND ar.appraiserId = :appraiserId
+                   )
               )
             """)
     Page<Product> findCatalogProductsForAppraiser(
@@ -71,7 +98,9 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             @Param("saleStatus") ProductSaleStatus saleStatus,
             @Param("categoryId") Integer categoryId,
             @Param("pendingStatus") ProductStatus pendingStatus,
+            @Param("underStatus") ProductStatus underStatus,
             @Param("reviewedStatuses") Collection<ProductStatus> reviewedStatuses,
+            @Param("now") Instant now,
             Pageable pageable);
 
     /**

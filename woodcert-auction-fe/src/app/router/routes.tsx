@@ -1,14 +1,17 @@
 /**
  * Cấu hình route chính của giao diện.
  *
- * Route khu seller được tách khỏi PublicLayout để dùng sidebar riêng. Các trang
- * public, tài khoản và admin vẫn dùng header/footer chung.
+ * Route khu seller và appraiser được tách khỏi PublicLayout để dùng sidebar riêng.
+ * Các trang public, tài khoản và admin vẫn dùng header/footer chung.
  */
 import type { RouteObject } from "react-router";
 
+import { AppraiserLayout } from "@/app/layouts/AppraiserLayout";
 import { SellerLayout } from "@/app/layouts/SellerLayout";
 import { PublicLayout } from "@/app/layouts/PublicLayout";
+import { AppraiserPortalGuard } from "@/app/router/AppraiserPortalGuard";
 import { ProtectedRoute } from "@/app/router/ProtectedRoute";
+import { PublicAppraiserGuard } from "@/app/router/PublicAppraiserGuard";
 import { SellerPortalGuard } from "@/app/router/SellerPortalGuard";
 import { accountRoutes } from "@/features/account";
 import { adminRoutes } from "@/features/admin/routes";
@@ -37,25 +40,39 @@ export const routes: RouteObject[] = [
           },
         ],
       },
+      // Khu appraiser dùng layout riêng, không có header/footer chung.
+      {
+        element: <AppraiserPortalGuard />,
+        children: [
+          {
+            element: <AppraiserLayout />,
+            children: appraisalRoutes,
+          },
+        ],
+      },
     ],
   },
 
   // Các trang public dùng header và footer chung.
   {
-    element: <PublicLayout />,
+    element: <PublicAppraiserGuard />,
     children: [
-      ...homeRoutes,
-      ...auctionRoutes,
-      ...catalogRoutes,
       {
-        element: <ProtectedRoute />,
+        element: <PublicLayout />,
         children: [
-          ...accountRoutes,
-          ...biddingRoutes,
-          ...walletRoutes,
-          ...appraisalRoutes,
-          ...sellerRegisterRoutes,
-          ...adminRoutes,
+          ...homeRoutes,
+          ...auctionRoutes,
+          ...catalogRoutes,
+          {
+            element: <ProtectedRoute />,
+            children: [
+              ...accountRoutes,
+              ...biddingRoutes,
+              ...walletRoutes,
+              ...sellerRegisterRoutes,
+              ...adminRoutes,
+            ],
+          },
         ],
       },
     ],

@@ -2,6 +2,7 @@ package com.woodcert.auction.feature.catalog.service;
 
 import com.woodcert.auction.core.exception.AppException;
 import com.woodcert.auction.core.exception.ErrorCode;
+import com.woodcert.auction.feature.catalog.config.CatalogProperties;
 import com.woodcert.auction.feature.catalog.dto.request.AppraisalImageReq;
 import com.woodcert.auction.feature.catalog.dto.request.CreateAppraisalReq;
 import com.woodcert.auction.feature.catalog.dto.response.AppraisalSubmitRes;
@@ -10,6 +11,7 @@ import com.woodcert.auction.feature.catalog.repository.AppraisalImageRepository;
 import com.woodcert.auction.feature.catalog.repository.AppraisalReportRepository;
 import com.woodcert.auction.feature.catalog.repository.ProductRepository;
 import com.woodcert.auction.feature.identity.repository.UserRepository;
+import com.woodcert.auction.feature.identity.service.SellerReputationService;
 import com.woodcert.auction.feature.media.config.CloudinaryProperties;
 import com.woodcert.auction.feature.media.dto.request.ConfirmMediaUploadReq;
 import com.woodcert.auction.feature.media.dto.request.CreateMediaUploadIntentReq;
@@ -26,6 +28,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -44,6 +47,8 @@ public class AppraisalServiceImpl implements AppraisalService {
     private final UserRepository userRepository;
     private final MediaAssetService mediaAssetService;
     private final CloudinaryProperties cloudinaryProperties;
+    private final CatalogProperties catalogProperties;
+    private final SellerReputationService sellerReputationService;
 
     @Override
     @Transactional
@@ -65,13 +70,63 @@ public class AppraisalServiceImpl implements AppraisalService {
 
     @Override
     @Transactional
-    public AppraisalSubmitRes submitAppraisal(String appraiserId, Long productId, CreateAppraisalReq request) {
-        // Bước 1: Đọc sản phẩm và chỉ cho phép thẩm định khi sản phẩm đang chờ appraisal.
-        Product product = productRepository.findById(productId)
+    public void claimProductForAppraisal(String appraiserId, Long productId) {
+        Product product = productRepository.findByIdForUpdate(productId)
                 .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
 
-        if (product.getStatus() != ProductStatus.PENDING_APPRAISAL) {
+        Instant now = Instant.now();
+        if (product.getStatus() == ProductStatus.UNDER_APPRAISAL && isActiveClaim(product, now)) {
+            if (!appraiserId.equals(product.getAppraisalClaimedBy())) {
+                throw new AppException(ErrorCode.APPRAISAL_CLAIM_CONFLICT);
+            }
+            return;
+        }
+
+        if (product.getStatus() != ProductStatus.PENDING_APPRAISAL
+                && product.getStatus() != ProductStatus.UNDER_APPRAISAL) {
             throw new AppException(ErrorCode.PRODUCT_NOT_PENDING);
+        }
+
+        product.setStatus(ProductStatus.UNDER_APPRAISAL);
+        product.setAppraisalClaimedBy(appraiserId);
+        product.setAppraisalClaimedAt(now);
+        product.setAppraisalClaimExpiresAt(now.plus(catalogProperties.getAppraisalClaimTimeout()));
+        productRepository.save(product);
+
+        log.info("Product {} claimed for appraisal by {}", productId, appraiserId);
+    }
+
+    @Override
+    @Transactional
+    public void releaseAppraisalClaim(String appraiserId, Long productId) {
+        Product product = productRepository.findByIdForUpdate(productId)
+                .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
+
+        if (product.getStatus() != ProductStatus.UNDER_APPRAISAL
+                || !appraiserId.equals(product.getAppraisalClaimedBy())) {
+            throw new AppException(ErrorCode.APPRAISAL_CLAIM_REQUIRED);
+        }
+
+        clearAppraisalClaim(product);
+        product.setStatus(ProductStatus.PENDING_APPRAISAL);
+        productRepository.save(product);
+
+        log.info("Product {} appraisal claim released by {}", productId, appraiserId);
+    }
+
+    @Override
+    @Transactional
+    public AppraisalSubmitRes submitAppraisal(String appraiserId, Long productId, CreateAppraisalReq request) {
+        // Bước 1: Đọc sản phẩm bằng lock và chỉ cho appraiser đang giữ claim nộp report.
+        Product product = productRepository.findByIdForUpdate(productId)
+                .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
+
+        if (product.getStatus() != ProductStatus.UNDER_APPRAISAL) {
+            throw new AppException(ErrorCode.PRODUCT_NOT_PENDING);
+        }
+        if (!appraiserId.equals(product.getAppraisalClaimedBy())
+                || !isActiveClaim(product, Instant.now())) {
+            throw new AppException(ErrorCode.APPRAISAL_CLAIM_REQUIRED);
         }
 
         // Bước 2: Chặn tạo báo cáo lần hai vì appraisal report được xem là immutable sau khi nộp.
@@ -93,10 +148,7 @@ public class AppraisalServiceImpl implements AppraisalService {
         String tempCertCode = "PENDING-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
 
         // Bước 6: Tạo chữ ký số từ dữ liệu cốt lõi của báo cáo để truy vết tính toàn vẹn.
-        String digitalSignature = generateDigitalSignature(
-                productId, appraiserId, request.verifiedMaterial(),
-                request.estimatedValue(), request.isAuthentic(), tempCertCode
-        );
+        Instant appraisedAt = Instant.now();
 
         AppraisalReport report = new AppraisalReport();
         report.setProductId(productId);
@@ -110,13 +162,22 @@ public class AppraisalServiceImpl implements AppraisalService {
         report.setAuthentic(request.isAuthentic());
         report.setAppraiserNotes(request.appraiserNotes());
         report.setSellerAccuracy(request.sellerAccuracy());
-        report.setDigitalSignature(digitalSignature);
-        report.setAppraisedAt(Instant.now());
+        report.setDigitalSignature("PENDING-" + UUID.randomUUID());
+        report.setAppraisedAt(appraisedAt);
         report = appraisalReportRepository.save(report);
 
         // Bước 7: Sau khi có report id, cập nhật mã chứng nhận chính thức theo năm và id.
         String certificateCode = String.format("CERT-%d-%05d", Year.now().getValue(), report.getId());
         report.setCertificateCode(certificateCode);
+        report.setDigitalSignature(generateDigitalSignature(
+                productId,
+                appraiserId,
+                request.verifiedMaterial(),
+                request.estimatedValue(),
+                request.isAuthentic(),
+                certificateCode,
+                appraisedAt
+        ));
         report = appraisalReportRepository.save(report);
 
         // Bước 8: Lưu các ảnh chứng minh vào bảng appraisal_images nếu có.
@@ -141,7 +202,9 @@ public class AppraisalServiceImpl implements AppraisalService {
             product.setRejectedReason(request.appraiserNotes());
         }
         product.setStatus(newStatus);
+        clearAppraisalClaim(product);
         productRepository.save(product);
+        refreshSellerReputation(product.getSellerId());
 
         log.info("Product {} appraised by {} — result: {}, certificate: {}",
                 productId, appraiserId, newStatus, certificateCode);
@@ -193,7 +256,7 @@ public class AppraisalServiceImpl implements AppraisalService {
      */
     private String generateDigitalSignature(
             Long productId, String appraiserId, String verifiedMaterial,
-            BigDecimal estimatedValue, boolean isAuthentic, String certificateCode) {
+            BigDecimal estimatedValue, boolean isAuthentic, String certificateCode, Instant appraisedAt) {
         try {
             // Bước 1: Ghép payload theo thứ tự cố định để cùng dữ liệu sẽ cho cùng cấu trúc hash.
             String payload = String.join("|",
@@ -203,7 +266,7 @@ public class AppraisalServiceImpl implements AppraisalService {
                     estimatedValue.toPlainString(),
                     String.valueOf(isAuthentic),
                     certificateCode,
-                    Instant.now().toString()
+                    appraisedAt.toString()
             );
 
             // Bước 2: Hash payload và trả về chuỗi hex để lưu cùng appraisal report.
@@ -231,6 +294,28 @@ public class AppraisalServiceImpl implements AppraisalService {
         if (!userRepository.existsById(userId)) {
             throw new AppException(ErrorCode.RESOURCE_NOT_FOUND, "User not found");
         }
+    }
+
+    private boolean isActiveClaim(Product product, Instant now) {
+        Instant expiresAt = product.getAppraisalClaimExpiresAt();
+        return product.getAppraisalClaimedBy() != null
+                && expiresAt != null
+                && expiresAt.isAfter(now);
+    }
+
+    private void clearAppraisalClaim(Product product) {
+        product.setAppraisalClaimedBy(null);
+        product.setAppraisalClaimedAt(null);
+        product.setAppraisalClaimExpiresAt(null);
+    }
+
+    /**
+     * Tính lại điểm uy tín seller từ toàn bộ điểm trung thực đã được appraisal.
+     */
+    private void refreshSellerReputation(String sellerId) {
+        appraisalReportRepository.calculateAverageSellerAccuracyBySellerId(sellerId)
+                .map(score -> score.setScale(1, RoundingMode.HALF_UP))
+                .ifPresent(score -> sellerReputationService.updateReputationScore(sellerId, score));
     }
 
     private String trimOrNull(String value) {

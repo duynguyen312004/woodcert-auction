@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useForm, type UseFormSetError } from "react-hook-form";
 import { Link, useLocation, useNavigate } from "react-router";
 
+import { hasAppraiserAuthority } from "@/shared/auth/appraiser-authority";
+import { resolveAuthenticatedRedirect } from "@/shared/auth/auth-redirects";
 import { useAuthStore } from "@/shared/auth/auth-store";
 import { isApiError } from "@/shared/api/errors";
 import { Button } from "@/shared/ui/button";
@@ -16,6 +18,14 @@ import { loginSchema, type LoginCredentials } from "../types";
 const loginErrorFields = ["email", "password"] as const;
 
 type SubmitError = { type: "message"; message: string } | { type: "unverified"; email: string };
+
+function getLoginSuccessDescription(accessToken: string, roles?: readonly string[]) {
+  if (hasAppraiserAuthority(accessToken, roles)) {
+    return "Phiên kiểm định đã sẵn sàng. Bạn sẽ được chuyển đến hàng chờ sản phẩm cần duyệt.";
+  }
+
+  return "Phiên làm việc đã sẵn sàng. Bạn có thể tiếp tục đấu giá và quản lý tài khoản.";
+}
 
 function applyLoginFieldErrors(
   fieldErrors: Record<string, string> | undefined,
@@ -42,7 +52,7 @@ export function LoginPage() {
   const [submitError, setSubmitError] = useState<SubmitError | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
-  const from = location.state?.from?.pathname || "/";
+  const from = location.state?.from?.pathname as string | undefined;
 
   const {
     register,
@@ -60,10 +70,14 @@ export function LoginPage() {
       const response = await authApi.login(data);
       setAccessToken(response.accessToken);
       notification.success("Đăng nhập thành công", {
-        description:
-          "Phiên làm việc đã sẵn sàng. Bạn có thể tiếp tục đấu giá và quản lý tài khoản.",
+        description: getLoginSuccessDescription(response.accessToken, response.roles),
       });
-      navigate(from, { replace: true });
+      const destination = resolveAuthenticatedRedirect({
+        accessToken: response.accessToken,
+        from,
+        roles: response.roles,
+      });
+      navigate(destination, { replace: true });
     } catch (error: unknown) {
       if (isApiError(error)) {
         if (error.code === "ACCOUNT_UNVERIFIED") {

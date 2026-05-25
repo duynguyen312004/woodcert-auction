@@ -33,6 +33,7 @@
 - Một user có thể có nhiều địa chỉ giao hàng.
 - Nếu tạo địa chỉ mới với `isDefault = true`, các địa chỉ còn lại của user sẽ bị hạ xuống `false`.
 - Avatar cũ không bị xóa đồng bộ ngay; nó bị detach trước rồi được mark `PENDING_DELETE` để cleanup bất đồng bộ.
+- Seller `reputationScore` mặc định là `5.00` khi tạo profile, sau đó được cập nhật từ trung bình `sellerAccuracy` của các appraisal và làm tròn 1 chữ số.
 
 ## Giới Hạn Hiện Tại
 - Chưa có brute-force protection cho `/auth/login`.

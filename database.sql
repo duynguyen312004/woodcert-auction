@@ -99,8 +99,8 @@ Cac cot:
 - store_name           VARCHAR(100)  NOT NULL. Ten gian hang / xuong go hien thi tren san.
 - identity_card_number VARCHAR(20)   UNIQUE, NOT NULL. So CCCD/CMND dinh danh phap ly.
 - tax_code             VARCHAR(50)   Ma so thue (ca nhan hoac doanh nghiep).
-- reputation_score     DECIMAL(3,2)  Diem uy tin (VD: 4.85), default: 5.00,
-                                      tinh toan dua tren danh gia giao dich.
+- reputation_score     DECIMAL(3,2)  Diem uy tin, default: 5.00,
+                                      sau appraisal tinh bang AVG(seller_accuracy) va lam tron 1 chu so.
 - created_at           TIMESTAMP     Thoi gian tao ho so nguoi ban.
 - updated_at           TIMESTAMP     Thoi gian cap nhat ho so nguoi ban.
 
@@ -172,7 +172,7 @@ Cac cot:
 - estimated_value           DECIMAL(19,2) NOT NULL. Dinh gia tien mat (VND).
 - is_authentic              BOOLEAN       True = Hang that / False = Hang gia, kem chat luong.
 - appraiser_notes           TEXT          Ghi chu cac loi, vet nut, lich su phuc che...
-- seller_accuracy           INT           Diem trung thuc cua Seller (1-5 sao).
+- seller_accuracy           DECIMAL(3,2) NOT NULL. Diem trung thuc cua Seller (1-5), nhap dang 4.5.
 - digital_signature         VARCHAR(255)  NOT NULL. Chu ky so chong sua doi Database.
 - appraised_at              TIMESTAMP     Thoi diem ky duyet.
 

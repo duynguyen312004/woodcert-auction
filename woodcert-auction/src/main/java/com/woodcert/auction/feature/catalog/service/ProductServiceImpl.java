@@ -7,11 +7,13 @@ import com.woodcert.auction.feature.catalog.dto.request.CreateProductReq;
 import com.woodcert.auction.feature.catalog.dto.request.ProductImageReq;
 import com.woodcert.auction.feature.catalog.dto.request.UpdateProductReq;
 import com.woodcert.auction.feature.catalog.dto.response.*;
+import com.woodcert.auction.feature.catalog.entity.AppraisalImage;
 import com.woodcert.auction.feature.catalog.entity.AppraisalReport;
 import com.woodcert.auction.feature.catalog.entity.Product;
 import com.woodcert.auction.feature.catalog.entity.ProductImage;
 import com.woodcert.auction.feature.catalog.entity.ProductSaleStatus;
 import com.woodcert.auction.feature.catalog.entity.ProductStatus;
+import com.woodcert.auction.feature.catalog.repository.AppraisalImageRepository;
 import com.woodcert.auction.feature.catalog.repository.CategoryRepository;
 import com.woodcert.auction.feature.catalog.repository.ProductImageRepository;
 import com.woodcert.auction.feature.catalog.repository.ProductRepository;
@@ -30,6 +32,7 @@ import com.woodcert.auction.feature.media.entity.MediaUsageType;
 import com.woodcert.auction.feature.media.repository.MediaAssetRepository;
 import com.woodcert.auction.feature.media.service.MediaAssetService;
 import com.woodcert.auction.feature.media.support.MediaUploadContext;
+import com.woodcert.auction.feature.media.util.MediaUrlBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -54,6 +57,7 @@ public class ProductServiceImpl implements ProductService {
     );
 
     private final ProductRepository productRepository;
+    private final AppraisalImageRepository appraisalImageRepository;
     private final ProductImageRepository productImageRepository;
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
@@ -62,6 +66,7 @@ public class ProductServiceImpl implements ProductService {
     private final MediaAssetRepository mediaAssetRepository;
     private final ProductImageHelper productImageHelper;
     private final CloudinaryProperties cloudinaryProperties;
+    private final MediaUrlBuilder mediaUrlBuilder;
 
     @Override
     @Transactional
@@ -109,7 +114,7 @@ public class ProductServiceImpl implements ProductService {
                 product.getId(), sellerId, request.images().size());
 
         // Bước 4: Đọc lại chi tiết để trả về kèm seller, category, ảnh và appraisal report nếu có.
-        return buildProductDetailRes(product);
+        return buildProductDetailRes(product, null, false);
     }
 
     @Override
@@ -139,7 +144,7 @@ public class ProductServiceImpl implements ProductService {
                 productId, sellerId, request.images().size());
 
         // Bước 5: Trả về snapshot chi tiết mới nhất cho màn hình seller.
-        return buildProductDetailRes(product);
+        return buildProductDetailRes(product, null, false);
     }
 
     @Override
@@ -221,7 +226,9 @@ public class ProductServiceImpl implements ProductService {
                     productSaleStatus,
                     categoryId,
                     ProductStatus.PENDING_APPRAISAL,
+                    ProductStatus.UNDER_APPRAISAL,
                     APPRAISER_REVIEWED_STATUSES,
+                    Instant.now(),
                     pageable
             );
         } else {
@@ -260,7 +267,7 @@ public class ProductServiceImpl implements ProductService {
         enforceProductDetailAccess(product, userId, isAppraiser);
 
         // Bước 3: Ghép dữ liệu chi tiết để trả về cho màn hình catalog nội bộ.
-        return buildProductDetailRes(product);
+        return buildProductDetailRes(product, userId, isAppraiser);
     }
 
     // =========================================================================
@@ -381,6 +388,9 @@ public class ProductServiceImpl implements ProductService {
             if (product.getStatus() == ProductStatus.PENDING_APPRAISAL) {
                 return;
             }
+            if (isClaimVisibleToAppraiser(product, userId)) {
+                return;
+            }
             if (isReviewedByAppraiser(product, userId)) {
                 return;
             }
@@ -392,7 +402,7 @@ public class ProductServiceImpl implements ProductService {
     // Private helpers
     // =========================================================================
 
-    private ProductDetailRes buildProductDetailRes(Product product) {
+    private ProductDetailRes buildProductDetailRes(Product product, String viewerUserId, boolean isAppraiser) {
         // Bước 1: Đọc thông tin seller và seller profile để tạo khối seller summary.
         User seller = userRepository.findById(product.getSellerId())
                 .orElse(null);
@@ -413,10 +423,7 @@ public class ProductServiceImpl implements ProductService {
                 .toList();
 
         // Bước 3: Nếu đã có báo cáo thẩm định thì map kèm vào response chi tiết.
-        AppraisalReportRes appraisalReportRes = null;
-        if (product.getAppraisalReport() != null) {
-            appraisalReportRes = AppraisalReportRes.fromEntity(product.getAppraisalReport());
-        }
+        AppraisalReportRes appraisalReportRes = buildAppraisalReportRes(product, viewerUserId, isAppraiser);
 
         // Bước 4: Bổ sung category khi entity đầu vào chưa được fetch join category.
         if (product.getCategory() == null && product.getCategoryId() != null) {
@@ -428,6 +435,42 @@ public class ProductServiceImpl implements ProductService {
         return ProductDetailRes.fromEntity(product, sellerSummary, imageResponses, appraisalReportRes);
     }
 
+    private AppraisalReportRes buildAppraisalReportRes(Product product, String viewerUserId, boolean isAppraiser) {
+        AppraisalReport appraisalReport = product.getAppraisalReport();
+        if (appraisalReport == null) {
+            return null;
+        }
+
+        boolean includeInternalFields = isAppraiser
+                && viewerUserId != null
+                && viewerUserId.equals(appraisalReport.getAppraiserId());
+
+        List<AppraisalImageRes> proofImages = includeInternalFields
+                ? buildAppraisalProofImages(appraisalReport.getId())
+                : List.of();
+
+        return AppraisalReportRes.fromEntity(appraisalReport, includeInternalFields, proofImages);
+    }
+
+    private List<AppraisalImageRes> buildAppraisalProofImages(Long appraisalReportId) {
+        if (appraisalReportId == null) {
+            return List.of();
+        }
+
+        return appraisalImageRepository.findByAppraisalReportIdOrderByIdAsc(appraisalReportId).stream()
+                .map(image -> AppraisalImageRes.fromEntity(image, buildAppraisalImageUrl(image)))
+                .toList();
+    }
+
+    private String buildAppraisalImageUrl(AppraisalImage image) {
+        if (image.getMediaAsset() != null) {
+            return mediaUrlBuilder.buildAppraisalImageUrl(image.getMediaAsset());
+        }
+        return mediaAssetRepository.findById(image.getMediaId())
+                .map(mediaUrlBuilder::buildAppraisalImageUrl)
+                .orElse(null);
+    }
+
     private boolean isReviewedByAppraiser(Product product, String appraiserId) {
         if (product.getStatus() != ProductStatus.APPRAISED
                 && product.getStatus() != ProductStatus.REJECTED) {
@@ -436,6 +479,17 @@ public class ProductServiceImpl implements ProductService {
 
         AppraisalReport appraisalReport = product.getAppraisalReport();
         return appraisalReport != null && appraiserId.equals(appraisalReport.getAppraiserId());
+    }
+
+    private boolean isClaimVisibleToAppraiser(Product product, String appraiserId) {
+        if (product.getStatus() != ProductStatus.UNDER_APPRAISAL) {
+            return false;
+        }
+        Instant expiresAt = product.getAppraisalClaimExpiresAt();
+        if (expiresAt == null || !expiresAt.isAfter(Instant.now())) {
+            return true;
+        }
+        return appraiserId != null && appraiserId.equals(product.getAppraisalClaimedBy());
     }
 
     private MediaUploadContext buildProductImageContext(String sellerId) {

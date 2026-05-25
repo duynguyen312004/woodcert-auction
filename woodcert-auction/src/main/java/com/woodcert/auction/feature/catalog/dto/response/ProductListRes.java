@@ -20,7 +20,11 @@ public record ProductListRes(
         ProductStatus status,
         ProductSaleStatus saleStatus,
         String primaryImage,
-        Instant createdAt
+        Instant createdAt,
+        Instant submittedAt,
+        String appraisalClaimedBy,
+        Instant appraisalClaimedAt,
+        Instant appraisalClaimExpiresAt
 ) {
     /**
      * Map Product sang response danh sách, còn ảnh chính do caller truyền vào.
@@ -38,7 +42,11 @@ public record ProductListRes(
                 product.getStatus(),
                 product.getSaleStatus(),
                 primaryImageUrl,
-                product.getCreatedAt()
+                product.getCreatedAt(),
+                product.getSubmittedAt(),
+                product.getAppraisalClaimedBy(),
+                product.getAppraisalClaimedAt(),
+                product.getAppraisalClaimExpiresAt()
         );
     }
 }

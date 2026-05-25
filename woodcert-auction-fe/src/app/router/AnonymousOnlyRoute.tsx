@@ -1,12 +1,14 @@
 import { Loader2 } from "lucide-react";
 import { Navigate, Outlet, useLocation } from "react-router";
 
+import { resolveAuthenticatedRedirect } from "@/shared/auth/auth-redirects";
 import { useAuthStore } from "@/shared/auth/auth-store";
 
 export function AnonymousOnlyRoute() {
   const status = useAuthStore((state) => state.status);
+  const accessToken = useAuthStore((state) => state.accessToken);
   const location = useLocation();
-  const redirectTo = location.state?.from?.pathname || "/";
+  const from = location.state?.from?.pathname as string | undefined;
 
   if (status === "loading") {
     return (
@@ -20,7 +22,7 @@ export function AnonymousOnlyRoute() {
   }
 
   if (status === "authenticated") {
-    return <Navigate to={redirectTo} replace />;
+    return <Navigate to={resolveAuthenticatedRedirect({ accessToken, from })} replace />;
   }
 
   return <Outlet />;

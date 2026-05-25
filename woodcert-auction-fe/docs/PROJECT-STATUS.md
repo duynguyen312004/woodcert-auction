@@ -1,6 +1,6 @@
 # Project Status
 
-> Last updated: 2026-05-13 | By: AI Agent | Session: auth-session-recovery-fix
+> Last updated: 2026-05-25 | By: AI Agent | Session: appraiser-workflow-hardening
 >
 > Update this file at the end of FE planning or implementation sessions.
 > Keep it concise and decision-useful.
@@ -31,6 +31,15 @@
 - [x] `features/catalog` has public `index.ts` (`CategoryFilter`, `useCategories`, `Category` type)
 - [x] `features/auction` has public `index.ts` (`AuctionListContent`, `usePublicAuctions`, `ArtAuctionCard`, types)
 - [x] Query keys aligned to convention: `["auctions", "list", params]`, `["catalog", "categories"]`
+- [x] **Appraiser workflow hoàn thiện** — queue → claim → appraise/reject → reviewed
+  - `AppraiserQueuePage`: hiển thị hàng chờ, tab đang kiểm định, badge "Claim hết hạn" cho claim hết hạn, CTA "Nhận lại kiểm định"
+  - `AppraiserProductDetailPage`: claim, release, form kiểm định (approve/reject), upload ảnh bằng chứng kèm mô tả, đọc report read-only (notes, sellerAccuracy, digitalSignature, proofImages), điều hướng sang reviewed tab sau submit
+  - `AppraiserReviewedPage`: tab APPRAISED/REJECTED theo query param `?status=`, link xem chi tiết
+  - `PublicAppraiserGuard`: redirect appraiser khỏi public routes
+  - `AppraiserPortalGuard`: chặn non-appraiser vào portal với nút logout
+  - Types: `AppraisalReportDetail` bao gồm `appraiserNotes`, `sellerAccuracy`, `proofImages[]`
+  - API: `appraisalApi` — getQueue, getMyActive, getReviewed, getProductDetail, claimProduct, releaseClaimProduct, submitAppraisal, uploadProofImage
+  - Test coverage: 50 unit tests pass — queue rendering (pending/expired/active), sidebar logout, proof image uploader description, appraisal API payload, guard redirects
 
 ## In Progress
 
@@ -42,6 +51,8 @@
 - order, fulfillment, shipping, dispute flows
 - payment provider integration
 - production runtime env injection strategy beyond the initial Docker + nginx baseline
+- Public certificate verification (buyer/public lookup)
+- Admin appraiser provisioning management
 
 ## Warnings
 
@@ -56,7 +67,6 @@
 3. Wallet: `GET /wallets/me` → replace hardcoded balance in `Header`; `WalletWidget` receives real data from `features/wallet`
 4. Implement buyer wallet and bidding room (Phase 3)
 5. Add websocket runtime scoped to bidding room route
-6. Expand automated coverage as feature flows are added
 
 ## Milestones
 
@@ -96,12 +106,12 @@
 
 - [ ] Seller profile
 - [ ] Product CRUD and media upload
-- [ ] Appraisal workflow
+- [x] Appraiser workflow — queue/claim/appraise/reviewed (hoàn thiện, có test)
 - [ ] Seller auction create/list/cancel
 
 ### Phase 5 - Hardening
 
-- [ ] Automated tests
+- [x] Automated tests (50 unit tests, no warnings)
 - [ ] Responsive polish
 - [ ] Production deploy readiness
 - [ ] Deferred module planning for `admin`

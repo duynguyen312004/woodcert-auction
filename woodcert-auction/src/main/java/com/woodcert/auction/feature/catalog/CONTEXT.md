@@ -12,6 +12,7 @@
 5. **REJECTED = kết thúc** — không có rule 3 ngày, không được sửa, không được resubmit. Seller phải tạo product mới.
 6. **AppraisalReport là immutable** — sau khi submit, report không được update hay delete. Đây là quyết định nghiệp vụ có chủ đích.
 7. **Reject bắt buộc có lý do** — nếu `isAuthentic = false` thì `appraiserNotes` là required.
+8. **Seller accuracy là bắt buộc** — appraiser phải nhập `sellerAccuracy` theo thang 1-5, dùng số thập phân dạng `4.5`; sau khi submit, catalog tính AVG toàn bộ điểm này của seller và yêu cầu identity cập nhật `reputationScore`.
 
 ## Các Quyết Định Kỹ Thuật
 - **Product images và Appraisal images dùng `media_id FK → media_assets(id)`** thay vì lưu `image_url` trực tiếp.
@@ -21,7 +22,7 @@
 - **AppraisalReport không extend BaseEntity** (chỉ có `appraised_at`, không có `updated_at`).
 - **Slug tạo tự động** từ tên category bằng Unicode-safe normalization.
 - **Certificate code: `CERT-{year}-{id}`** — sử dụng auto-increment ID của AppraisalReport sau khi save (2-step save).
-- **Digital signature là SHA-256 hash** của payload gồm productId, appraiserId, verifiedMaterial, estimatedValue, isAuthentic, certificateCode, timestamp.
+- **Digital signature là SHA-256 hash** của payload gồm productId, appraiserId, verifiedMaterial, estimatedValue, isAuthentic, certificateCode chính thức, appraisedAt.
 - **`@CurrentUserId`** được dùng cho các product read APIs nội bộ để buộc authenticated user context.
 - **User-centric media storage**: ảnh lưu tại `{baseFolder}/users/{userId}/products` và `{baseFolder}/users/{userId}/appraisals`.
 - **Auction read enrichment**: buyer/public auction list/detail vẫn do `auction` module sở hữu, nhưng có thể đọc catalog category, appraisal report, và product image data để dựng read model.
@@ -42,7 +43,7 @@
 
 \* Access control cho GET product detail:
 - owner → xem được mọi status
-- appraiser → xem được `PENDING_APPRAISAL`, và `APPRAISED`/`REJECTED` nếu chính họ đã submit appraisal report
+- appraiser → xem được `PENDING_APPRAISAL`, claim `UNDER_APPRAISAL` còn hiệu lực của chính họ, claim hết hạn, và `APPRAISED`/`REJECTED` nếu chính họ đã submit appraisal report
 - các trường hợp khác → `PRODUCT_NOT_FOUND`
 
 ### Product Media APIs
@@ -54,9 +55,12 @@
 ### Appraisal APIs
 | Method | Path | Auth | Mô tả |
 |--------|------|------|--------|
+| POST | `/api/v1/products/{id}/appraisal-claim` | APPROVE_PRODUCT | Nhận claim sản phẩm trước khi kiểm định |
+| DELETE | `/api/v1/products/{id}/appraisal-claim` | APPROVE_PRODUCT | Trả claim về hàng chờ |
 | POST | `/api/v1/products/{id}/appraise` | APPROVE_PRODUCT | Submit báo cáo kiểm định |
 
-Appraiser lấy work queue qua `GET /api/v1/products`, không còn endpoint `GET /api/v1/appraisals/pending`.
+Appraiser lấy work queue, active claims và reviewed qua `GET /api/v1/products`, không còn endpoint `GET /api/v1/appraisals/pending`.
+Claim timeout được cấu hình bằng `catalog.appraisal.claim-timeout` (default `PT24H`).
 
 ### Appraisal Media APIs
 | Method | Path | Auth | Mô tả |
@@ -76,9 +80,15 @@ Appraiser lấy work queue qua `GET /api/v1/products`, không còn endpoint `GET
 ### Appraisal Proof Images
 - Không duplicate mediaId
 - Media asset phải: ACTIVE, thuộc đúng appraiser, có usageType = APPRAISAL_IMAGE
+- Appraiser đã submit report được xem lại `appraiserNotes`, `sellerAccuracy` và `proofImages`; seller không thấy `sellerAccuracy`.
 
 ### Appraisal Rejection
 - `isAuthentic = false` → `appraiserNotes` bắt buộc (không null, không blank)
+
+### Seller Reputation
+- `sellerAccuracy` bắt buộc khi submit appraisal.
+- `seller_profiles.reputation_score` được tính lại bằng trung bình toàn bộ `sellerAccuracy` của seller, bao gồm cả sản phẩm `APPRAISED` và `REJECTED`.
+- Điểm uy tín được làm tròn 1 chữ số thập phân trước khi ghi profile.
 
 ## Controller Structure
 ```

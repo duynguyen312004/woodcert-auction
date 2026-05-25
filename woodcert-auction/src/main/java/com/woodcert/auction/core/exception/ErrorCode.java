@@ -42,6 +42,8 @@ public enum ErrorCode {
     PRODUCT_NOT_DRAFT(400, "Product must be in DRAFT status"),
     PRODUCT_NOT_PENDING(400, "Product must be in PENDING_APPRAISAL status"),
     PRODUCT_ALREADY_APPRAISED(409, "Product has already been appraised"),
+    APPRAISAL_CLAIM_CONFLICT(409, "Product is already claimed by another appraiser"),
+    APPRAISAL_CLAIM_REQUIRED(403, "You must claim this product before submitting appraisal"),
     INVALID_PRIMARY_IMAGE(400, "Exactly one primary image is required"),
     DUPLICATE_MEDIA_ID(400, "Duplicate media asset references are not allowed"),
     DUPLICATE_SORT_ORDER(400, "Duplicate sort order values are not allowed"),

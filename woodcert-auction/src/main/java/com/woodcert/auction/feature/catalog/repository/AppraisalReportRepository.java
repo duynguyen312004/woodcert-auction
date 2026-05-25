@@ -2,8 +2,11 @@ package com.woodcert.auction.feature.catalog.repository;
 
 import com.woodcert.auction.feature.catalog.entity.AppraisalReport;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -18,4 +21,15 @@ public interface AppraisalReportRepository extends JpaRepository<AppraisalReport
     boolean existsByProductId(Long productId);
 
     Optional<AppraisalReport> findByCertificateCode(String certificateCode);
+
+    /**
+     * Tính điểm trung thực trung bình của toàn bộ appraisal thuộc một seller.
+     */
+    @Query(value = """
+            SELECT AVG(ar.seller_accuracy)
+            FROM appraisal_reports ar
+            JOIN products p ON p.id = ar.product_id
+            WHERE p.seller_id = :sellerId
+            """, nativeQuery = true)
+    Optional<BigDecimal> calculateAverageSellerAccuracyBySellerId(@Param("sellerId") String sellerId);
 }

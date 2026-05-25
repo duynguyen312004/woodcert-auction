@@ -22,6 +22,18 @@ public interface AppraisalService {
     void confirmAppraisalImageUpload(String appraiserId, ConfirmMediaUploadReq request);
 
     /**
+     * Claim a product before writing an appraisal report.
+     * The caller is responsible for fetching full product detail after this call.
+     */
+    void claimProductForAppraisal(String appraiserId, Long productId);
+
+    /**
+     * Release an active appraisal claim owned by the current appraiser.
+     * The caller is responsible for fetching full product detail after this call.
+     */
+    void releaseAppraisalClaim(String appraiserId, Long productId);
+
+    /**
      * Appraiser submits an appraisal report for a product.
      * If isAuthentic = true → product status = APPRAISED
      * If isAuthentic = false → product status = REJECTED
