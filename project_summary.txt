@@ -25,9 +25,13 @@ Backend hiện tại:
 - Backend toàn sàn thương mại đầy đủ gồm fulfillment, shipment, dispute, admin vận hành: khoảng 70%.
 
 Frontend:
-- Chưa code.
-- Đã tạo blueprint triển khai FE tại folder cùng cấp backend: woodcert-auction-fe/FE_IMPLEMENTATION.md.
-- Khuyến nghị tiếp theo: bắt đầu FE theo vertical slice, không mở thêm backend domain lớn trước khi FE dùng được auction runtime.
+- Đã triển khai cấu trúc core (Vite 7, React 19, Tailwind CSS v4, shadcn/ui, TanStack Query, Zustand, Axios).
+- Đã hoàn thành các chức năng công cộng (Trang chủ, duyệt danh sách phiên đấu giá công khai).
+- Đã hoàn thành chức năng Buyer (Đăng nhập, đăng ký, xác minh email, xem ví ở header widget, trang cá nhân).
+- Đã hoàn thành toàn bộ chức năng Seller (Đăng ký gian hàng, quản lý sản phẩm, tạo phiên đấu giá, xem danh sách, hủy phiên và theo dõi chi tiết phiên đấu giá của mình).
+- Đã hoàn thành toàn bộ chức năng Appraiser (Xem hàng chờ, nhận/nhả kiểm định, chi tiết sản phẩm, tải bằng chứng hình ảnh và ký báo cáo thẩm định).
+- Bộ test suite frontend đã chạy thành công 100% với 63 test cases.
+- Khuyến nghị tiếp theo: bắt đầu tích hợp trang chi tiết phiên đấu giá công khai và phòng đấu giá realtime cho buyer.
 
 --------------------------------------------------------------------
 2. BACKEND MODULES ĐÃ HOÀN THÀNH
@@ -264,9 +268,9 @@ Nên bắt đầu FE MVP trước khi mở thêm backend fulfillment/order. Lý 
 - Các backend contract chính đã đủ rõ; nếu chờ hoàn thiện order/dispute mới làm FE thì rủi ro phát hiện lệch contract quá muộn.
 
 Thứ tự làm tiếp theo:
-1. Scaffold FE project theo blueprint trong woodcert-auction-fe.
-2. Implement API client + auth flow.
-3. Dựng public auction browsing/detail.
-4. Implement buyer registration + wallet.
-5. Implement realtime bidding room.
-6. Sau khi FE dùng được auction runtime, mới quay lại fulfillment/order/dispute.
+1. Phát triển trang chi tiết phiên đấu giá công khai (Public Auction Detail) tại route `/auctions/:id`.
+2. Phát triển chức năng đăng ký tham gia đấu giá (Auction Registration) từ phía buyer.
+3. Phát triển trang ví buyer đầy đủ (Wallet Page) và lịch sử giao dịch.
+4. Phát triển phòng đấu giá realtime (Realtime Bidding Room) tích hợp WebSocket/STOMP.
+5. Kiểm tra và tối ưu responsive, hiệu năng và viết thêm Playwright test.
+6. Sau khi luồng đấu giá realtime của buyer ổn định, mới quay lại phát triển module fulfillment/order/dispute ở backend.

@@ -4,7 +4,9 @@ import com.woodcert.auction.core.dto.PaginationResponse;
 import com.woodcert.auction.feature.auction.dto.request.CreateAuctionSessionReq;
 import com.woodcert.auction.feature.auction.dto.response.AuctionDetailRes;
 import com.woodcert.auction.feature.auction.dto.response.AuctionListRes;
+import com.woodcert.auction.feature.auction.dto.response.SellerAuctionDetailRes;
 import com.woodcert.auction.feature.auction.dto.response.SellerAuctionListRes;
+import com.woodcert.auction.feature.auction.dto.response.SellerAuctionStatsRes;
 
 import java.math.BigDecimal;
 
@@ -38,6 +40,13 @@ public interface AuctionService {
      * Lấy danh sách phiên thuộc về một seller.
      */
     PaginationResponse<SellerAuctionListRes> getSellerAuctions(String sellerId, int page, int size, String status);
+
+    SellerAuctionDetailRes getSellerAuctionDetail(String sellerId, Long auctionId);
+
+    /**
+     * Trả về số lượng phiên theo từng trạng thái cho seller — kông load toàn bộ danh sách.
+     */
+    SellerAuctionStatsRes getSellerAuctionStats(String sellerId);
 
     /**
      * Hủy phiên của seller nếu đúng chủ sở hữu và trạng thái cho phép.

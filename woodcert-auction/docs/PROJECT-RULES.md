@@ -41,7 +41,7 @@ com.woodcert.auction/
     ├── catalog/               # Product, Category, Appraisal
     ├── finance/               # Wallet, Transactions
     ├── auction/               # AuctionSession, Bid
-    └── fulfillment/           # Order, Shipment, Dispute
+    └── fulfillment/           # Order, Shipment, Dispute (planned; not implemented yet)
 ```
 
 ### Package Rules
@@ -326,6 +326,8 @@ if (remaining_time <= 30s)
 - Auction response image selection must go through `ProductImageHelper`
 
 ## 13. Order & Escrow Rules
+
+Current status: planned for Phase 4. These rules are the target contract for the future `feature/fulfillment` module; do not treat them as implemented backend behavior until the package, entities, controllers, and tests exist.
 
 ### Payment Flow
 

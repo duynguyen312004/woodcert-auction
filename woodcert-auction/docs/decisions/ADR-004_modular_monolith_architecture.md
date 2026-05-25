@@ -1,7 +1,7 @@
 # ADR-004: Modular Monolith Package Structure
 
 ## Status
-Accepted
+Accepted. Current implemented feature packages are `identity`, `media`, `catalog`, `finance`, and `auction`; `fulfillment` remains planned.
 
 ## Context
 The platform has a complex business domain consisting of Identity Management, Catalog (Products & Appraisals), Escrow Finances, Real-time Auctions, and Order Fulfillment.

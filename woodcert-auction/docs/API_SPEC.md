@@ -2,6 +2,8 @@
 
 > All endpoints return `ApiResponse<T>` wrapper. Error responses created from `AppException` include nullable `errorCode` for machine-readable handling.
 > Update this file whenever endpoints change.
+>
+> Current implementation note (2026-05-25): sections Auth through Auction Sessions are implemented backend contracts. Orders, Shipments, and Disputes are planned Phase 4 contracts only; no `feature/fulfillment` package exists yet.
 
 ---
 
@@ -1189,6 +1191,46 @@ Success Response (200):
 }
 ```
 
+### GET /auctions/me/{id} 🔒
+
+Seller detail for one owned auction session. This endpoint exposes seller-only fields such as `reservePrice`, winner alias, and deposit settlement summary. Buyers must use `GET /auctions/{id}`.
+
+For `ACTIVE` sessions, `currentPrice` and `endTime` are overlaid from Redis runtime state when available.
+
+Success Response (200):
+
+```json
+{
+  "statusCode": 200,
+  "data": {
+    "id": 205,
+    "status": "ENDED_SUCCESS",
+    "startingPrice": 30000000.00,
+    "reservePrice": 45000000.00,
+    "stepPrice": 1000000.00,
+    "depositAmount": 5000000.00,
+    "currentPrice": 50000000.00,
+    "finalPrice": 50000000.00,
+    "startTime": "2026-03-29T20:00:00",
+    "endTime": "2026-03-29T21:00:00",
+    "participantCount": 3,
+    "winnerMaskedAlias": "3fa8****",
+    "settlementStatus": "SETTLED",
+    "settlement": { "frozen": 0, "refunded": 2, "deducted": 1, "confiscated": 0 },
+    "product": { "id": 1001, "title": "Tượng Đạt Ma Sư Tổ Gỗ Sưa Đỏ" },
+    "createdAt": "2026-03-28T10:00:00",
+    "updatedAt": "2026-03-29T21:00:05"
+  },
+  "message": "Fetch seller auction detail successful",
+  "timestamp": "2026-03-29T21:00:05"
+}
+```
+
+Errors:
+
+- 403: current seller does not own the auction session
+- 404: auction session not found
+
 ### PATCH /auctions/{id}/cancel 🔒
 
 Seller cancels an auction session before it starts. This is a status transition (`WAITING -> CANCELED`), not a hard delete.
@@ -1266,7 +1308,9 @@ Errors:
 
 - 400: Invalid price (lower than current + step), or Auction not ACTIVE.
 
-## 10. Orders & Fulfillment (Escrow Flow)
+## 10. Orders & Fulfillment (Escrow Flow) — Planned Phase 4
+
+Status: planned/deferred. These endpoints describe the intended contract after auction winner settlement. They are not implemented in the current backend.
 
 ### GET /orders 🔒
 
@@ -1327,7 +1371,9 @@ Request Body:
 
 Webhook or Admin/Seller marks the order as delivered. Sets delivered_at to trigger the 72-hour Escrow countdown. Order status changes to DELIVERED.
 
-## 11. Disputes (Tòa Án Sàn)
+## 11. Disputes (Tòa Án Sàn) — Planned Phase 4
+
+Status: planned/deferred. This endpoint is not implemented in the current backend.
 
 ### POST /orders/{id}/disputes 🔒
 

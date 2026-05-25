@@ -5,9 +5,13 @@ import com.woodcert.auction.core.exception.AppException;
 import com.woodcert.auction.core.exception.ErrorCode;
 import com.woodcert.auction.feature.auction.dto.response.AuctionDetailRes;
 import com.woodcert.auction.feature.auction.dto.response.AuctionListRes;
+import com.woodcert.auction.feature.auction.dto.response.SellerAuctionDetailRes;
 import com.woodcert.auction.feature.auction.dto.response.SellerAuctionListRes;
+import com.woodcert.auction.feature.auction.dto.response.SellerAuctionStatsRes;
 import com.woodcert.auction.feature.auction.entity.AuctionSession;
 import com.woodcert.auction.feature.auction.entity.AuctionSessionStatus;
+import com.woodcert.auction.feature.auction.entity.DepositStatus;
+import com.woodcert.auction.feature.auction.repository.AuctionDepositStatusCountView;
 import com.woodcert.auction.feature.auction.repository.AuctionParticipantCountView;
 import com.woodcert.auction.feature.auction.repository.AuctionParticipantRepository;
 import com.woodcert.auction.feature.auction.repository.AuctionSessionRepository;
@@ -176,15 +180,21 @@ public class AuctionQueryService {
                 Sort.by(Sort.Direction.DESC, "createdAt"));
 
         // Bước 2: Chuyển status filter sang enum rồi query phiên theo seller.
+        // findByProductSellerId/findByProductSellerIdAndStatus đã có JOIN FETCH a.product
+        // nên không cần gọi loadProductsById() bổ sung.
         AuctionSessionStatus statusFilter = resolveSellerStatus(status);
         Page<AuctionSession> sessionPage = statusFilter == null
                 ? auctionSessionRepository.findByProductSellerId(sellerId, pageable)
                 : auctionSessionRepository.findByProductSellerIdAndStatus(sellerId, statusFilter, pageable);
         List<AuctionSession> sessions = sessionPage.getContent();
 
-        // Bước 3: Batch-load product, số người tham gia và runtime snapshot để dựng danh sách.
-        Map<Long, Product> productsById = loadProductsById(
-                sessions.stream().map(AuctionSession::getProductId).toList());
+        // Bước 3: Batch-load ảnh, số người tham gia và runtime snapshot để dựng danh sách.
+        // Product lấy trực tiếp từ session.getProduct() nhờ JOIN FETCH ở query.
+        Map<Long, String> primaryImages = productImageHelper.batchLoadPrimaryImageUrls(
+                sessions.stream()
+                        .map(AuctionSession::getProduct)
+                        .filter(java.util.Objects::nonNull)
+                        .toList());
         Map<Long, Long> participantCounts = loadParticipantCounts(
                 sessions.stream().map(AuctionSession::getId).toList());
         Map<Long, AuctionRuntimeSnapshot> snapshots = runtimeSnapshotService.loadSnapshots(sessions);
@@ -192,18 +202,76 @@ public class AuctionQueryService {
         // Bước 4: Ghép dữ liệu thành DTO tối ưu cho bảng quản lý của seller.
         Page<SellerAuctionListRes> responsePage = new PageImpl<>(
                 sessions.stream()
-                        .map(session -> responseAssembler.toSellerListRes(
-                                session,
-                                java.util.Optional.ofNullable(productsById.get(session.getProductId()))
-                                        .map(Product::getTitle)
-                                        .orElse(null),
-                                participantCounts.getOrDefault(session.getId(), 0L),
-                                snapshots.get(session.getId())))
+                        .map(session -> {
+                            Product product = session.getProduct();
+                            String title = product != null ? product.getTitle() : null;
+                            String imageUrl = product != null ? primaryImages.get(product.getId()) : null;
+                            return responseAssembler.toSellerListRes(
+                                    session,
+                                    title,
+                                    imageUrl,
+                                    participantCounts.getOrDefault(session.getId(), 0L),
+                                    snapshots.get(session.getId()));
+                        })
                         .toList(),
                 pageable,
                 sessionPage.getTotalElements());
 
         return PaginationResponse.of(responsePage);
+    }
+
+    @Transactional(readOnly = true)
+    public SellerAuctionStatsRes getSellerAuctionStats(String sellerId) {
+        // GROUP BY query trả về list [AuctionSessionStatus, Long] — chỉ có các trạng thái tồn tại.
+        List<Object[]> rows = auctionSessionRepository.countBySellerIdGroupByStatus(sellerId);
+        Map<AuctionSessionStatus, Long> counts = rows.stream()
+                .collect(Collectors.toMap(
+                        row -> (AuctionSessionStatus) row[0],
+                        row -> (Long) row[1],
+                        (left, right) -> left));
+        return new SellerAuctionStatsRes(
+                counts.getOrDefault(AuctionSessionStatus.WAITING, 0L),
+                counts.getOrDefault(AuctionSessionStatus.ACTIVE, 0L),
+                counts.getOrDefault(AuctionSessionStatus.ENDED_SUCCESS, 0L),
+                counts.getOrDefault(AuctionSessionStatus.ENDED_FAILED, 0L),
+                counts.getOrDefault(AuctionSessionStatus.CANCELED, 0L)
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public SellerAuctionDetailRes getSellerAuctionDetail(String sellerId, Long auctionId) {
+        AuctionSession session = auctionSessionRepository.findByIdWithProduct(auctionId)
+                .orElseThrow(() -> new AppException(ErrorCode.AUCTION_SESSION_NOT_FOUND));
+        Product product = session.getProduct() != null
+                ? session.getProduct()
+                : productRepository.findById(session.getProductId())
+                        .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
+
+        if (!sellerId.equals(product.getSellerId())) {
+            throw new AppException(ErrorCode.AUCTION_SESSION_NOT_OWNED);
+        }
+
+        AppraisalReport appraisalReport = appraisalReportRepository.findByProductId(product.getId()).orElse(null);
+        AuctionRuntimeSnapshot snapshot = runtimeSnapshotService.loadSnapshot(session);
+        Map<DepositStatus, Long> depositCounts = loadDepositStatusCounts(auctionId);
+        SellerAuctionDetailRes.SettlementSummary settlement = new SellerAuctionDetailRes.SettlementSummary(
+                depositCounts.getOrDefault(DepositStatus.FROZEN, 0L),
+                depositCounts.getOrDefault(DepositStatus.REFUNDED, 0L),
+                depositCounts.getOrDefault(DepositStatus.DEDUCTED, 0L),
+                depositCounts.getOrDefault(DepositStatus.CONFISCATED, 0L));
+        long participantCount = depositCounts.values().stream().mapToLong(Long::longValue).sum();
+
+        return responseAssembler.toSellerDetailRes(
+                session,
+                product,
+                productImageHelper.findPrimaryImageUrl(product),
+                productImageHelper.findImageUrls(product),
+                appraisalReport,
+                participantCount,
+                settlement,
+                resolveSettlementStatus(session.getStatus(), settlement),
+                maskUserId(session.getHighestBidderId()),
+                snapshot);
     }
 
     private AuctionSessionStatus resolveSellerStatus(String statusFilter) {
@@ -327,6 +395,38 @@ public class AuctionQueryService {
     /**
      * Bước cuối để gom dữ liệu thành response cho card đấu giá public.
      */
+    private Map<DepositStatus, Long> loadDepositStatusCounts(Long auctionId) {
+        if (auctionId == null) {
+            return Map.of();
+        }
+
+        return auctionParticipantRepository.countDepositStatusByAuctionSessionId(auctionId).stream()
+                .collect(Collectors.toMap(
+                        AuctionDepositStatusCountView::getDepositStatus,
+                        AuctionDepositStatusCountView::getParticipantCount,
+                        (left, right) -> left,
+                        LinkedHashMap::new));
+    }
+
+    private SellerAuctionDetailRes.SellerAuctionSettlementStatus resolveSettlementStatus(
+            AuctionSessionStatus status,
+            SellerAuctionDetailRes.SettlementSummary settlement) {
+        if (status != AuctionSessionStatus.ENDED_SUCCESS && status != AuctionSessionStatus.ENDED_FAILED) {
+            return SellerAuctionDetailRes.SellerAuctionSettlementStatus.NOT_APPLICABLE;
+        }
+
+        return settlement.frozen() > 0
+                ? SellerAuctionDetailRes.SellerAuctionSettlementStatus.PENDING
+                : SellerAuctionDetailRes.SellerAuctionSettlementStatus.SETTLED;
+    }
+
+    private String maskUserId(String userId) {
+        if (userId == null || userId.length() < 4) {
+            return null;
+        }
+        return userId.substring(0, 4) + "****";
+    }
+
     private AuctionListRes toListRes(
             AuctionSession session,
             Map<Long, Product> productsById,

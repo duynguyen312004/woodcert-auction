@@ -8,6 +8,8 @@ import {
   Building2,
   CalendarDays,
   CreditCard,
+  Eye,
+  EyeOff,
   FileText,
   Loader2,
   ShieldCheck,
@@ -16,6 +18,7 @@ import {
 
 import { useProfile, useSellerProfile } from "@/features/account";
 import { formatDate } from "@/shared/lib/format";
+import { useState } from "react";
 import { cn } from "@/shared/lib/utils";
 
 // Hàm hỗ trợ.
@@ -33,12 +36,14 @@ function InfoRow({
   value,
   mono,
   highlight,
+  action,
 }: {
   icon: React.ElementType;
   label: string;
   value: string;
   mono?: boolean;
   highlight?: boolean;
+  action?: React.ReactNode;
 }) {
   return (
     <div className="flex items-start gap-4 py-4 border-b border-[#4e4637]/10 last:border-0">
@@ -49,15 +54,18 @@ function InfoRow({
         <p className="text-[10px] font-bold uppercase tracking-widest text-muted-warm mb-0.5">
           {label}
         </p>
-        <p
-          className={cn(
-            "text-sm font-semibold truncate",
-            highlight ? "text-brushed-brass" : "text-ink-blue",
-            mono && "font-mono",
-          )}
-        >
-          {value}
-        </p>
+        <div className="flex items-center gap-2">
+          <p
+            className={cn(
+              "text-sm font-semibold truncate",
+              highlight ? "text-brushed-brass" : "text-ink-blue",
+              mono && "font-mono",
+            )}
+          >
+            {value}
+          </p>
+          {action}
+        </div>
       </div>
     </div>
   );
@@ -82,6 +90,7 @@ function SkeletonRow() {
 export function SellerProfilePage() {
   const { data: profile, isPending: profileLoading } = useProfile();
   const { data: sellerProfile, isPending: sellerLoading } = useSellerProfile();
+  const [isIdentityVisible, setIsIdentityVisible] = useState(false);
 
   const isLoading = profileLoading || sellerLoading;
 
@@ -189,8 +198,32 @@ export function SellerProfilePage() {
                   <InfoRow
                     icon={CreditCard}
                     label="CCCD / CMND"
-                    value={sellerProfile ? maskId(sellerProfile.identityCardNumber) : "—"}
+                    value={
+                      sellerProfile
+                        ? isIdentityVisible
+                          ? sellerProfile.identityCardNumber
+                          : maskId(sellerProfile.identityCardNumber)
+                        : "—"
+                    }
                     mono
+                    action={
+                      sellerProfile && (
+                        <button
+                          type="button"
+                          onClick={() => setIsIdentityVisible(!isIdentityVisible)}
+                          className="text-muted-warm hover:text-ink-blue transition-colors cursor-pointer focus:outline-none"
+                          aria-label={
+                            isIdentityVisible ? "Ẩn số CCCD/CMND" : "Hiển thị số CCCD/CMND"
+                          }
+                        >
+                          {isIdentityVisible ? (
+                            <EyeOff className="size-4" />
+                          ) : (
+                            <Eye className="size-4" />
+                          )}
+                        </button>
+                      )
+                    }
                   />
                   <InfoRow
                     icon={FileText}
@@ -216,7 +249,15 @@ export function SellerProfilePage() {
             <div className="mx-6 mb-6 mt-2 rounded-lg border border-ink-blue/15 bg-ink-blue/5 p-3">
               <p className="text-xs text-muted-warm leading-relaxed">
                 Thông tin pháp lý được xác thực bởi WoodCert và không thể chỉnh sửa sau khi tạo hồ
-                sơ. Nếu cần cập nhật, vui lòng liên hệ hỗ trợ.
+                sơ. Nếu cần cập nhật hoặc tư vấn thêm, vui lòng liên hệ hotline:{" "}
+                <strong className="text-ink-blue">1900 8888</strong> hoặc gửi email về:{" "}
+                <a
+                  href="mailto:support@woodcert.vn"
+                  className="text-brushed-brass font-semibold hover:underline"
+                >
+                  support@woodcert.vn
+                </a>
+                .
               </p>
             </div>
           </section>

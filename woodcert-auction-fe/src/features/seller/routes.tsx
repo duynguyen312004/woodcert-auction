@@ -7,7 +7,10 @@
 import type { RouteObject } from "react-router";
 
 import { SELLER_ROUTE_PATHS } from "./constants/routes";
+import { SellerAuctionDetailPage } from "./pages/SellerAuctionDetailPage";
+import { SellerAuctionsPage } from "./pages/SellerAuctionsPage";
 import { SellerDashboardPage } from "./pages/SellerDashboardPage";
+import { SellerNewAuctionPage } from "./pages/SellerNewAuctionPage";
 import { SellerNewProductPage } from "./pages/SellerNewProductPage";
 import { SellerPlaceholderPage } from "./pages/SellerPlaceholderPage";
 import { SellerProductsPage } from "./pages/SellerProductsPage";
@@ -37,21 +40,15 @@ export const sellerRoutes: RouteObject[] = [
   },
   {
     path: SELLER_ROUTE_PATHS.auctions,
-    element: (
-      <SellerPlaceholderPage
-        title="Quản lý phiên đấu giá"
-        description="Danh sách phiên đấu giá của seller sẽ dùng dữ liệu từ API /auctions/me."
-      />
-    ),
+    element: <SellerAuctionsPage />,
   },
   {
     path: SELLER_ROUTE_PATHS.newAuction,
-    element: (
-      <SellerPlaceholderPage
-        title="Tạo phiên đấu giá"
-        description="Form tạo phiên sẽ chọn sản phẩm đã kiểm định và gọi API tạo auction session."
-      />
-    ),
+    element: <SellerNewAuctionPage />,
+  },
+  {
+    path: SELLER_ROUTE_PATHS.auctionDetail,
+    element: <SellerAuctionDetailPage />,
   },
   {
     path: SELLER_ROUTE_PATHS.appraisals,

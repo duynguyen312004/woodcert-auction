@@ -22,6 +22,12 @@ Before making any code change, read these files first:
 - Package manager: pnpm
 - Deploy target: Docker multi-stage build + nginx
 
+## Current Implementation Snapshot
+
+- Implemented: auth, public home/auction list, account profile/avatar, seller profile/product flows, appraiser workflow, wallet balance hook/header chip.
+- Pending: auction detail, auction registration, bidding room, wallet page/transactions, seller auction create/list/cancel.
+- Deferred: admin operations, orders, fulfillment, shipping, disputes.
+
 ## Mandatory Rules
 
 - Keep `src/` aligned with the hybrid feature-first structure from `docs/ARCHITECTURE.md`.

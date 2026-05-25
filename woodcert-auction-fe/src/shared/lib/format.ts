@@ -34,6 +34,14 @@ const DATE_FORMATTER = new Intl.DateTimeFormat("vi-VN", {
   year: "numeric",
 });
 
+const DATE_TIME_FORMATTER = new Intl.DateTimeFormat("vi-VN", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
 /**
  * Định dạng số tiền VND dạng đơn giản, ví dụ: 1.000.000 đ.
  */
@@ -57,4 +65,11 @@ export function formatPercent(value: number): string {
 export function formatDate(value: string | undefined): string {
   if (!value) return "\u2014";
   return DATE_FORMATTER.format(new Date(value));
+}
+
+export function formatDateTime(value: string | undefined): string {
+  if (!value) return "\u2014";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "\u2014";
+  return DATE_TIME_FORMATTER.format(date);
 }

@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted, implemented baseline as of 2026-05-25
 
 ## Context
 
@@ -36,6 +36,8 @@ The FE baseline will use:
 - SockJS + STOMP for auction realtime
 - pnpm
 - Docker multi-stage build with nginx runtime
+
+Current implementation note: the codebase follows this stack and structure. Docker/nginx production packaging remains a deployment-hardening task, while the Vite/React/pnpm/tooling baseline is already in place.
 
 ## Rationale
 

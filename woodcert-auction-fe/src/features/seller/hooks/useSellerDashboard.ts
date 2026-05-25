@@ -37,6 +37,29 @@ export function useSellerAuctions(params?: { page?: number; size?: number; statu
   });
 }
 
+/**
+ * Lấy thống kê số phiên theo trạng thái từ endpoint chuyên biệt.
+ * Chính xác với mọi số lượng phiên, không bị giới hạn bởi page size.
+ */
+export function useSellerAuctionStats() {
+  return useQuery({
+    queryKey: ["seller", "auction-stats"] as const,
+    queryFn: () => sellerApi.getMyAuctionStats(),
+  });
+}
+
+export function useSellerAuctionDetail(auctionId: number | undefined) {
+  return useQuery({
+    queryKey: ["seller", "auction", auctionId] as const,
+    queryFn: () => sellerApi.getMyAuctionDetail(auctionId as number),
+    enabled: auctionId !== undefined,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return status === "WAITING" || status === "ACTIVE" ? 15_000 : false;
+    },
+  });
+}
+
 export function useSellerDashboard() {
   const recentProductsQuery = useSellerProducts({ size: 5 });
   // Dashboard cần nhiều sản phẩm hơn để đếm trạng thái ngay trên giao diện.

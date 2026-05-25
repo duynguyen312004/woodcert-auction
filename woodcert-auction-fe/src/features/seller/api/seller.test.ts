@@ -129,6 +129,9 @@ describe("sellerApi", () => {
           id: "501",
           title: "Tượng gỗ trắc",
           currentPrice: 1300000,
+          productId: "101",
+          startingPrice: 1000000,
+          depositAmount: 100000,
           bidCount: 7,
           imageUrl: null,
         },
@@ -221,5 +224,103 @@ describe("sellerApi", () => {
       id: 101,
       title: payload.title,
     });
+  });
+
+  it("creates seller auction session with POST payload", async () => {
+    const payload = {
+      productId: 101,
+      startingPrice: 10000000,
+      reservePrice: 12000000,
+      stepPrice: 100000,
+      depositAmount: 1000000,
+      startTime: "2026-05-21T10:00:00.000Z",
+      endTime: "2026-05-21T12:00:00.000Z",
+    };
+
+    const adapter: AxiosAdapter = async (config) => {
+      expect(config.method).toBe("post");
+      expect(config.url).toBe("/auctions");
+      expect(JSON.parse(config.data as string)).toEqual(payload);
+
+      return createResponse(config, 201, createApiResponse({ id: 501 }, 201));
+    };
+    apiClient.defaults.adapter = adapter;
+
+    await expect(sellerApi.createAuctionSession(payload)).resolves.toEqual({ id: 501 });
+  });
+
+  it("maps seller auction detail with settlement summary", async () => {
+    const adapter: AxiosAdapter = async (config) => {
+      expect(config.method).toBe("get");
+      expect(config.url).toBe("/auctions/me/501");
+
+      return createResponse(
+        config,
+        200,
+        createApiResponse({
+          id: 501,
+          status: "ENDED_SUCCESS",
+          startingPrice: "10000000",
+          reservePrice: "12000000",
+          stepPrice: "100000",
+          depositAmount: "1000000",
+          currentPrice: "15000000",
+          finalPrice: "15000000",
+          startTime: "2026-05-25T11:00:00Z",
+          endTime: "2026-05-25T13:00:00Z",
+          participantCount: 3,
+          winnerMaskedAlias: "winn****",
+          settlementStatus: "SETTLED",
+          settlement: { frozen: 0, refunded: 2, deducted: 1, confiscated: 0 },
+          product: {
+            id: 101,
+            title: "Tượng gỗ trắc",
+            description: "Đục tay",
+            material: "Gỗ trắc",
+            dimensions: "30x20x10",
+            weight: "2.5",
+            primaryImage: "https://cdn.example/product.jpg",
+            images: ["https://cdn.example/product.jpg"],
+            appraisal: {
+              certificateCode: "CERT-1",
+              verifiedMaterial: "Gỗ trắc",
+              origin: "Việt Nam",
+              ageEstimation: "30 năm",
+              conditionGrade: "GOOD",
+              estimatedValue: "18000000",
+              isAuthentic: true,
+            },
+          },
+          createdAt: "2026-05-24T10:00:00Z",
+          updatedAt: "2026-05-25T13:05:00Z",
+        }),
+      );
+    };
+    apiClient.defaults.adapter = adapter;
+
+    await expect(sellerApi.getMyAuctionDetail(501)).resolves.toMatchObject({
+      id: "501",
+      status: "ENDED_SUCCESS",
+      currentPrice: 15000000,
+      finalPrice: 15000000,
+      reservePrice: 12000000,
+      participantCount: 3,
+      winnerMaskedAlias: "winn****",
+      settlementStatus: "SETTLED",
+      settlement: { refunded: 2, deducted: 1 },
+      product: { id: 101, title: "Tượng gỗ trắc" },
+    });
+  });
+
+  it("cancels seller auction session with PATCH", async () => {
+    const adapter: AxiosAdapter = async (config) => {
+      expect(config.method).toBe("patch");
+      expect(config.url).toBe("/auctions/501/cancel");
+
+      return createResponse(config, 200, createApiResponse(null));
+    };
+    apiClient.defaults.adapter = adapter;
+
+    await expect(sellerApi.cancelAuction(501)).resolves.toBeUndefined();
   });
 });

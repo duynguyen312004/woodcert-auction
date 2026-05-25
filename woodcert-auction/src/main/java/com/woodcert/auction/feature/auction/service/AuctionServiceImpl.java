@@ -4,7 +4,9 @@ import com.woodcert.auction.core.dto.PaginationResponse;
 import com.woodcert.auction.feature.auction.dto.request.CreateAuctionSessionReq;
 import com.woodcert.auction.feature.auction.dto.response.AuctionDetailRes;
 import com.woodcert.auction.feature.auction.dto.response.AuctionListRes;
+import com.woodcert.auction.feature.auction.dto.response.SellerAuctionDetailRes;
 import com.woodcert.auction.feature.auction.dto.response.SellerAuctionListRes;
+import com.woodcert.auction.feature.auction.dto.response.SellerAuctionStatsRes;
 import com.woodcert.auction.feature.auction.service.command.AuctionCommandService;
 import com.woodcert.auction.feature.auction.service.query.AuctionQueryService;
 import com.woodcert.auction.feature.auction.service.query.PublicAuctionSearchCriteria;
@@ -52,6 +54,16 @@ public class AuctionServiceImpl implements AuctionService {
     @Override
     public PaginationResponse<SellerAuctionListRes> getSellerAuctions(String sellerId, int page, int size, String status) {
         return queryService.getSellerAuctions(sellerId, page, size, status);
+    }
+
+    @Override
+    public SellerAuctionDetailRes getSellerAuctionDetail(String sellerId, Long auctionId) {
+        return queryService.getSellerAuctionDetail(sellerId, auctionId);
+    }
+
+    @Override
+    public SellerAuctionStatsRes getSellerAuctionStats(String sellerId) {
+        return queryService.getSellerAuctionStats(sellerId);
     }
 
     @Override

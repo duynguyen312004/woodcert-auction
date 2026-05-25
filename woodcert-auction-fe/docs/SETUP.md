@@ -1,14 +1,16 @@
 # Setup
 
+Last updated: 2026-05-25
+
 ## Prerequisites
 
 - Node.js 20+
-- pnpm 9+
-- Docker Desktop
+- pnpm 11.x (`packageManager` currently pins `pnpm@11.0.9`)
+- Docker Desktop if running backend dependencies through Docker
 
-## Planned Local Environment
+## Environment
 
-Frontend will use these environment variables:
+Copy `.env.example` to `.env` when needed.
 
 ```env
 VITE_API_BASE_URL=http://localhost:8080/api/v1
@@ -16,11 +18,7 @@ VITE_WS_BASE_URL=http://localhost:8080/ws-auction
 VITE_CLOUDINARY_UPLOAD_TIMEOUT_MS=60000
 ```
 
-## Package Manager
-
-Use `pnpm` as the official package manager.
-
-Expected commands after scaffold:
+## Commands
 
 ```bash
 pnpm install
@@ -40,32 +38,26 @@ pnpm exec playwright install --with-deps
 
 ## Backend Dependency
 
-The FE is expected to run against the local backend in `woodcert-auction`.
+The FE expects the local backend in `../woodcert-auction`.
 
 Required backend capabilities:
 
 - REST API at `VITE_API_BASE_URL`
-- websocket endpoint at `VITE_WS_BASE_URL`
-- credentialed CORS for the FE origin
-- refresh-cookie support
+- WebSocket endpoint at `VITE_WS_BASE_URL`
+- Credentialed CORS for the FE origin
+- Refresh-cookie support
+- Local profile with refresh cookie `Secure=false` when testing over plain HTTP
 
-## Docker Strategy
+## Current Runtime Notes
 
-Planned production image:
+- The app is a Vite static SPA.
+- Production target remains static files served by nginx.
+- Docker/nginx production files are not fully finalized in the current FE tree.
+- Backend auction runtime exists, but FE bidding/detail websocket integration is still pending.
 
-1. build stage using Node + pnpm
-2. runtime stage using nginx
-3. serve static Vite output with SPA route fallback
+## Source Docs
 
-Planned Docker files:
-
-- `Dockerfile`
-- `.dockerignore`
-- optional `docker-compose.yml` for local FE-only or FE+BE orchestration
-- `nginx.conf`
-
-## Notes
-
-- The FE scaffold follows the stack and folder rules defined in:
-  - [ARCHITECTURE.md](ARCHITECTURE.md)
-  - [PROJECT-RULES.md](PROJECT-RULES.md)
+- [ARCHITECTURE.md](ARCHITECTURE.md)
+- [PROJECT-RULES.md](PROJECT-RULES.md)
+- [API_INTEGRATION.md](API_INTEGRATION.md)
+- [PROJECT-STATUS.md](PROJECT-STATUS.md)

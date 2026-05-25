@@ -1,4 +1,6 @@
 # Media - Implementation Context
+
+> Updated: 2026-05-25 | Session: docs-current-state-sync
 > Written: 2026-04-09 | Updated: 2026-04-18 | Author: AI Assistant + Duy Nguyen
 
 ## Business Purpose
@@ -86,6 +88,8 @@ Appraisal Image folder pattern:
 Recommended next patterns:
 - `woodcert/dev/shipments/{shipmentId}/packing`
 - `woodcert/dev/disputes/{disputeId}/evidence`
+
+These shipment/dispute folders are planned only. Fulfillment media is not implemented until the fulfillment module exists.
 
 ## Main Classes
 - `MediaAsset`: database metadata for one asset

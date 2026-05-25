@@ -1,6 +1,6 @@
 # Core - CONTEXT.md
 
-> Updated: 2026-05-14 | Session: backend-cleanup-refactor
+> Updated: 2026-05-25 | Session: docs-current-state-sync
 
 ## Module Responsibility
 `core` contains cross-cutting infrastructure shared by feature modules: response wrappers, exception handling, security helpers, JWT configuration, audit base entity, and shared configuration properties.
@@ -23,6 +23,11 @@
 - Sensitive links such as verification links and reset links must not be logged.
 
 ## Refactor Log
+
+### 2026-05-25 | Docs Current-State Sync
+- Core contracts remain current: `ApiResponse.errorCode`, `@CurrentUserId`, refresh-cookie properties, and safe token logging rules are still the backend baseline.
+- Backend tests passed with `.\mvnw.cmd -Dtest=!WoodcertAuctionApplicationTests test`: 225 tests.
+
 ### 2026-05-14 | Error Code and Cookie Hardening
 - Added/kept nullable `ApiResponse.errorCode` for `AppException` handling.
 - Added refresh-cookie configuration for explicit SameSite behavior.

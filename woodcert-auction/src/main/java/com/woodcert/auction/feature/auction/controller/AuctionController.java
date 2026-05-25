@@ -6,7 +6,9 @@ import com.woodcert.auction.core.dto.PaginationResponse;
 import com.woodcert.auction.feature.auction.dto.request.CreateAuctionSessionReq;
 import com.woodcert.auction.feature.auction.dto.response.AuctionDetailRes;
 import com.woodcert.auction.feature.auction.dto.response.AuctionListRes;
+import com.woodcert.auction.feature.auction.dto.response.SellerAuctionDetailRes;
 import com.woodcert.auction.feature.auction.dto.response.SellerAuctionListRes;
+import com.woodcert.auction.feature.auction.dto.response.SellerAuctionStatsRes;
 import com.woodcert.auction.feature.auction.service.AuctionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -56,6 +58,27 @@ public class AuctionController {
         // Danh sách seller luôn lấy theo tài khoản đang đăng nhập.
         PaginationResponse<SellerAuctionListRes> result = auctionService.getSellerAuctions(sellerId, page, size, status);
         return ResponseEntity.ok(ApiResponse.success(result, "Fetch seller auctions successful"));
+    }
+
+    @GetMapping("/me/{id}")
+    @PreAuthorize("hasAuthority('CREATE_AUCTION_SESSION')")
+    public ResponseEntity<ApiResponse<SellerAuctionDetailRes>> getSellerAuctionDetail(
+            @CurrentUserId String sellerId,
+            @PathVariable Long id) {
+        SellerAuctionDetailRes result = auctionService.getSellerAuctionDetail(sellerId, id);
+        return ResponseEntity.ok(ApiResponse.success(result, "Fetch seller auction detail successful"));
+    }
+
+    /**
+     * Thống kê số phiên của seller theo từng trạng thái — payload nhỏ gọn, không load toàn bộ danh sách.
+     * Đặt trước /me/{id} nhưng Spring MVC luôn ưu tiên literal path nên không cần lo thứ tự.
+     */
+    @GetMapping("/me/stats")
+    @PreAuthorize("hasAuthority('CREATE_AUCTION_SESSION')")
+    public ResponseEntity<ApiResponse<SellerAuctionStatsRes>> getSellerAuctionStats(
+            @CurrentUserId String sellerId) {
+        SellerAuctionStatsRes result = auctionService.getSellerAuctionStats(sellerId);
+        return ResponseEntity.ok(ApiResponse.success(result, "Fetch seller auction stats successful"));
     }
 
     @GetMapping("/{id}")

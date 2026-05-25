@@ -1,5 +1,7 @@
 # Database Schema
 
+Current implementation note (2026-05-25): identity, media, catalog/appraisal, finance/wallet, and auction/bidding tables are implemented by backend code. Fulfillment tables (`orders`, `shipments`, `disputes`) remain planned schema for Phase 4 and do not yet have a backend package/controller/service.
+
 > MySQL database design for WoodCert Auction Platform.
 > Update this file whenever schema changes.
 
@@ -697,7 +699,9 @@ Additional current implementation notes:
 - Bảng append-only, không update / delete log bid
 - Bid hợp lệ thời gian thực được xỚ lý trên Redis, bảng này là audit log
 
-### orders
+### orders — Planned Phase 4
+
+Status: planned/deferred. No current backend entity/controller/service owns this table yet.
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | id | BIGINT | PK, AUTO_INCREMENT | |
@@ -729,7 +733,9 @@ Additional current implementation notes:
 - Tiền buyer thanh toán không đi thẳng vào seller, mà giữ ở escrow của sàn
 - Khi đơn COMPLETED, hệ thống mới release funds cho seller
 
-### shipments
+### shipments — Planned Phase 4
+
+Status: planned/deferred. No current backend entity/controller/service owns this table yet.
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | id | BIGINT | PK, AUTO_INCREMENT | |
@@ -749,7 +755,9 @@ Additional current implementation notes:
 
 - `packing_video_url` should later become `packing_video_media_id BIGINT FK -> media_assets(id)`.
 
-### disputes
+### disputes — Planned Phase 4
+
+Status: planned/deferred. No current backend entity/controller/service owns this table yet.
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | id | BIGINT | PK, AUTO_INCREMENT | |

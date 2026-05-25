@@ -1,5 +1,5 @@
 # Finance - Implementation Context
-> Written: 2026-04-19 | Author: AI Assistant
+> Updated: 2026-05-25 | Session: docs-current-state-sync
 
 ## Business Context
 `finance` is the minimum internal wallet module that unblocks auction runtime. The current scope is wallet balances, wallet transaction audit logs, read APIs for the current user, and a dev/test top-up path while real payment-provider integration is still out of scope.
@@ -37,3 +37,8 @@
 - `deductFrozenFunds(userId, operationKey, amount, referenceId, referenceType)`
 
 These methods are the direct contract for the next auction-runtime phases.
+
+## Current Alignment
+- Finance is implemented and integrated with auction registration/close settlement.
+- Wallet reads are consumed by FE header balance integration.
+- Real payment-provider deposits, order remainder payment, seller payout, and dispute escrow are still deferred to fulfillment/payment phases.

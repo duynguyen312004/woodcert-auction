@@ -1,18 +1,25 @@
 # Project: WOODCERT-AUCTION-PLATFORM
 
-Real-time Escrow Auction System — RESTful API built with Spring Boot 3.5.x, Spring Security 6, Redis Lua Scripts, and WebSockets.
+Realtime escrow auction backend built with Spring Boot 3.5.x, Spring Security 6, Redis Lua scripts, MySQL, and WebSocket/STOMP.
 
-## 🚨 CRITICAL RULES FOR AI AGENTS (READ BEFORE CODING)
-You are acting as an expert Senior Java Backend Developer. Before generating any code, you MUST:
+## Critical Rules For AI Agents
 
-1. **Read Coding Conventions**: `docs/PROJECT-RULES.md` — This is the absolute truth. Follow it strictly. No exceptions for @Autowired, Entity exposure, or money Data Types.
-2. **Understand Architecture**: `docs/ARCHITECTURE.md` — Understand the Package-by-Feature (Modular Monolith) structure.
-3. **Check API Contracts**: `docs/API_SPEC.md` — Ensure your endpoints match the agreed specifications.
-4. **Check Database Schema**: `docs/DATABASE.md` — Use the exact table names, column names, and relationships defined here.
-5. **Review Decisions**: `docs/decisions/` — Understand WHY we use Redis Lua for bidding and CronJobs for Escrow. Do not suggest rewriting these flows.
+Before changing backend code, read:
 
-## How to execute workflows
-When asked to perform a specific task, refer to the workflow templates in `docs/ai-workflows/`:
-- Creating a new feature -> Follow `new-feature.md`
-- Writing tests -> Follow `write-tests.md`
-- Updating context -> Follow `write-context.md`
+1. `docs/PROJECT-RULES.md` — coding conventions and hard architecture rules.
+2. `docs/ARCHITECTURE.md` — modular-monolith structure and runtime flows.
+3. `docs/API_SPEC.md` — implemented and planned endpoint contracts.
+4. `docs/DATABASE.md` — table names, columns, relationships, and planned schema notes.
+5. `docs/PROJECT-STATUS.md` — current implementation status and next tasks.
+6. `docs/decisions/` — accepted architecture decisions.
+
+## Current Scope
+
+- Implemented: identity, media, catalog/appraisal, finance wallet, auction sessions, registration, Redis-first bidding, scheduler, and WebSocket broadcasts.
+- Planned/deferred: fulfillment, orders, shipments, disputes, admin operations.
+
+## Workflow Notes
+
+- The old backend workflow-template path is not present in this repo.
+- For backend work, use the docs above as the source of truth and update `docs/PROJECT-STATUS.md` at the end of relevant sessions.
+- Never treat planned fulfillment/order/dispute API or database docs as implemented code until `feature/fulfillment` exists.

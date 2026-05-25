@@ -2,8 +2,11 @@ package com.woodcert.auction.feature.auction.service.query;
 
 import com.woodcert.auction.core.exception.AppException;
 import com.woodcert.auction.feature.auction.dto.response.AuctionListRes;
+import com.woodcert.auction.feature.auction.dto.response.SellerAuctionDetailRes;
 import com.woodcert.auction.feature.auction.entity.AuctionSession;
 import com.woodcert.auction.feature.auction.entity.AuctionSessionStatus;
+import com.woodcert.auction.feature.auction.entity.DepositStatus;
+import com.woodcert.auction.feature.auction.repository.AuctionDepositStatusCountView;
 import com.woodcert.auction.feature.auction.repository.AuctionParticipantCountView;
 import com.woodcert.auction.feature.auction.repository.AuctionParticipantRepository;
 import com.woodcert.auction.feature.auction.repository.AuctionSessionRepository;
@@ -214,6 +217,8 @@ class AuctionQueryServiceTest {
         when(auctionSessionRepository.findByProductSellerId(eq("seller-1"), any()))
                 .thenReturn(new PageImpl<>(List.of(session), PageRequest.of(0, 10), 1));
         when(productRepository.findAllById(List.of(PRODUCT_ID))).thenReturn(List.of(product));
+        when(productImageHelper.batchLoadPrimaryImageUrls(anyCollection()))
+                .thenReturn(Map.of(PRODUCT_ID, "image-url"));
         when(auctionParticipantRepository.countByAuctionSessionIdsGrouped(List.of(AUCTION_ID)))
                 .thenReturn(List.of(countView(AUCTION_ID, 5L)));
         when(runtimeSnapshotService.loadSnapshots(List.of(session))).thenReturn(Map.of(AUCTION_ID, snapshot));
@@ -221,7 +226,7 @@ class AuctionQueryServiceTest {
         queryService.getSellerAuctions("seller-1", 1, 10, null);
 
         ArgumentCaptor<AuctionRuntimeSnapshot> snapshotCaptor = ArgumentCaptor.forClass(AuctionRuntimeSnapshot.class);
-        verify(responseAssembler).toSellerListRes(eq(session), eq("Wood statue"), eq(5L), snapshotCaptor.capture());
+        verify(responseAssembler).toSellerListRes(eq(session), eq("Wood statue"), eq("image-url"), eq(5L), snapshotCaptor.capture());
         assertThat(snapshotCaptor.getValue()).isSameAs(snapshot);
         verify(auctionParticipantRepository).countByAuctionSessionIdsGrouped(List.of(AUCTION_ID));
     }
@@ -240,6 +245,96 @@ class AuctionQueryServiceTest {
                 eq(AuctionSessionStatus.ACTIVE),
                 any());
         verify(auctionSessionRepository, never()).findByProductSellerId(eq("seller-1"), any());
+    }
+
+    @Test
+    void getSellerAuctionDetail_returnsOwnerDetailWithRuntimeSnapshot() {
+        AuctionSession session = session(AuctionSessionStatus.ACTIVE);
+        Product product = product();
+        session.setProduct(product);
+        AuctionRuntimeSnapshot snapshot = new AuctionRuntimeSnapshot(
+                new BigDecimal("14000000"),
+                Instant.now().plusSeconds(300));
+        SellerAuctionDetailRes expected = sellerDetailRes();
+
+        when(auctionSessionRepository.findByIdWithProduct(AUCTION_ID)).thenReturn(Optional.of(session));
+        when(appraisalReportRepository.findByProductId(PRODUCT_ID)).thenReturn(Optional.empty());
+        when(runtimeSnapshotService.loadSnapshot(session)).thenReturn(snapshot);
+        when(auctionParticipantRepository.countDepositStatusByAuctionSessionId(AUCTION_ID))
+                .thenReturn(List.of(depositCountView(DepositStatus.FROZEN, 2L)));
+        when(productImageHelper.findPrimaryImageUrl(product)).thenReturn("image-url");
+        when(productImageHelper.findImageUrls(product)).thenReturn(List.of("image-url"));
+        when(responseAssembler.toSellerDetailRes(
+                eq(session),
+                eq(product),
+                eq("image-url"),
+                eq(List.of("image-url")),
+                eq(null),
+                eq(2L),
+                any(),
+                eq(SellerAuctionDetailRes.SellerAuctionSettlementStatus.NOT_APPLICABLE),
+                eq(null),
+                eq(snapshot))).thenReturn(expected);
+
+        SellerAuctionDetailRes result = queryService.getSellerAuctionDetail("seller-1", AUCTION_ID);
+
+        assertThat(result).isSameAs(expected);
+        verify(responseAssembler).toSellerDetailRes(
+                eq(session),
+                eq(product),
+                eq("image-url"),
+                eq(List.of("image-url")),
+                eq(null),
+                eq(2L),
+                any(),
+                eq(SellerAuctionDetailRes.SellerAuctionSettlementStatus.NOT_APPLICABLE),
+                eq(null),
+                eq(snapshot));
+    }
+
+    @Test
+    void getSellerAuctionDetail_rejectsNonOwner() {
+        AuctionSession session = session(AuctionSessionStatus.WAITING);
+        Product product = product();
+        session.setProduct(product);
+        when(auctionSessionRepository.findByIdWithProduct(AUCTION_ID)).thenReturn(Optional.of(session));
+
+        assertThatThrownBy(() -> queryService.getSellerAuctionDetail("other-seller", AUCTION_ID))
+                .isInstanceOf(AppException.class);
+
+        verify(auctionParticipantRepository, never()).countDepositStatusByAuctionSessionId(any());
+    }
+
+    @Test
+    void getSellerAuctionDetail_marksTerminalSettlementPendingAndMasksWinner() {
+        AuctionSession session = session(AuctionSessionStatus.ENDED_SUCCESS);
+        session.setHighestBidderId("winner-123");
+        Product product = product();
+        session.setProduct(product);
+        when(auctionSessionRepository.findByIdWithProduct(AUCTION_ID)).thenReturn(Optional.of(session));
+        when(appraisalReportRepository.findByProductId(PRODUCT_ID)).thenReturn(Optional.empty());
+        when(runtimeSnapshotService.loadSnapshot(session)).thenReturn(AuctionRuntimeSnapshot.empty());
+        when(auctionParticipantRepository.countDepositStatusByAuctionSessionId(AUCTION_ID))
+                .thenReturn(List.of(
+                        depositCountView(DepositStatus.FROZEN, 1L),
+                        depositCountView(DepositStatus.DEDUCTED, 1L),
+                        depositCountView(DepositStatus.REFUNDED, 2L)));
+        when(productImageHelper.findPrimaryImageUrl(product)).thenReturn(null);
+        when(productImageHelper.findImageUrls(product)).thenReturn(List.of());
+
+        queryService.getSellerAuctionDetail("seller-1", AUCTION_ID);
+
+        verify(responseAssembler).toSellerDetailRes(
+                eq(session),
+                eq(product),
+                eq(null),
+                eq(List.of()),
+                eq(null),
+                eq(4L),
+                any(),
+                eq(SellerAuctionDetailRes.SellerAuctionSettlementStatus.PENDING),
+                eq("winn****"),
+                eq(AuctionRuntimeSnapshot.empty()));
     }
 
     private AuctionSession session(AuctionSessionStatus status) {
@@ -298,11 +393,46 @@ class AuctionQueryServiceTest {
                 null);
     }
 
+    private SellerAuctionDetailRes sellerDetailRes() {
+        return new SellerAuctionDetailRes(
+                AUCTION_ID,
+                AuctionSessionStatus.ACTIVE,
+                BigDecimal.ONE,
+                BigDecimal.ONE,
+                BigDecimal.ONE,
+                BigDecimal.ONE,
+                BigDecimal.ONE,
+                null,
+                Instant.now(),
+                Instant.now(),
+                2,
+                null,
+                SellerAuctionDetailRes.SellerAuctionSettlementStatus.NOT_APPLICABLE,
+                new SellerAuctionDetailRes.SettlementSummary(2, 0, 0, 0),
+                null,
+                Instant.now(),
+                Instant.now());
+    }
+
     private AuctionParticipantCountView countView(Long auctionSessionId, long participantCount) {
         return new AuctionParticipantCountView() {
             @Override
             public Long getAuctionSessionId() {
                 return auctionSessionId;
+            }
+
+            @Override
+            public long getParticipantCount() {
+                return participantCount;
+            }
+        };
+    }
+
+    private AuctionDepositStatusCountView depositCountView(DepositStatus status, long participantCount) {
+        return new AuctionDepositStatusCountView() {
+            @Override
+            public DepositStatus getDepositStatus() {
+                return status;
             }
 
             @Override

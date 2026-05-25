@@ -136,7 +136,7 @@ function SuccessState({ productId, onSubmitAppraisal, isSubmitting }: SuccessSta
             type="button"
             variant="outline"
             onClick={() => navigate(SELLER_PATHS.products)}
-            className="w-full"
+            className="w-full border-[#4e4637]/20 bg-white text-ink-blue hover:bg-[#eae1d6]/50 hover:text-ink-blue hover:border-brushed-brass/40 active:scale-97 transition-all cursor-pointer"
           >
             Để sau, xem danh sách sản phẩm
           </Button>
@@ -619,7 +619,12 @@ export function SellerNewProductPage() {
                       {isSaving && <Loader2 className="size-4 animate-spin" aria-hidden />}
                       {isEditMode ? "Cập nhật bản nháp" : "Tạo sản phẩm"}
                     </Button>
-                    <Button asChild type="button" variant="outline">
+                    <Button
+                      asChild
+                      type="button"
+                      variant="outline"
+                      className="border-[#4e4637]/20 bg-white text-ink-blue hover:bg-[#eae1d6]/50 hover:text-ink-blue hover:border-brushed-brass/40 active:scale-97 transition-all cursor-pointer"
+                    >
                       <Link to={SELLER_PATHS.products}>Hủy</Link>
                     </Button>
                   </div>

@@ -281,7 +281,12 @@ export function SellerRegisterPage() {
                     {isSubmitting && <Loader2 className="size-4 animate-spin" />}
                     Gửi hồ sơ đăng ký
                   </Button>
-                  <Button asChild type="button" variant="outline">
+                  <Button
+                    asChild
+                    type="button"
+                    variant="outline"
+                    className="border-border/60 bg-card text-foreground hover:bg-muted hover:text-foreground active:scale-97 transition-all cursor-pointer"
+                  >
                     <Link to="/account">Quay lại hồ sơ</Link>
                   </Button>
                 </div>

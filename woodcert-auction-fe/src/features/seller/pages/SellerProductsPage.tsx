@@ -9,6 +9,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardList,
+  Gavel,
   Loader2,
   PackagePlus,
   Pencil,
@@ -190,7 +191,7 @@ export function SellerProductsPage() {
                 type="button"
                 variant="outline"
                 onClick={() => void productsQuery.refetch()}
-                className="border-[#4e4637]/20 bg-white text-ink-blue hover:bg-[#F6F0E6]"
+                className="border-[#4e4637]/20 bg-white text-ink-blue hover:bg-[#eae1d6]/50 hover:text-ink-blue hover:border-brushed-brass/40 active:scale-97 transition-all cursor-pointer"
               >
                 <RefreshCw className={cn("size-4", productsQuery.isFetching && "animate-spin")} />
                 Làm mới
@@ -317,6 +318,7 @@ function ProductManagementRow({
 }) {
   const [imgFailed, setImgFailed] = useState(false);
   const canSubmitAppraisal = product.status === "DRAFT" && product.saleStatus === "AVAILABLE";
+  const canCreateAuction = product.status === "APPRAISED" && product.saleStatus === "AVAILABLE";
 
   return (
     <tr className="transition-colors hover:bg-[#F6F0E6]/60">
@@ -360,7 +362,7 @@ function ProductManagementRow({
               type="button"
               size="sm"
               variant="outline"
-              className="border-[#4e4637]/20 bg-white text-ink-blue hover:bg-[#F6F0E6]"
+              className="border-[#4e4637]/20 bg-white text-ink-blue hover:bg-[#eae1d6]/50 hover:text-ink-blue hover:border-brushed-brass/40 active:scale-97 transition-all cursor-pointer"
             >
               <Link to={SELLER_PATHS.editProduct(product.id)} aria-label="Chinh sua san pham">
                 <Pencil className="size-4" aria-hidden />
@@ -382,6 +384,18 @@ function ProductManagementRow({
               Gửi kiểm định
             </Button>
           </div>
+        ) : canCreateAuction ? (
+          <Button
+            asChild
+            type="button"
+            size="sm"
+            className="bg-ink-blue text-white hover:bg-ink-blue/90"
+          >
+            <Link to={`${SELLER_PATHS.newAuction}?productId=${product.id}`}>
+              <Gavel className="size-4" aria-hidden />
+              Tạo phiên
+            </Link>
+          </Button>
         ) : (
           <span className="text-xs font-semibold text-muted-warm">Không có thao tác</span>
         )}
@@ -456,7 +470,7 @@ function Pagination({
           variant="outline"
           onClick={() => onPageChange(Math.max(1, page - 1))}
           disabled={page <= 1}
-          className="border-[#4e4637]/20 bg-white text-ink-blue hover:bg-[#F6F0E6]"
+          className="border-[#4e4637]/20 bg-white text-ink-blue hover:bg-[#eae1d6]/50 hover:text-ink-blue hover:border-brushed-brass/40 active:scale-97 transition-all cursor-pointer"
           aria-label="Trang trước"
         >
           <ChevronLeft className="size-4" aria-hidden />
@@ -470,7 +484,7 @@ function Pagination({
           variant="outline"
           onClick={() => onPageChange(Math.min(totalPages, page + 1))}
           disabled={page >= totalPages}
-          className="border-[#4e4637]/20 bg-white text-ink-blue hover:bg-[#F6F0E6]"
+          className="border-[#4e4637]/20 bg-white text-ink-blue hover:bg-[#eae1d6]/50 hover:text-ink-blue hover:border-brushed-brass/40 active:scale-97 transition-all cursor-pointer"
           aria-label="Trang sau"
         >
           <ChevronRight className="size-4" aria-hidden />

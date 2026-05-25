@@ -84,7 +84,7 @@ export function ActiveAuctionWidget({ auction }: { auction: SellerAuction | null
             <span className="text-sm font-bold tabular-nums">{countdown}</span>
           </div>
           <Link
-            to={SELLER_PATHS.auctions}
+            to={SELLER_PATHS.auctionDetail(auction.id)}
             className="flex cursor-pointer items-center gap-1 text-sm font-bold text-brushed-brass hover:underline"
           >
             Xem chi tiết <ArrowRight className="size-4" />

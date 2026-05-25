@@ -21,6 +21,16 @@ public interface AuctionParticipantRepository extends JpaRepository<AuctionParti
     List<AuctionParticipant> findByAuctionSessionIdAndDepositStatus(Long auctionSessionId, DepositStatus depositStatus);
 
     @Query("""
+            SELECT p.depositStatus AS depositStatus,
+                   COUNT(p.id) AS participantCount
+            FROM AuctionParticipant p
+            WHERE p.auctionSessionId = :auctionSessionId
+            GROUP BY p.depositStatus
+            """)
+    List<AuctionDepositStatusCountView> countDepositStatusByAuctionSessionId(
+            @Param("auctionSessionId") Long auctionSessionId);
+
+    @Query("""
             SELECT p.auctionSessionId AS auctionSessionId,
                    COUNT(p.id) AS participantCount
             FROM AuctionParticipant p

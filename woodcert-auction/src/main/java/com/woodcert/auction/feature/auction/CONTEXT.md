@@ -1,5 +1,7 @@
 # Auction Feature - CONTEXT.md
 
+> Updated: 2026-05-25 | Session: docs-current-state-sync
+
 ## Module Responsibility
 This module manages the complete lifecycle of an auction session:
 - Seller-side: create and cancel auction sessions for appraised products.
@@ -101,3 +103,5 @@ Do not inject `UserRepository` or `SellerProfileRepository` directly into auctio
 Auction runtime is implemented for registration, deposit freeze, Redis-first bidding, scheduler activation/closure, runtime read overlay, and deposit settlement.
 
 This scope does not create fulfillment orders, does not change `ProductStatus`, and does not use `DepositStatus.CONFISCATED`.
+
+FE alignment note: backend auction runtime is ahead of frontend. FE currently has auction list integration, but auction detail, auction registration UI, realtime bidding room, and WebSocket cache reconciliation are still pending.

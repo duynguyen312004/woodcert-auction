@@ -1,5 +1,7 @@
 # UI Guidelines
 
+Last updated: 2026-05-25
+
 ## Design Direction
 
 The FE should feel operational, reliable, and fast.
@@ -112,7 +114,13 @@ Realtime auction screens must also show:
 
 ## Responsive Rules
 
-- Mobile is required from the start.
+- Production FE should support mobile, but current design brief in `../../design.md` is desktop-first and responsive polish remains a hardening task.
 - Prevent text overflow in action buttons and auction cards.
 - Critical auction room actions must remain reachable on narrow screens.
 - Keep dense data readable without horizontal scrolling whenever possible.
+
+## Current Implementation Alignment
+
+- Implemented UI surfaces: public shell/home/auction list, auth, account profile, seller portal/product flow, appraiser portal/workflow, wallet header chip.
+- Pending UI surfaces: auction detail, bidding room, full wallet page, address book, buyer bid history, seller auction create/list/cancel, admin, orders, disputes.
+- Backend auction runtime is ready; FE realtime UX rules apply when auction detail/bidding room is implemented.

@@ -4,8 +4,10 @@ import com.woodcert.auction.feature.auction.dto.response.AuctionAppraisalRes;
 import com.woodcert.auction.feature.auction.dto.response.AuctionDetailRes;
 import com.woodcert.auction.feature.auction.dto.response.AuctionListRes;
 import com.woodcert.auction.feature.auction.dto.response.AuctionProductSummaryRes;
+import com.woodcert.auction.feature.auction.dto.response.SellerAuctionDetailRes;
 import com.woodcert.auction.feature.auction.dto.response.SellerAuctionListRes;
 import com.woodcert.auction.feature.auction.entity.AuctionSession;
+import com.woodcert.auction.feature.auction.entity.AuctionSessionStatus;
 import com.woodcert.auction.feature.auction.service.runtime.AuctionRuntimeSnapshot;
 import com.woodcert.auction.feature.catalog.entity.AppraisalReport;
 import com.woodcert.auction.feature.catalog.entity.Product;
@@ -49,6 +51,7 @@ public class AuctionResponseAssembler {
     public SellerAuctionListRes toSellerListRes(
             AuctionSession session,
             String productTitle,
+            String imageUrl,
             long participantCount,
             AuctionRuntimeSnapshot snapshot) {
         return new SellerAuctionListRes(
@@ -62,6 +65,7 @@ public class AuctionResponseAssembler {
                 endTime(session, snapshot),
                 currentPrice(session, snapshot),
                 participantCount,
+                imageUrl,
                 session.getCreatedAt()
         );
     }
@@ -101,6 +105,50 @@ public class AuctionResponseAssembler {
         );
     }
 
+    public SellerAuctionDetailRes toSellerDetailRes(
+            AuctionSession session,
+            Product product,
+            String primaryImage,
+            List<String> imageUrls,
+            AppraisalReport appraisalReport,
+            long participantCount,
+            SellerAuctionDetailRes.SettlementSummary settlement,
+            SellerAuctionDetailRes.SellerAuctionSettlementStatus settlementStatus,
+            String winnerMaskedAlias,
+            AuctionRuntimeSnapshot snapshot) {
+        AuctionAppraisalRes appraisalRes = AuctionAppraisalRes.fromEntity(appraisalReport);
+        String publicMaterial = appraisalReport != null && appraisalReport.getVerifiedMaterial() != null
+                ? appraisalReport.getVerifiedMaterial()
+                : product.getMaterial();
+        AuctionProductSummaryRes productSummary = AuctionProductSummaryRes.fromEntity(
+                product,
+                publicMaterial,
+                primaryImage,
+                imageUrls,
+                appraisalRes);
+        BigDecimal currentPrice = currentPrice(session, snapshot);
+
+        return new SellerAuctionDetailRes(
+                session.getId(),
+                session.getStatus(),
+                session.getStartingPrice(),
+                session.getReservePrice(),
+                session.getStepPrice(),
+                session.getDepositAmount(),
+                currentPrice,
+                isTerminal(session.getStatus()) ? currentPrice : null,
+                session.getStartTime(),
+                endTime(session, snapshot),
+                participantCount,
+                winnerMaskedAlias,
+                settlementStatus,
+                settlement,
+                productSummary,
+                session.getCreatedAt(),
+                session.getUpdatedAt()
+        );
+    }
+
     private BigDecimal currentPrice(AuctionSession session, AuctionRuntimeSnapshot snapshot) {
         return snapshot != null && snapshot.currentPrice() != null
                 ? snapshot.currentPrice()
@@ -111,6 +159,10 @@ public class AuctionResponseAssembler {
         return snapshot != null && snapshot.endTime() != null
                 ? snapshot.endTime()
                 : session.getEndTime();
+    }
+
+    private boolean isTerminal(AuctionSessionStatus status) {
+        return status == AuctionSessionStatus.ENDED_SUCCESS || status == AuctionSessionStatus.ENDED_FAILED;
     }
 
     private AuctionDetailRes.SellerSummary buildSellerSummary(SellerSummaryQueryService.SellerSummary sellerSummary) {

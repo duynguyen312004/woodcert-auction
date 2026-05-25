@@ -10,10 +10,13 @@ import type { ApiResponse, PaginationResponse } from "@/shared/api/types";
 import { unwrapApiResponse } from "@/shared/api/unwrap";
 
 import type {
+  CreateAuctionSessionPayload,
   CreateProductPayload,
   ProductDetail,
   ProductStatus,
   SellerAuction,
+  SellerAuctionDetail,
+  SellerAuctionStats,
   SellerAuctionStatus,
   SellerProduct,
   UpdateProductPayload,
@@ -41,7 +44,28 @@ type SellerAuctionDto = {
   endTime: string;
   currentPrice: number | string | null;
   participantCount: number;
+  imageUrl: string | null;
   createdAt: string;
+};
+
+type SellerAuctionDetailDto = {
+  id: number;
+  status: SellerAuctionStatus;
+  startingPrice: number | string;
+  reservePrice: number | string;
+  stepPrice: number | string;
+  depositAmount: number | string;
+  currentPrice: number | string | null;
+  finalPrice: number | string | null;
+  startTime: string;
+  endTime: string;
+  participantCount: number;
+  winnerMaskedAlias: string | null;
+  settlementStatus: SellerAuctionDetail["settlementStatus"];
+  settlement: SellerAuctionDetail["settlement"];
+  product: SellerAuctionDetail["product"];
+  createdAt: string;
+  updatedAt: string;
 };
 
 function toNumber(value: number | string | null | undefined, fallback = 0) {
@@ -71,12 +95,39 @@ function mapSellerAuction(dto: SellerAuctionDto): SellerAuction {
   return {
     id: dto.id.toString(),
     title: dto.productTitle ?? "Phiên đấu giá",
+    productId: dto.productId.toString(),
     status: dto.status,
+    startingPrice: toNumber(dto.startingPrice),
     currentPrice: toNumber(dto.currentPrice, toNumber(dto.startingPrice)),
+    depositAmount: toNumber(dto.depositAmount),
     bidCount: dto.participantCount,
     startTime: dto.startTime,
     endTime: dto.endTime,
-    imageUrl: null,
+    imageUrl: dto.imageUrl ?? null,
+    createdAt: dto.createdAt,
+  };
+}
+
+function mapSellerAuctionDetail(dto: SellerAuctionDetailDto): SellerAuctionDetail {
+  return {
+    id: dto.id.toString(),
+    status: dto.status,
+    startingPrice: toNumber(dto.startingPrice),
+    reservePrice: toNumber(dto.reservePrice),
+    stepPrice: toNumber(dto.stepPrice),
+    depositAmount: toNumber(dto.depositAmount),
+    currentPrice: toNumber(dto.currentPrice, toNumber(dto.startingPrice)),
+    finalPrice:
+      dto.finalPrice === null || dto.finalPrice === undefined ? null : toNumber(dto.finalPrice),
+    startTime: dto.startTime,
+    endTime: dto.endTime,
+    participantCount: dto.participantCount,
+    winnerMaskedAlias: dto.winnerMaskedAlias,
+    settlementStatus: dto.settlementStatus,
+    settlement: dto.settlement ?? { frozen: 0, refunded: 0, deducted: 0, confiscated: 0 },
+    product: dto.product,
+    createdAt: dto.createdAt,
+    updatedAt: dto.updatedAt,
   };
 }
 
@@ -114,6 +165,25 @@ export const sellerApi = {
     };
   },
 
+  getMyAuctionDetail: async (auctionId: number): Promise<SellerAuctionDetail> => {
+    const response = await apiClient.get<ApiResponse<SellerAuctionDetailDto>>(
+      `/auctions/me/${auctionId}`,
+    );
+    return mapSellerAuctionDetail(unwrapApiResponse(response));
+  },
+
+  getMyAuctionStats: async (): Promise<SellerAuctionStats> => {
+    type StatsDto = {
+      waiting: number;
+      active: number;
+      endedSuccess: number;
+      endedFailed: number;
+      canceled: number;
+    };
+    const response = await apiClient.get<ApiResponse<StatsDto>>("/auctions/me/stats");
+    return unwrapApiResponse(response);
+  },
+
   createProduct: async (payload: CreateProductPayload): Promise<{ id: number }> => {
     const response = await apiClient.post<ApiResponse<{ id: number }>>("/products", payload);
     return unwrapApiResponse(response);
@@ -137,5 +207,14 @@ export const sellerApi = {
 
   submitAppraisal: async (productId: number): Promise<void> => {
     await apiClient.post(`/products/${productId}/submit-appraisal`);
+  },
+
+  createAuctionSession: async (payload: CreateAuctionSessionPayload): Promise<{ id: number }> => {
+    const response = await apiClient.post<ApiResponse<{ id: number }>>("/auctions", payload);
+    return unwrapApiResponse(response);
+  },
+
+  cancelAuction: async (auctionId: number): Promise<void> => {
+    await apiClient.patch(`/auctions/${auctionId}/cancel`);
   },
 };

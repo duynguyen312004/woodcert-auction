@@ -1,36 +1,34 @@
-# WoodCert Auction FE Docs
+# WoodCert Auction FE
 
-This folder contains the frontend app and architecture docs for the FE that integrates with the verified backend in `woodcert-auction`.
+React SPA for WoodCert Auction, integrated with the Spring Boot backend in `../woodcert-auction`.
 
 ## Current State
 
-- Backend auction runtime has already been verified with unit and integration tests.
-- Frontend foundation scaffold is in place with Vite, React, TypeScript, Tailwind, shadcn/ui, React Router, TanStack Query, Zustand, Axios, Vitest, and Playwright.
-- `docs/` remains the source of truth for FE architecture, rules, integration behavior, and implementation order.
+- Implemented: app shell, route composition, auth/session recovery, public home, auction list, account/profile/avatar, seller profile/product flows, appraiser workflow, and wallet balance in the header.
+- Pending: auction detail, auction registration, realtime bidding room, full wallet page, wallet transactions, buyer bid history, address book, seller auction create/list/cancel.
+- Deferred: admin operations, orders, fulfillment, shipping, disputes, real payment provider integration.
+- Tests: `pnpm test` passed on 2026-05-25 with 19 files and 50 tests.
 
 ## Document Index
 
-- [ARCHITECTURE.md](docs/ARCHITECTURE.md)
-- [PROJECT-RULES.md](docs/PROJECT-RULES.md)
-- [PROJECT-STATUS.md](docs/PROJECT-STATUS.md)
-- [SETUP.md](docs/SETUP.md)
-- [API_INTEGRATION.md](docs/API_INTEGRATION.md)
-- [UI_GUIDELINES.md](docs/UI_GUIDELINES.md)
-- [TESTING_STRATEGY.md](docs/TESTING_STRATEGY.md)
-- [FE_IMPLEMENTATION.md](docs/FE_IMPLEMENTATION.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Project rules](docs/PROJECT-RULES.md)
+- [Project status](docs/PROJECT-STATUS.md)
+- [Setup](docs/SETUP.md)
+- [API integration](docs/API_INTEGRATION.md)
+- [UI guidelines](docs/UI_GUIDELINES.md)
+- [Testing strategy](docs/TESTING_STRATEGY.md)
+- [Implementation roadmap](docs/FE_IMPLEMENTATION.md)
 - [ADR-001 FE Stack](docs/decisions/ADR-001_fe_stack.md)
 
-## Scope
+## Commands
 
-The initial FE scope covers:
+```bash
+pnpm install
+pnpm dev
+pnpm test
+pnpm build
+pnpm test:e2e
+```
 
-- public auction browsing
-- buyer wallet, registration, and bidding
-- seller product and auction workflows
-- appraiser appraisal workflow
-
-Deferred for later phases:
-
-- `features/admin`
-- fulfillment, orders, shipping, disputes
-- real payment provider integration
+The FE expects the backend API at `VITE_API_BASE_URL` and the auction WebSocket endpoint at `VITE_WS_BASE_URL`.

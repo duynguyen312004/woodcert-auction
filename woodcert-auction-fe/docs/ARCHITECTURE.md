@@ -1,6 +1,7 @@
 # Architecture
 
 > Frontend system design for WoodCert Auction. This file is the architectural source of truth for the FE app.
+> Current implementation status is tracked in `PROJECT-STATUS.md`.
 
 ---
 
@@ -75,7 +76,7 @@ src/
       types.ts
       index.ts
     bidding/
-    wallet/
+    wallet/       # balance hook implemented; page pending
     catalog/
       api/
       components/
@@ -97,6 +98,9 @@ src/
 - `features/auction` owns all auction domain code: `ArtAuctionCard`, `AuctionListContent`, `usePublicAuctions`, types.
 - `features/catalog` owns category domain: `CategoryFilter`, `useCategories`, `Category` type.
 - `features/home` owns only landing page composition: `HomePage`, `HomeHero`, `FeaturedAuctionsSection`. It imports from auction and catalog — never the reverse.
+- `features/appraisal` owns the implemented appraiser portal workflow.
+- `features/seller` owns implemented seller profile/product flows; seller auction flows are still placeholders.
+- `features/wallet` currently owns the wallet balance hook used by the header; full wallet pages are pending.
 - Cross-feature imports flow inward only: `home → auction`, `home → catalog`. Feature-to-feature dependencies in the other direction are not allowed.
 
 ### Ownership Rules

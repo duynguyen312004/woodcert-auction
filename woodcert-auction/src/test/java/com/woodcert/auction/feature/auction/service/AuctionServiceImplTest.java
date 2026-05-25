@@ -4,6 +4,7 @@ import com.woodcert.auction.core.dto.PaginationResponse;
 import com.woodcert.auction.feature.auction.dto.request.CreateAuctionSessionReq;
 import com.woodcert.auction.feature.auction.dto.response.AuctionDetailRes;
 import com.woodcert.auction.feature.auction.dto.response.AuctionListRes;
+import com.woodcert.auction.feature.auction.dto.response.SellerAuctionDetailRes;
 import com.woodcert.auction.feature.auction.dto.response.SellerAuctionListRes;
 import com.woodcert.auction.feature.auction.service.command.AuctionCommandService;
 import com.woodcert.auction.feature.auction.service.query.AuctionQueryService;
@@ -102,6 +103,17 @@ class AuctionServiceImplTest {
     }
 
     @Test
+    void getSellerAuctionDetail_delegatesToQueryService() {
+        SellerAuctionDetailRes expected = sellerDetailRes();
+        when(queryService.getSellerAuctionDetail("seller-1", 10L)).thenReturn(expected);
+
+        SellerAuctionDetailRes result = auctionService.getSellerAuctionDetail("seller-1", 10L);
+
+        assertThat(result).isSameAs(expected);
+        verify(queryService).getSellerAuctionDetail("seller-1", 10L);
+    }
+
+    @Test
     void cancelAuctionSession_delegatesToCommandService() {
         auctionService.cancelAuctionSession("seller-1", 10L);
 
@@ -138,5 +150,26 @@ class AuctionServiceImplTest {
                 Instant.now(),
                 null,
                 null);
+    }
+
+    private SellerAuctionDetailRes sellerDetailRes() {
+        return new SellerAuctionDetailRes(
+                10L,
+                null,
+                BigDecimal.ONE,
+                BigDecimal.ONE,
+                BigDecimal.ONE,
+                BigDecimal.ONE,
+                BigDecimal.ONE,
+                null,
+                Instant.now(),
+                Instant.now(),
+                0,
+                null,
+                SellerAuctionDetailRes.SellerAuctionSettlementStatus.NOT_APPLICABLE,
+                new SellerAuctionDetailRes.SettlementSummary(0, 0, 0, 0),
+                null,
+                Instant.now(),
+                Instant.now());
     }
 }

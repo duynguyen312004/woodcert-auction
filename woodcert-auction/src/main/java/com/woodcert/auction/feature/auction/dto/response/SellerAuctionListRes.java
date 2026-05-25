@@ -20,12 +20,14 @@ public record SellerAuctionListRes(
         Instant endTime,
         BigDecimal currentPrice,
         long participantCount,
+        String imageUrl,
         Instant createdAt
 ) {
     public static SellerAuctionListRes fromEntity(
             AuctionSession session,
             String productTitle,
-            long participantCount) {
+            long participantCount,
+            String imageUrl) {
         return new SellerAuctionListRes(
                 session.getId(),
                 productTitle,
@@ -37,6 +39,7 @@ public record SellerAuctionListRes(
                 session.getEndTime(),
                 session.getCurrentPrice(),
                 participantCount,
+                imageUrl,
                 session.getCreatedAt()
         );
     }

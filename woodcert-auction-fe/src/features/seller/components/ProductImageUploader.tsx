@@ -187,7 +187,7 @@ export function ProductImageUploader({
           onDragLeave={handleDragLeave}
           aria-label="Tải ảnh lên"
           className={cn(
-            "w-full rounded-xl border-2 border-dashed px-6 py-8 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brushed-brass",
+            "w-full rounded-xl border-2 border-dashed px-6 py-8 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brushed-brass cursor-pointer",
             isDragging
               ? "border-brushed-brass bg-brushed-brass/5"
               : error
@@ -251,7 +251,7 @@ export function ProductImageUploader({
                     type="button"
                     onClick={() => setPrimary(img.mediaId)}
                     aria-label={`Đặt ${img.fileName} làm ảnh chính`}
-                    className="rounded bg-brushed-brass p-1.5 text-[#181612] transition-transform hover:scale-105"
+                    className="rounded bg-brushed-brass p-1.5 text-[#181612] transition-transform hover:scale-105 cursor-pointer"
                   >
                     <Star className="size-3.5" />
                   </button>
@@ -260,7 +260,7 @@ export function ProductImageUploader({
                   type="button"
                   onClick={() => removeImage(img.mediaId)}
                   aria-label={`Xóa ${img.fileName}`}
-                  className="rounded bg-red-500 p-1.5 text-white transition-transform hover:scale-105"
+                  className="rounded bg-red-500 p-1.5 text-white transition-transform hover:scale-105 cursor-pointer"
                 >
                   <Trash2 className="size-3.5" />
                 </button>

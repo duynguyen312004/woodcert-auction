@@ -192,7 +192,9 @@ Controller -> AuctionServiceImpl -> AuctionCommandService
 -> if ACTIVE, add bidder to Redis bidder set
 ```
 
-### Escrow & Auto-Complete Flow (Background Job)
+### Planned Escrow & Auto-Complete Flow (Background Job)
+
+Current status: this is the Phase 4 fulfillment target. The current backend has wallet/deposit settlement for auction registration and winner deposit deduction, but it does not yet implement orders, shipments, disputes, or the 72-hour auto-complete job.
 
 ```text
 Spring @Scheduled (Runs every 1 hour)
@@ -217,7 +219,7 @@ feature/
 ├── catalog/                 # Internal inventory + appraisal workflow
 ├── finance/                 # Wallet, WalletTransaction (Escrow / deposit)
 ├── auction/                 # Buyer-facing browse/detail + AuctionSession, Bid, Participant
-└── fulfillment/             # Order, Shipment, Dispute (Tòa án Sàn)
+└── fulfillment/             # Order, Shipment, Dispute (planned Phase 4)
 ```
 
 ### Feature Dependency Rules

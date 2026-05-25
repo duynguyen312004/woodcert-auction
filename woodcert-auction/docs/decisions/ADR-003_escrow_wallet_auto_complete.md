@@ -1,68 +1,71 @@
-# ADR-003: Escrow Wallet & Automated Settlement Flow
+# ADR-003: Escrow Wallet and Automated Settlement Flow
 
 ## Status
-Accepted
+
+Accepted. Partially implemented as of 2026-05-25.
+
+Implemented today:
+
+- Wallet balances and transaction audit logs.
+- Dev/test wallet top-up.
+- Idempotent wallet operations.
+- Auction registration deposit freeze.
+- Auction close refund/deduct settlement for frozen deposits.
+
+Not implemented yet:
+
+- Orders, shipments, disputes.
+- Buyer remaining-payment flow after winning.
+- Seller payout and platform fee deduction.
+- 72-hour delivery protection and auto-complete job.
 
 ## Context
-In a C2C (Consumer-to-Consumer) auction platform for high-value wooden artifacts, trust is the biggest barrier. 
-If a buyer transfers money directly to a seller, the seller might not ship the product. Conversely, if the seller ships first, the buyer might not pay. We need a financial mechanism to protect both parties and manage the platform's revenue (platform fees).
+
+High-value wood-art auctions need escrow protection. A buyer should not pay directly to a seller before shipment, and a seller should not ship without payment confidence. The platform also needs a clear mechanism for deposit locking, final settlement, refunds, and future platform fees.
 
 ## Options Considered
 
-### Option A: Direct Transfer (No Escrow)
-- Buyer transfers money directly to Seller's bank account. Platform charges a fee upfront.
-- **Risk:** High scam rate. The platform cannot guarantee product delivery or quality.
+### Option A: Direct Transfer
 
-### Option B: Manual Escrow by Admin
-- Buyers pay to the platform's bank account. Admins manually verify delivery and manually transfer money to sellers.
-- **Risk:** Not scalable. Requires huge operational overhead as the transaction volume grows.
+Buyer transfers money directly to seller.
 
-### Option C: In-System Escrow Wallet + Automated CronJobs (CHOSEN)
-- Users have internal Wallets (`available_balance`, `frozen_balance`).
-- Funds are held in the platform's escrow during the transaction.
-- Settlement is fully automated based on time thresholds and dispute status.
+Risk: the platform cannot reliably protect delivery, authenticity disputes, or payment completion.
+
+### Option B: Manual Escrow By Admin
+
+Admins manually verify payment, delivery, and seller payout.
+
+Risk: operationally expensive and hard to scale.
+
+### Option C: In-System Escrow Wallet + Scheduled Settlement
+
+Users have wallets with `availableBalance` and `frozenBalance`. Auction participation freezes deposits. Future order fulfillment will hold remaining payment in system escrow and settle after delivery/dispute windows.
 
 ## Decision
-**Option C** — System Escrow Wallet with Automated Settlement.
 
-## Implementation Design
+Use Option C.
 
-### 1. The Escrow Lifecycle
-- **Deposit:** User tops up their wallet (`available_balance` increases).
-- **Auction Join:** Platform moves `deposit_amount` from `available_balance` to `frozen_balance`.
-- **Order Payment:** Winner pays the remaining balance. The total amount is held in the System Escrow (represented by the `PREPARING` or `SHIPPING` order status).
-- **Delivery:** Carrier updates status to `DELIVERED`, setting the `delivered_at` timestamp.
+Current backend scope implements the wallet and auction-deposit foundation. The order-backed escrow lifecycle is the Phase 4 target and must not be documented as already implemented until `feature/fulfillment` exists.
 
-### 2. Auto-Complete Background Job
-A Spring `@Scheduled` task runs every hour:
-```java
-@Scheduled(cron = "0 0 * * * *")
-@Transactional
-public void processCompletedOrders() {
-    // 1. Find orders where status = DELIVERED 
-    //    AND delivered_at <= NOW() - 72 hours
-    //    AND NO active dispute exists.
-    // 2. For each order:
-    //    a. Deduct platform_fee.
-    //    b. Add (total_amount - platform_fee) to Seller's available_balance.
-    //    c. Update Order status to COMPLETED.
-}
-```
-### 3. Concurrency Protection
-All updates to wallets and orders during the settlement process MUST use @Version (Optimistic Locking) to ensure no duplicate payouts occur if the CronJob accidentally triggers twice concurrently.
+## Target Lifecycle
 
-Consequences
-Positive
-High Trust: Both buyers and sellers are protected.
+- Deposit: user tops up wallet.
+- Auction join: backend moves `depositAmount` from available to frozen.
+- Auction close: losers are refunded; winner deposit is deducted.
+- Order payment: winner pays remaining amount into system escrow.
+- Shipment and delivery: seller ships; delivery starts a protection window.
+- Auto-complete: after 72 hours without dispute, backend releases seller proceeds and deducts platform fee.
+- Dispute: buyer evidence freezes settlement for admin review.
 
-Scalability: The system resolves 95% of successful orders automatically without Admin intervention.
+## Consequences
 
-Clear Revenue Tracking: Platform fees are deducted automatically at the exact moment of settlement.
+Positive:
 
-Negative
-Operational Liability: The platform is legally holding user funds. Security of the Wallet tables is paramount.
+- Clear trust model for buyers and sellers.
+- Wallet audit log supports financial traceability.
+- Future fulfillment can build on existing wallet idempotency.
 
-CronJob Failures: If the background job fails or the server goes down, sellers will experience delayed payouts. Monitoring is required.
+Negative:
 
-
----
+- The platform holds financial liability once full escrow is implemented.
+- Settlement repair/monitoring is required for background-job and process-crash scenarios.
