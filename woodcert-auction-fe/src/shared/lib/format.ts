@@ -43,19 +43,19 @@ const DATE_TIME_FORMATTER = new Intl.DateTimeFormat("vi-VN", {
 });
 
 /**
- * Định dạng số tiền VND dạng đơn giản, ví dụ: 1.000.000 đ.
+ * Định dạng số tiền VND dạng đơn giản, ví dụ: 1.000.000 VNĐ.
  */
 export function formatVND(value: number): string {
-  return VND_FORMATTER.format(value) + " \u0111";
+  return VND_FORMATTER.format(value) + " VNĐ";
 }
 
 export function formatCurrencyVND(value: number): string {
-  return VND_CURRENCY_FORMATTER.format(value);
+  return VND_CURRENCY_FORMATTER.format(value).replace(/₫/g, "VNĐ").replace(/đ/g, "VNĐ");
 }
 
 export function formatCompactVND(value: number): string {
-  if (value === 0) return "VND 0";
-  return VND_COMPACT_FORMATTER.format(value);
+  if (value === 0) return "0 VNĐ";
+  return VND_COMPACT_FORMATTER.format(value).replace(/₫/g, "VNĐ").replace(/đ/g, "VNĐ");
 }
 
 export function formatPercent(value: number): string {

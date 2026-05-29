@@ -33,14 +33,16 @@ This document tracks frontend usage of backend APIs. Active FE integrations use 
 
 ### Wallet and Buyer Runtime
 
-| Feature               | Endpoint                       | FE status                              |
-| --------------------- | ------------------------------ | -------------------------------------- |
-| Header wallet balance | `GET /wallets/me`              | Implemented through `useWalletBalance` |
-| Wallet page balance   | `GET /wallets/me`              | Pending page                           |
-| Transactions          | `GET /wallets/me/transactions` | Pending                                |
-| Dev top-up            | `POST /wallets/me/top-up`      | Pending                                |
-| Auction registration  | `POST /auctions/{id}/register` | Pending                                |
-| Bid placement         | `POST /bids`                   | Pending                                |
+| Feature               | Endpoint                            | FE status                              |
+| --------------------- | ----------------------------------- | -------------------------------------- |
+| Header wallet balance | `GET /wallets/me`                   | Implemented through `useWalletBalance` |
+| Wallet page balance   | `GET /wallets/me`                   | Implemented                            |
+| Transactions          | `GET /wallets/me/transactions`      | Implemented                            |
+| VNPay deposit create  | `POST /wallets/me/deposit`          | Implemented                            |
+| VNPay deposit history | `GET /wallets/me/deposits`          | Implemented                            |
+| VNPay deposit status  | `GET /wallets/me/deposits/{txnRef}` | Implemented                            |
+| Auction registration  | `POST /auctions/{id}/register`      | Pending                                |
+| Bid placement         | `POST /bids`                        | Pending                                |
 
 ### Seller Workflow
 
@@ -170,5 +172,7 @@ FE websocket integration is pending. When implemented, the lifecycle must be fea
 - `["auctions", "detail", auctionId]`
 - `["wallet", "me"]`
 - `["wallet", "transactions", params]`
+- `["wallet", "deposits", params]`
+- `["wallet", "deposit", txnRef]`
 - `["catalog", "products", params]`
 - `["catalog", "product", productId]`

@@ -3,8 +3,6 @@ package com.woodcert.auction.feature.finance.service;
 import com.woodcert.auction.core.dto.PaginationResponse;
 import com.woodcert.auction.core.exception.AppException;
 import com.woodcert.auction.core.exception.ErrorCode;
-import com.woodcert.auction.feature.finance.config.FinanceProperties;
-import com.woodcert.auction.feature.finance.dto.request.TopUpWalletReq;
 import com.woodcert.auction.feature.finance.dto.response.WalletRes;
 import com.woodcert.auction.feature.finance.dto.response.WalletTransactionRes;
 import com.woodcert.auction.feature.finance.entity.*;
@@ -25,7 +23,6 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.UUID;
 import java.util.function.Consumer;
 
 @Slf4j
@@ -35,9 +32,7 @@ public class WalletServiceImpl implements WalletService {
 
     private static final int MONEY_SCALE = 2;
     private static final RoundingMode MONEY_ROUNDING = RoundingMode.HALF_UP;
-    private static final WalletReferenceType DEFAULT_TOP_UP_REFERENCE = WalletReferenceType.SYSTEM;
 
-    private final FinanceProperties financeProperties;
     private final WalletBootstrapService walletBootstrapService;
     private final WalletOperationLifecycleService walletOperationLifecycleService;
     private final WalletRepository walletRepository;
@@ -61,18 +56,7 @@ public class WalletServiceImpl implements WalletService {
         return PaginationResponse.of(transactionPage);
     }
 
-    @Override
-    @Transactional
-    public WalletRes topUpWallet(String userId, TopUpWalletReq request) {
-        // Bước 1: Kiểm tra cấu hình cho phép nạp tiền thủ công trong môi trường hiện tại.
-        if (!financeProperties.isWalletTopUpEnabled()) {
-            throw new AppException(ErrorCode.WALLET_TOP_UP_DISABLED);
-        }
 
-        // Bước 2: Tạo operation key duy nhất để luồng nạp tiền đi qua cơ chế idempotent chung.
-        depositFunds(userId, generateTopUpOperationKey(userId), request.amount(), null, DEFAULT_TOP_UP_REFERENCE);
-        return WalletRes.fromEntity(getOrCreateWallet(userId));
-    }
 
     @Override
     @Transactional
@@ -346,9 +330,5 @@ public class WalletServiceImpl implements WalletService {
         return exception.getErrorCode() != null
                 ? exception.getErrorCode().name()
                 : ErrorCode.UNCATEGORIZED.name();
-    }
-
-    private String generateTopUpOperationKey(String userId) {
-        return "topup:" + userId + ":" + UUID.randomUUID();
     }
 }

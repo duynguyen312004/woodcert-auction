@@ -88,7 +88,7 @@ public abstract class AuctionIntegrationTestBase {
         registry.add("identity.refresh-token-cleanup.enabled", () -> "false");
         registry.add("auction.scheduler.enabled", () -> "false");
         registry.add("cloudinary.cleanup.enabled", () -> "false");
-        registry.add("finance.wallet.top-up-enabled", () -> "true");
+        registry.add("spring.jpa.properties.hibernate.hbm2ddl.halt_on_error", () -> "false");
         registry.add("logging.level.org.hibernate.SQL", () -> "WARN");
         registry.add("logging.level.org.springframework", () -> "WARN");
     }

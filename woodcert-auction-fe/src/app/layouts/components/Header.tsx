@@ -86,7 +86,10 @@ export function Header() {
           {isAuthenticated ? (
             <>
               {/* Ví: hiển thị số dư thật, mặc định 0 khi chưa load */}
-              <WalletWidget balance={wallet?.balance ?? 0} depositRate={wallet?.depositRate ?? 0} />
+              <WalletWidget
+                availableBalance={wallet?.availableBalance ?? 0}
+                frozenBalance={wallet?.frozenBalance ?? 0}
+              />
 
               {/* Avatar dropdown (tên thật + 2 lựa chọn + logout dialog) */}
               <UserMenu onMobileClose={() => setMobileOpen(false)} />

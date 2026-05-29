@@ -211,12 +211,12 @@ class AuctionQueryServiceTest {
     void getSellerAuctions_usesGroupedParticipantCounts() {
         AuctionSession session = session(AuctionSessionStatus.ACTIVE);
         Product product = product();
+        session.setProduct(product);
         AuctionRuntimeSnapshot snapshot = new AuctionRuntimeSnapshot(
                 new BigDecimal("13000000"),
                 Instant.now().plusSeconds(60));
         when(auctionSessionRepository.findByProductSellerId(eq("seller-1"), any()))
                 .thenReturn(new PageImpl<>(List.of(session), PageRequest.of(0, 10), 1));
-        when(productRepository.findAllById(List.of(PRODUCT_ID))).thenReturn(List.of(product));
         when(productImageHelper.batchLoadPrimaryImageUrls(anyCollection()))
                 .thenReturn(Map.of(PRODUCT_ID, "image-url"));
         when(auctionParticipantRepository.countByAuctionSessionIdsGrouped(List.of(AUCTION_ID)))

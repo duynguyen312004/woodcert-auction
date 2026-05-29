@@ -1,6 +1,6 @@
 # Project Status
 
-> Last updated: 2026-05-26 | By: Codex | Session: seller-auction-workflow-mvp
+> Last updated: 2026-05-28 | By: Codex | Session: wallet-vnpay-ipn-authoritative-docs
 >
 > Update this file at the end of FE planning or implementation sessions.
 > Keep it concise and decision-useful.
@@ -20,14 +20,9 @@
 - [x] Public home page and auction list page at `/auctions`
 - [x] Category API integration and auction list API integration
 - [x] Account profile page with profile update and avatar upload flow
-- [x] Wallet balance hook `useWalletBalance` wired into the public header `WalletWidget`
-- [x] Seller portal guard/layout/sidebar
-- [x] Seller register/profile/dashboard/product list/product create-edit/media upload flows
-- [x] Seller auction create/list/cancel/detail workflow using POST /auctions, GET /auctions/me, PATCH /auctions/{id}/cancel, and GET /auctions/me/{id}
-- [x] Seller appraisal tracking route exists as placeholder only
-- [x] Appraiser workflow complete: queue, active/expired claims, detail, claim/release, proof upload, approve/reject, reviewed tabs
-- [x] Public appraiser guard redirects appraisers away from public routes
-- [x] Automated FE unit test suite passes: `pnpm test` on 2026-05-26, 21 files, 59 tests
+- [x] Wallet integration: dedicated Wallet page (`/wallet`) showing real balances and transaction logs table
+- [x] VNPay Sandbox deposit flow: amount selector page (`/wallet/deposit`), result page (`/wallet/deposit/result`), and deposit history on `/wallet`
+- [x] Automated FE unit test suite passes: `pnpm test` on 2026-05-28, 24 files, 69 tests
 
 ## In Progress
 
@@ -37,19 +32,16 @@
 
 - Auction detail page at `/auctions/:id`
 - Auction registration and realtime bidding room
-- Full wallet page and transaction history page
 - Buyer bid history
 - Address book UI
 - Admin module beyond structural placeholder
 - Public certificate verification
 - Order, fulfillment, shipping, dispute flows
-- Payment provider integration
 - Production runtime env injection beyond initial static Vite assumptions
 
 ## Warnings
 
 - Backend auction runtime is ready for FE integration, but FE has only public auction list so far.
-- Wallet header balance uses real API; there is no full wallet page yet.
 - Seller auction detail is implemented (polling is used for operational safety); realtime monitoring remains deferred until the buyer bidding cockpit is stable.
 - CSRF mitigation for cookie-authenticated flows relies on backend `SameSite` behavior; explicit CSRF token strategy is deferred.
 
@@ -57,9 +49,8 @@
 
 1. Auction detail: `GET /auctions/{id}` -> page at `/auctions/:id`.
 2. Auction registration: `POST /auctions/{id}/register` from detail/bidding entry points.
-3. Wallet page: `GET /wallets/me`, `GET /wallets/me/transactions`, `POST /wallets/me/top-up`.
-4. Realtime bidding room with feature-scoped STOMP lifecycle and REST reconciliation.
-5. Seller auction realtime monitoring only after public detail and bidding room are stable (basic detail is already implemented).
+3. Realtime bidding room with feature-scoped STOMP lifecycle and REST reconciliation.
+4. Seller auction realtime monitoring only after public detail and bidding room are stable (basic detail is already implemented).
 
 ## Milestones
 
@@ -91,7 +82,8 @@
 - [x] Login and session recovery
 - [x] Registration and email verification
 - [x] Wallet balance in header
-- [ ] Wallet and transactions page
+- [x] Wallet balance, wallet transactions, VNPay deposit form, result page, and deposit history
+- [x] VNPay Sandbox deposit integration (amount selector, redirect, result page, deposit history)
 - [ ] Auction registration
 - [ ] Realtime bidding room
 
@@ -105,7 +97,7 @@
 
 ### Phase 5 - Hardening
 
-- [x] Automated tests: 59 unit tests
+- [x] Automated tests: 69 unit tests
 - [ ] Responsive polish
 - [ ] Production deploy readiness
 - [ ] Deferred module planning for `admin`

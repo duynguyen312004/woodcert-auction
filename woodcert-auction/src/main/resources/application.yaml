@@ -99,7 +99,6 @@ catalog:
 
 finance:
   wallet:
-    top-up-enabled: ${FINANCE_WALLET_TOP_UP_ENABLED:false}
     operation:
       pending-timeout: ${FINANCE_WALLET_OPERATION_PENDING_TIMEOUT:PT5M}
 
@@ -113,3 +112,12 @@ auction:
     anti-sniper-extension: ${AUCTION_ANTI_SNIPER_EXTENSION:PT60S}
   redis:
     state-retention-after-end: ${AUCTION_REDIS_STATE_RETENTION:PT24H}
+
+vnpay:
+  tmn-code: ${VNPAY_TMN_CODE:QLWY41E8}
+  hash-secret: ${VNPAY_HASH_SECRET:H8CNS7XS265A4EK2PSPOIMIZE601USHF}
+  pay-url: ${VNPAY_PAY_URL:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
+  return-url: ${VNPAY_RETURN_URL:http://localhost:8080/api/v1/wallets/vnpay/return}
+  api-url: ${VNPAY_API_URL:https://sandbox.vnpayment.vn/merchant_webapi/api/transaction}
+  fe-return-url: ${VNPAY_FE_RETURN_URL:http://localhost:5173/wallet/deposit/result}
+  confirm-on-return-enabled: ${VNPAY_CONFIRM_ON_RETURN_ENABLED:false}

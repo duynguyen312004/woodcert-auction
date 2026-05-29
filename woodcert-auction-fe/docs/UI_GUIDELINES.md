@@ -121,6 +121,6 @@ Realtime auction screens must also show:
 
 ## Current Implementation Alignment
 
-- Implemented UI surfaces: public shell/home/auction list, auth, account profile, seller portal/product flow, appraiser portal/workflow, wallet header chip.
-- Pending UI surfaces: auction detail, bidding room, full wallet page, address book, buyer bid history, seller auction create/list/cancel, admin, orders, disputes.
+- Implemented UI surfaces: public shell/home/auction list, auth, account profile, seller portal/product/auction flow, appraiser portal/workflow, wallet page, wallet transaction history, and VNPay deposit flow.
+- Pending UI surfaces: auction detail, bidding room, address book, buyer bid history, admin, orders, disputes.
 - Backend auction runtime is ready; FE realtime UX rules apply when auction detail/bidding room is implemented.

@@ -1,6 +1,6 @@
 # Database Schema
 
-Current implementation note (2026-05-25): identity, media, catalog/appraisal, finance/wallet, and auction/bidding tables are implemented by backend code. Fulfillment tables (`orders`, `shipments`, `disputes`) remain planned schema for Phase 4 and do not yet have a backend package/controller/service.
+Current implementation note (2026-05-28): identity, media, catalog/appraisal, finance/wallet/VNPay, and auction/bidding tables are implemented by backend code. Fulfillment tables (`orders`, `shipments`, `disputes`) remain planned schema for Phase 4 and do not yet have a backend package/controller/service.
 
 > MySQL database design for WoodCert Auction Platform.
 > Update this file whenever schema changes.
@@ -578,7 +578,7 @@ Composite PK: (role_id, permission_id)
 | amount | DECIMAL(19,2) | NOT NULL | Số tiền +/- |
 | type | VARCHAR(20) | NOT NULL | Enum: DEPOSIT, WITHDRAW, FREEZE, UNFREEZE, PAYMENT |
 | reference_id | BIGINT | NULLABLE | ID phiên đấu giá / đơn hàng / hệ thống |
-| reference_type | VARCHAR(20) | NULLABLE | Enum: AUCTION, ORDER, SYSTEM |
+| reference_type | VARCHAR(20) | NULLABLE | Enum: AUCTION, ORDER, SYSTEM, VNPAY_DEPOSIT |
 | status | VARCHAR(20) | NOT NULL | Enum: SUCCESS, FAILED, PENDING |
 | created_at | TIMESTAMP | NOT NULL, DEFAULT CURRENT_TIMESTAMP | |
 
@@ -603,7 +603,7 @@ Composite PK: (role_id, permission_id)
 | amount | DECIMAL(19,2) | NOT NULL | Số tiền business đã normalize |
 | type | VARCHAR(20) | NOT NULL | Enum: DEPOSIT, WITHDRAW, FREEZE, UNFREEZE, PAYMENT |
 | reference_id | BIGINT | NULLABLE | ID auction/order/system reference |
-| reference_type | VARCHAR(20) | NOT NULL | Enum: AUCTION, ORDER, SYSTEM |
+| reference_type | VARCHAR(20) | NOT NULL | Enum: AUCTION, ORDER, SYSTEM, VNPAY_DEPOSIT |
 | status | VARCHAR(20) | NOT NULL | Enum: SUCCESS, FAILED, PENDING |
 | failure_code | VARCHAR(100) | NULLABLE | Failure code persisted when operation finalizes as FAILED |
 | failure_message | VARCHAR(255) | NULLABLE | Short internal failure detail for audit/debug |
@@ -621,6 +621,31 @@ Composite PK: (role_id, permission_id)
 - Cùng `operation_key` với payload khác phải bị reject
 - `FAILED` là terminal; caller phải dùng `operation_key` mới nếu muốn retry
 - `PENDING` quá `finance.wallet.operation.pending-timeout` sẽ bị fail-close thành `FAILED`
+
+### vnpay_deposits
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | BIGINT | PK, AUTO_INCREMENT | |
+| user_id | VARCHAR(36) | NOT NULL, FK → users(id) | Chủ giao dịch nạp tiền |
+| txn_ref | VARCHAR(100) | NOT NULL, UNIQUE | Mã giao dịch gửi sang VNPay |
+| amount | DECIMAL(19,2) | NOT NULL | Số tiền nạp |
+| order_info | VARCHAR(255) | NULLABLE | Nội dung thanh toán |
+| status | VARCHAR(20) | NOT NULL | Enum: PENDING, SUCCESS, FAILED |
+| vnp_transaction_no | VARCHAR(100) | NULLABLE | Mã giao dịch VNPay |
+| vnp_response_code | VARCHAR(10) | NULLABLE | Mã phản hồi VNPay |
+| vnp_bank_code | VARCHAR(50) | NULLABLE | Ngân hàng/thẻ thanh toán |
+| created_at | TIMESTAMP | NOT NULL, DEFAULT CURRENT_TIMESTAMP | Thời điểm tạo yêu cầu |
+| paid_at | TIMESTAMP | NULLABLE | Thời điểm IPN xác nhận thành công |
+
+**Indexes:**
+
+- UNIQUE INDEX idx_vnpay_deposits_txn_ref ON vnpay_deposits(txn_ref)
+- INDEX idx_vnpay_deposits_user_id ON vnpay_deposits(user_id)
+
+**Notes:**
+
+- `txn_ref` được lock pessimistic khi xử lý IPN để tránh xử lý trùng.
+- IPN cập nhật trạng thái deposit và tạo wallet transaction `DEPOSIT` với `reference_type = VNPAY_DEPOSIT`.
 
 ### auction_sessions
 | Column | Type | Constraints | Description |
@@ -903,10 +928,11 @@ Total tables: 27
 - appraisal_reports
 - appraisal_images
 
-**Finance (3 tables):**
+**Finance (4 tables):**
 - wallets
 - wallet_transactions
 - wallet_operations
+- vnpay_deposits
 
 **Auction & Bidding (3 tables):**
 - auction_sessions

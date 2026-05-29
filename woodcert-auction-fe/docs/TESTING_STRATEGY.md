@@ -63,14 +63,14 @@ Use for:
 - seller auction creation form rules
 - media uploader state machine
 
-Current automated status: `pnpm test` passed on 2026-05-25 with 19 test files and 50 tests. WebSocket, countdown offset, wallet page, auction registration, bidding room, and seller auction form tests are still future coverage because those FE flows are not implemented yet.
+Current automated status: `pnpm test` passed on 2026-05-28 with 24 test files and 69 tests. WebSocket, countdown offset, auction registration, and bidding room tests are future coverage.
 
 ## Critical E2E Scenarios
 
 1. Login and session recovery
 2. Seller product create, media upload, and appraisal submission
 3. Appraiser review and appraisal submit
-4. Wallet top-up and transaction history refresh
+4. VNPay deposit result and wallet history refresh
 5. Auction registration with wallet balance change
 6. Live bidding with websocket updates
 7. Websocket disconnect and reconnect recovery

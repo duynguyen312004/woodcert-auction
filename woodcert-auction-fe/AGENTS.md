@@ -24,8 +24,8 @@ Before making any code change, read these files first:
 
 ## Current Implementation Snapshot
 
-- Implemented: auth, public home/auction list, account profile/avatar, seller profile/product flows, appraiser workflow, wallet balance hook/header chip.
-- Pending: auction detail, auction registration, bidding room, wallet page/transactions, seller auction create/list/cancel.
+- Implemented: auth, public home/auction list, account profile/avatar, seller profile/product flows, seller auction flows, appraiser workflow, wallet page/transactions, and VNPay deposit flow.
+- Pending: auction detail, auction registration, bidding room, buyer bid history, and address book.
 - Deferred: admin operations, orders, fulfillment, shipping, disputes.
 
 ## Mandatory Rules

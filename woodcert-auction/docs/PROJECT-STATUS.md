@@ -1,6 +1,6 @@
 # Project Status
 
-> Last updated: 2026-05-25 | By: Codex | Session: docs-current-state-sync
+> Last updated: 2026-05-28 | By: Codex | Session: wallet-vnpay-ipn-authoritative-docs
 >
 > AI: update this file at the end of every backend session when asked.
 > Follow this exact format. Keep it concise but decision-useful.
@@ -17,11 +17,11 @@
 - [x] Catalog foundation: category seed/read APIs, seller draft product create/update/delete, media-backed product images, submit-for-appraisal flow
 - [x] Appraiser workflow: claim/release, expired-claim visibility, immutable appraisal report, approve/reject, proof images, digital signature, certificate code, and seller reputation recalculation
 - [x] Catalog read boundary hardened: `GET /api/v1/products` and `GET /api/v1/products/{id}` are internal seller/appraiser workflow APIs, not public marketplace APIs
-- [x] Finance core: wallet, transactions, operation idempotency, lazy wallet creation, dev/test top-up, balance normalization, concurrency errors, and internal freeze/unfreeze/deduct/deposit operations
+- [x] Finance core: wallet, transactions, operation idempotency, lazy wallet creation, balance normalization, concurrency errors, internal freeze/unfreeze/deduct/deposit operations, and full-stack VNPay Sandbox integration
 - [x] Auction foundation: `AuctionSession`, seller create/list/cancel, public list/detail, product/session locks, public filters, hidden reserve price, and seller summary enrichment
 - [x] Auction runtime: participant registration, Redis-first bidding, Lua validation, anti-sniper extension, scheduler activation/close, STOMP broadcasts, async bid audit, and deposit settlement
 - [x] Auction service refactor: facade plus command/query/assembler/policy/runtime services; grouped participant counts; `ProductImageHelper` reuse; Redis overlay for active read models
-- [x] Backend unit/integration test suite passes with `.\mvnw.cmd -Dtest=!WoodcertAuctionApplicationTests test` on 2026-05-25: 225 tests
+- [x] Backend unit/integration test suite passes with `mvn test` on 2026-05-28: 238 tests
 
 ## In Progress
 
@@ -37,8 +37,7 @@
 
 ## Warnings
 
-- `.\mvnw.cmd -Dtest=!WoodcertAuctionApplicationTests test` passed on 2026-05-25: 225 tests, 0 failures.
-- `.\mvnw.cmd clean test` still requires a reachable MySQL instance for `WoodcertAuctionApplicationTests.contextLoads`.
+- `mvn test` passed on 2026-05-28: 238 tests, 0 failures.
 - API and database docs may include planned fulfillment/order/dispute contracts, but no `feature/fulfillment` implementation exists yet.
 - Do not start fulfillment/dispute before auction winner flow, finance settlement contract, and repair strategy are stable.
 
@@ -88,7 +87,8 @@
 - [x] Internal `deposit`, `freeze`, `unfreeze`, and `deductFrozen`
 - [x] `GET /wallets/me`
 - [x] `GET /wallets/me/transactions`
-- [x] Dev/test `POST /wallets/me/top-up`
+- [x] VNPay Sandbox integration (`POST /wallets/me/deposit`, `GET /wallets/vnpay/return`, `GET /wallets/vnpay/ipn`)
+- [x] VNPay transaction query and history APIs (`GET /wallets/me/deposits`, `GET /wallets/me/deposits/{txnRef}`)
 
 ### Phase 3.3 - Auction Runtime
 

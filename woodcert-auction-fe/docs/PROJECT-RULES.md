@@ -28,7 +28,7 @@ Current status is tracked in `PROJECT-STATUS.md`; rules here apply to both imple
 - `app/` owns composition only.
 - `shared/` contains only reusable infrastructure and primitives.
 - `admin/` exists structurally but is deferred.
-- `wallet` currently has only the balance hook/header integration; full wallet pages are pending.
+- `wallet` owns balance reads, transaction history, VNPay deposit creation, result polling, and deposit history.
 - `seller` currently has product/profile flows; seller auction flows are placeholders until implemented.
 - Do not introduce root-level `services/`, `pages/`, or `context/` as architecture primitives.
 

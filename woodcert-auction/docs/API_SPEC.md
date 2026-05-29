@@ -964,8 +964,8 @@ Success Response (200):
         "id": 1000,
         "amount": 20000000.00,
         "type": "DEPOSIT",
-        "referenceId": null,
-        "referenceType": "SYSTEM",
+        "referenceId": 801,
+        "referenceType": "VNPAY_DEPOSIT",
         "status": "SUCCESS",
         "createdAt": "2026-03-27T15:00:00"
       }
@@ -976,10 +976,9 @@ Success Response (200):
 }
 ```
 
-### POST /wallets/me/top-up 🔒
+### POST /wallets/me/deposit 🔒
 
-Dev/test endpoint to add funds directly into the current user's wallet until a real deposit flow exists.
-This endpoint is gated by the config flag `finance.wallet.top-up-enabled` and should only be enabled in local/dev environments.
+Create a VNPay deposit request and return the payment URL.
 
 Request Body:
 
@@ -989,12 +988,23 @@ Request Body:
 }
 ```
 
-Notes:
-- Internal wallet mutations currently log only `status = SUCCESS`
-- `PENDING` / `FAILED` are reserved for future real payment-provider deposit flow
-- Wallet core normalizes mutation amounts to scale `2` before validation, idempotency checks, and persistence
-- Internal idempotency uses `operationKey`; a failed wallet operation is terminal and must be retried with a new key
-- Stale pending wallet operations fail closed after `finance.wallet.operation.pending-timeout` (default `PT5M`)
+Success Response (200):
+
+```json
+{
+  "statusCode": 200,
+  "data": {
+    "paymentUrl": "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?...",
+    "txnRef": "DEP20260528104530123456"
+  },
+  "message": "Payment URL created",
+  "timestamp": "2026-04-19T10:00:00"
+}
+```
+
+### GET /wallets/me/deposits 🔒
+
+List VNPay deposit requests for the current user.
 
 Success Response (200):
 
@@ -1002,15 +1012,69 @@ Success Response (200):
 {
   "statusCode": 200,
   "data": {
-    "id": 501,
-    "userId": "uuid-1234",
-    "availableBalance": 20000000.00,
-    "frozenBalance": 5000000.00
+    "meta": { "page": 1, "pageSize": 10, "pages": 1, "total": 1 },
+    "result": [
+      {
+        "id": 801,
+        "txnRef": "DEP20260528104530123456",
+        "amount": 5000000.00,
+        "status": "SUCCESS",
+        "vnpBankCode": "NCB",
+        "createdAt": "2026-05-28T10:45:30Z",
+        "paidAt": "2026-05-28T10:46:12Z"
+      }
+    ]
   },
-  "message": "Wallet topped up successfully",
-  "timestamp": "2026-04-19T10:00:00"
+  "message": "Fetch deposits successful",
+  "timestamp": "2026-05-28T10:47:00"
 }
 ```
+
+### GET /wallets/me/deposits/{txnRef} 🔒
+
+Get one VNPay deposit status for the current user.
+
+Success Response (200):
+
+```json
+{
+  "statusCode": 200,
+  "data": {
+    "id": 801,
+    "txnRef": "DEP20260528104530123456",
+    "amount": 5000000.00,
+    "status": "SUCCESS",
+    "vnpBankCode": "NCB",
+    "createdAt": "2026-05-28T10:45:30Z",
+    "paidAt": "2026-05-28T10:46:12Z"
+  },
+  "message": "Fetch deposit status successful",
+  "timestamp": "2026-05-28T10:47:00"
+}
+```
+
+### GET /wallets/vnpay/return 🔓
+
+VNPay browser redirect callback. The backend verifies checksum and redirects to `vnpay.fe-return-url` with `txnRef` and current deposit status. Balance mutation is handled by IPN in production. For local development only, `vnpay.confirm-on-return-enabled=true` allows this callback to confirm the deposit when `vnpay.return-url` is localhost and IPN is unavailable.
+
+### GET /wallets/vnpay/ipn 🔓
+
+VNPay server-to-server callback. The backend verifies checksum, merchant code, amount, and transaction status, then updates the deposit and wallet in one transaction.
+
+Success Response (200):
+
+```json
+{
+  "RspCode": "00",
+  "Message": "Confirm Success"
+}
+```
+
+Notes:
+- Internal wallet mutations currently log only `status = SUCCESS`
+- Wallet core normalizes mutation amounts to scale `2` before validation, idempotency checks, and persistence
+- Internal idempotency uses `operationKey`; a failed wallet operation is terminal and must be retried with a new key
+- Stale pending wallet operations fail closed after `finance.wallet.operation.pending-timeout` (default `PT5M`)
 
 ## 9. Auction Sessions
 

@@ -2,12 +2,12 @@
 
 ## Status
 
-Accepted. Partially implemented as of 2026-05-25.
+Accepted. Partially implemented as of 2026-05-28.
 
 Implemented today:
 
 - Wallet balances and transaction audit logs.
-- Dev/test wallet top-up.
+- VNPay deposit requests, IPN confirmation, and deposit history.
 - Idempotent wallet operations.
 - Auction registration deposit freeze.
 - Auction close refund/deduct settlement for frozen deposits.
@@ -49,7 +49,7 @@ Current backend scope implements the wallet and auction-deposit foundation. The 
 
 ## Target Lifecycle
 
-- Deposit: user tops up wallet.
+- Deposit: user pays through VNPay and IPN credits the wallet.
 - Auction join: backend moves `depositAmount` from available to frozen.
 - Auction close: losers are refunded; winner deposit is deducted.
 - Order payment: winner pays remaining amount into system escrow.

@@ -80,7 +80,6 @@ public enum ErrorCode {
     WALLET_OPERATION_IN_PROGRESS(409, "Wallet operation is already in progress, please retry later"),
     WALLET_OPERATION_ALREADY_FAILED(409, "Wallet operation already failed and cannot be retried with the same operation key"),
     WALLET_CONCURRENT_MODIFICATION(409, "Wallet was updated concurrently, please retry"),
-    WALLET_TOP_UP_DISABLED(403, "Wallet top-up is disabled in this environment"),
     WALLET_REFERENCE_INVALID(400, "Wallet reference is invalid for this mutation source"),
     ;
 

@@ -15,9 +15,7 @@ public class FinanceProperties {
 
     private final Wallet wallet = new Wallet();
 
-    public boolean isWalletTopUpEnabled() {
-        return wallet.isTopUpEnabled();
-    }
+
 
     public Duration getWalletOperationPendingTimeout() {
         return wallet.getOperation().getPendingTimeout();
@@ -26,7 +24,6 @@ public class FinanceProperties {
     @Getter
     @Setter
     public static class Wallet {
-        private boolean topUpEnabled;
         private final Operation operation = new Operation();
     }
 

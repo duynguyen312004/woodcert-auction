@@ -15,7 +15,8 @@ public record WalletTransactionRes(
         Long referenceId,
         WalletReferenceType referenceType,
         WalletTransactionStatus status,
-        Instant createdAt
+        Instant createdAt,
+        String description
 ) {
     public static WalletTransactionRes fromEntity(WalletTransaction transaction) {
         return new WalletTransactionRes(
@@ -25,7 +26,21 @@ public record WalletTransactionRes(
                 transaction.getReferenceId(),
                 transaction.getReferenceType(),
                 transaction.getStatus(),
-                transaction.getCreatedAt()
+                transaction.getCreatedAt(),
+                resolveDescription(transaction.getType(), transaction.getReferenceType())
         );
+    }
+
+    private static String resolveDescription(WalletTransactionType type, WalletReferenceType ref) {
+        if (type == null) return "";
+        return switch (type) {
+            case DEPOSIT -> ref == WalletReferenceType.VNPAY_DEPOSIT
+                    ? "Nạp tiền qua VNPay"
+                    : "Nạp tiền vào ví";
+            case FREEZE -> "Đóng cọc phiên đấu giá";
+            case UNFREEZE -> "Hoàn cọc phiên đấu giá";
+            case PAYMENT -> "Thanh toán đấu giá";
+            case WITHDRAW -> "Rút tiền";
+        };
     }
 }

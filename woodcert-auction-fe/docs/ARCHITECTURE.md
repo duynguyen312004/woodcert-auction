@@ -76,7 +76,7 @@ src/
       types.ts
       index.ts
     bidding/
-    wallet/       # balance hook implemented; page pending
+    wallet/       # wallet page, balance, transactions, VNPay deposit flow
     catalog/
       api/
       components/
@@ -100,7 +100,7 @@ src/
 - `features/home` owns only landing page composition: `HomePage`, `HomeHero`, `FeaturedAuctionsSection`. It imports from auction and catalog — never the reverse.
 - `features/appraisal` owns the implemented appraiser portal workflow.
 - `features/seller` owns implemented seller profile/product flows; seller auction flows are still placeholders.
-- `features/wallet` currently owns the wallet balance hook used by the header; full wallet pages are pending.
+- `features/wallet` owns wallet balance, transaction history, VNPay deposit pages, and deposit status polling.
 - Cross-feature imports flow inward only: `home → auction`, `home → catalog`. Feature-to-feature dependencies in the other direction are not allowed.
 
 ### Ownership Rules

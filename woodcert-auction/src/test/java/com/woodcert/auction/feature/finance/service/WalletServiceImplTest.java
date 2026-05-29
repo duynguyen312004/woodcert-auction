@@ -2,8 +2,6 @@ package com.woodcert.auction.feature.finance.service;
 
 import com.woodcert.auction.core.exception.AppException;
 import com.woodcert.auction.core.exception.ErrorCode;
-import com.woodcert.auction.feature.finance.config.FinanceProperties;
-import com.woodcert.auction.feature.finance.dto.request.TopUpWalletReq;
 import com.woodcert.auction.feature.finance.entity.Wallet;
 import com.woodcert.auction.feature.finance.entity.WalletOperation;
 import com.woodcert.auction.feature.finance.entity.WalletReferenceType;
@@ -42,7 +40,6 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class WalletServiceImplTest {
 
-    @Mock private FinanceProperties financeProperties;
     @Mock private WalletBootstrapService walletBootstrapService;
     @Mock private WalletOperationLifecycleService walletOperationLifecycleService;
     @Mock private WalletRepository walletRepository;
@@ -94,61 +91,7 @@ class WalletServiceImplTest {
         }
     }
 
-    @Nested
-    @DisplayName("topUpWallet")
-    class TopUpWallet {
 
-        @Test
-        @DisplayName("should increase available balance and log DEPOSIT")
-        void topUpWallet_success() {
-            Wallet wallet = createWallet(new BigDecimal("1000000"), BigDecimal.ZERO);
-            WalletOperation reserved = createReservedOperation(101L, "topup-op", WalletTransactionType.DEPOSIT);
-
-            when(financeProperties.isWalletTopUpEnabled()).thenReturn(true);
-            when(userRepository.existsById(USER_ID)).thenReturn(true);
-            when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
-            when(walletOperationLifecycleService.reserveOrReuseOperation(
-                    eq(10L), any(), eq(new BigDecimal("2500000.00")), eq(WalletTransactionType.DEPOSIT), eq(null), eq(WalletReferenceType.SYSTEM)
-            )).thenReturn(reserved);
-            when(walletRepository.saveAndFlush(any(Wallet.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-            var result = walletService.topUpWallet(USER_ID, new TopUpWalletReq(new BigDecimal("2500000")));
-
-            assertThat(result.availableBalance()).isEqualByComparingTo("3500000.00");
-            ArgumentCaptor<WalletTransaction> transactionCaptor = ArgumentCaptor.forClass(WalletTransaction.class);
-            verify(walletTransactionRepository).save(transactionCaptor.capture());
-            assertThat(transactionCaptor.getValue().getType()).isEqualTo(WalletTransactionType.DEPOSIT);
-            assertThat(transactionCaptor.getValue().getReferenceType()).isEqualTo(WalletReferenceType.SYSTEM);
-            assertThat(transactionCaptor.getValue().getAmount()).isEqualByComparingTo("2500000.00");
-            verify(walletOperationLifecycleService).markSuccess(101L);
-        }
-
-        @Test
-        @DisplayName("should reject non-positive top-up amount")
-        void topUpWallet_invalidAmount_throws() {
-            when(financeProperties.isWalletTopUpEnabled()).thenReturn(true);
-
-            assertThatThrownBy(() -> walletService.topUpWallet(USER_ID, new TopUpWalletReq(BigDecimal.ZERO)))
-                    .isInstanceOf(AppException.class)
-                    .satisfies(throwable -> {
-                        AppException exception = (AppException) throwable;
-                        assertThat(exception.getStatusCode()).isEqualTo(ErrorCode.WALLET_AMOUNT_INVALID.getStatusCode());
-                    });
-        }
-
-        @Test
-        @DisplayName("should reject top-up when feature flag is disabled")
-        void topUpWallet_disabled_throws() {
-            when(financeProperties.isWalletTopUpEnabled()).thenReturn(false);
-
-            assertThatThrownBy(() -> walletService.topUpWallet(USER_ID, new TopUpWalletReq(new BigDecimal("1000000"))))
-                    .isInstanceOf(AppException.class)
-                    .satisfies(throwable -> {
-                        AppException exception = (AppException) throwable;
-                        assertThat(exception.getStatusCode()).isEqualTo(ErrorCode.WALLET_TOP_UP_DISABLED.getStatusCode());
-                    });
-        }
-    }
 
     @Nested
     @DisplayName("depositFunds")

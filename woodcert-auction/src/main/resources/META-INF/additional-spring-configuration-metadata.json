@@ -214,6 +214,41 @@
             "name": "catalog.appraisal.claim-timeout",
             "type": "java.lang.String",
             "description": "A description for 'catalog.appraisal.claim-timeout'"
+        },
+        {
+            "name": "vnpay.tmn-code",
+            "type": "java.lang.String",
+            "description": "A description for 'vnpay.tmn-code'"
+        },
+        {
+            "name": "vnpay.hash-secret",
+            "type": "java.lang.String",
+            "description": "A description for 'vnpay.hash-secret'"
+        },
+        {
+            "name": "vnpay.pay-url",
+            "type": "java.lang.String",
+            "description": "A description for 'vnpay.pay-url'"
+        },
+        {
+            "name": "vnpay.return-url",
+            "type": "java.lang.String",
+            "description": "A description for 'vnpay.return-url'"
+        },
+        {
+            "name": "vnpay.api-url",
+            "type": "java.lang.String",
+            "description": "A description for 'vnpay.api-url'"
+        },
+        {
+            "name": "vnpay.fe-return-url",
+            "type": "java.lang.String",
+            "description": "A description for 'vnpay.fe-return-url'"
+        },
+        {
+            "name": "vnpay.confirm-on-return-enabled",
+            "type": "java.lang.Boolean",
+            "description": "Allows localhost VNPay ReturnUrl callbacks to confirm deposits when IPN is unavailable. Keep disabled in production."
         }
     ]
 }

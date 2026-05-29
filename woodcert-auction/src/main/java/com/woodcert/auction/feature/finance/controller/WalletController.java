@@ -3,11 +3,11 @@ package com.woodcert.auction.feature.finance.controller;
 import com.woodcert.auction.core.auth.CurrentUserId;
 import com.woodcert.auction.core.dto.ApiResponse;
 import com.woodcert.auction.core.dto.PaginationResponse;
-import com.woodcert.auction.feature.finance.dto.request.TopUpWalletReq;
 import com.woodcert.auction.feature.finance.dto.response.WalletRes;
 import com.woodcert.auction.feature.finance.dto.response.WalletTransactionRes;
+import com.woodcert.auction.feature.finance.dto.response.VnPayDepositRes;
+import com.woodcert.auction.feature.finance.service.VnPayService;
 import com.woodcert.auction.feature.finance.service.WalletService;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 public class WalletController {
 
     private final WalletService walletService;
+    private final VnPayService vnPayService;
 
     @GetMapping
     public ResponseEntity<ApiResponse<WalletRes>> getMyWallet(@CurrentUserId String userId) {
@@ -37,11 +38,20 @@ public class WalletController {
         return ResponseEntity.ok(ApiResponse.success(transactions, "Fetch transactions successful"));
     }
 
-    @PostMapping("/top-up")
-    public ResponseEntity<ApiResponse<WalletRes>> topUpWallet(
+    @GetMapping("/deposits")
+    public ResponseEntity<ApiResponse<PaginationResponse<VnPayDepositRes>>> getMyDeposits(
             @CurrentUserId String userId,
-            @RequestBody @Valid TopUpWalletReq request) {
-        WalletRes wallet = walletService.topUpWallet(userId, request);
-        return ResponseEntity.ok(ApiResponse.success(wallet, "Wallet topped up successfully"));
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        PaginationResponse<VnPayDepositRes> deposits = vnPayService.getDeposits(userId, page, size);
+        return ResponseEntity.ok(ApiResponse.success(deposits, "Fetch deposits successful"));
+    }
+
+    @GetMapping("/deposits/{txnRef}")
+    public ResponseEntity<ApiResponse<VnPayDepositRes>> getMyDepositStatus(
+            @CurrentUserId String userId,
+            @PathVariable String txnRef) {
+        VnPayDepositRes deposit = vnPayService.getDepositStatus(userId, txnRef);
+        return ResponseEntity.ok(ApiResponse.success(deposit, "Fetch deposit status successful"));
     }
 }
