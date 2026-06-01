@@ -127,7 +127,7 @@ export function AuctionListPage() {
           />
 
           {/* Khu vực card, dùng nền sáng cho trang danh sách */}
-          <div className="min-w-0 flex-1 rounded-lg bg-[#F6F0E6] p-6 lg:p-8">
+          <div className="min-w-0 flex-1 rounded-lg border border-white/10 bg-[#e7dfd0] p-6 shadow-[0_18px_55px_rgba(0,0,0,0.18)] lg:p-8">
             <AuctionListContent
               auctions={displayAuctions}
               isLoading={auctionsQuery.isLoading}

@@ -1,11 +1,6 @@
-import { Navigate, useParams, type RouteObject } from "react-router";
-
+import type { RouteObject } from "react-router";
+import { AuctionDetailPage } from "./pages/AuctionDetailPage";
 import { AuctionListPage } from "./pages/AuctionListPage";
-
-function AuctionBiddingRedirect() {
-  const { auctionId } = useParams<{ auctionId: string }>();
-  return <Navigate to={auctionId ? `/bidding/${auctionId}` : "/auctions"} replace />;
-}
 
 export const auctionRoutes: RouteObject[] = [
   {
@@ -14,6 +9,6 @@ export const auctionRoutes: RouteObject[] = [
   },
   {
     path: "auctions/:auctionId",
-    element: <AuctionBiddingRedirect />,
+    element: <AuctionDetailPage />,
   },
 ];

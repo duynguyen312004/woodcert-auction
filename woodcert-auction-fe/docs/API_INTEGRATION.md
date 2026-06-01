@@ -1,6 +1,6 @@
 # API Integration
 
-Last updated: 2026-05-30
+Last updated: 2026-06-01
 
 This document tracks frontend usage of backend APIs. Active FE integrations use the shared `apiClient`; no feature should create ad hoc HTTP clients.
 
@@ -25,13 +25,13 @@ This document tracks frontend usage of backend APIs. Active FE integrations use 
 
 ### Public Auction and Catalog
 
-| Feature               | Endpoint                              | FE status                           |
-| --------------------- | ------------------------------------- | ----------------------------------- |
-| Categories            | `GET /categories`                     | Implemented                         |
-| Auction list          | `GET /auctions`                       | Implemented on home and `/auctions` |
-| Auction detail        | `GET /auctions/{id}`                  | Implemented                         |
-| Participation context | `GET /auctions/{id}/my-participation` | Implemented                         |
-| Bid history           | `GET /auctions/{id}/bids?size=20`     | Implemented                         |
+| Feature               | Endpoint                              | FE status                                       |
+| --------------------- | ------------------------------------- | ----------------------------------------------- |
+| Categories            | `GET /categories`                     | Implemented                                     |
+| Auction list          | `GET /auctions`                       | Implemented on home and `/auctions`             |
+| Auction detail        | `GET /auctions/{id}`                  | Implemented on `/auctions/:id` and bidding room |
+| Participation context | `GET /auctions/{id}/my-participation` | Implemented                                     |
+| Bid history           | `GET /auctions/{id}/bids?size=20`     | Implemented                                     |
 
 ### Wallet and Buyer Runtime
 

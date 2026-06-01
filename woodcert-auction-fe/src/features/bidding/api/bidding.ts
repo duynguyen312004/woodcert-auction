@@ -6,14 +6,8 @@
  */
 
 import { apiRequest } from "@/shared/api/client";
-import type { AuctionStatus } from "@/features/auction";
-import type {
-  BiddingAuctionDetail,
-  ParticipationStatus,
-  BidHistoryItem,
-  OutcomeCode,
-  PlaceBidResult,
-} from "../types";
+import { getPublicAuctionDetail } from "@/features/auction";
+import type { ParticipationStatus, BidHistoryItem, OutcomeCode, PlaceBidResult } from "../types";
 
 // Helper chuyển đổi giá trị từ string/number sang number để đảm bảo an toàn kiểu dữ liệu.
 function toNumber(value: number | string | null | undefined, fallback = 0): number {
@@ -22,41 +16,6 @@ function toNumber(value: number | string | null | undefined, fallback = 0): numb
   }
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
-}
-
-interface AuctionDetailDto {
-  id: string;
-  status: string;
-  startingPrice: string | number;
-  currentPrice: string | number | null;
-  stepPrice: string | number;
-  depositAmount: string | number;
-  startTime: string;
-  endTime: string;
-  product: {
-    id: number;
-    title: string;
-    description?: string | null;
-    material: string | null;
-    dimensions?: string | null;
-    weight?: number | string | null;
-    primaryImage?: string | null;
-    images?: string[];
-    appraisal?: {
-      certificateCode?: string | null;
-      verifiedMaterial?: string | null;
-      origin?: string | null;
-      ageEstimation?: string | null;
-      conditionGrade?: string | null;
-      estimatedValue?: number | string | null;
-      isAuthentic?: boolean;
-    } | null;
-  } | null;
-  seller: {
-    storeName: string | null;
-    reputationScore?: number | string | null;
-  } | null;
-  highestBidderMaskedAlias?: string | null;
 }
 
 interface ParticipationStatusDto {
@@ -91,61 +50,7 @@ interface PlaceBidResultDto {
 
 // REST endpoints:
 // 1. GET /auctions/{id}
-export async function getBiddingAuctionDetail(
-  auctionId: string | number,
-): Promise<BiddingAuctionDetail> {
-  const response = await apiRequest<AuctionDetailDto>({
-    method: "GET",
-    url: `/auctions/${auctionId}`,
-    requiresAuth: true,
-  });
-
-  return {
-    id: toNumber(response.id),
-    status: response.status as AuctionStatus,
-    startingPrice: toNumber(response.startingPrice),
-    currentPrice: toNumber(response.currentPrice, toNumber(response.startingPrice)),
-    stepPrice: toNumber(response.stepPrice),
-    depositAmount: toNumber(response.depositAmount),
-    startTime: response.startTime,
-    endTime: response.endTime,
-    product: response.product
-      ? {
-          id: response.product.id,
-          title: response.product.title,
-          description: response.product.description ?? null,
-          material: response.product.material,
-          dimensions: response.product.dimensions ?? null,
-          weight: response.product.weight == null ? null : toNumber(response.product.weight),
-          primaryImage: response.product.primaryImage ?? "",
-          imageUrls: response.product.images || [],
-          certificateCode: response.product.appraisal?.certificateCode ?? null,
-          isAuthentic: Boolean(response.product.appraisal?.isAuthentic),
-          appraisal: response.product.appraisal
-            ? {
-                certificateCode: response.product.appraisal.certificateCode ?? null,
-                verifiedMaterial: response.product.appraisal.verifiedMaterial ?? null,
-                origin: response.product.appraisal.origin ?? null,
-                ageEstimation: response.product.appraisal.ageEstimation ?? null,
-                conditionGrade: response.product.appraisal.conditionGrade ?? null,
-                estimatedValue:
-                  response.product.appraisal.estimatedValue == null
-                    ? null
-                    : toNumber(response.product.appraisal.estimatedValue),
-                isAuthentic: Boolean(response.product.appraisal.isAuthentic),
-              }
-            : null,
-        }
-      : null,
-    seller: response.seller
-      ? {
-          storeName: response.seller.storeName ?? "WoodCert Seller",
-          reputationScore: toNumber(response.seller.reputationScore),
-        }
-      : null,
-    highestBidderMaskedAlias: response.highestBidderMaskedAlias || null,
-  };
-}
+export const getBiddingAuctionDetail = getPublicAuctionDetail;
 
 // 2. GET /auctions/{id}/my-participation
 export async function getBiddingParticipation(

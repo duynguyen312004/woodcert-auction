@@ -17,19 +17,13 @@ This roadmap summarizes implementation order. `PROJECT-STATUS.md` is the current
 
 ## Pending MVP Work
 
-1. Auction detail page
-   - route `/auctions/:id`
-   - `GET /auctions/{id}`
-   - registration/bidding entry states
-2. Auction registration and bidding room
-   - `POST /auctions/{id}/register`
-   - `POST /bids`
-   - STOMP subscription scoped to bidding/detail lifecycle
-   - REST reconciliation after websocket updates
-3. Hardening
+1. Hardening
    - server-time countdown offset
    - responsive polish
    - Playwright coverage for critical flows
+2. Buyer participation history
+   - buyer-owned list of joined/ended auctions
+   - winner/loser status surfaced from participation contracts where available
 
 ## Deferred
 

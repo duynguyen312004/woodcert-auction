@@ -27,6 +27,49 @@ export interface ArtAuction {
   sellerRating?: number;
 }
 
+export interface AuctionProductAppraisal {
+  certificateCode: string | null;
+  verifiedMaterial: string | null;
+  origin: string | null;
+  ageEstimation: string | null;
+  conditionGrade: string | null;
+  estimatedValue: number | null;
+  isAuthentic: boolean;
+}
+
+export interface AuctionProductSummary {
+  id: number;
+  title: string;
+  description: string | null;
+  material: string | null;
+  dimensions: string | null;
+  weight: number | null;
+  primaryImage: string | null;
+  imageUrls: string[];
+  certificateCode: string | null;
+  isAuthentic: boolean;
+  appraisal: AuctionProductAppraisal | null;
+}
+
+export interface AuctionSellerSummary {
+  storeName: string;
+  reputationScore: number;
+}
+
+export interface AuctionDetail {
+  id: number;
+  status: AuctionStatus;
+  startingPrice: number;
+  currentPrice: number;
+  stepPrice: number;
+  depositAmount: number;
+  startTime: string;
+  endTime: string;
+  product: AuctionProductSummary | null;
+  seller: AuctionSellerSummary | null;
+  highestBidderMaskedAlias: string | null;
+}
+
 export type AuctionFilters = {
   status?: AuctionStatus;
   categoryName?: string;

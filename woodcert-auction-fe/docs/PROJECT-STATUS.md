@@ -1,6 +1,6 @@
 # Project Status
 
-> Last updated: 2026-05-30 | By: Codex | Session: auction-bid-realtime-plan-v3
+> Last updated: 2026-06-01 | By: Codex | Session: buyer-auction-detail-phase-3-5
 >
 > Update this file at the end of FE planning or implementation sessions.
 > Keep it concise and decision-useful.
@@ -24,11 +24,12 @@
 - [x] VNPay Sandbox deposit flow: amount selector page (`/wallet/deposit`), result page (`/wallet/deposit/result`), and deposit history on `/wallet`
 - [x] Backend buyer realtime contracts are available: participation context, bid history, and enriched `NEW_BID` WebSocket payload
 - [x] Realtime bidding room cockpit layout at `/bidding/:auctionId` (WebSocket/SockJS client, price tick, countdown pulse, anti-sniper banner, ended outcome overlay)
-- [x] Automated FE unit test suite passes with 73 tests
+- [x] Public auction detail page at `/auctions/:auctionId` with gallery, product/appraisal detail, price/deposit/step summary, status-aware CTA, and list/home cards routed through detail first
+- [x] Automated FE unit test suite passes with 84 tests
 
 ## In Progress
 
-- Refinement of the buyer bidding experience and integration support.
+- Responsive polish and advanced realtime/concurrency hardening.
 
 ## Deferred
 
@@ -44,7 +45,7 @@
 
 ## Warnings
 
-- Backend auction runtime and buyer realtime contracts are ready for FE integration, but FE has only public auction list so far.
+- Backend auction runtime and buyer realtime contracts are integrated through public detail and bidding room.
 - FE should consume the backend contracts directly; do not add local workarounds for participation context, bid history, or live bid payloads.
 - Wallet funding must use VNPay Sandbox. Do not add mock wallet top-up, dev top-up, or any `POST /wallets/me/top-up` integration.
 - Seller auction detail is implemented (polling is used for operational safety); realtime monitoring remains deferred until the buyer bidding cockpit is stable.
@@ -52,7 +53,9 @@
 
 ## Next Tasks
 
-1. Build public auction detail page at `/auctions/:id` with bid detail, gallery, specifications, and a CTA linking to the Bidding Room cockpit if status is WAITING/ACTIVE.
+1. Add buyer participation history page (`MyAuctionsPage`) after the bidding room and public detail flow are stable.
+2. Add focused unit tests for countdown thresholds, bid form validation, and participation-driven action states.
+3. Add advanced Playwright coverage for realtime bidding and websocket reconnect recovery.
 
 ## Milestones
 
@@ -76,8 +79,8 @@
 
 - [x] Category data wiring
 - [x] Auction list on home page and `/auctions`
-- [ ] Auction detail page at `/auctions/:id`
-- [ ] Detail countdown synced from REST and WebSocket updates
+- [x] Auction detail page at `/auctions/:id`
+- [x] Detail countdown from REST auction start/end time
 
 ### Phase 3 - Buyer Runtime
 
@@ -102,7 +105,7 @@
 
 ### Phase 5 - Hardening
 
-- [x] Automated tests: 69 unit tests
+- [x] Automated tests: 84 unit tests and 2 Playwright smoke tests
 - [ ] Responsive polish
 - [ ] Unit tests for event parsing, bid-history dedupe, countdown thresholds, bid form validation, and participation-driven action states
 - [ ] Production deploy readiness

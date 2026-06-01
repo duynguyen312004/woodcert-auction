@@ -5,50 +5,18 @@
  * lịch sử đấu giá, trạng thái tham gia ký quỹ và các sự kiện WebSocket.
  */
 
-import type { AuctionStatus } from "@/features/auction";
+import type {
+  AuctionDetail,
+  AuctionProductAppraisal,
+  AuctionProductSummary,
+  AuctionSellerSummary,
+  AuctionStatus,
+} from "@/features/auction";
 
-export interface BiddingProductSummary {
-  id: number;
-  title: string;
-  description: string | null;
-  material: string | null;
-  dimensions: string | null;
-  weight: number | null;
-  primaryImage: string | null;
-  imageUrls: string[];
-  certificateCode: string | null;
-  isAuthentic: boolean;
-  appraisal: BiddingProductAppraisal | null;
-}
-
-export interface BiddingProductAppraisal {
-  certificateCode: string | null;
-  verifiedMaterial: string | null;
-  origin: string | null;
-  ageEstimation: string | null;
-  conditionGrade: string | null;
-  estimatedValue: number | null;
-  isAuthentic: boolean;
-}
-
-export interface BiddingSellerSummary {
-  storeName: string;
-  reputationScore: number;
-}
-
-export interface BiddingAuctionDetail {
-  id: number;
-  status: AuctionStatus;
-  startingPrice: number;
-  currentPrice: number;
-  stepPrice: number;
-  depositAmount: number;
-  startTime: string;
-  endTime: string;
-  product: BiddingProductSummary | null;
-  seller: BiddingSellerSummary | null;
-  highestBidderMaskedAlias: string | null;
-}
+export type BiddingProductSummary = AuctionProductSummary;
+export type BiddingProductAppraisal = AuctionProductAppraisal;
+export type BiddingSellerSummary = AuctionSellerSummary;
+export type BiddingAuctionDetail = AuctionDetail;
 
 export type OutcomeCode =
   | "NONE"

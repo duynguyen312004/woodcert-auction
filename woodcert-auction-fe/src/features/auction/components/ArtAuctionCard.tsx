@@ -85,15 +85,15 @@ export function ArtAuctionCard({ auction, cardTheme = "dark" }: ArtAuctionCardPr
   }, [auction.status, auction.startTime, auction.endTime, now]);
 
   const badge = useMemo(() => getStatusBadge(auction, now, cardTheme), [auction, now, cardTheme]);
-  const biddingRoomHref = `/bidding/${auction.id}`;
+  const auctionDetailHref = `/auctions/${auction.id}`;
   const actionLabel = getCardActionLabel(auction.status);
 
   if (cardTheme === "light") {
     return (
       <Link
-        to={biddingRoomHref}
+        to={auctionDetailHref}
         aria-label={`${actionLabel}: ${auction.title}`}
-        className="group flex flex-col overflow-hidden rounded-sm border border-stone-200 bg-white transition-all duration-300 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        className="group flex flex-col overflow-hidden rounded-sm border border-[#d4c9b8] bg-[#f2eee5] transition-all duration-300 hover:border-[#bfb09a] hover:shadow-[0_18px_42px_rgba(38,31,23,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
         <div className="relative aspect-[4/5] overflow-hidden">
           {auction.isAuthentic && (
@@ -125,7 +125,7 @@ export function ArtAuctionCard({ auction, cardTheme = "dark" }: ArtAuctionCardPr
         </div>
 
         <div className="flex flex-1 flex-col p-5">
-          <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-stone-500">
+          <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-stone-600">
             Chất liệu: {auction.woodType}
           </span>
           <h3 className="mb-3 font-serif text-xl font-bold leading-tight text-[#0F0F0D] line-clamp-2">
@@ -135,23 +135,23 @@ export function ArtAuctionCard({ auction, cardTheme = "dark" }: ArtAuctionCardPr
           <div className="mt-auto">
             <div className="mb-4 flex items-end justify-between">
               <div>
-                <p className="mb-1 text-[10px] font-bold uppercase tracking-tighter text-stone-400">
+                <p className="mb-1 text-[10px] font-bold uppercase tracking-tighter text-stone-500">
                   {auction.status === "WAITING" ? "Giá khởi điểm" : "Giá hiện tại"}
                 </p>
-                <p className="font-serif text-2xl font-bold text-primary">
+                <p className="font-serif text-2xl font-bold text-[#171412]">
                   {formatVND(auction.currentPrice)}
                 </p>
               </div>
               <div className="text-right">
-                <p className="mb-1 text-[10px] font-bold uppercase tracking-tighter text-stone-400">
+                <p className="mb-1 text-[10px] font-bold uppercase tracking-tighter text-stone-500">
                   {auction.status === "WAITING" ? "Quan tâm" : "Lượt đấu"}
                 </p>
                 <p className="font-bold text-[#0F0F0D]">{auction.bidCount}</p>
               </div>
             </div>
 
-            <div className="mb-4 flex items-center gap-2 bg-stone-50 p-2">
-              <span className="text-stone-400">
+            <div className="mb-4 flex items-center gap-2 bg-[#e9e2d6] p-2">
+              <span className="text-stone-500">
                 {auction.status === "WAITING" ? (
                   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path
@@ -186,8 +186,8 @@ export function ArtAuctionCard({ auction, cardTheme = "dark" }: ArtAuctionCardPr
               className={cn(
                 "block w-full py-3 text-center text-xs font-bold uppercase tracking-widest transition-all duration-300",
                 auction.status === "WAITING"
-                  ? "bg-stone-200 text-stone-500 group-hover:bg-stone-300"
-                  : "bg-[#171717] text-white hover:shadow-[0_0_15px_rgba(214,168,79,0.4)]",
+                  ? "bg-[#d9cfbf] text-stone-700 group-hover:bg-[#cec1ad]"
+                  : "bg-[#171717] text-white hover:bg-[#2a2620]",
               )}
             >
               {auction.status === "WAITING" ? "Chưa bắt đầu" : "Xem phiên"}
@@ -200,7 +200,7 @@ export function ArtAuctionCard({ auction, cardTheme = "dark" }: ArtAuctionCardPr
 
   return (
     <Link
-      to={biddingRoomHref}
+      to={auctionDetailHref}
       aria-label={`${actionLabel}: ${auction.title}`}
       className="group block cursor-pointer overflow-hidden rounded-lg border border-white/10 bg-card transition-all duration-500 hover:border-primary/50 hover:shadow-2xl hover:shadow-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
     >

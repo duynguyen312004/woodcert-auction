@@ -32,16 +32,9 @@ export function useBiddingRoom(auctionId: string | number) {
   const placeBidMutation = usePlaceBid(auctionId);
   const registerMutation = useRegisterAuction(auctionId);
 
-  const [localBids, setLocalBids] = useState<BidHistoryItem[]>([]);
-  const [prevBidsQueryData, setPrevBidsQueryData] = useState<BidHistoryItem[] | undefined>();
   const [extensionSeconds, setExtensionSeconds] = useState<number | null>(null);
   const [outbidAlert, setOutbidAlert] = useState<OutbidAlert | null>(null);
   const ownBidTraceIdsRef = useRef<Set<string>>(new Set());
-
-  if (bidsQuery.data && bidsQuery.data !== prevBidsQueryData) {
-    setPrevBidsQueryData(bidsQuery.data);
-    setLocalBids(bidsQuery.data);
-  }
 
   useEffect(() => {
     if (extensionSeconds === null) return;
@@ -125,17 +118,6 @@ export function useBiddingRoom(auctionId: string | number) {
         },
       );
 
-      setLocalBids((prev) => {
-        if (prev.some((bid) => bid.bidTraceId === bidHistoryItem.bidTraceId)) {
-          return prev.map((bid) =>
-            bid.bidTraceId === bidHistoryItem.bidTraceId
-              ? { ...bid, mine: bid.mine || isOwnBid }
-              : bid,
-          );
-        }
-        return [bidHistoryItem, ...prev].slice(0, 20);
-      });
-
       queryClient.setQueryData<ParticipationStatus>(participationKey, (old) => {
         if (!old) return old;
         if (isOwnBid) {
@@ -214,7 +196,7 @@ export function useBiddingRoom(auctionId: string | number) {
   return {
     detail: detailQuery.data || null,
     participation: participationQuery.data || null,
-    bids: localBids,
+    bids: bidsQuery.data || [],
     isLoading: detailQuery.isLoading || participationQuery.isLoading || bidsQuery.isLoading,
     isError: detailQuery.isError || participationQuery.isError,
     socketStatus,
