@@ -57,12 +57,14 @@ export function normalizeApiError(error: unknown): ApiError {
       "Unexpected API error";
 
     const fieldErrors = getFieldErrors(body?.data);
-    const message = translateApiMessage(rawMessage);
+    const code = getString(body?.errorCode) ?? getString(record?.code);
+    const message =
+      code && API_ERROR_MESSAGES[code] ? API_ERROR_MESSAGES[code] : translateApiMessage(rawMessage);
 
     return {
       statusCode: bodyStatusCode ?? statusCode,
       message,
-      code: getString(body?.errorCode) ?? getString(record?.code),
+      code,
       fieldErrors: fieldErrors && Object.keys(fieldErrors).length > 0 ? fieldErrors : undefined,
       details: responseData,
       isAuthError: (bodyStatusCode ?? statusCode) === 401,

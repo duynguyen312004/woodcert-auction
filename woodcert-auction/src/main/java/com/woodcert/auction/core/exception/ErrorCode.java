@@ -57,6 +57,7 @@ public enum ErrorCode {
     AUCTION_SESSION_NOT_REGISTRABLE(400, "Auction session is not open for registration"),
     AUCTION_BIDDER_NOT_REGISTERED(403, "You must register and have a frozen deposit to place a bid"),
     AUCTION_SELF_BIDDING_NOT_ALLOWED(403, "Seller cannot register or bid in their own auction"),
+    BIDDER_ALREADY_HIGHEST(409, "You are currently the highest bidder"),
     BID_AMOUNT_TOO_LOW(400, "Bid amount must be at least current price plus step price"),
     BID_AUCTION_ENDED(400, "Auction session has already ended"),
     AUCTION_SESSION_NOT_OWNED(403, "You do not own this auction session"),

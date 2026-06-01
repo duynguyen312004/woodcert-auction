@@ -4,6 +4,8 @@ import com.woodcert.auction.core.dto.PaginationResponse;
 import com.woodcert.auction.feature.auction.dto.request.CreateAuctionSessionReq;
 import com.woodcert.auction.feature.auction.dto.response.AuctionDetailRes;
 import com.woodcert.auction.feature.auction.dto.response.AuctionListRes;
+import com.woodcert.auction.feature.auction.dto.response.BidHistoryItemRes;
+import com.woodcert.auction.feature.auction.dto.response.MyParticipationRes;
 import com.woodcert.auction.feature.auction.dto.response.SellerAuctionDetailRes;
 import com.woodcert.auction.feature.auction.dto.response.SellerAuctionListRes;
 import com.woodcert.auction.feature.auction.service.command.AuctionCommandService;
@@ -90,6 +92,29 @@ class AuctionServiceImplTest {
     }
 
     @Test
+    void getMyParticipation_delegatesToQueryService() {
+        MyParticipationRes expected = new MyParticipationRes(
+                false, true, null, false, false, true, "CAN_BID", "ok", BigDecimal.ONE, false, "NONE", "");
+        when(queryService.getMyParticipation("bidder-1", 10L)).thenReturn(expected);
+
+        MyParticipationRes result = auctionService.getMyParticipation("bidder-1", 10L);
+
+        assertThat(result).isSameAs(expected);
+        verify(queryService).getMyParticipation("bidder-1", 10L);
+    }
+
+    @Test
+    void getBidHistory_delegatesToQueryService() {
+        List<BidHistoryItemRes> expected = List.of();
+        when(queryService.getBidHistory(10L, 20, "bidder-1")).thenReturn(expected);
+
+        List<BidHistoryItemRes> result = auctionService.getBidHistory(10L, 20, "bidder-1");
+
+        assertThat(result).isSameAs(expected);
+        verify(queryService).getBidHistory(10L, 20, "bidder-1");
+    }
+
+    @Test
     void getSellerAuctions_delegatesToQueryService() {
         PaginationResponse<SellerAuctionListRes> expected = new PaginationResponse<>(
                 new PaginationResponse.Meta(1, 10, 0, 0),
@@ -148,6 +173,7 @@ class AuctionServiceImplTest {
                 BigDecimal.ONE,
                 Instant.now(),
                 Instant.now(),
+                null,
                 null,
                 null);
     }

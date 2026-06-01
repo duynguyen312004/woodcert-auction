@@ -104,9 +104,10 @@ export function AuctionFilterBar({
   availableWoodTypes,
   isLoading,
 }: AuctionFilterBarProps) {
-  const { status, categoryName, woodType } = filters;
+  const { status, categoryName, materials } = filters;
+  const selectedWoodType = materials?.[0];
 
-  const activeCount = [status, categoryName, woodType].filter(Boolean).length;
+  const activeCount = [status, categoryName, selectedWoodType].filter(Boolean).length;
   const hasActiveFilters = activeCount > 0;
 
   const categoryOptions = availableCategories.map((c) => ({ value: c, label: c }));
@@ -165,8 +166,8 @@ export function AuctionFilterBar({
           <FilterRow icon={<TreePine className="h-3.5 w-3.5" />} label="Loại gỗ">
             <PillGroup
               options={woodTypeOptions}
-              value={woodType}
-              onChange={(val) => onChange({ ...filters, woodType: val })}
+              value={selectedWoodType}
+              onChange={(val) => onChange({ ...filters, materials: val ? [val] : undefined })}
               isLoading={isLoading && woodTypeOptions.length === 0}
               emptyLabel="Tất cả"
             />

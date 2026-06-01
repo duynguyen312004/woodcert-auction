@@ -43,4 +43,8 @@ export const API_ERROR_MESSAGES: Record<string, string> = {
   // Misconfiguration surfaced by register endpoint
   "Default role ROLE_BIDDER not found":
     "Hệ thống chưa cấu hình vai trò mặc định. Vui lòng thử lại sau.",
+  BIDDER_ALREADY_HIGHEST:
+    "Bạn đang giữ giá cao nhất. Bạn chỉ có thể đặt tiếp khi có người khác vượt giá.",
+  "You are currently the highest bidder":
+    "Bạn đang giữ giá cao nhất. Bạn chỉ có thể đặt tiếp khi có người khác vượt giá.",
 };

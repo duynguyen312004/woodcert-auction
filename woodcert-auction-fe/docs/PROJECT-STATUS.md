@@ -1,6 +1,6 @@
 # Project Status
 
-> Last updated: 2026-05-28 | By: Codex | Session: wallet-vnpay-ipn-authoritative-docs
+> Last updated: 2026-05-30 | By: Codex | Session: auction-bid-realtime-plan-v3
 >
 > Update this file at the end of FE planning or implementation sessions.
 > Keep it concise and decision-useful.
@@ -22,35 +22,37 @@
 - [x] Account profile page with profile update and avatar upload flow
 - [x] Wallet integration: dedicated Wallet page (`/wallet`) showing real balances and transaction logs table
 - [x] VNPay Sandbox deposit flow: amount selector page (`/wallet/deposit`), result page (`/wallet/deposit/result`), and deposit history on `/wallet`
-- [x] Automated FE unit test suite passes: `pnpm test` on 2026-05-28, 24 files, 69 tests
+- [x] Backend buyer realtime contracts are available: participation context, bid history, and enriched `NEW_BID` WebSocket payload
+- [x] Realtime bidding room cockpit layout at `/bidding/:auctionId` (WebSocket/SockJS client, price tick, countdown pulse, anti-sniper banner, ended outcome overlay)
+- [x] Automated FE unit test suite passes with 73 tests
 
 ## In Progress
 
-- No FE implementation is actively in progress in this docs sync.
+- Refinement of the buyer bidding experience and integration support.
 
 ## Deferred
 
-- Auction detail page at `/auctions/:id`
-- Auction registration and realtime bidding room
-- Buyer bid history
 - Address book UI
 - Admin module beyond structural placeholder
 - Public certificate verification
 - Order, fulfillment, shipping, dispute flows
 - Production runtime env injection beyond initial static Vite assumptions
+- Buyer participation history page (`MyAuctionsPage`)
+- Stored winner/loser notifications
+- Sound/vibration and advanced realtime effects
+- Advanced Playwright realtime/concurrency suite
 
 ## Warnings
 
-- Backend auction runtime is ready for FE integration, but FE has only public auction list so far.
+- Backend auction runtime and buyer realtime contracts are ready for FE integration, but FE has only public auction list so far.
+- FE should consume the backend contracts directly; do not add local workarounds for participation context, bid history, or live bid payloads.
+- Wallet funding must use VNPay Sandbox. Do not add mock wallet top-up, dev top-up, or any `POST /wallets/me/top-up` integration.
 - Seller auction detail is implemented (polling is used for operational safety); realtime monitoring remains deferred until the buyer bidding cockpit is stable.
 - CSRF mitigation for cookie-authenticated flows relies on backend `SameSite` behavior; explicit CSRF token strategy is deferred.
 
 ## Next Tasks
 
-1. Auction detail: `GET /auctions/{id}` -> page at `/auctions/:id`.
-2. Auction registration: `POST /auctions/{id}/register` from detail/bidding entry points.
-3. Realtime bidding room with feature-scoped STOMP lifecycle and REST reconciliation.
-4. Seller auction realtime monitoring only after public detail and bidding room are stable (basic detail is already implemented).
+1. Build public auction detail page at `/auctions/:id` with bid detail, gallery, specifications, and a CTA linking to the Bidding Room cockpit if status is WAITING/ACTIVE.
 
 ## Milestones
 
@@ -75,7 +77,7 @@
 - [x] Category data wiring
 - [x] Auction list on home page and `/auctions`
 - [ ] Auction detail page at `/auctions/:id`
-- [ ] Auction countdown display with server-time offset
+- [ ] Detail countdown synced from REST and WebSocket updates
 
 ### Phase 3 - Buyer Runtime
 
@@ -84,8 +86,11 @@
 - [x] Wallet balance in header
 - [x] Wallet balance, wallet transactions, VNPay deposit form, result page, and deposit history
 - [x] VNPay Sandbox deposit integration (amount selector, redirect, result page, deposit history)
-- [ ] Auction registration
-- [ ] Realtime bidding room
+- [x] Auction registration
+- [x] STOMP/SockJS realtime client
+- [x] Buyer bid history from `GET /auctions/{id}/bids`
+- [x] Realtime bidding room
+- [x] Ended overlay with participation refetch for winner/loser state
 
 ### Phase 4 - Seller and Appraiser Workflow
 
@@ -99,5 +104,6 @@
 
 - [x] Automated tests: 69 unit tests
 - [ ] Responsive polish
+- [ ] Unit tests for event parsing, bid-history dedupe, countdown thresholds, bid form validation, and participation-driven action states
 - [ ] Production deploy readiness
 - [ ] Deferred module planning for `admin`

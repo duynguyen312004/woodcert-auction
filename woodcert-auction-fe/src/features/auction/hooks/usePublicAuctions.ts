@@ -7,13 +7,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
+import { useCategories } from "@/features/catalog";
 import { getPublicAuctions } from "../api/auctions";
+import { usePublicAuctionMaterials } from "./usePublicAuctionMaterials";
 import type { ArtAuction, AuctionFilters } from "../types";
 
 const EMPTY_AUCTIONS: ArtAuction[] = [];
 
 export function usePublicAuctions(filters: AuctionFilters = {}, page = 1, size = 9) {
-  const { status, categoryName, woodType, materials, priceMin, priceMax } = filters;
+  const { status, categoryName, materials, priceMin, priceMax } = filters;
 
   // Backend nhận nhiều chất liệu bằng một chuỗi, ngăn cách bởi dấu phẩy.
   const materialParam = materials && materials.length > 0 ? materials.join(",") : undefined;
@@ -39,37 +41,21 @@ export function usePublicAuctions(filters: AuctionFilters = {}, page = 1, size =
   const allAuctions = auctionsQuery.data?.result ?? EMPTY_AUCTIONS;
   const paginationMeta = auctionsQuery.data?.meta ?? null;
 
-  const availableCategories = useMemo(
-    () => [...new Set(allAuctions.map((a) => a.categoryName))].sort(),
-    [allAuctions],
-  );
+  const { data: categoriesData } = useCategories();
+  const availableCategories = useMemo(() => {
+    if (!categoriesData) return [];
+    return categoriesData.map((c) => c.name).sort();
+  }, [categoriesData]);
 
-  const availableWoodTypes = useMemo(
-    () => [...new Set(allAuctions.map((a) => a.woodType))].sort(),
-    [allAuctions],
-  );
-
-  const visibleAuctions = useMemo(() => {
-    let result = allAuctions;
-
-    // Khi đã lọc chất liệu ở server thì tránh lọc chồng thêm trên dữ liệu cũ.
-    if (categoryName && !materialParam) {
-      result = result.filter((a) => a.categoryName.toLowerCase() === categoryName.toLowerCase());
-    }
-
-    if (woodType && !materialParam) {
-      result = result.filter((a) => a.woodType.toLowerCase() === woodType.toLowerCase());
-    }
-
-    return result;
-  }, [allAuctions, categoryName, woodType, materialParam]);
+  const materialsQuery = usePublicAuctionMaterials();
+  const availableWoodTypes = useMemo(() => materialsQuery.data ?? [], [materialsQuery.data]);
 
   return {
     auctionsQuery,
     allAuctions,
-    visibleAuctions,
     availableCategories,
     availableWoodTypes,
+    isWoodTypesLoading: materialsQuery.isLoading,
     paginationMeta,
   };
 }

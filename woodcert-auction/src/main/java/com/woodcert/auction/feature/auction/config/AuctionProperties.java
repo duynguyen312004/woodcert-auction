@@ -23,6 +23,8 @@ public class AuctionProperties {
         private boolean enabled = true;
         private String activateCron = "*/5 * * * * *";
         private String closeCron = "*/5 * * * * *";
+        private String repairCron = "*/30 * * * * *";
+        private int repairBatchSize = 20;
     }
 
     @Getter

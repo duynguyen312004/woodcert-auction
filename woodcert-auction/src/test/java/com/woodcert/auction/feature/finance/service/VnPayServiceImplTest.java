@@ -65,6 +65,8 @@ class VnPayServiceImplTest {
         lenient().when(properties.getFeReturnUrl()).thenReturn(FE_RETURN_URL);
         lenient().when(properties.getTmnCode()).thenReturn(TMN_CODE);
         lenient().when(transactionManager.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
+        lenient().when(depositRepository.saveAndFlush(any(VnPayDeposit.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         vnPayService = new VnPayServiceImpl(
                 properties,
@@ -92,7 +94,7 @@ class VnPayServiceImplTest {
         assertThat(secureHash).isEqualTo(calculateTestChecksum(queryParams));
 
         ArgumentCaptor<VnPayDeposit> depositCaptor = ArgumentCaptor.forClass(VnPayDeposit.class);
-        verify(depositRepository).save(depositCaptor.capture());
+        verify(depositRepository).saveAndFlush(depositCaptor.capture());
 
         VnPayDeposit saved = depositCaptor.getValue();
         assertThat(saved.getUserId()).isEqualTo(USER_ID);
@@ -111,7 +113,7 @@ class VnPayServiceImplTest {
                 .isInstanceOf(AppException.class)
                 .hasMessageContaining("10,000 VND");
 
-        verify(depositRepository, never()).save(any());
+        verify(depositRepository, never()).saveAndFlush(any());
     }
 
     @Test

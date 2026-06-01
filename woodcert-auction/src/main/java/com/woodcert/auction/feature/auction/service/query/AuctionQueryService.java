@@ -5,17 +5,24 @@ import com.woodcert.auction.core.exception.AppException;
 import com.woodcert.auction.core.exception.ErrorCode;
 import com.woodcert.auction.feature.auction.dto.response.AuctionDetailRes;
 import com.woodcert.auction.feature.auction.dto.response.AuctionListRes;
+import com.woodcert.auction.feature.auction.dto.response.BidHistoryItemRes;
+import com.woodcert.auction.feature.auction.dto.response.MyParticipationRes;
 import com.woodcert.auction.feature.auction.dto.response.SellerAuctionDetailRes;
 import com.woodcert.auction.feature.auction.dto.response.SellerAuctionListRes;
 import com.woodcert.auction.feature.auction.dto.response.SellerAuctionStatsRes;
+import com.woodcert.auction.feature.auction.entity.AuctionParticipant;
 import com.woodcert.auction.feature.auction.entity.AuctionSession;
 import com.woodcert.auction.feature.auction.entity.AuctionSessionStatus;
+import com.woodcert.auction.feature.auction.entity.Bid;
+import com.woodcert.auction.feature.auction.entity.BidStatus;
 import com.woodcert.auction.feature.auction.entity.DepositStatus;
 import com.woodcert.auction.feature.auction.repository.AuctionDepositStatusCountView;
 import com.woodcert.auction.feature.auction.repository.AuctionParticipantCountView;
 import com.woodcert.auction.feature.auction.repository.AuctionParticipantRepository;
 import com.woodcert.auction.feature.auction.repository.AuctionSessionRepository;
 import com.woodcert.auction.feature.auction.repository.AuctionSessionSpecification;
+import com.woodcert.auction.feature.auction.repository.BidRepository;
+import com.woodcert.auction.feature.auction.service.AuctionRedisService;
 import com.woodcert.auction.feature.auction.service.assembler.AuctionResponseAssembler;
 import com.woodcert.auction.feature.auction.service.policy.AuctionPolicy;
 import com.woodcert.auction.feature.auction.service.runtime.AuctionRuntimeSnapshot;
@@ -38,6 +45,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -62,11 +70,13 @@ public class AuctionQueryService {
 
     private final AuctionSessionRepository auctionSessionRepository;
     private final AuctionParticipantRepository auctionParticipantRepository;
+    private final BidRepository bidRepository;
     private final ProductRepository productRepository;
     private final AppraisalReportRepository appraisalReportRepository;
     private final CategoryRepository categoryRepository;
     private final SellerSummaryQueryService sellerSummaryQueryService;
     private final ProductImageHelper productImageHelper;
+    private final AuctionRedisService auctionRedisService;
     private final AuctionRuntimeSnapshotService runtimeSnapshotService;
     private final AuctionResponseAssembler responseAssembler;
     private final AuctionPolicy auctionPolicy;
@@ -139,6 +149,11 @@ public class AuctionQueryService {
     }
 
     @Transactional(readOnly = true)
+    public List<String> getPublicAuctionMaterials() {
+        return auctionSessionRepository.findDistinctMaterialsByStatusIn(auctionPolicy.getPubliclyVisibleStatuses());
+    }
+
+    @Transactional(readOnly = true)
     public AuctionDetailRes getPublicAuctionDetail(Long auctionId) {
         // Bước 1: Đọc phiên kèm product và chặn các trạng thái không được public.
         AuctionSession session = auctionSessionRepository.findByIdWithProduct(auctionId)
@@ -160,6 +175,14 @@ public class AuctionQueryService {
                 .findSellerSummary(product.getSellerId())
                 .orElse(null);
 
+        String highestBidderId = session.getStatus() == AuctionSessionStatus.ACTIVE
+                ? auctionRedisService.getHighestBidderId(session.getId())
+                : null;
+        if (highestBidderId == null) {
+            highestBidderId = session.getHighestBidderId();
+        }
+        String highestBidderMaskedAlias = maskUserId(highestBidderId);
+
         // Bước 4: Ghép ảnh sản phẩm và snapshot runtime vào response chi tiết.
         return responseAssembler.toDetailRes(
                 session,
@@ -168,7 +191,104 @@ public class AuctionQueryService {
                 productImageHelper.findImageUrls(product),
                 appraisalReport,
                 seller,
-                runtimeSnapshotService.loadSnapshot(session));
+                runtimeSnapshotService.loadSnapshot(session),
+                highestBidderMaskedAlias);
+    }
+
+    @Transactional(readOnly = true)
+    public MyParticipationRes getMyParticipation(String userId, Long auctionId) {
+        AuctionSession session = auctionSessionRepository.findByIdWithProduct(auctionId)
+                .orElseThrow(() -> new AppException(ErrorCode.AUCTION_SESSION_NOT_FOUND));
+        if (!auctionPolicy.isPubliclyVisible(session.getStatus())) {
+            throw new AppException(ErrorCode.AUCTION_SESSION_NOT_FOUND);
+        }
+
+        Product product = session.getProduct() != null
+                ? session.getProduct()
+                : productRepository.findById(session.getProductId())
+                        .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
+
+        boolean sellerOwned = userId != null && userId.equals(product.getSellerId());
+        Optional<AuctionParticipant> participantOptional =
+                auctionParticipantRepository.findByAuctionSessionIdAndUserId(auctionId, userId);
+        DepositStatus depositStatus = participantOptional
+                .map(AuctionParticipant::getDepositStatus)
+                .orElse(null);
+        boolean registered = participantOptional.isPresent();
+        boolean activeWindowOpen = isActiveWindowOpen(session);
+        boolean highestBidder = isCurrentHighestBidder(session, userId);
+
+        ParticipationDecision decision = decideParticipation(
+                session.getStatus(), sellerOwned, registered, depositStatus, activeWindowOpen, highestBidder);
+
+        boolean winner = false;
+        String outcomeCode = "NONE";
+        String outcomeMessage = "";
+
+        if (sellerOwned) {
+            outcomeCode = "SELLER_VIEW";
+            outcomeMessage = "Seller view of the auction";
+        } else {
+            if (session.getStatus() == AuctionSessionStatus.WAITING || session.getStatus() == AuctionSessionStatus.ACTIVE) {
+                outcomeCode = "NONE";
+                outcomeMessage = "Auction is ongoing or waiting";
+            } else { // Terminal status (ENDED_SUCCESS, ENDED_FAILED, CANCELED)
+                if (!registered) {
+                    outcomeCode = "NOT_PARTICIPATED";
+                    outcomeMessage = "You did not participate in this auction";
+                } else { // Registered
+                    if (session.getStatus() == AuctionSessionStatus.ENDED_FAILED || session.getStatus() == AuctionSessionStatus.CANCELED) {
+                        outcomeCode = "ENDED_FAILED";
+                        outcomeMessage = "Auction ended failed";
+                    } else if (session.getStatus() == AuctionSessionStatus.ENDED_SUCCESS) {
+                        if (depositStatus == DepositStatus.DEDUCTED) {
+                            outcomeCode = "WINNER";
+                            winner = true;
+                            outcomeMessage = "You won this auction";
+                        } else if (depositStatus == DepositStatus.REFUNDED) {
+                            outcomeCode = "LOSER";
+                            outcomeMessage = "You did not win this auction";
+                        } else if (depositStatus == DepositStatus.FROZEN) {
+                            outcomeCode = "PENDING_SETTLEMENT";
+                            outcomeMessage = "Settlement is pending";
+                        } else {
+                            outcomeCode = "PENDING_SETTLEMENT";
+                            outcomeMessage = "Settlement is pending";
+                        }
+                    }
+                }
+            }
+        }
+
+        return new MyParticipationRes(
+                sellerOwned,
+                registered,
+                depositStatus,
+                highestBidder,
+                decision.canRegister(),
+                decision.canBid(),
+                decision.reasonCode(),
+                decision.reasonMessage(),
+                session.getDepositAmount(),
+                winner,
+                outcomeCode,
+                outcomeMessage);
+    }
+
+    @Transactional(readOnly = true)
+    public List<BidHistoryItemRes> getBidHistory(Long auctionId, int size, String currentUserId) {
+        AuctionSession session = auctionSessionRepository.findById(auctionId)
+                .orElseThrow(() -> new AppException(ErrorCode.AUCTION_SESSION_NOT_FOUND));
+        if (!auctionPolicy.isPubliclyVisible(session.getStatus())) {
+            throw new AppException(ErrorCode.AUCTION_SESSION_NOT_FOUND);
+        }
+
+        Pageable pageable = PageRequest.of(0, Math.min(Math.max(size, 1), 50));
+        return bidRepository
+                .findByAuctionSessionIdAndStatusOrderByBidTimeDesc(auctionId, BidStatus.VALID, pageable)
+                .stream()
+                .map(bid -> toBidHistoryItem(bid, currentUserId))
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -425,6 +545,110 @@ public class AuctionQueryService {
             return null;
         }
         return userId.substring(0, 4) + "****";
+    }
+
+    private boolean isActiveWindowOpen(AuctionSession session) {
+        if (session.getStatus() != AuctionSessionStatus.ACTIVE) {
+            return false;
+        }
+
+        Long runtimeEndEpochMs = auctionRedisService.getEndTimeEpochMs(session.getId());
+        return runtimeEndEpochMs != null && Instant.ofEpochMilli(runtimeEndEpochMs).isAfter(Instant.now());
+    }
+
+    private boolean isCurrentHighestBidder(AuctionSession session, String userId) {
+        if (userId == null || session == null) {
+            return false;
+        }
+
+        String highestBidderId = session.getStatus() == AuctionSessionStatus.ACTIVE
+                ? auctionRedisService.getHighestBidderId(session.getId())
+                : null;
+        if (highestBidderId == null) {
+            highestBidderId = session.getHighestBidderId();
+        }
+
+        return userId.equals(highestBidderId);
+    }
+
+    private ParticipationDecision decideParticipation(AuctionSessionStatus status,
+                                                      boolean sellerOwned,
+                                                      boolean registered,
+                                                      DepositStatus depositStatus,
+                                                      boolean activeWindowOpen,
+                                                      boolean highestBidder) {
+        if (sellerOwned) {
+            return blocked("SELLER_OWN_AUCTION", "Seller cannot participate in their own auction");
+        }
+
+        if (registered) {
+            if (depositStatus == DepositStatus.FROZEN && status == AuctionSessionStatus.ACTIVE
+                    && activeWindowOpen && highestBidder) {
+                return blocked("CURRENT_HIGHEST_BIDDER", "You are currently the highest bidder");
+            }
+            if (depositStatus == DepositStatus.FROZEN && status == AuctionSessionStatus.ACTIVE && activeWindowOpen) {
+                return new ParticipationDecision(false, true, "CAN_BID", "You can place bids in this auction");
+            }
+            if (depositStatus == DepositStatus.FROZEN && status == AuctionSessionStatus.WAITING) {
+                return blocked("WAITING_FOR_ACTIVATION", "You are registered and waiting for the auction to start");
+            }
+            if (depositStatus == DepositStatus.FROZEN && status == AuctionSessionStatus.ACTIVE) {
+                return blocked("AUCTION_RUNTIME_UNAVAILABLE", "Auction runtime is not available for bidding");
+            }
+            if (depositStatus == DepositStatus.REFUNDED) {
+                return blocked("DEPOSIT_REFUNDED", "Your deposit has been refunded");
+            }
+            if (depositStatus == DepositStatus.DEDUCTED) {
+                return blocked("DEPOSIT_DEDUCTED", "Your deposit has been deducted as the winner deposit");
+            }
+            if (depositStatus == DepositStatus.CONFISCATED) {
+                return blocked("DEPOSIT_CONFISCATED", "Your deposit has been confiscated");
+            }
+            return blocked("ALREADY_REGISTERED", "You have already registered for this auction");
+        }
+
+        if (status == AuctionSessionStatus.WAITING) {
+            return new ParticipationDecision(true, false, "CAN_REGISTER", "You can register for this auction");
+        }
+        if (status == AuctionSessionStatus.ACTIVE && activeWindowOpen) {
+            return new ParticipationDecision(true, false, "CAN_REGISTER", "You can register and join this active auction");
+        }
+        if (status == AuctionSessionStatus.ACTIVE) {
+            return blocked("AUCTION_RUNTIME_UNAVAILABLE", "Auction runtime is not available for registration");
+        }
+        if (status == AuctionSessionStatus.ENDED_SUCCESS || status == AuctionSessionStatus.ENDED_FAILED) {
+            return blocked("AUCTION_ENDED", "Auction session has ended");
+        }
+
+        return blocked("AUCTION_NOT_REGISTRABLE", "Auction session is not open for registration");
+    }
+
+    private ParticipationDecision blocked(String reasonCode, String reasonMessage) {
+        return new ParticipationDecision(false, false, reasonCode, reasonMessage);
+    }
+
+    private BidHistoryItemRes toBidHistoryItem(Bid bid, String currentUserId) {
+        return new BidHistoryItemRes(
+                bid.getBidTraceId(),
+                bid.getBidAmount(),
+                maskBidderAlias(bid.getUserId()),
+                bid.getBidTime(),
+                currentUserId != null && currentUserId.equals(bid.getUserId()));
+    }
+
+    private String maskBidderAlias(String userId) {
+        if (userId == null || userId.length() < 4) {
+            return "****";
+        }
+        return userId.substring(0, 4) + "****";
+    }
+
+    private record ParticipationDecision(
+            boolean canRegister,
+            boolean canBid,
+            String reasonCode,
+            String reasonMessage
+    ) {
     }
 
     private AuctionListRes toListRes(

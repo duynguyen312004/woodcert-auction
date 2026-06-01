@@ -12,6 +12,7 @@ import com.woodcert.auction.feature.finance.entity.WalletReferenceType;
 import com.woodcert.auction.feature.finance.repository.VnPayDepositRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -37,7 +38,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Random;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -56,6 +57,7 @@ public class VnPayServiceImpl implements VnPayService {
     private static final String LOCALE = "vn";
     private static final String VNPAY_SUCCESS_CODE = "00";
     private static final Charset VNPAY_CHARSET = StandardCharsets.US_ASCII;
+    private static final int TXN_REF_MAX_ATTEMPTS = 3;
 
     @Override
     @Transactional
@@ -68,16 +70,8 @@ public class VnPayServiceImpl implements VnPayService {
         ZonedDateTime now = ZonedDateTime.now(zoneId);
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
         String timestamp = now.format(formatter);
-        int randomDigits = new Random().nextInt(900000) + 100000;
-        String txnRef = "DEP" + timestamp + randomDigits;
-
-        VnPayDeposit deposit = new VnPayDeposit();
-        deposit.setUserId(userId);
-        deposit.setTxnRef(txnRef);
-        deposit.setAmount(amount);
-        deposit.setOrderInfo("Nap tien vi WoodCert " + txnRef);
-        deposit.setStatus(VnPayDepositStatus.PENDING);
-        depositRepository.save(deposit);
+        VnPayDeposit deposit = createPendingDeposit(userId, amount, timestamp);
+        String txnRef = deposit.getTxnRef();
 
         Map<String, String> vnpParams = new HashMap<>();
         vnpParams.put("vnp_Version", VERSION);
@@ -128,6 +122,29 @@ public class VnPayServiceImpl implements VnPayService {
 
         log.info("Created payment URL for user {}, txnRef={}", userId, txnRef);
         return new CreateDepositRes(paymentUrl, txnRef);
+    }
+
+    private VnPayDeposit createPendingDeposit(String userId, BigDecimal amount, String timestamp) {
+        for (int attempt = 1; attempt <= TXN_REF_MAX_ATTEMPTS; attempt++) {
+            String txnRef = "DEP" + timestamp
+                    + UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase();
+            VnPayDeposit deposit = new VnPayDeposit();
+            deposit.setUserId(userId);
+            deposit.setTxnRef(txnRef);
+            deposit.setAmount(amount);
+            deposit.setOrderInfo("Nap tien vi WoodCert " + txnRef);
+            deposit.setStatus(VnPayDepositStatus.PENDING);
+
+            try {
+                return depositRepository.saveAndFlush(deposit);
+            } catch (DataIntegrityViolationException ex) {
+                if (attempt == TXN_REF_MAX_ATTEMPTS) {
+                    throw ex;
+                }
+                log.warn("VNPay txnRef collision on attempt {}; retrying", attempt);
+            }
+        }
+        throw new IllegalStateException("Unable to create unique VNPay transaction reference");
     }
 
     @Override

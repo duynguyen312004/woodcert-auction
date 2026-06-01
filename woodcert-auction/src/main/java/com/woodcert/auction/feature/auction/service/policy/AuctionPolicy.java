@@ -32,7 +32,8 @@ public class AuctionPolicy {
     private static final Set<AuctionSessionStatus> ALLOWED_PUBLIC_STATUSES = EnumSet.of(
             AuctionSessionStatus.WAITING,
             AuctionSessionStatus.ACTIVE,
-            AuctionSessionStatus.ENDED_SUCCESS);
+            AuctionSessionStatus.ENDED_SUCCESS,
+            AuctionSessionStatus.ENDED_FAILED);
 
     public List<AuctionSessionStatus> defaultPublicStatuses() {
         return DEFAULT_PUBLIC_STATUSES;
@@ -40,6 +41,10 @@ public class AuctionPolicy {
 
     public boolean isPubliclyVisible(AuctionSessionStatus status) {
         return ALLOWED_PUBLIC_STATUSES.contains(status);
+    }
+
+    public List<AuctionSessionStatus> getPubliclyVisibleStatuses() {
+        return List.copyOf(ALLOWED_PUBLIC_STATUSES);
     }
 
     public boolean isRegistrableStatus(AuctionSessionStatus status) {

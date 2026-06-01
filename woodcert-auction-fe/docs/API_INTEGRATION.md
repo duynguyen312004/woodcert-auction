@@ -1,6 +1,6 @@
 # API Integration
 
-Last updated: 2026-05-25
+Last updated: 2026-05-30
 
 This document tracks frontend usage of backend APIs. Active FE integrations use the shared `apiClient`; no feature should create ad hoc HTTP clients.
 
@@ -25,11 +25,13 @@ This document tracks frontend usage of backend APIs. Active FE integrations use 
 
 ### Public Auction and Catalog
 
-| Feature        | Endpoint             | FE status                           |
-| -------------- | -------------------- | ----------------------------------- |
-| Categories     | `GET /categories`    | Implemented                         |
-| Auction list   | `GET /auctions`      | Implemented on home and `/auctions` |
-| Auction detail | `GET /auctions/{id}` | Pending                             |
+| Feature               | Endpoint                              | FE status                           |
+| --------------------- | ------------------------------------- | ----------------------------------- |
+| Categories            | `GET /categories`                     | Implemented                         |
+| Auction list          | `GET /auctions`                       | Implemented on home and `/auctions` |
+| Auction detail        | `GET /auctions/{id}`                  | Implemented                         |
+| Participation context | `GET /auctions/{id}/my-participation` | Implemented                         |
+| Bid history           | `GET /auctions/{id}/bids?size=20`     | Implemented                         |
 
 ### Wallet and Buyer Runtime
 
@@ -41,8 +43,10 @@ This document tracks frontend usage of backend APIs. Active FE integrations use 
 | VNPay deposit create  | `POST /wallets/me/deposit`          | Implemented                            |
 | VNPay deposit history | `GET /wallets/me/deposits`          | Implemented                            |
 | VNPay deposit status  | `GET /wallets/me/deposits/{txnRef}` | Implemented                            |
-| Auction registration  | `POST /auctions/{id}/register`      | Pending                                |
-| Bid placement         | `POST /bids`                        | Pending                                |
+| Auction registration  | `POST /auctions/{id}/register`      | Implemented                            |
+| Bid placement         | `POST /bids`                        | Implemented                            |
+
+Wallet funding for buyer runtime must use the VNPay Sandbox deposit flow above. Do not add mock wallet top-up, dev top-up, or `POST /wallets/me/top-up`.
 
 ### Seller Workflow
 
@@ -164,12 +168,31 @@ Expected event types:
 - `NEW_BID`
 - `SESSION_ENDED`
 
-FE websocket integration is pending. When implemented, the lifecycle must be feature-scoped to auction detail or bidding room and reconciled through REST refetch.
+Backend contract for `NEW_BID`:
+
+```ts
+type BidBroadcastPayload = {
+  type: "SESSION_ACTIVATED" | "NEW_BID" | "SESSION_ENDED";
+  auctionSessionId: number;
+  status: string;
+  currentPrice: string | number;
+  highestBidderMaskedAlias?: string;
+  endTime: string;
+  bidTraceId?: string;
+  bidAmount?: string | number;
+  bidTime?: string;
+  extendedBySeconds?: number;
+};
+```
+
+`extendedBySeconds` should be absent/null for normal bids and present only when anti-sniper actually extends the session. FE websocket integration is implemented in the Bidding Room feature and reconciled through REST refetch.
 
 ## Query Key Convention
 
 - `["auctions", "list", params]`
 - `["auctions", "detail", auctionId]`
+- `["auctions", "participation", auctionId]`
+- `["auctions", "bids", auctionId, params]`
 - `["wallet", "me"]`
 - `["wallet", "transactions", params]`
 - `["wallet", "deposits", params]`

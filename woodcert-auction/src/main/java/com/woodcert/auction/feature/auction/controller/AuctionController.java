@@ -6,6 +6,8 @@ import com.woodcert.auction.core.dto.PaginationResponse;
 import com.woodcert.auction.feature.auction.dto.request.CreateAuctionSessionReq;
 import com.woodcert.auction.feature.auction.dto.response.AuctionDetailRes;
 import com.woodcert.auction.feature.auction.dto.response.AuctionListRes;
+import com.woodcert.auction.feature.auction.dto.response.BidHistoryItemRes;
+import com.woodcert.auction.feature.auction.dto.response.MyParticipationRes;
 import com.woodcert.auction.feature.auction.dto.response.SellerAuctionDetailRes;
 import com.woodcert.auction.feature.auction.dto.response.SellerAuctionListRes;
 import com.woodcert.auction.feature.auction.dto.response.SellerAuctionStatsRes;
@@ -18,6 +20,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 /**
  * Controller chính của module đấu giá.
@@ -46,6 +49,12 @@ public class AuctionController {
         PaginationResponse<AuctionListRes> result = auctionService.getPublicAuctions(
                 page, size, status, material, categoryName, priceMin, priceMax);
         return ResponseEntity.ok(ApiResponse.success(result, "Fetch auctions successful"));
+    }
+
+    @GetMapping("/materials")
+    public ResponseEntity<ApiResponse<List<String>>> getPublicAuctionMaterials() {
+        List<String> result = auctionService.getPublicAuctionMaterials();
+        return ResponseEntity.ok(ApiResponse.success(result, "Fetch public auction materials successful"));
     }
 
     @GetMapping("/me")
@@ -79,6 +88,24 @@ public class AuctionController {
             @CurrentUserId String sellerId) {
         SellerAuctionStatsRes result = auctionService.getSellerAuctionStats(sellerId);
         return ResponseEntity.ok(ApiResponse.success(result, "Fetch seller auction stats successful"));
+    }
+
+    @GetMapping("/{id}/my-participation")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<MyParticipationRes>> getMyParticipation(
+            @CurrentUserId String userId,
+            @PathVariable Long id) {
+        MyParticipationRes result = auctionService.getMyParticipation(userId, id);
+        return ResponseEntity.ok(ApiResponse.success(result, "Fetch participation context successful"));
+    }
+
+    @GetMapping("/{id}/bids")
+    public ResponseEntity<ApiResponse<List<BidHistoryItemRes>>> getBidHistory(
+            @CurrentUserId(required = false) String userId,
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "20") int size) {
+        List<BidHistoryItemRes> result = auctionService.getBidHistory(id, size, userId);
+        return ResponseEntity.ok(ApiResponse.success(result, "Fetch bid history successful"));
     }
 
     @GetMapping("/{id}")

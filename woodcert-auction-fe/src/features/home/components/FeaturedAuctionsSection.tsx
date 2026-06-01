@@ -11,7 +11,7 @@ import {
 
 export function FeaturedAuctionsSection() {
   const [filters, setFilters] = useState<AuctionFilters>({});
-  const { auctionsQuery, visibleAuctions, availableCategories, availableWoodTypes } =
+  const { auctionsQuery, allAuctions, availableCategories, availableWoodTypes } =
     usePublicAuctions(filters);
 
   return (
@@ -46,7 +46,7 @@ export function FeaturedAuctionsSection() {
         </div>
 
         <AuctionListContent
-          auctions={visibleAuctions}
+          auctions={allAuctions}
           isLoading={auctionsQuery.isLoading}
           isError={auctionsQuery.isError}
         />

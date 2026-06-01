@@ -1,9 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { BookOpen, ChevronRight, Home, PlusCircle } from "lucide-react";
 import { useWalletBalance } from "../hooks/useWalletBalance";
 import { useWalletTransactions } from "../hooks/useWalletTransactions";
 import { useDeposits } from "../hooks/useDeposits";
+import { WALLET_BALANCE_QUERY_KEY } from "../hooks/useWalletBalance";
+import { WALLET_TRANSACTIONS_QUERY_KEY } from "../hooks/useWalletTransactions";
+import { WALLET_DEPOSITS_QUERY_KEY } from "../hooks/useDeposits";
 import { BalanceCard } from "../components/BalanceCard";
 import { TransactionTable } from "../components/TransactionTable";
 import { DepositTable } from "../components/DepositTable";
@@ -12,6 +16,27 @@ export function WalletPage() {
   const [transactionPage, setTransactionPage] = useState(1);
   const [depositPage, setDepositPage] = useState(1);
   const size = 10;
+  const queryClient = useQueryClient();
+
+  // Lắng nghe BroadcastChannel từ tab nạp tiền → tự cập nhật số dư khi nạp thành công
+  useEffect(() => {
+    let bc: BroadcastChannel | null = null;
+    try {
+      bc = new BroadcastChannel("wallet");
+      bc.onmessage = (event) => {
+        if (event.data?.type === "WALLET_UPDATED") {
+          queryClient.invalidateQueries({ queryKey: WALLET_BALANCE_QUERY_KEY });
+          queryClient.invalidateQueries({ queryKey: WALLET_TRANSACTIONS_QUERY_KEY });
+          queryClient.invalidateQueries({ queryKey: WALLET_DEPOSITS_QUERY_KEY });
+        }
+      };
+    } catch {
+      // BroadcastChannel không hỗ trợ → bỏ qua
+    }
+    return () => {
+      bc?.close();
+    };
+  }, [queryClient]);
 
   // Load số dư ví
   const { data: wallet } = useWalletBalance();
@@ -50,13 +75,15 @@ export function WalletPage() {
             </p>
           </div>
           <div>
-            <Link
-              to="/wallet/deposit"
+            <a
+              href="/wallet/deposit"
+              target="_blank"
+              rel="noopener noreferrer"
               className="flex items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-bold text-primary-foreground shadow-md shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-primary/30 active:scale-[0.98]"
             >
               <PlusCircle className="h-4 w-4" />
               <span>Nạp tiền vào ví</span>
-            </Link>
+            </a>
           </div>
         </div>
 

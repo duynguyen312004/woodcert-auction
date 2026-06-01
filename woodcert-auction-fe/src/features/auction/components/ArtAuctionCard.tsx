@@ -58,6 +58,13 @@ function getStatusBadge(auction: ArtAuction, now: number, theme: "dark" | "light
   };
 }
 
+function getCardActionLabel(status: ArtAuction["status"]) {
+  if (status === "WAITING") return "Vào phòng đấu giá";
+  if (status === "ACTIVE") return "Đặt giá ngay";
+  if (status === "ENDED_SUCCESS" || status === "ENDED_FAILED") return "Xem kết quả";
+  return "Xem phiên";
+}
+
 export function ArtAuctionCard({ auction, cardTheme = "dark" }: ArtAuctionCardProps) {
   const [now, setNow] = useState(() => Date.now());
   const [imageFailed, setImageFailed] = useState(false);
@@ -78,10 +85,16 @@ export function ArtAuctionCard({ auction, cardTheme = "dark" }: ArtAuctionCardPr
   }, [auction.status, auction.startTime, auction.endTime, now]);
 
   const badge = useMemo(() => getStatusBadge(auction, now, cardTheme), [auction, now, cardTheme]);
+  const biddingRoomHref = `/bidding/${auction.id}`;
+  const actionLabel = getCardActionLabel(auction.status);
 
   if (cardTheme === "light") {
     return (
-      <article className="group flex flex-col overflow-hidden rounded-sm border border-stone-200 bg-white transition-all duration-300 hover:shadow-xl">
+      <Link
+        to={biddingRoomHref}
+        aria-label={`${actionLabel}: ${auction.title}`}
+        className="group flex flex-col overflow-hidden rounded-sm border border-stone-200 bg-white transition-all duration-300 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      >
         <div className="relative aspect-[4/5] overflow-hidden">
           {auction.isAuthentic && (
             <div className="absolute left-4 top-4 z-10 flex items-center gap-1 bg-[#2F7D68] px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-white">
@@ -169,25 +182,28 @@ export function ArtAuctionCard({ auction, cardTheme = "dark" }: ArtAuctionCardPr
               </span>
             </div>
 
-            <Link
-              to={`/auctions/${auction.id}`}
+            <div
               className={cn(
                 "block w-full py-3 text-center text-xs font-bold uppercase tracking-widest transition-all duration-300",
                 auction.status === "WAITING"
-                  ? "cursor-not-allowed bg-stone-200 text-stone-500"
+                  ? "bg-stone-200 text-stone-500 group-hover:bg-stone-300"
                   : "bg-[#171717] text-white hover:shadow-[0_0_15px_rgba(214,168,79,0.4)]",
               )}
             >
               {auction.status === "WAITING" ? "Chưa bắt đầu" : "Xem phiên"}
-            </Link>
+            </div>
           </div>
         </div>
-      </article>
+      </Link>
     );
   }
 
   return (
-    <article className="group cursor-pointer overflow-hidden rounded-lg border border-white/10 bg-card transition-all duration-500 hover:border-primary/50 hover:shadow-2xl hover:shadow-primary/10">
+    <Link
+      to={biddingRoomHref}
+      aria-label={`${actionLabel}: ${auction.title}`}
+      className="group block cursor-pointer overflow-hidden rounded-lg border border-white/10 bg-card transition-all duration-500 hover:border-primary/50 hover:shadow-2xl hover:shadow-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+    >
       <div className="relative aspect-[4/5] overflow-hidden">
         <div className="absolute left-4 top-4 z-10">
           <span
@@ -254,13 +270,10 @@ export function ArtAuctionCard({ auction, cardTheme = "dark" }: ArtAuctionCardPr
           </div>
         </div>
 
-        <Link
-          to={`/auctions/${auction.id}`}
-          className="block w-full rounded bg-card/80 py-3 text-center text-sm font-bold text-foreground ring-1 ring-white/10 transition-all duration-300 hover:bg-primary hover:text-primary-foreground hover:ring-primary hover:shadow-lg hover:shadow-primary/20"
-        >
+        <div className="block w-full rounded bg-card/80 py-3 text-center text-sm font-bold text-foreground ring-1 ring-white/10 transition-all duration-300 hover:bg-primary hover:text-primary-foreground hover:ring-primary hover:shadow-lg hover:shadow-primary/20">
           Đặt giá ngay
-        </Link>
+        </div>
       </div>
-    </article>
+    </Link>
   );
 }

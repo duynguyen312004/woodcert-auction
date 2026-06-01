@@ -27,6 +27,12 @@ import { walletRoutes } from "@/features/wallet";
 export const routes: RouteObject[] = [
   ...authRoutes,
 
+  // Phòng đấu giá cockpit được bảo vệ và dùng layout toàn màn hình riêng biệt
+  {
+    element: <ProtectedRoute />,
+    children: biddingRoutes,
+  },
+
   // Khu seller dùng layout riêng, không có header/footer chung.
   {
     element: <ProtectedRoute />,
@@ -65,13 +71,7 @@ export const routes: RouteObject[] = [
           ...catalogRoutes,
           {
             element: <ProtectedRoute />,
-            children: [
-              ...accountRoutes,
-              ...biddingRoutes,
-              ...walletRoutes,
-              ...sellerRegisterRoutes,
-              ...adminRoutes,
-            ],
+            children: [...accountRoutes, ...walletRoutes, ...sellerRegisterRoutes, ...adminRoutes],
           },
         ],
       },

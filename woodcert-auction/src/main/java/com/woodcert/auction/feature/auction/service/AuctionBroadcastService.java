@@ -23,10 +23,13 @@ public class AuctionBroadcastService {
     private final SimpMessagingTemplate messagingTemplate;
 
     public void broadcastNewBid(Long auctionSessionId, BigDecimal currentPrice,
-                                 String highestBidderId, Instant endTime) {
+                                 String highestBidderId, Instant endTime,
+                                 String bidTraceId, BigDecimal bidAmount,
+                                 Instant bidTime, Long extendedBySeconds) {
         String maskedAlias = maskUserId(highestBidderId);
         BidBroadcastPayload payload = BidBroadcastPayload.newBid(
-                auctionSessionId, currentPrice, maskedAlias, endTime);
+                auctionSessionId, currentPrice, maskedAlias, endTime,
+                bidTraceId, bidAmount, bidTime, extendedBySeconds);
         send(auctionSessionId, payload);
     }
 

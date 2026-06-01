@@ -8,9 +8,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.Collection;
@@ -126,6 +128,35 @@ public interface AuctionSessionRepository
                         """)
         List<Long> findDueActiveSessionIds(@Param("now") Instant now);
 
+        @Query("""
+                        SELECT DISTINCT a.id
+                        FROM AuctionSession a
+                        JOIN AuctionParticipant p
+                          ON p.auctionSessionId = a.id
+                        WHERE a.status IN :statuses
+                          AND p.depositStatus = 'FROZEN'
+                        ORDER BY a.id ASC
+                        """)
+        List<Long> findTerminalSessionIdsWithFrozenDeposits(
+                        @Param("statuses") Collection<AuctionSessionStatus> statuses,
+                        Pageable pageable);
+
+        @Modifying(clearAutomatically = true, flushAutomatically = true)
+        @Transactional
+        @Query("""
+                        UPDATE AuctionSession a
+                        SET a.currentPrice = :newPrice,
+                            a.highestBidderId = :highestBidderId,
+                            a.endTime = :newEndTime
+                        WHERE a.id = :auctionSessionId
+                          AND (a.currentPrice IS NULL OR a.currentPrice <= :newPrice)
+                        """)
+        int updateRuntimeSnapshotIfNotStale(
+                        @Param("auctionSessionId") Long auctionSessionId,
+                        @Param("newPrice") java.math.BigDecimal newPrice,
+                        @Param("highestBidderId") String highestBidderId,
+                        @Param("newEndTime") Instant newEndTime);
+
         /**
          * Giữ lại để bảo trì hoặc debug theo lô khi cần.
          */
@@ -173,4 +204,12 @@ public interface AuctionSessionRepository
                         GROUP BY a.status
                         """)
         List<Object[]> countBySellerIdGroupByStatus(@Param("sellerId") String sellerId);
+
+        @Query("""
+                        SELECT DISTINCT a.product.material
+                        FROM AuctionSession a
+                        WHERE a.status IN :statuses
+                          AND a.product.material IS NOT NULL
+                        """)
+        List<String> findDistinctMaterialsByStatusIn(@Param("statuses") Collection<AuctionSessionStatus> statuses);
 }

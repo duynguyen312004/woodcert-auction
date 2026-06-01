@@ -77,7 +77,8 @@ public class AuctionResponseAssembler {
             List<String> imageUrls,
             AppraisalReport appraisalReport,
             SellerSummaryQueryService.SellerSummary sellerSummary,
-            AuctionRuntimeSnapshot snapshot) {
+            AuctionRuntimeSnapshot snapshot,
+            String highestBidderMaskedAlias) {
         AuctionAppraisalRes appraisalRes = AuctionAppraisalRes.fromEntity(appraisalReport);
 
         String publicMaterial = appraisalReport != null && appraisalReport.getVerifiedMaterial() != null
@@ -101,7 +102,8 @@ public class AuctionResponseAssembler {
                 session.getStartTime(),
                 endTime(session, snapshot),
                 productSummary,
-                buildSellerSummary(sellerSummary)
+                buildSellerSummary(sellerSummary),
+                highestBidderMaskedAlias
         );
     }
 

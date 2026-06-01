@@ -1,6 +1,6 @@
 # Project Status
 
-> Last updated: 2026-05-28 | By: Codex | Session: wallet-vnpay-ipn-authoritative-docs
+> Last updated: 2026-05-30 | By: Codex | Session: auction-bid-realtime-plan-v3
 >
 > AI: update this file at the end of every backend session when asked.
 > Follow this exact format. Keep it concise but decision-useful.
@@ -21,15 +21,18 @@
 - [x] Auction foundation: `AuctionSession`, seller create/list/cancel, public list/detail, product/session locks, public filters, hidden reserve price, and seller summary enrichment
 - [x] Auction runtime: participant registration, Redis-first bidding, Lua validation, anti-sniper extension, scheduler activation/close, STOMP broadcasts, async bid audit, and deposit settlement
 - [x] Auction service refactor: facade plus command/query/assembler/policy/runtime services; grouped participant counts; `ProductImageHelper` reuse; Redis overlay for active read models
-- [x] Backend unit/integration test suite passes with `mvn test` on 2026-05-28: 238 tests
+- [x] Buyer realtime API support: authenticated participation context, public bid history with optional `mine`, enriched `NEW_BID` payload, and Lua `extendedByMs`
+- [x] Expose buyer outcome contract (winner, outcomeCode, outcomeMessage) và highestBidderMaskedAlias trong chi tiết đấu giá và participation context
+- [x] Backend unit/integration test suite passes with `mvn test`
 
 ## In Progress
 
-- No backend feature is actively in progress in the current docs sync. Fulfillment/order flow is the next major backend domain.
+- Next backend work is the deferred settlement repair path after the buyer realtime MVP is stable.
 
 ## Deferred Issues
 
 - Fulfillment/order/shipment/dispute implementation
+- Buyer participation history page and stored winner/loser notifications
 - Category admin CRUD
 - Admin appraiser provisioning and operational back office APIs
 - Full controller/integration coverage with a dedicated test DB + Redis environment
@@ -37,16 +40,18 @@
 
 ## Warnings
 
-- `mvn test` passed on 2026-05-28: 238 tests, 0 failures.
+- `mvn test` passed on 2026-05-30: 251 tests, 0 failures.
 - API and database docs may include planned fulfillment/order/dispute contracts, but no `feature/fulfillment` implementation exists yet.
-- Do not start fulfillment/dispute before auction winner flow, finance settlement contract, and repair strategy are stable.
+- Do not start fulfillment/dispute before the buyer realtime auction flow is complete.
+- Wallet balance for demo must come from VNPay Sandbox. Do not add mock wallet top-up or `POST /wallets/me/top-up`.
+- Local VNPay demo may use `vnpay.confirm-on-return-enabled=true` when IPN cannot reach localhost; this still goes through VNPay Return and is not a top-up shortcut.
 
 ## Next Tasks
 
-1. Add fulfillment/order flow on top of `ENDED_SUCCESS` auction results.
-2. Add repair path for terminal auction sessions with remaining `FROZEN` deposits.
-3. Add integration coverage for auction controller/runtime paths with test DB + Redis.
-4. Add category/admin management only after core marketplace flows are stable.
+1. Support FE integration against the new participation, bid history, and enriched WebSocket contracts.
+2. Keep demo wallet funding strictly on VNPay Sandbox; do not add mock wallet top-up or dev top-up.
+3. Add repair path for terminal auction sessions with remaining `FROZEN` deposits after buyer realtime MVP is stable.
+4. Add API examples/docs if FE integration needs concrete response samples.
 
 ## Milestones
 
@@ -100,6 +105,14 @@
 - [x] WebSocket/STOMP auction broadcasts
 - [x] Scheduler activation and close with idempotent settlement
 - [x] Runtime docs: `CONTEXT.md`, `AUCTION_RUNTIME_INVARIANTS.md`, `AUCTION_RUNTIME_SEQUENCE.md`
+
+### Phase 3.4 - Buyer Realtime API Support
+
+- [x] Participation context endpoint: `GET /api/v1/auctions/{id}/my-participation`
+- [x] Bid history endpoint: `GET /api/v1/auctions/{id}/bids?size=20`
+- [x] `BidBroadcastPayload.NEW_BID` extended with bid identity, amount, server time, and nullable anti-sniper extension seconds
+- [x] Lua return contract extended with `extendedByMs`
+- [x] Tests for participation context, bid history, Lua extension output, and broadcast compatibility
 
 ### Phase 4 - Fulfillment & Dispute
 

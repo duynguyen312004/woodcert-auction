@@ -4,6 +4,8 @@ import com.woodcert.auction.core.dto.PaginationResponse;
 import com.woodcert.auction.feature.auction.dto.request.CreateAuctionSessionReq;
 import com.woodcert.auction.feature.auction.dto.response.AuctionDetailRes;
 import com.woodcert.auction.feature.auction.dto.response.AuctionListRes;
+import com.woodcert.auction.feature.auction.dto.response.BidHistoryItemRes;
+import com.woodcert.auction.feature.auction.dto.response.MyParticipationRes;
 import com.woodcert.auction.feature.auction.dto.response.SellerAuctionDetailRes;
 import com.woodcert.auction.feature.auction.dto.response.SellerAuctionListRes;
 import com.woodcert.auction.feature.auction.dto.response.SellerAuctionStatsRes;
@@ -14,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 /**
  * Service trung gian cho các use case đấu giá.
@@ -47,8 +50,23 @@ public class AuctionServiceImpl implements AuctionService {
     }
 
     @Override
+    public List<String> getPublicAuctionMaterials() {
+        return queryService.getPublicAuctionMaterials();
+    }
+
+    @Override
     public AuctionDetailRes getPublicAuctionDetail(Long auctionId) {
         return queryService.getPublicAuctionDetail(auctionId);
+    }
+
+    @Override
+    public MyParticipationRes getMyParticipation(String userId, Long auctionId) {
+        return queryService.getMyParticipation(userId, auctionId);
+    }
+
+    @Override
+    public List<BidHistoryItemRes> getBidHistory(Long auctionId, int size, String currentUserId) {
+        return queryService.getBidHistory(auctionId, size, currentUserId);
     }
 
     @Override

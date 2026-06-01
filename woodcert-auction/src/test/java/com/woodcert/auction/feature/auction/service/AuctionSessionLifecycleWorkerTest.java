@@ -12,8 +12,6 @@ import com.woodcert.auction.feature.auction.repository.BidRepository;
 import com.woodcert.auction.feature.catalog.entity.Product;
 import com.woodcert.auction.feature.catalog.entity.ProductSaleStatus;
 import com.woodcert.auction.feature.catalog.repository.ProductRepository;
-import com.woodcert.auction.feature.finance.entity.WalletReferenceType;
-import com.woodcert.auction.feature.finance.service.WalletService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -46,7 +44,6 @@ class AuctionSessionLifecycleWorkerTest {
     @Mock private BidRepository bidRepository;
     @Mock private ProductRepository productRepository;
     @Mock private AuctionRedisService auctionRedisService;
-    @Mock private WalletService walletService;
 
     private AuctionSessionLifecycleWorker worker;
 
@@ -57,8 +54,7 @@ class AuctionSessionLifecycleWorkerTest {
                 auctionParticipantRepository,
                 bidRepository,
                 productRepository,
-                auctionRedisService,
-                walletService
+                auctionRedisService
         );
     }
 
@@ -161,108 +157,6 @@ class AuctionSessionLifecycleWorkerTest {
         assertThat(session.getHighestBidderId()).isEqualTo("bidder-2");
         assertThat(session.getWinnerBidId()).isEqualTo(700L);
         assertThat(product.getSaleStatus()).isEqualTo(ProductSaleStatus.SOLD);
-    }
-
-    @Test
-    @DisplayName("should settle winner and loser deposits and cleanup Redis")
-    void settleFinalizedSession_successAndCleanup() {
-        AuctionParticipant winner = createParticipant("winner-1", new BigDecimal("1000.00"));
-        AuctionParticipant loser = createParticipant("loser-1", new BigDecimal("1000.00"));
-
-        when(auctionParticipantRepository.findByAuctionSessionIdAndDepositStatus(SESSION_ID, DepositStatus.FROZEN))
-                .thenReturn(List.of(winner, loser));
-
-        worker.settleFinalizedSession(new AuctionSessionLifecycleWorker.CloseResult(
-                SESSION_ID,
-                AuctionSessionStatus.ENDED_SUCCESS,
-                new BigDecimal("250.00"),
-                Instant.parse("2026-05-01T10:00:00Z"),
-                "winner-1"
-        ));
-
-        verify(walletService).deductFrozenFunds("winner-1", "auction:close:deduct:10:winner-1",
-                new BigDecimal("1000.00"), SESSION_ID, WalletReferenceType.AUCTION);
-        verify(walletService).unfreezeFunds("loser-1", "auction:close:refund:10:loser-1",
-                new BigDecimal("1000.00"), SESSION_ID, WalletReferenceType.AUCTION);
-        assertThat(winner.getDepositStatus()).isEqualTo(DepositStatus.DEDUCTED);
-        assertThat(loser.getDepositStatus()).isEqualTo(DepositStatus.REFUNDED);
-        verify(auctionParticipantRepository).save(winner);
-        verify(auctionParticipantRepository).save(loser);
-        verify(auctionRedisService).removeSession(SESSION_ID);
-    }
-
-    @Test
-    @DisplayName("should refund every frozen participant when finalized as failed")
-    void settleFinalizedSession_failedRefundsAll() {
-        AuctionParticipant bidder1 = createParticipant("bidder-1", new BigDecimal("1000.00"));
-        AuctionParticipant bidder2 = createParticipant("bidder-2", new BigDecimal("1000.00"));
-        when(auctionParticipantRepository.findByAuctionSessionIdAndDepositStatus(SESSION_ID, DepositStatus.FROZEN))
-                .thenReturn(List.of(bidder1, bidder2));
-
-        worker.settleFinalizedSession(new AuctionSessionLifecycleWorker.CloseResult(
-                SESSION_ID,
-                AuctionSessionStatus.ENDED_FAILED,
-                new BigDecimal("150.00"),
-                Instant.parse("2026-05-01T10:00:00Z"),
-                "bidder-1"
-        ));
-
-        verify(walletService).unfreezeFunds("bidder-1", "auction:close:refund:10:bidder-1",
-                new BigDecimal("1000.00"), SESSION_ID, WalletReferenceType.AUCTION);
-        verify(walletService).unfreezeFunds("bidder-2", "auction:close:refund:10:bidder-2",
-                new BigDecimal("1000.00"), SESSION_ID, WalletReferenceType.AUCTION);
-        assertThat(bidder1.getDepositStatus()).isEqualTo(DepositStatus.REFUNDED);
-        assertThat(bidder2.getDepositStatus()).isEqualTo(DepositStatus.REFUNDED);
-        verify(auctionRedisService).removeSession(SESSION_ID);
-    }
-
-    @Test
-    @DisplayName("should deduct winner deposit by highest bidder id even when winner bid id is unavailable")
-    void settleFinalizedSession_successWithMissingWinnerBidIdStillDeductsWinner() {
-        AuctionParticipant winner = createParticipant("winner-1", new BigDecimal("1000.00"));
-        when(auctionParticipantRepository.findByAuctionSessionIdAndDepositStatus(SESSION_ID, DepositStatus.FROZEN))
-                .thenReturn(List.of(winner));
-
-        worker.settleFinalizedSession(new AuctionSessionLifecycleWorker.CloseResult(
-                SESSION_ID,
-                AuctionSessionStatus.ENDED_SUCCESS,
-                new BigDecimal("250.00"),
-                Instant.parse("2026-05-01T10:00:00Z"),
-                "winner-1"
-        ));
-
-        verify(walletService).deductFrozenFunds("winner-1", "auction:close:deduct:10:winner-1",
-                new BigDecimal("1000.00"), SESSION_ID, WalletReferenceType.AUCTION);
-        assertThat(winner.getDepositStatus()).isEqualTo(DepositStatus.DEDUCTED);
-    }
-
-    @Test
-    @DisplayName("should leave failed participant frozen and continue settling others")
-    void settleFinalizedSession_participantFailureContinuesOthers() {
-        AuctionParticipant failedWinner = createParticipant("winner-1", new BigDecimal("1000.00"));
-        AuctionParticipant loser = createParticipant("loser-1", new BigDecimal("1000.00"));
-        when(auctionParticipantRepository.findByAuctionSessionIdAndDepositStatus(SESSION_ID, DepositStatus.FROZEN))
-                .thenReturn(List.of(failedWinner, loser));
-        doThrow(new RuntimeException("wallet down")).when(walletService).deductFrozenFunds(
-                "winner-1",
-                "auction:close:deduct:10:winner-1",
-                new BigDecimal("1000.00"),
-                SESSION_ID,
-                WalletReferenceType.AUCTION);
-
-        worker.settleFinalizedSession(new AuctionSessionLifecycleWorker.CloseResult(
-                SESSION_ID,
-                AuctionSessionStatus.ENDED_SUCCESS,
-                new BigDecimal("250.00"),
-                Instant.parse("2026-05-01T10:00:00Z"),
-                "winner-1"
-        ));
-
-        assertThat(failedWinner.getDepositStatus()).isEqualTo(DepositStatus.FROZEN);
-        assertThat(loser.getDepositStatus()).isEqualTo(DepositStatus.REFUNDED);
-        verify(auctionParticipantRepository, never()).save(failedWinner);
-        verify(auctionParticipantRepository).save(loser);
-        verify(auctionRedisService).removeSession(SESSION_ID);
     }
 
     @Test

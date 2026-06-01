@@ -21,10 +21,11 @@ export function useProfile() {
  *
  * Nếu chưa đăng ký seller thì backend trả 404 và query sẽ ở trạng thái lỗi.
  */
-export function useSellerProfile() {
+export function useSellerProfile(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: SELLER_PROFILE_QUERY_KEY,
     queryFn: accountApi.getSellerProfile,
     retry: false,
+    ...options,
   });
 }

@@ -28,6 +28,7 @@ class BidLuaRuntimeIntegrationTest extends AuctionIntegrationTestBase {
         List<Object> result = executeLua(session.getId(), "bidder-1", new BigDecimal("10100000.00"), "trace-1");
 
         assertThat(result.get(0).toString()).isEqualTo("OK");
+        assertThat(result.get(3).toString()).isEqualTo("0");
         assertThat(new BigDecimal(auctionRedisService.getCurrentPrice(session.getId())))
                 .isEqualByComparingTo("10100000.00");
         assertThat(redisTemplate.opsForHash().get(auctionRedisService.stateKey(session.getId()), AuctionRedisService.FIELD_HIGHEST_BIDDER_ID))
@@ -67,7 +68,9 @@ class BidLuaRuntimeIntegrationTest extends AuctionIntegrationTestBase {
 
         assertThat(result.get(0).toString()).isEqualTo("OK");
         long newEndTimeMs = Long.parseLong(result.get(2).toString());
+        long extendedByMs = Long.parseLong(result.get(3).toString());
         assertThat(newEndTimeMs).isEqualTo(originalEndTime.toEpochMilli() + 60_000L);
+        assertThat(extendedByMs).isEqualTo(60_000L);
         assertThat(auctionRedisService.getEndTimeEpochMs(session.getId())).isEqualTo(newEndTimeMs);
     }
 

@@ -188,6 +188,7 @@ public class AuctionCommandService {
                 productImageHelper.findImageUrls(product),
                 appraisalReport,
                 seller,
-                AuctionRuntimeSnapshot.empty());
+                AuctionRuntimeSnapshot.empty(),
+                null);
     }
 }

@@ -19,7 +19,9 @@ import java.util.List;
  * ARGV[5] = antiSniperExtensionMs
  * ARGV[6] = bidTraceId
  *
- * Returns: list of [resultCode, currentPrice, endTimeEpochMs]
+ * Returns:
+ *   - Non-OK: [resultCode, currentPrice, endTimeEpochMs]
+ *   - OK:     [resultCode, currentPrice, endTimeEpochMs, extendedByMs]
  *   resultCode:
  *     "OK"            — bid accepted; currentPrice and endTimeEpochMs are updated values
  *     "ENDED"         — auction time has expired
@@ -73,13 +75,15 @@ public class BidLuaScript {
             redis.call('HSET', state, 'highestBidTraceId', bidTraceId)
             
             -- 6) Anti-sniper: extend end time if within threshold
+            local extendedByMs = 0
             local remainingMs = endTimeMs - nowMs
             if remainingMs <= sniperThMs then
                 endTimeMs = endTimeMs + sniperExtMs
+                extendedByMs = sniperExtMs
                 redis.call('HSET', state, 'endTimeEpochMs', tostring(endTimeMs))
             end
             
-            return {'OK', tostring(bidAmount), tostring(endTimeMs)}
+            return {'OK', tostring(bidAmount), tostring(endTimeMs), tostring(extendedByMs)}
             """;
 
     private final DefaultRedisScript<List<Object>> redisScript;

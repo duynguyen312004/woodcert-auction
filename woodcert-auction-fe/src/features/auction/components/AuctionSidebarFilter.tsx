@@ -2,7 +2,7 @@ import { X } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 
 export type SidebarFilters = {
-  selectedCategories: string[];
+  selectedCategory?: string;
   selectedWoodTypes: string[];
   priceMin: string;
   priceMax: string;
@@ -11,7 +11,7 @@ export type SidebarFilters = {
 };
 
 export const defaultSidebarFilters: SidebarFilters = {
-  selectedCategories: [],
+  selectedCategory: undefined,
   selectedWoodTypes: [],
   priceMin: "",
   priceMax: "",
@@ -36,6 +36,85 @@ type CheckboxSectionProps = {
   isLoading?: boolean;
   emptyText?: string;
 };
+
+type RadioSectionProps = {
+  title: string;
+  name: string;
+  options: string[];
+  selected?: string;
+  onSelect: (value: string | undefined) => void;
+  isLoading?: boolean;
+  emptyText?: string;
+};
+
+function RadioSection({
+  title,
+  name,
+  options,
+  selected,
+  onSelect,
+  isLoading,
+  emptyText = "Không có dữ liệu",
+}: RadioSectionProps) {
+  return (
+    <div>
+      <h3 className="mb-4 text-[11px] font-bold uppercase tracking-widest text-white">{title}</h3>
+      <div className="space-y-3">
+        {isLoading ? (
+          Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="h-5 w-28 animate-pulse rounded bg-white/10" />
+          ))
+        ) : options.length === 0 ? (
+          <p className="text-xs text-[#8D877C]">{emptyText}</p>
+        ) : (
+          <>
+            <label className="group flex cursor-pointer items-center gap-3">
+              <input
+                type="radio"
+                name={name}
+                checked={selected === undefined}
+                onChange={() => onSelect(undefined)}
+                className="h-4 w-4 border-[#4e4637] bg-transparent accent-[#D6A84F] focus:ring-[#D6A84F]"
+              />
+              <span
+                className={cn(
+                  "text-sm transition-colors",
+                  selected === undefined
+                    ? "text-[#D6A84F]"
+                    : "text-[#d2c5b2] group-hover:text-white",
+                )}
+              >
+                Tất cả
+              </span>
+            </label>
+
+            {options.map((option) => (
+              <label key={option} className="group flex cursor-pointer items-center gap-3">
+                <input
+                  type="radio"
+                  name={name}
+                  checked={selected === option}
+                  onChange={() => onSelect(option)}
+                  className="h-4 w-4 border-[#4e4637] bg-transparent accent-[#D6A84F] focus:ring-[#D6A84F]"
+                />
+                <span
+                  className={cn(
+                    "text-sm transition-colors",
+                    selected === option
+                      ? "text-[#D6A84F]"
+                      : "text-[#d2c5b2] group-hover:text-white",
+                  )}
+                >
+                  {option}
+                </span>
+              </label>
+            ))}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function CheckboxSection({
   title,
@@ -90,18 +169,15 @@ export function AuctionSidebarFilter({
   filters,
   onChange,
 }: AuctionSidebarFilterProps) {
-  const { selectedCategories, selectedWoodTypes, priceMin, priceMax } = filters;
+  const { selectedCategory, selectedWoodTypes, priceMin, priceMax } = filters;
 
   const hasPriceFilter =
     filters.appliedPriceMin !== undefined || filters.appliedPriceMax !== undefined;
   const activeCount =
-    selectedCategories.length + selectedWoodTypes.length + (hasPriceFilter ? 1 : 0);
+    (selectedCategory ? 1 : 0) + selectedWoodTypes.length + (hasPriceFilter ? 1 : 0);
 
-  const toggleCategory = (value: string) => {
-    const next = selectedCategories.includes(value)
-      ? selectedCategories.filter((c) => c !== value)
-      : [...selectedCategories, value];
-    onChange({ ...filters, selectedCategories: next });
+  const selectCategory = (value: string | undefined) => {
+    onChange({ ...filters, selectedCategory: value });
   };
 
   const toggleWoodType = (value: string) => {
@@ -124,7 +200,7 @@ export function AuctionSidebarFilter({
   };
 
   return (
-    <aside className="sticky top-[88px] flex h-fit w-64 shrink-0 flex-col gap-7 rounded-lg border border-[#4e4637] bg-[#171717] p-6">
+    <aside className="flex h-fit w-full shrink-0 flex-col gap-7 rounded-lg border border-[#4e4637] bg-[#171717] p-6 lg:sticky lg:top-[88px] lg:w-64">
       <div className="flex items-center justify-between">
         <h2 className="text-[11px] font-bold uppercase tracking-widest text-white">Bộ lọc</h2>
         {activeCount > 0 && (
@@ -139,11 +215,12 @@ export function AuctionSidebarFilter({
         )}
       </div>
 
-      <CheckboxSection
+      <RadioSection
         title="Loại tác phẩm"
+        name="auction-category"
         options={availableCategories}
-        selected={selectedCategories}
-        onToggle={toggleCategory}
+        selected={selectedCategory}
+        onSelect={selectCategory}
         isLoading={isCategoriesLoading}
         emptyText="Chưa có danh mục"
       />

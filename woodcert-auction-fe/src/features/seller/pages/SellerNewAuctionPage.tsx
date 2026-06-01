@@ -84,7 +84,10 @@ export function SellerNewAuctionPage() {
   });
   const createMutation = useCreateAuctionSession();
 
-  const eligibleProducts = eligibleProductsQuery.data?.result ?? [];
+  const eligibleProducts = useMemo(
+    () => eligibleProductsQuery.data?.result ?? [],
+    [eligibleProductsQuery.data?.result],
+  );
 
   const {
     register,
@@ -105,6 +108,7 @@ export function SellerNewAuctionPage() {
     },
   });
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const watchedProductId = watch("productId");
   const watchedStartingPrice = watch("startingPrice");
   const watchedDepositAmount = watch("depositAmount");

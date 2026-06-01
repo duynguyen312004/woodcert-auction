@@ -2,14 +2,20 @@ package com.woodcert.auction.feature.auction.service.query;
 
 import com.woodcert.auction.core.exception.AppException;
 import com.woodcert.auction.feature.auction.dto.response.AuctionListRes;
+import com.woodcert.auction.feature.auction.dto.response.MyParticipationRes;
 import com.woodcert.auction.feature.auction.dto.response.SellerAuctionDetailRes;
+import com.woodcert.auction.feature.auction.entity.AuctionParticipant;
 import com.woodcert.auction.feature.auction.entity.AuctionSession;
 import com.woodcert.auction.feature.auction.entity.AuctionSessionStatus;
+import com.woodcert.auction.feature.auction.entity.Bid;
+import com.woodcert.auction.feature.auction.entity.BidStatus;
 import com.woodcert.auction.feature.auction.entity.DepositStatus;
 import com.woodcert.auction.feature.auction.repository.AuctionDepositStatusCountView;
 import com.woodcert.auction.feature.auction.repository.AuctionParticipantCountView;
 import com.woodcert.auction.feature.auction.repository.AuctionParticipantRepository;
 import com.woodcert.auction.feature.auction.repository.AuctionSessionRepository;
+import com.woodcert.auction.feature.auction.repository.BidRepository;
+import com.woodcert.auction.feature.auction.service.AuctionRedisService;
 import com.woodcert.auction.feature.auction.service.assembler.AuctionResponseAssembler;
 import com.woodcert.auction.feature.auction.service.policy.AuctionPolicy;
 import com.woodcert.auction.feature.auction.service.runtime.AuctionRuntimeSnapshot;
@@ -66,6 +72,8 @@ class AuctionQueryServiceTest {
     @Mock
     private AuctionParticipantRepository auctionParticipantRepository;
     @Mock
+    private BidRepository bidRepository;
+    @Mock
     private ProductRepository productRepository;
     @Mock
     private AppraisalReportRepository appraisalReportRepository;
@@ -75,6 +83,8 @@ class AuctionQueryServiceTest {
     private SellerSummaryQueryService sellerSummaryQueryService;
     @Mock
     private ProductImageHelper productImageHelper;
+    @Mock
+    private AuctionRedisService auctionRedisService;
     @Mock
     private AuctionRuntimeSnapshotService runtimeSnapshotService;
     @Mock
@@ -87,11 +97,13 @@ class AuctionQueryServiceTest {
         queryService = new AuctionQueryService(
                 auctionSessionRepository,
                 auctionParticipantRepository,
+                bidRepository,
                 productRepository,
                 appraisalReportRepository,
                 categoryRepository,
                 sellerSummaryQueryService,
                 productImageHelper,
+                auctionRedisService,
                 runtimeSnapshotService,
                 responseAssembler,
                 new AuctionPolicy());
@@ -204,7 +216,192 @@ class AuctionQueryServiceTest {
 
         queryService.getPublicAuctionDetail(AUCTION_ID);
 
-        verify(responseAssembler).toDetailRes(session, product, null, List.of(), null, null, snapshot);
+        verify(responseAssembler).toDetailRes(session, product, null, List.of(), null, null, snapshot, null);
+    }
+
+    @Test
+    void getMyParticipation_returnsSellerOwnedContext() {
+        AuctionSession session = session(AuctionSessionStatus.WAITING);
+        Product product = product();
+        session.setProduct(product);
+        when(auctionSessionRepository.findByIdWithProduct(AUCTION_ID)).thenReturn(Optional.of(session));
+        when(auctionParticipantRepository.findByAuctionSessionIdAndUserId(AUCTION_ID, "seller-1"))
+                .thenReturn(Optional.empty());
+
+        MyParticipationRes result = queryService.getMyParticipation("seller-1", AUCTION_ID);
+
+        assertThat(result.sellerOwned()).isTrue();
+        assertThat(result.registered()).isFalse();
+        assertThat(result.canRegister()).isFalse();
+        assertThat(result.canBid()).isFalse();
+        assertThat(result.reasonCode()).isEqualTo("SELLER_OWN_AUCTION");
+        assertThat(result.depositAmount()).isEqualByComparingTo("1000000");
+    }
+
+    @Test
+    void getMyParticipation_returnsCanBidForFrozenParticipantInActiveRuntime() {
+        AuctionSession session = session(AuctionSessionStatus.ACTIVE);
+        Product product = product();
+        session.setProduct(product);
+        AuctionParticipant participant = participant("bidder-1", DepositStatus.FROZEN);
+
+        when(auctionSessionRepository.findByIdWithProduct(AUCTION_ID)).thenReturn(Optional.of(session));
+        when(auctionParticipantRepository.findByAuctionSessionIdAndUserId(AUCTION_ID, "bidder-1"))
+                .thenReturn(Optional.of(participant));
+        when(auctionRedisService.getEndTimeEpochMs(AUCTION_ID))
+                .thenReturn(Instant.now().plusSeconds(60).toEpochMilli());
+
+        MyParticipationRes result = queryService.getMyParticipation("bidder-1", AUCTION_ID);
+
+        assertThat(result.sellerOwned()).isFalse();
+        assertThat(result.registered()).isTrue();
+        assertThat(result.depositStatus()).isEqualTo(DepositStatus.FROZEN);
+        assertThat(result.canRegister()).isFalse();
+        assertThat(result.canBid()).isTrue();
+        assertThat(result.reasonCode()).isEqualTo("CAN_BID");
+    }
+
+    @Test
+    void getMyParticipation_blocksCurrentHighestBidder() {
+        AuctionSession session = session(AuctionSessionStatus.ACTIVE);
+        Product product = product();
+        session.setProduct(product);
+        AuctionParticipant participant = participant("bidder-1", DepositStatus.FROZEN);
+
+        when(auctionSessionRepository.findByIdWithProduct(AUCTION_ID)).thenReturn(Optional.of(session));
+        when(auctionParticipantRepository.findByAuctionSessionIdAndUserId(AUCTION_ID, "bidder-1"))
+                .thenReturn(Optional.of(participant));
+        when(auctionRedisService.getEndTimeEpochMs(AUCTION_ID))
+                .thenReturn(Instant.now().plusSeconds(60).toEpochMilli());
+        when(auctionRedisService.getHighestBidderId(AUCTION_ID)).thenReturn("bidder-1");
+
+        MyParticipationRes result = queryService.getMyParticipation("bidder-1", AUCTION_ID);
+
+        assertThat(result.highestBidder()).isTrue();
+        assertThat(result.canBid()).isFalse();
+        assertThat(result.reasonCode()).isEqualTo("CURRENT_HIGHEST_BIDDER");
+    }
+
+    @Test
+    void getMyParticipation_blocksActiveRuntimeMissing() {
+        AuctionSession session = session(AuctionSessionStatus.ACTIVE);
+        Product product = product();
+        session.setProduct(product);
+        when(auctionSessionRepository.findByIdWithProduct(AUCTION_ID)).thenReturn(Optional.of(session));
+        when(auctionParticipantRepository.findByAuctionSessionIdAndUserId(AUCTION_ID, "bidder-1"))
+                .thenReturn(Optional.empty());
+        when(auctionRedisService.getEndTimeEpochMs(AUCTION_ID)).thenReturn(null);
+
+        MyParticipationRes result = queryService.getMyParticipation("bidder-1", AUCTION_ID);
+
+        assertThat(result.registered()).isFalse();
+        assertThat(result.canRegister()).isFalse();
+        assertThat(result.canBid()).isFalse();
+        assertThat(result.reasonCode()).isEqualTo("AUCTION_RUNTIME_UNAVAILABLE");
+    }
+
+    @Test
+    void getMyParticipation_returnsWinnerOutcome() {
+        AuctionSession session = session(AuctionSessionStatus.ENDED_SUCCESS);
+        Product product = product();
+        session.setProduct(product);
+        AuctionParticipant participant = participant("bidder-1", DepositStatus.DEDUCTED);
+
+        when(auctionSessionRepository.findByIdWithProduct(AUCTION_ID)).thenReturn(Optional.of(session));
+        when(auctionParticipantRepository.findByAuctionSessionIdAndUserId(AUCTION_ID, "bidder-1"))
+                .thenReturn(Optional.of(participant));
+
+        MyParticipationRes result = queryService.getMyParticipation("bidder-1", AUCTION_ID);
+
+        assertThat(result.winner()).isTrue();
+        assertThat(result.outcomeCode()).isEqualTo("WINNER");
+    }
+
+    @Test
+    void getMyParticipation_returnsLoserOutcome() {
+        AuctionSession session = session(AuctionSessionStatus.ENDED_SUCCESS);
+        Product product = product();
+        session.setProduct(product);
+        AuctionParticipant participant = participant("bidder-1", DepositStatus.REFUNDED);
+
+        when(auctionSessionRepository.findByIdWithProduct(AUCTION_ID)).thenReturn(Optional.of(session));
+        when(auctionParticipantRepository.findByAuctionSessionIdAndUserId(AUCTION_ID, "bidder-1"))
+                .thenReturn(Optional.of(participant));
+
+        MyParticipationRes result = queryService.getMyParticipation("bidder-1", AUCTION_ID);
+
+        assertThat(result.winner()).isFalse();
+        assertThat(result.outcomeCode()).isEqualTo("LOSER");
+    }
+
+    @Test
+    void getMyParticipation_returnsEndedFailedOutcome() {
+        AuctionSession session = session(AuctionSessionStatus.ENDED_FAILED);
+        Product product = product();
+        session.setProduct(product);
+        AuctionParticipant participant = participant("bidder-1", DepositStatus.FROZEN);
+
+        when(auctionSessionRepository.findByIdWithProduct(AUCTION_ID)).thenReturn(Optional.of(session));
+        when(auctionParticipantRepository.findByAuctionSessionIdAndUserId(AUCTION_ID, "bidder-1"))
+                .thenReturn(Optional.of(participant));
+
+        MyParticipationRes result = queryService.getMyParticipation("bidder-1", AUCTION_ID);
+
+        assertThat(result.outcomeCode()).isEqualTo("ENDED_FAILED");
+    }
+
+    @Test
+    void getMyParticipation_returnsPendingSettlementOutcome() {
+        AuctionSession session = session(AuctionSessionStatus.ENDED_SUCCESS);
+        Product product = product();
+        session.setProduct(product);
+        AuctionParticipant participant = participant("bidder-1", DepositStatus.FROZEN);
+
+        when(auctionSessionRepository.findByIdWithProduct(AUCTION_ID)).thenReturn(Optional.of(session));
+        when(auctionParticipantRepository.findByAuctionSessionIdAndUserId(AUCTION_ID, "bidder-1"))
+                .thenReturn(Optional.of(participant));
+
+        MyParticipationRes result = queryService.getMyParticipation("bidder-1", AUCTION_ID);
+
+        assertThat(result.outcomeCode()).isEqualTo("PENDING_SETTLEMENT");
+    }
+
+    @Test
+    void getMyParticipation_returnsNotParticipatedOutcome() {
+        AuctionSession session = session(AuctionSessionStatus.ENDED_SUCCESS);
+        Product product = product();
+        session.setProduct(product);
+
+        when(auctionSessionRepository.findByIdWithProduct(AUCTION_ID)).thenReturn(Optional.of(session));
+        when(auctionParticipantRepository.findByAuctionSessionIdAndUserId(AUCTION_ID, "bidder-1"))
+                .thenReturn(Optional.empty());
+
+        MyParticipationRes result = queryService.getMyParticipation("bidder-1", AUCTION_ID);
+
+        assertThat(result.outcomeCode()).isEqualTo("NOT_PARTICIPATED");
+    }
+
+    @Test
+    void getBidHistory_returnsValidBidsMaskedAndMineFlag() {
+        AuctionSession session = session(AuctionSessionStatus.ACTIVE);
+        Bid ownBid = bid("trace-1", "bidder-12345", new BigDecimal("12000000.00"));
+        Bid otherBid = bid("trace-2", "other-12345", new BigDecimal("11000000.00"));
+        ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+
+        when(auctionSessionRepository.findById(AUCTION_ID)).thenReturn(Optional.of(session));
+        when(bidRepository.findByAuctionSessionIdAndStatusOrderByBidTimeDesc(
+                eq(AUCTION_ID), eq(BidStatus.VALID), pageableCaptor.capture()))
+                .thenReturn(List.of(ownBid, otherBid));
+
+        var result = queryService.getBidHistory(AUCTION_ID, 100, "bidder-12345");
+
+        assertThat(pageableCaptor.getValue().getPageSize()).isEqualTo(50);
+        assertThat(result).hasSize(2);
+        assertThat(result.get(0).bidTraceId()).isEqualTo("trace-1");
+        assertThat(result.get(0).bidderMaskedAlias()).isEqualTo("bidd****");
+        assertThat(result.get(0).mine()).isTrue();
+        assertThat(result.get(1).bidderMaskedAlias()).isEqualTo("othe****");
+        assertThat(result.get(1).mine()).isFalse();
     }
 
     @Test
@@ -358,6 +555,26 @@ class AuctionQueryServiceTest {
         product.setCategoryId(30);
         product.setSellerId("seller-1");
         return product;
+    }
+
+    private AuctionParticipant participant(String userId, DepositStatus depositStatus) {
+        AuctionParticipant participant = new AuctionParticipant();
+        participant.setAuctionSessionId(AUCTION_ID);
+        participant.setUserId(userId);
+        participant.setDepositAmount(new BigDecimal("1000000"));
+        participant.setDepositStatus(depositStatus);
+        return participant;
+    }
+
+    private Bid bid(String traceId, String userId, BigDecimal amount) {
+        Bid bid = new Bid();
+        bid.setBidTraceId(traceId);
+        bid.setAuctionSessionId(AUCTION_ID);
+        bid.setUserId(userId);
+        bid.setBidAmount(amount);
+        bid.setStatus(BidStatus.VALID);
+        bid.setBidTime(Instant.now());
+        return bid;
     }
 
     private AppraisalReport appraisalReport() {

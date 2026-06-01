@@ -110,7 +110,8 @@ class AuctionCommandServiceTest {
                 any(),
                 any(),
                 any(),
-                any(AuctionRuntimeSnapshot.class)))
+                any(AuctionRuntimeSnapshot.class),
+                any()))
                 .thenReturn(expected);
 
         AuctionDetailRes result = commandService.createAuctionSession(SELLER_ID, validRequest());
@@ -379,6 +380,7 @@ class AuctionCommandServiceTest {
                 BigDecimal.ONE,
                 Instant.now(),
                 Instant.now(),
+                null,
                 null,
                 null);
     }

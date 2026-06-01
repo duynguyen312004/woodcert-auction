@@ -149,6 +149,17 @@ public class AuctionRedisService {
     }
 
     /**
+     * Get current highest bidder id from Redis while a session is ACTIVE.
+     */
+    public String getHighestBidderId(Long auctionSessionId) {
+        Object val = redisTemplate.opsForHash().get(stateKey(auctionSessionId), FIELD_HIGHEST_BIDDER_ID);
+        if (val == null || val.toString().isBlank()) {
+            return null;
+        }
+        return val.toString();
+    }
+
+    /**
      * Extend the Redis TTL after anti-sniper extends endTime.
      * Called after Lua script updates endTimeEpochMs in the hash.
      */

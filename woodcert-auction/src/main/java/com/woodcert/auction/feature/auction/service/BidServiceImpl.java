@@ -87,11 +87,12 @@ public class BidServiceImpl implements BidService {
         String resultCode = result != null && !result.isEmpty() ? result.get(0).toString() : "ERROR";
         String newPriceStr = result != null && result.size() > 1 ? result.get(1).toString() : null;
         String newEndTimeStr = result != null && result.size() > 2 ? result.get(2).toString() : null;
+        String extendedByMsStr = result != null && result.size() > 3 ? result.get(3).toString() : "0";
 
         // Bước 5: Điều hướng kết quả: bid hợp lệ đi tiếp, bid bị từ chối trả lỗi nghiệp vụ tương ứng.
         return switch (resultCode) {
             case "OK" -> handleBidAccepted(auctionSessionId, bidderId, bidTraceId, bidAmount,
-                    bidTime, newPriceStr, newEndTimeStr);
+                    bidTime, newPriceStr, newEndTimeStr, extendedByMsStr);
 
             case "ENDED" -> {
                 bidPersistenceService.saveBid(bidTraceId, auctionSessionId, bidderId,
@@ -107,7 +108,7 @@ public class BidServiceImpl implements BidService {
 
             case "NOT_REGISTERED" -> throw new AppException(ErrorCode.AUCTION_BIDDER_NOT_REGISTERED);
 
-            case "SELF_BID" -> throw new AppException(ErrorCode.AUCTION_SELF_BIDDING_NOT_ALLOWED);
+            case "SELF_BID" -> throw new AppException(ErrorCode.BIDDER_ALREADY_HIGHEST);
 
             default -> {
                 log.error("Unexpected Lua result code '{}' for session {}", resultCode, auctionSessionId);
@@ -118,19 +119,23 @@ public class BidServiceImpl implements BidService {
 
     private BidResultRes handleBidAccepted(Long auctionSessionId, String bidderId, String bidTraceId,
                                             BigDecimal bidAmount, Instant bidTime,
-                                            String newPriceStr, String newEndTimeStr) {
+                                            String newPriceStr, String newEndTimeStr,
+                                            String extendedByMsStr) {
         // Bước 1: Chuẩn hóa dữ liệu Redis trả về thành kiểu dữ liệu domain.
         BigDecimal newPrice = new BigDecimal(newPriceStr);
         long newEndTimeMs = Long.parseLong(newEndTimeStr);
+        long extendedByMs = Long.parseLong(extendedByMsStr);
         Instant newEndTime = Instant.ofEpochMilli(newEndTimeMs);
+        Long extendedBySeconds = extendedByMs > 0 ? extendedByMs / 1000 : null;
 
         // Bước 2: Nếu anti-sniper kéo dài phiên đấu giá thì cập nhật TTL Redis theo endTime mới.
-        if (newEndTimeMs > 0) {
+        if (extendedByMs > 0) {
             auctionRedisService.extendTtl(auctionSessionId, newEndTime);
         }
 
         // Bước 3: Broadcast giá mới ngay cho client, không chờ các bước lưu DB phía sau.
-        broadcastService.broadcastNewBid(auctionSessionId, newPrice, bidderId, newEndTime);
+        broadcastService.broadcastNewBid(auctionSessionId, newPrice, bidderId, newEndTime,
+                bidTraceId, bidAmount, bidTime, extendedBySeconds);
 
         // Bước 4: Best-effort lưu bid và đồng bộ snapshot phiên đấu giá về DB.
         persistBidBestEffort(bidTraceId, auctionSessionId, bidderId, bidAmount, BidStatus.VALID, bidTime);
@@ -148,12 +153,15 @@ public class BidServiceImpl implements BidService {
     private void syncSessionSnapshotBestEffort(Long auctionSessionId, BigDecimal newPrice,
                                                String highestBidderId, Instant newEndTime) {
         try {
-            auctionSessionRepository.findById(auctionSessionId).ifPresent(session -> {
-                session.setCurrentPrice(newPrice);
-                session.setHighestBidderId(highestBidderId);
-                session.setEndTime(newEndTime);
-                auctionSessionRepository.saveAndFlush(session);
-            });
+            int updated = auctionSessionRepository.updateRuntimeSnapshotIfNotStale(
+                    auctionSessionId,
+                    newPrice,
+                    highestBidderId,
+                    newEndTime
+            );
+            if (updated == 0) {
+                log.debug("Skipped stale DB snapshot sync for session {} at price {}", auctionSessionId, newPrice);
+            }
         } catch (Exception e) {
             log.warn("Non-critical: failed to sync DB snapshot for session {}: {}",
                     auctionSessionId, e.getMessage());

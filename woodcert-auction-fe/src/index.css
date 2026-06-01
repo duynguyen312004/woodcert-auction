@@ -232,3 +232,54 @@
     transform: scale(1);
   }
 }
+
+/* Animations cho phòng đấu giá Bidding Room */
+@keyframes price-tick {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes countdown-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes outbid-flash {
+  0%,
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  35% {
+    transform: scale(1.035);
+    filter: brightness(1.25);
+  }
+  70% {
+    transform: scale(0.995);
+    filter: brightness(1.08);
+  }
+}
+
+.animate-price-tick {
+  animation: price-tick 0.5s ease-out;
+}
+
+.animate-countdown-pulse {
+  animation: countdown-pulse 1.2s ease-in-out infinite;
+}
+
+.animate-outbid-flash {
+  animation: outbid-flash 0.8s ease-out both;
+}

@@ -30,6 +30,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
@@ -77,21 +78,23 @@ class BidServiceImplTest {
         when(auctionSessionRepository.findByIdWithProduct(AUCTION_ID)).thenReturn(Optional.of(session));
         when(bidLuaScript.buildKeys(AUCTION_ID)).thenReturn(List.of("state", "bidders"));
         when(bidLuaScript.getScript()).thenReturn(new DefaultRedisScript<>());
-        doReturn(List.of("OK", "120.00", String.valueOf(newEndTime.toEpochMilli())))
+        doReturn(List.of("OK", "120.00", String.valueOf(newEndTime.toEpochMilli()), "60000"))
                 .when(redisTemplate).execute(any(), anyList(), any(), any(), any(), any(), any(), any());
         doThrow(new RuntimeException("bid table unavailable"))
                 .when(bidPersistenceService)
                 .saveBid(any(), eq(AUCTION_ID), eq(BIDDER_ID), eq(new BigDecimal("120.00")), eq(BidStatus.VALID), any());
-        when(auctionSessionRepository.findById(AUCTION_ID)).thenReturn(Optional.of(session));
+        when(auctionSessionRepository.updateRuntimeSnapshotIfNotStale(AUCTION_ID, new BigDecimal("120.00"), BIDDER_ID, newEndTime))
+                .thenReturn(1);
 
         BidResultRes result = bidService.placeBid(BIDDER_ID, request);
 
         assertThat(result.auctionSessionId()).isEqualTo(AUCTION_ID);
         assertThat(result.currentPrice()).isEqualByComparingTo("120.00");
         assertThat(result.endTime()).isEqualTo(newEndTime);
-        verify(auctionBroadcastService).broadcastNewBid(AUCTION_ID, new BigDecimal("120.00"), BIDDER_ID, newEndTime);
+        verify(auctionBroadcastService).broadcastNewBid(eq(AUCTION_ID), eq(new BigDecimal("120.00")), eq(BIDDER_ID),
+                eq(newEndTime), any(), eq(new BigDecimal("120.00")), any(), eq(60L));
         verify(auctionRedisService).extendTtl(AUCTION_ID, newEndTime);
-        verify(auctionSessionRepository).saveAndFlush(session);
+        verify(auctionSessionRepository).updateRuntimeSnapshotIfNotStale(AUCTION_ID, new BigDecimal("120.00"), BIDDER_ID, newEndTime);
     }
 
     @Test
@@ -104,15 +107,18 @@ class BidServiceImplTest {
         when(auctionSessionRepository.findByIdWithProduct(AUCTION_ID)).thenReturn(Optional.of(session));
         when(bidLuaScript.buildKeys(AUCTION_ID)).thenReturn(List.of("state", "bidders"));
         when(bidLuaScript.getScript()).thenReturn(new DefaultRedisScript<>());
-        doReturn(List.of("OK", "130.00", String.valueOf(newEndTime.toEpochMilli())))
+        doReturn(List.of("OK", "130.00", String.valueOf(newEndTime.toEpochMilli()), "0"))
                 .when(redisTemplate).execute(any(), anyList(), any(), any(), any(), any(), any(), any());
-        when(auctionSessionRepository.findById(AUCTION_ID)).thenReturn(Optional.of(session));
+        when(auctionSessionRepository.updateRuntimeSnapshotIfNotStale(AUCTION_ID, new BigDecimal("130.00"), BIDDER_ID, newEndTime))
+                .thenReturn(1);
 
         bidService.placeBid(BIDDER_ID, request);
 
         InOrder inOrder = inOrder(auctionBroadcastService, bidPersistenceService);
-        inOrder.verify(auctionBroadcastService).broadcastNewBid(AUCTION_ID, new BigDecimal("130.00"), BIDDER_ID, newEndTime);
+        inOrder.verify(auctionBroadcastService).broadcastNewBid(eq(AUCTION_ID), eq(new BigDecimal("130.00")), eq(BIDDER_ID),
+                eq(newEndTime), any(), eq(new BigDecimal("130.00")), any(), isNull());
         inOrder.verify(bidPersistenceService).saveBid(any(), eq(AUCTION_ID), eq(BIDDER_ID), eq(new BigDecimal("130.00")), eq(BidStatus.VALID), any());
+        verify(auctionRedisService, never()).extendTtl(any(), any());
     }
 
     @Test
@@ -133,7 +139,7 @@ class BidServiceImplTest {
                         assertThat(((AppException) throwable).getErrorCode()).isEqualTo(ErrorCode.BID_AMOUNT_TOO_LOW));
 
         verify(bidPersistenceService).saveBid(any(), eq(AUCTION_ID), eq(BIDDER_ID), eq(new BigDecimal("101.00")), eq(BidStatus.INVALID_PRICE), any());
-        verify(auctionBroadcastService, never()).broadcastNewBid(any(), any(), any(), any());
+        verify(auctionBroadcastService, never()).broadcastNewBid(any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -203,11 +209,11 @@ class BidServiceImplTest {
                         assertThat(((AppException) throwable).getErrorCode()).isEqualTo(ErrorCode.AUCTION_BIDDER_NOT_REGISTERED));
 
         verify(bidPersistenceService, never()).saveBid(any(), any(), any(), any(), any(), any());
-        verify(auctionBroadcastService, never()).broadcastNewBid(any(), any(), any(), any());
+        verify(auctionBroadcastService, never()).broadcastNewBid(any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
-    @DisplayName("should map Lua SELF_BID to business error without bid row")
+    @DisplayName("should map Lua SELF_BID to highest bidder error without bid row")
     void placeBid_selfBidFromLua_rejectedWithoutBidRow() {
         AuctionSession session = createActiveSession();
         when(auctionSessionRepository.findByIdWithProduct(AUCTION_ID)).thenReturn(Optional.of(session));
@@ -219,10 +225,10 @@ class BidServiceImplTest {
         assertThatThrownBy(() -> bidService.placeBid(BIDDER_ID, new CreateBidReq(AUCTION_ID, new BigDecimal("120.00"))))
                 .isInstanceOf(AppException.class)
                 .satisfies(throwable ->
-                        assertThat(((AppException) throwable).getErrorCode()).isEqualTo(ErrorCode.AUCTION_SELF_BIDDING_NOT_ALLOWED));
+                        assertThat(((AppException) throwable).getErrorCode()).isEqualTo(ErrorCode.BIDDER_ALREADY_HIGHEST));
 
         verify(bidPersistenceService, never()).saveBid(any(), any(), any(), any(), any(), any());
-        verify(auctionBroadcastService, never()).broadcastNewBid(any(), any(), any(), any());
+        verify(auctionBroadcastService, never()).broadcastNewBid(any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -235,14 +241,17 @@ class BidServiceImplTest {
         when(auctionSessionRepository.findByIdWithProduct(AUCTION_ID)).thenReturn(Optional.of(session));
         when(bidLuaScript.buildKeys(AUCTION_ID)).thenReturn(List.of("state", "bidders"));
         when(bidLuaScript.getScript()).thenReturn(new DefaultRedisScript<>());
-        doReturn(List.of("OK", "140.00", String.valueOf(newEndTime.toEpochMilli())))
+        doReturn(List.of("OK", "140.00", String.valueOf(newEndTime.toEpochMilli()), "0"))
                 .when(redisTemplate).execute(any(), anyList(), any(), any(), any(), any(), any(), any());
-        doThrow(new RuntimeException("db snapshot down")).when(auctionSessionRepository).findById(AUCTION_ID);
+        doThrow(new RuntimeException("db snapshot down"))
+                .when(auctionSessionRepository)
+                .updateRuntimeSnapshotIfNotStale(AUCTION_ID, new BigDecimal("140.00"), BIDDER_ID, newEndTime);
 
         BidResultRes result = bidService.placeBid(BIDDER_ID, request);
 
         assertThat(result.currentPrice()).isEqualByComparingTo("140.00");
-        verify(auctionBroadcastService).broadcastNewBid(AUCTION_ID, new BigDecimal("140.00"), BIDDER_ID, newEndTime);
+        verify(auctionBroadcastService).broadcastNewBid(eq(AUCTION_ID), eq(new BigDecimal("140.00")), eq(BIDDER_ID),
+                eq(newEndTime), any(), eq(new BigDecimal("140.00")), any(), isNull());
         verify(bidPersistenceService).saveBid(any(), eq(AUCTION_ID), eq(BIDDER_ID), eq(new BigDecimal("140.00")), eq(BidStatus.VALID), any());
     }
 
@@ -262,7 +271,7 @@ class BidServiceImplTest {
                         assertThat(((AppException) throwable).getErrorCode()).isEqualTo(ErrorCode.UNCATEGORIZED));
 
         verify(bidPersistenceService, never()).saveBid(any(), any(), any(), any(), any(), any());
-        verify(auctionBroadcastService, never()).broadcastNewBid(any(), any(), any(), any());
+        verify(auctionBroadcastService, never()).broadcastNewBid(any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     private AuctionSession createActiveSession() {

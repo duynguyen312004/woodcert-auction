@@ -31,17 +31,18 @@ export function AuctionListPage() {
 
   const statusFilter = auctionTabToStatus(activeTab);
 
-  const { auctionsQuery, allAuctions, availableWoodTypes, paginationMeta } = usePublicAuctions(
-    {
-      status: statusFilter,
-      materials: sidebarFilters.selectedWoodTypes,
-      categoryName: sidebarFilters.selectedCategories[0],
-      priceMin: sidebarFilters.appliedPriceMin,
-      priceMax: sidebarFilters.appliedPriceMax,
-    },
-    page,
-    PAGE_SIZE,
-  );
+  const { auctionsQuery, allAuctions, availableWoodTypes, isWoodTypesLoading, paginationMeta } =
+    usePublicAuctions(
+      {
+        status: statusFilter,
+        materials: sidebarFilters.selectedWoodTypes,
+        categoryName: sidebarFilters.selectedCategory,
+        priceMin: sidebarFilters.appliedPriceMin,
+        priceMax: sidebarFilters.appliedPriceMax,
+      },
+      page,
+      PAGE_SIZE,
+    );
 
   const categoriesQuery = useCategories();
   const categoryNames = useMemo(
@@ -52,15 +53,26 @@ export function AuctionListPage() {
   const displayAuctions = allAuctions;
 
   const totalPages = paginationMeta?.pages ?? 1;
+  const hasActiveFilters =
+    activeTab !== "ALL" ||
+    sidebarFilters.selectedCategory !== undefined ||
+    sidebarFilters.selectedWoodTypes.length > 0 ||
+    sidebarFilters.appliedPriceMin !== undefined ||
+    sidebarFilters.appliedPriceMax !== undefined;
 
   const handleTabChange = (tab: AuctionStatusTab) => {
     setActiveTab(tab);
     setPage(1);
-    setSidebarFilters(defaultSidebarFilters);
   };
 
   const handleSidebarChange = (next: SidebarFilters) => {
     setSidebarFilters(next);
+    setPage(1);
+  };
+
+  const handleResetFilters = () => {
+    setActiveTab("ALL");
+    setSidebarFilters(defaultSidebarFilters);
     setPage(1);
   };
 
@@ -103,13 +115,13 @@ export function AuctionListPage() {
         </div>
 
         {/* Layout chính: sidebar và khu vực card */}
-        <div className="flex gap-6 lg:gap-8">
+        <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
           {/* Sidebar bên trái */}
           <AuctionSidebarFilter
             availableCategories={categoryNames}
             isCategoriesLoading={categoriesQuery.isLoading}
             availableWoodTypes={availableWoodTypes}
-            isWoodTypesLoading={auctionsQuery.isLoading && availableWoodTypes.length === 0}
+            isWoodTypesLoading={isWoodTypesLoading}
             filters={sidebarFilters}
             onChange={handleSidebarChange}
           />
@@ -121,21 +133,13 @@ export function AuctionListPage() {
               isLoading={auctionsQuery.isLoading}
               isError={auctionsQuery.isError}
               cardTheme="light"
+              hasActiveFilters={hasActiveFilters}
+              onResetFilters={handleResetFilters}
             />
 
             {/* Phân trang */}
             {!auctionsQuery.isLoading && (
               <div className="mt-14 flex flex-col items-center gap-6">
-                {page < totalPages && (
-                  <button
-                    type="button"
-                    onClick={() => handlePageChange(page + 1)}
-                    className="border border-[#D6A84F]/30 bg-[#0F0F0D] px-12 py-4 text-sm font-bold uppercase tracking-[0.2em] text-[#D6A84F] transition-colors hover:bg-stone-900"
-                  >
-                    Tải thêm tác phẩm
-                  </button>
-                )}
-
                 {totalPages > 1 && (
                   <div className="flex items-center gap-3 font-bold text-sm text-stone-400">
                     <button

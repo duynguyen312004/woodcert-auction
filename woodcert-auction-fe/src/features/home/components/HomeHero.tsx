@@ -1,11 +1,45 @@
-import { ChevronDown, Play, ShieldCheck } from "lucide-react";
-import { Link } from "react-router";
+import { ChevronDown, Loader2, Play, ShieldCheck } from "lucide-react";
+import { Link, useNavigate } from "react-router";
+
+import { useSellerProfile } from "@/features/account";
+import { useAuthStore } from "@/shared/auth/auth-store";
 import heroImg from "@/assets/images/hero_background.png";
 
 export function HomeHero() {
+  const navigate = useNavigate();
+  const authStatus = useAuthStore((s) => s.status);
+  const isAuthenticated = authStatus === "authenticated";
+
+  const sellerProfile = useSellerProfile({
+    enabled: isAuthenticated,
+  });
+
+  const isCheckingSeller = isAuthenticated && sellerProfile.isPending;
+
   const handleScrollDown = () => {
     const nextSection = document.getElementById("featured-auctions");
     nextSection?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const handleSellClick = () => {
+    if (authStatus === "loading") return;
+
+    if (!isAuthenticated) {
+      // Chưa đăng nhập → chuyển thẳng sang trang đăng nhập ở tab hiện tại
+      navigate("/auth/login", { state: { from: { pathname: "/seller/dashboard" } } });
+      return;
+    }
+
+    if (sellerProfile.isPending) {
+      return;
+    }
+
+    // Đã đăng nhập → mở tab mới để giữ nguyên tab hiện tại
+    if (sellerProfile.data) {
+      window.open("/seller/dashboard", "_blank", "noopener,noreferrer");
+    } else {
+      window.open("/seller/register", "_blank", "noopener,noreferrer");
+    }
   };
 
   return (
@@ -65,9 +99,11 @@ export function HomeHero() {
 
           <button
             type="button"
-            onClick={handleScrollDown}
-            className="inline-flex min-w-[240px] items-center justify-center gap-2 rounded border-2 border-white/30 bg-transparent py-4 px-10 text-lg font-bold text-white transition-all duration-300 hover:border-white hover:bg-white/5"
+            onClick={handleSellClick}
+            disabled={isCheckingSeller}
+            className="inline-flex min-w-[240px] items-center justify-center gap-2 rounded border-2 border-white/30 bg-transparent py-4 px-10 text-lg font-bold text-white transition-all duration-300 hover:border-white hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
           >
+            {isCheckingSeller && <Loader2 className="h-5 w-5 animate-spin text-primary" />}
             Đăng bán tác phẩm
           </button>
         </div>

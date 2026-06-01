@@ -36,7 +36,8 @@ class AuctionResponseAssemblerTest {
                 List.of("primary-url", "second-url"),
                 appraisalReport,
                 seller,
-                new AuctionRuntimeSnapshot(new BigDecimal("13000000"), Instant.parse("2026-05-01T13:00:00Z")));
+                new AuctionRuntimeSnapshot(new BigDecimal("13000000"), Instant.parse("2026-05-01T13:00:00Z")),
+                null);
 
         assertThat(result.currentPrice()).isEqualByComparingTo("13000000");
         assertThat(result.endTime()).isEqualTo(Instant.parse("2026-05-01T13:00:00Z"));
@@ -58,7 +59,8 @@ class AuctionResponseAssemblerTest {
                 List.of(),
                 null,
                 null,
-                AuctionRuntimeSnapshot.empty());
+                AuctionRuntimeSnapshot.empty(),
+                null);
 
         assertThat(result.currentPrice()).isEqualByComparingTo("10000000");
         assertThat(result.endTime()).isEqualTo(session.getEndTime());

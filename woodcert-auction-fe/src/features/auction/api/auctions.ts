@@ -97,3 +97,10 @@ export async function getPublicAuctions(params: GetPublicAuctionsParams = {}) {
     result: response.result.map(mapAuctionListItem),
   };
 }
+
+export async function getPublicAuctionMaterials(): Promise<string[]> {
+  return apiRequest<string[]>({
+    method: "GET",
+    url: "/auctions/materials",
+  });
+}

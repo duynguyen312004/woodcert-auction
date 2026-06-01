@@ -30,7 +30,6 @@ export interface ArtAuction {
 export type AuctionFilters = {
   status?: AuctionStatus;
   categoryName?: string;
-  woodType?: string;
   materials?: string[];
   priceMin?: number;
   priceMax?: number;

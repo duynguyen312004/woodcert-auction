@@ -5,5 +5,6 @@ export { AuctionListContent } from "./components/AuctionListContent";
 export { AuctionSidebarFilter, defaultSidebarFilters } from "./components/AuctionSidebarFilter";
 export { AuctionListPage } from "./pages/AuctionListPage";
 export { usePublicAuctions } from "./hooks/usePublicAuctions";
+export { usePublicAuctionMaterials } from "./hooks/usePublicAuctionMaterials";
 export type { ArtAuction, AuctionFilters, AuctionStatus, ConditionGrade } from "./types";
 export type { SidebarFilters } from "./components/AuctionSidebarFilter";

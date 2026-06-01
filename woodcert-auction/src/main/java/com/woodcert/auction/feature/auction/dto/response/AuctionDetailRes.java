@@ -20,7 +20,8 @@ public record AuctionDetailRes(
         Instant startTime,
         Instant endTime,
         AuctionProductSummaryRes product,
-        SellerSummary seller
+        SellerSummary seller,
+        String highestBidderMaskedAlias
 ) {
     public record SellerSummary(
             String storeName,
@@ -31,7 +32,8 @@ public record AuctionDetailRes(
     public static AuctionDetailRes fromEntity(
             AuctionSession session,
             AuctionProductSummaryRes product,
-            SellerSummary seller) {
+            SellerSummary seller,
+            String highestBidderMaskedAlias) {
         return new AuctionDetailRes(
                 session.getId(),
                 session.getStatus(),
@@ -42,7 +44,8 @@ public record AuctionDetailRes(
                 session.getStartTime(),
                 session.getEndTime(),
                 product,
-                seller
+                seller,
+                highestBidderMaskedAlias
         );
     }
 }

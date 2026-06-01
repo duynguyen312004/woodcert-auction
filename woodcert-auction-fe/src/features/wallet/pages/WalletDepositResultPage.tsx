@@ -25,6 +25,15 @@ export function WalletDepositResultPage() {
       queryClient.invalidateQueries({ queryKey: WALLET_TRANSACTIONS_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: WALLET_DEPOSITS_QUERY_KEY });
       sessionStorage.removeItem("last_txn_ref");
+
+      // Thông báo các tab ví khác đang mở để tự cập nhật số dư
+      try {
+        const bc = new BroadcastChannel("wallet");
+        bc.postMessage({ type: "WALLET_UPDATED" });
+        bc.close();
+      } catch {
+        // BroadcastChannel không hỗ trợ → bỏ qua
+      }
     }
   }, [deposit?.status, queryClient]);
 

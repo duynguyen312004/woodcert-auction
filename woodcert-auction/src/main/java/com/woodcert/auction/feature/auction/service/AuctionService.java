@@ -4,11 +4,14 @@ import com.woodcert.auction.core.dto.PaginationResponse;
 import com.woodcert.auction.feature.auction.dto.request.CreateAuctionSessionReq;
 import com.woodcert.auction.feature.auction.dto.response.AuctionDetailRes;
 import com.woodcert.auction.feature.auction.dto.response.AuctionListRes;
+import com.woodcert.auction.feature.auction.dto.response.BidHistoryItemRes;
+import com.woodcert.auction.feature.auction.dto.response.MyParticipationRes;
 import com.woodcert.auction.feature.auction.dto.response.SellerAuctionDetailRes;
 import com.woodcert.auction.feature.auction.dto.response.SellerAuctionListRes;
 import com.woodcert.auction.feature.auction.dto.response.SellerAuctionStatsRes;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 /**
  * Interface service cho các luồng đấu giá.
@@ -32,9 +35,18 @@ public interface AuctionService {
             BigDecimal priceMin, BigDecimal priceMax);
 
     /**
+     * Lấy danh sách chất liệu gỗ thực tế từ các phiên đấu giá công khai.
+     */
+    List<String> getPublicAuctionMaterials();
+
+    /**
      * Lấy chi tiết phiên cho trang public và màn preview seller.
      */
     AuctionDetailRes getPublicAuctionDetail(Long auctionId);
+
+    MyParticipationRes getMyParticipation(String userId, Long auctionId);
+
+    List<BidHistoryItemRes> getBidHistory(Long auctionId, int size, String currentUserId);
 
     /**
      * Lấy danh sách phiên thuộc về một seller.

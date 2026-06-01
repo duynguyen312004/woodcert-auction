@@ -19,7 +19,11 @@ public record BidBroadcastPayload(
         String status,
         BigDecimal currentPrice,
         String highestBidderMaskedAlias,
-        Instant endTime
+        Instant endTime,
+        String bidTraceId,
+        BigDecimal bidAmount,
+        Instant bidTime,
+        Long extendedBySeconds
 ) {
     public static final String TYPE_SESSION_ACTIVATED = "SESSION_ACTIVATED";
     public static final String TYPE_NEW_BID = "NEW_BID";
@@ -29,22 +33,29 @@ public record BidBroadcastPayload(
             Long auctionSessionId,
             BigDecimal currentPrice,
             String highestBidderMaskedAlias,
-            Instant endTime) {
+            Instant endTime,
+            String bidTraceId,
+            BigDecimal bidAmount,
+            Instant bidTime,
+            Long extendedBySeconds) {
         return new BidBroadcastPayload(
                 TYPE_NEW_BID, auctionSessionId, "ACTIVE",
-                currentPrice, highestBidderMaskedAlias, endTime);
+                currentPrice, highestBidderMaskedAlias, endTime,
+                bidTraceId, bidAmount, bidTime, extendedBySeconds);
     }
 
     public static BidBroadcastPayload sessionActivated(Long auctionSessionId, BigDecimal startingPrice, Instant endTime) {
         return new BidBroadcastPayload(
                 TYPE_SESSION_ACTIVATED, auctionSessionId, "ACTIVE",
-                startingPrice, null, endTime);
+                startingPrice, null, endTime,
+                null, null, null, null);
     }
 
     public static BidBroadcastPayload sessionEnded(Long auctionSessionId, String finalStatus,
                                                     BigDecimal finalPrice, Instant endTime) {
         return new BidBroadcastPayload(
                 TYPE_SESSION_ENDED, auctionSessionId, finalStatus,
-                finalPrice, null, endTime);
+                finalPrice, null, endTime,
+                null, null, null, null);
     }
 }
