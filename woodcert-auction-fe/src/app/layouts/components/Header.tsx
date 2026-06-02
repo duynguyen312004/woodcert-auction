@@ -1,4 +1,4 @@
-import { Menu, Search, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router";
 
@@ -11,7 +11,14 @@ import { UserMenu } from "./UserMenu";
 import { WalletWidget } from "./WalletWidget";
 
 // Chỉ giữ các route thực sự tồn tại
-const navLinks = [{ label: "Đấu giá", to: "/auctions" }];
+const navLinks = [
+  { label: "Trang chủ", to: "/" },
+  { label: "Giới thiệu", to: "/about" },
+  { label: "Đấu giá", to: "/auctions" },
+  { label: "Tra cứu chứng nhận", to: "/certificates" },
+  { label: "Tin tức", to: "/blog" },
+  { label: "Hướng dẫn", to: "/guide" },
+];
 
 export function Header() {
   const authStatus = useAuthStore((state) => state.status);
@@ -35,7 +42,7 @@ export function Header() {
   };
 
   return (
-    <header className="fixed top-0 left-0 z-50 w-full border-b border-white/10 bg-background/80 backdrop-blur-md transition-all duration-300">
+    <header className="fixed top-0 left-0 z-50 w-full border-b border-white/10 bg-background/80 backdrop-blur-md transition-all duration-300 select-none">
       <div className="mx-auto flex h-[4.25rem] max-w-[1280px] items-center justify-between px-6">
         {/* Left: Logo + Nav */}
         <div className="flex items-center gap-10">
@@ -68,17 +75,6 @@ export function Header() {
               </NavLink>
             ))}
           </nav>
-        </div>
-
-        {/* Center: Search */}
-        <div className="relative mx-6 hidden max-w-xs flex-1 xl:flex">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/50" />
-          <input
-            type="text"
-            aria-label="Tìm kiếm tác phẩm"
-            placeholder="Tìm kiếm tác phẩm..."
-            className="h-9 w-full rounded-lg border-none bg-card/60 pl-9 pr-4 text-sm text-foreground ring-1 ring-white/10 placeholder:text-muted-foreground/50 focus:bg-card/80 focus:outline-none focus:ring-1 focus:ring-primary/40"
-          />
         </div>
 
         {/* Right: Auth + Wallet + UserMenu */}
@@ -147,6 +143,13 @@ export function Header() {
                   className="flex items-center gap-2 rounded-lg border border-white/12 py-2.5 px-4 text-sm font-medium text-foreground transition-colors hover:border-primary/40"
                 >
                   Hồ sơ cá nhân
+                </Link>
+                <Link
+                  to="/orders"
+                  onClick={() => setMobileOpen(false)}
+                  className="flex items-center gap-2 rounded-lg border border-white/12 py-2.5 px-4 text-sm font-medium text-foreground transition-colors hover:border-primary/40"
+                >
+                  Đơn mua
                 </Link>
                 {/* Mobile logout không dùng dialog để giảm UX friction trên mobile */}
                 <button

@@ -8,6 +8,8 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @Setter
@@ -49,6 +51,16 @@ public class DisputeCase extends BaseEntity {
     @Column(name = "resolved_at")
     private Instant resolvedAt;
 
+    @Column(name = "resolved_by_admin_id", length = 36)
+    private String resolvedByAdminId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "resolution_outcome", length = 30)
+    private DisputeResolutionOutcome resolutionOutcome;
+
+    @Column(name = "resolution_note", length = 2000)
+    private String resolutionNote;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id", insertable = false, updatable = false)
     private OrderEntity order;
@@ -56,4 +68,8 @@ public class DisputeCase extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "fulfillment_id", insertable = false, updatable = false)
     private OrderFulfillment fulfillment;
+
+    @OneToMany(mappedBy = "disputeCase", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("sortOrder ASC, id ASC")
+    private List<DisputeEvidence> evidences = new ArrayList<>();
 }

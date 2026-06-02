@@ -1,6 +1,6 @@
 # WoodCert Auction FE Implementation Roadmap
 
-Last updated: 2026-05-28
+Last updated: 2026-06-02
 
 This roadmap summarizes implementation order. `PROJECT-STATUS.md` is the current progress source of truth.
 
@@ -13,6 +13,8 @@ This roadmap summarizes implementation order. `PROJECT-STATUS.md` is the current
 - Wallet page, transaction history, VNPay deposit flow, and header wallet balance are implemented.
 - Seller profile, seller dashboard, product list, product create/edit, and product image upload are implemented.
 - Seller auction workflow is implemented for create/list/cancel/detail using existing backend contracts.
+- Buyer/seller order lists, fulfillment actions, dispute open/current/cancel, and admin dispute resolution are implemented.
+- Admin revenue, categories, appraisers, public certificate verification, address book, and seller product detail are implemented.
 - Appraiser workflow is implemented end to end: queue, claim/release, detail, proof upload, approve/reject, reviewed tabs.
 
 ## Pending MVP Work
@@ -27,10 +29,9 @@ This roadmap summarizes implementation order. `PROJECT-STATUS.md` is the current
 
 ## Deferred
 
-- Admin operations
-- Public certificate verification
-- Orders, fulfillment, shipping, disputes
 - Runtime env injection strategy beyond initial static Vite setup
+- Advanced realtime/reconnect Playwright coverage
+- Production route-level code splitting
 
 ## Constraints
 

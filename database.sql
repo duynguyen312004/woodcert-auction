@@ -138,7 +138,8 @@ Cac cot:
 - dimensions        VARCHAR(100)  Kich thuoc (Dai x Rong x Cao).
 - weight            DECIMAL(10,2) Trong luong (kg) de tinh phi van chuyen.
 - status            ENUM          DRAFT, PENDING_APPRAISAL, REJECTED, APPRAISED.
-- sale_status       ENUM          AVAILABLE, IN_AUCTION, SOLD. Trang thai kha nang ban cua san pham vat ly.
+- sale_status       ENUM          AVAILABLE, IN_AUCTION, SOLD, RETURNED. Trang thai kha nang ban cua san pham vat ly.
+                                    RETURNED dung khi buyer thang dispute; khong tu relist san pham loi.
 - submitted_at      TIMESTAMP     Thoi diem Seller bam "Gui kiem dinh".
 - rejected_reason   TEXT          Ly do tu choi (chi co khi status = REJECTED).
 - created_at        TIMESTAMP     Thoi gian tao.
@@ -316,9 +317,10 @@ Cac cot:
 - created_at        TIMESTAMP     Thoi gian tao fulfillment.
 - updated_at        TIMESTAMP     Thoi gian cap nhat fulfillment.
 
-3) Bang dispute_cases (Khung tranh chap)
+3) Bang dispute_cases (Ho so tranh chap)
 Mo ta:
-- Skeleton de giu boundary dispute, chua co public API/UI.
+- Buyer mo tranh chap khi order dang FULFILLING va fulfillment da SHIPPED.
+- Admin review va resolve theo 2 outcome: SELLER_WINS hoac BUYER_WINS.
 
 Cac cot:
 - id                BIGINT        PK, auto increment.
@@ -328,7 +330,24 @@ Cac cot:
 - reason            VARCHAR(120)  Ly do ngan gon.
 - description       TEXT          Mo ta chi tiet.
 - status            ENUM          OPEN, UNDER_REVIEW, RESOLVED, REJECTED, CANCELED.
+- resolution_outcome ENUM         SELLER_WINS, BUYER_WINS. Chi co khi RESOLVED.
+- resolved_by_admin_id VARCHAR(36) FK -> users.id, nullable.
+- resolution_note   TEXT          Ghi chu ket luan cua admin.
 - opened_at         TIMESTAMP     Thoi diem mo case.
 - resolved_at       TIMESTAMP     Thoi diem xu ly xong.
 - created_at        TIMESTAMP     Thoi gian tao case.
 - updated_at        TIMESTAMP     Thoi gian cap nhat case.
+
+4) Bang dispute_evidence (Bang chung tranh chap)
+Mo ta:
+- Luu tham chieu media_assets do buyer upload cho mot dispute.
+- Media usage_type = DISPUTE_EVIDENCE, chi chap nhan asset ACTIVE.
+
+Cac cot:
+- id                BIGINT        PK, auto increment.
+- dispute_case_id   BIGINT        FK -> dispute_cases.id.
+- media_id          BIGINT        FK -> media_assets.id.
+- uploaded_by_user_id VARCHAR(36) FK -> users.id.
+- sort_order        INT           Thu tu hien thi bang chung.
+- created_at        TIMESTAMP     Thoi gian tao.
+- updated_at        TIMESTAMP     Thoi gian cap nhat.

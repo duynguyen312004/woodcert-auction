@@ -25,4 +25,12 @@ public interface OrderService {
     void markFulfilling(String sellerId, Long orderId);
 
     void completeFromFulfillment(Long orderId);
+
+    OrderRes openDispute(String buyerId, Long orderId);
+
+    OrderRes cancelDispute(Long orderId);
+
+    OrderRes resolveDisputeSellerWins(Long orderId);
+
+    OrderRes resolveDisputeBuyerWins(Long orderId);
 }

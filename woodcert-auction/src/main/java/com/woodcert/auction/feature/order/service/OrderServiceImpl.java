@@ -238,6 +238,80 @@ public class OrderServiceImpl implements OrderService {
             throw new AppException(ErrorCode.ORDER_INVALID_STATUS);
         }
 
+        completeOrder(order);
+    }
+
+    @Override
+    @Transactional
+    public OrderRes openDispute(String buyerId, Long orderId) {
+        OrderEntity order = getOwnedOrderForUpdate(orderId, buyerId);
+        if (!buyerId.equals(order.getBuyerId())) {
+            throw new AppException(ErrorCode.ORDER_NOT_OWNED);
+        }
+        if (order.getStatus() != OrderStatus.FULFILLING) {
+            throw new AppException(ErrorCode.ORDER_INVALID_STATUS);
+        }
+
+        OrderFulfillmentSnapshot fulfillment = fulfillmentSnapshot(order.getId());
+        if (fulfillment == null || !"SHIPPED".equals(fulfillment.status())) {
+            throw new AppException(ErrorCode.ORDER_INVALID_STATUS);
+        }
+
+        order.setStatus(OrderStatus.DISPUTED);
+        return toRes(orderRepository.save(order));
+    }
+
+    @Override
+    @Transactional
+    public OrderRes cancelDispute(Long orderId) {
+        OrderEntity order = orderRepository.findByIdForUpdate(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+        if (order.getStatus() != OrderStatus.DISPUTED) {
+            throw new AppException(ErrorCode.ORDER_INVALID_STATUS);
+        }
+
+        order.setStatus(OrderStatus.FULFILLING);
+        return toRes(orderRepository.save(order));
+    }
+
+    @Override
+    @Transactional
+    public OrderRes resolveDisputeSellerWins(Long orderId) {
+        OrderEntity order = orderRepository.findByIdForUpdate(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+        if (order.getStatus() != OrderStatus.DISPUTED) {
+            throw new AppException(ErrorCode.ORDER_INVALID_STATUS);
+        }
+        return toRes(completeOrder(order));
+    }
+
+    @Override
+    @Transactional
+    public OrderRes resolveDisputeBuyerWins(Long orderId) {
+        OrderEntity order = orderRepository.findByIdForUpdate(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+        if (order.getStatus() != OrderStatus.DISPUTED) {
+            throw new AppException(ErrorCode.ORDER_INVALID_STATUS);
+        }
+
+        walletService.depositFunds(
+                order.getBuyerId(),
+                "order:dispute:refund:" + order.getId(),
+                order.getFinalPrice(),
+                order.getId(),
+                WalletReferenceType.ORDER
+        );
+
+        Instant now = Instant.now();
+        order.setStatus(OrderStatus.CANCELED);
+        order.setCanceledAt(now);
+        order.setCancelReason("DISPUTE_BUYER_WINS");
+        OrderEntity saved = orderRepository.save(order);
+        adapterFor(saved.getSourceType()).onDisputeBuyerWon(saved);
+        return toRes(saved);
+    }
+
+    private OrderEntity completeOrder(OrderEntity order) {
         BigDecimal rate = feeCalculator.commissionRate(order.getFinalPrice());
         BigDecimal commission = feeCalculator.commissionAmount(order.getFinalPrice(), rate);
         BigDecimal payout = feeCalculator.money(order.getFinalPrice().subtract(commission));
@@ -269,6 +343,7 @@ public class OrderServiceImpl implements OrderService {
         order.setCompletedAt(Instant.now());
         OrderEntity saved = orderRepository.save(order);
         adapterFor(saved.getSourceType()).onOrderCompleted(saved);
+        return saved;
     }
 
     private OrderEntity getOwnedOrderForUpdate(Long orderId, String userId) {

@@ -32,6 +32,7 @@ public interface MediaAssetRepository extends JpaRepository<MediaAsset, Long> {
          * - users.avatar_media_id
          * - product_images.media_id
          * - appraisal_images.media_id
+         * - dispute_evidence.media_id
          * AND were created before the given cutoff (to avoid marking in-flight
          * uploads).
          */
@@ -42,6 +43,7 @@ public interface MediaAssetRepository extends JpaRepository<MediaAsset, Long> {
                           AND ma.id NOT IN (SELECT u.avatarMedia.id FROM User u WHERE u.avatarMedia IS NOT NULL)
                           AND ma.id NOT IN (SELECT pi.mediaId FROM ProductImage pi)
                           AND ma.id NOT IN (SELECT ai.mediaId FROM AppraisalImage ai)
+                          AND ma.id NOT IN (SELECT de.mediaId FROM DisputeEvidence de)
                         """)
         Page<MediaAsset> findOrphanActiveAssets(
                         @Param("status") MediaStatus status,

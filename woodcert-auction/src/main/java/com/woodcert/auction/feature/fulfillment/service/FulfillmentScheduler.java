@@ -3,6 +3,7 @@ package com.woodcert.auction.feature.fulfillment.service;
 import com.woodcert.auction.feature.fulfillment.config.FulfillmentProperties;
 import com.woodcert.auction.feature.fulfillment.entity.FulfillmentStatus;
 import com.woodcert.auction.feature.fulfillment.repository.FulfillmentRepository;
+import com.woodcert.auction.feature.order.entity.OrderStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -28,7 +29,10 @@ public class FulfillmentScheduler {
             return;
         }
         var ids = fulfillmentRepository.findOverdueAutoCompleteIds(
-                FulfillmentStatus.SHIPPED, Instant.now(), PageRequest.of(0, BATCH_SIZE));
+                FulfillmentStatus.SHIPPED,
+                OrderStatus.DISPUTED,
+                Instant.now(),
+                PageRequest.of(0, BATCH_SIZE));
         for (Long id : ids) {
             try {
                 fulfillmentService.autoCompleteOverdueFulfillment(id);

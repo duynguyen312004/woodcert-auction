@@ -52,3 +52,8 @@ export type OrderDetail = OrderSummary & {
   createdAt: string;
   updatedAt: string;
 };
+
+export type OrderListParams = {
+  page?: number;
+  size?: number;
+};

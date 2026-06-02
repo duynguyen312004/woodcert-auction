@@ -1,0 +1,1 @@
+export { certificateRoutes } from "./routes";

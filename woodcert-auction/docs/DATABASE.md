@@ -1,6 +1,6 @@
 # Database Schema
 
-Current implementation note (2026-05-28): identity, media, catalog/appraisal, finance/wallet/VNPay, and auction/bidding tables are implemented by backend code. Fulfillment tables (`orders`, `order_fulfillments`, `disputes`) remain planned schema for Phase 4 and do not yet have a backend package/controller/service.
+Current implementation note (2026-06-02): identity, media, catalog/appraisal, finance/wallet/VNPay, auction/bidding, orders, fulfillment, dispute, admin category/appraiser operations, and certificate lookup are implemented by backend code.
 
 > MySQL database design for WoodCert Auction Platform.
 > Update this file whenever schema changes.
@@ -160,9 +160,11 @@ products -> auction_sessions -> bids
                                   +-> order_fulfillments
                                   |
                                   +-> dispute_cases
+                                          |
+                                          +-> dispute_evidence
 ```
 
-Auction owns sessions, bids, participants, and settlement. Order owns post-sale payment, payout snapshots, and source callbacks. Fulfillment owns shipment and auto-complete. Dispute is a reserved boundary for future workflows.
+Auction owns sessions, bids, participants, and settlement. Order owns post-sale payment, payout snapshots, and source callbacks. Fulfillment owns shipment and auto-complete. Dispute owns buyer evidence, active case state, admin review, and full seller-wins/buyer-wins resolution.
 
 ---
 
@@ -436,6 +438,7 @@ Composite PK: (role_id, permission_id)
 | dimensions | VARCHAR(100) | NULLABLE | Kích thước |
 | weight | DECIMAL(10,2) | NULLABLE | Trọng lượng kg |
 | status | VARCHAR(30) | NOT NULL | Enum: DRAFT, PENDING_APPRAISAL, REJECTED, APPRAISED |
+| sale_status | VARCHAR(30) | NOT NULL | Enum: AVAILABLE, IN_AUCTION, SOLD, RETURNED |
 | submitted_at | TIMESTAMP | NULLABLE | Lúc gửi kiểm định |
 | rejected_reason | TEXT | NULLABLE | Lý do từ chối |
 | created_at | TIMESTAMP | NOT NULL, DEFAULT CURRENT_TIMESTAMP | |
@@ -614,9 +617,11 @@ products -> auction_sessions -> bids
                                   +-> order_fulfillments
                                   |
                                   +-> dispute_cases
+                                          |
+                                          +-> dispute_evidence
 ```
 
-Auction owns sessions, bids, participants, and settlement. Order owns post-sale payment, payout snapshots, and source callbacks. Fulfillment owns shipment and auto-complete. Dispute is a reserved boundary for future workflows.
+Auction owns sessions, bids, participants, and settlement. Order owns post-sale payment, payout snapshots, and source callbacks. Fulfillment owns shipment and auto-complete. Dispute owns buyer evidence, active case state, admin review, and full seller-wins/buyer-wins resolution.
 
 ---
 
@@ -715,7 +720,7 @@ roles
 - BAN_USER
 ### Table List
 
-Total tables: 27
+Total tables: 28
 
 **Infrastructure & Location (13 tables):**
 - users
@@ -753,9 +758,12 @@ Total tables: 27
 **Fulfillment (3 tables):**
 - orders
 - order_fulfillments
-- disputes
+- dispute_cases
 
-**Note:** Total 27 tables including all join tables, master data, and operational tables. Updated count reflects `password_reset_tokens`, `media_assets`, the location hierarchy, and token/session management tables.
+**Dispute Evidence (1 table):**
+- dispute_evidence
+
+**Note:** Total 28 tables including all join tables, master data, and operational tables. Updated count reflects `password_reset_tokens`, `media_assets`, the location hierarchy, token/session management tables, and dispute evidence.
 
 ### Recommended Schema Strategy
 
@@ -767,4 +775,5 @@ Total tables: 27
 
 - Cleanup expired refresh tokens (daily job)
 - Auto-complete delivered orders after 72 hours (scheduled task)
+- Skip disputed orders during fulfillment auto-complete
 - Auction close scheduler (realtime event listener)

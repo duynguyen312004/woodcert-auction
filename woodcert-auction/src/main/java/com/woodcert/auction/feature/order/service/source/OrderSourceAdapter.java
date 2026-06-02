@@ -16,4 +16,7 @@ public interface OrderSourceAdapter {
     void onPaymentCanceled(OrderEntity order);
 
     void onOrderCompleted(OrderEntity order);
+
+    default void onDisputeBuyerWon(OrderEntity order) {
+    }
 }

@@ -6,6 +6,9 @@ import com.woodcert.auction.feature.identity.dto.request.CreateAddressReq;
 import com.woodcert.auction.feature.identity.dto.response.AddressRes;
 import com.woodcert.auction.feature.identity.entity.Address;
 import com.woodcert.auction.feature.identity.entity.User;
+import com.woodcert.auction.feature.identity.entity.Province;
+import com.woodcert.auction.feature.identity.entity.District;
+import com.woodcert.auction.feature.identity.entity.Ward;
 import com.woodcert.auction.feature.identity.repository.AddressRepository;
 import com.woodcert.auction.feature.identity.repository.DistrictRepository;
 import com.woodcert.auction.feature.identity.repository.ProvinceRepository;
@@ -32,7 +35,7 @@ public class AddressServiceImpl implements AddressService {
     @Transactional(readOnly = true)
     public List<AddressRes> getCurrentUserAddresses(String userId) {
         return addressRepository.findByUser_IdOrderByIsDefaultDescIdAsc(userId).stream()
-                .map(AddressRes::fromEntity)
+                .map(this::mapToAddressRes)
                 .toList();
     }
 
@@ -67,7 +70,21 @@ public class AddressServiceImpl implements AddressService {
         address.setWardCode(normalizedWardCode);
         address.setDefault(request.isDefault());
 
-        return AddressRes.fromEntity(addressRepository.save(address));
+        Address savedAddress = addressRepository.save(address);
+        return mapToAddressRes(savedAddress);
+    }
+
+    private AddressRes mapToAddressRes(Address address) {
+        String provinceName = provinceRepository.findById(address.getProvinceCode())
+                .map(Province::getName)
+                .orElse(null);
+        String districtName = districtRepository.findById(address.getDistrictCode())
+                .map(District::getName)
+                .orElse(null);
+        String wardName = wardRepository.findById(address.getWardCode())
+                .map(Ward::getName)
+                .orElse(null);
+        return AddressRes.fromEntity(address, provinceName, districtName, wardName);
     }
 
     private void validateLocationHierarchy(String provinceCode, String districtCode, String wardCode) {

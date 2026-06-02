@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router";
-import { ChevronRight, CreditCard, Home, Loader2 } from "lucide-react";
+import { CreditCard, Loader2 } from "lucide-react";
 import { DepositAmountSelector } from "../components/DepositAmountSelector";
 import { useCreateDeposit } from "../hooks/useCreateDeposit";
 
@@ -38,23 +37,6 @@ export function WalletDepositPage() {
   return (
     <div className="min-h-screen bg-background pt-24 pb-16">
       <div className="mx-auto max-w-[640px] px-6 space-y-8">
-        {/* Breadcrumb */}
-        <nav
-          aria-label="Breadcrumb"
-          className="flex items-center gap-2 text-xs text-muted-foreground"
-        >
-          <Link to="/" className="flex items-center gap-1 transition-colors hover:text-primary">
-            <Home className="h-3 w-3" />
-            <span>Trang chủ</span>
-          </Link>
-          <ChevronRight className="h-3 w-3" />
-          <Link to="/wallet" className="transition-colors hover:text-primary">
-            Ví của tôi
-          </Link>
-          <ChevronRight className="h-3 w-3" />
-          <span className="text-foreground font-semibold">Nạp tiền</span>
-        </nav>
-
         {/* Form Container */}
         <form
           onSubmit={handleDepositSubmit}

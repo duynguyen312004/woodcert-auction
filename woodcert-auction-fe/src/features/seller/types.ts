@@ -14,7 +14,7 @@ export type ProductStatus =
   | "REJECTED"
   | "APPRAISED";
 
-export type ProductSaleStatus = "AVAILABLE" | "IN_AUCTION" | "PENDING_ORDER" | "SOLD";
+export type ProductSaleStatus = "AVAILABLE" | "IN_AUCTION" | "PENDING_ORDER" | "SOLD" | "RETURNED";
 
 export type SellerAuctionStatus =
   | "WAITING"

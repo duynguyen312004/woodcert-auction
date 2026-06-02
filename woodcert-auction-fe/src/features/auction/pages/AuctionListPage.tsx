@@ -50,11 +50,18 @@ export function AuctionListPage() {
     [categoriesQuery.data],
   );
 
-  const displayAuctions = allAuctions;
+  const displayAuctions = useMemo(() => {
+    const keyword = sidebarFilters.searchKeyword.trim().toLowerCase();
+    if (!keyword) return allAuctions;
+    return allAuctions.filter(
+      (a) => a.title.toLowerCase().includes(keyword) || a.woodType.toLowerCase().includes(keyword),
+    );
+  }, [allAuctions, sidebarFilters.searchKeyword]);
 
   const totalPages = paginationMeta?.pages ?? 1;
   const hasActiveFilters =
     activeTab !== "ALL" ||
+    sidebarFilters.searchKeyword !== "" ||
     sidebarFilters.selectedCategory !== undefined ||
     sidebarFilters.selectedWoodTypes.length > 0 ||
     sidebarFilters.appliedPriceMin !== undefined ||

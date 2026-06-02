@@ -1,7 +1,8 @@
-import { X } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 
 export type SidebarFilters = {
+  searchKeyword: string;
   selectedCategory?: string;
   selectedWoodTypes: string[];
   priceMin: string;
@@ -11,6 +12,7 @@ export type SidebarFilters = {
 };
 
 export const defaultSidebarFilters: SidebarFilters = {
+  searchKeyword: "",
   selectedCategory: undefined,
   selectedWoodTypes: [],
   priceMin: "",
@@ -169,12 +171,15 @@ export function AuctionSidebarFilter({
   filters,
   onChange,
 }: AuctionSidebarFilterProps) {
-  const { selectedCategory, selectedWoodTypes, priceMin, priceMax } = filters;
+  const { selectedCategory, selectedWoodTypes, priceMin, priceMax, searchKeyword } = filters;
 
   const hasPriceFilter =
     filters.appliedPriceMin !== undefined || filters.appliedPriceMax !== undefined;
   const activeCount =
-    (selectedCategory ? 1 : 0) + selectedWoodTypes.length + (hasPriceFilter ? 1 : 0);
+    (searchKeyword ? 1 : 0) +
+    (selectedCategory ? 1 : 0) +
+    selectedWoodTypes.length +
+    (hasPriceFilter ? 1 : 0);
 
   const selectCategory = (value: string | undefined) => {
     onChange({ ...filters, selectedCategory: value });
@@ -213,6 +218,23 @@ export function AuctionSidebarFilter({
             Xóa ({activeCount})
           </button>
         )}
+      </div>
+
+      {/* Tìm kiếm từ khóa */}
+      <div>
+        <h3 className="mb-3 text-[11px] font-bold uppercase tracking-widest text-white">
+          Tìm kiếm
+        </h3>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#8D877C]" />
+          <input
+            type="text"
+            placeholder="Tìm tác phẩm gỗ..."
+            value={searchKeyword}
+            onChange={(e) => onChange({ ...filters, searchKeyword: e.target.value })}
+            className="w-full rounded border-none bg-[#39342d] py-2.5 pl-9 pr-3 text-xs text-white placeholder:text-[#8D877C] focus:outline-none focus:ring-1 focus:ring-[#D6A84F]/50"
+          />
+        </div>
       </div>
 
       <RadioSection

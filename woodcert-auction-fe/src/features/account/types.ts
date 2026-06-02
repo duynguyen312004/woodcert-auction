@@ -48,6 +48,42 @@ export interface AvatarUploadIntentPayload {
   fileSize: number;
 }
 
+export interface Province {
+  code: string;
+  name: string;
+}
+
+export interface District {
+  code: string;
+  provinceCode: string;
+  name: string;
+}
+
+export interface Ward {
+  code: string;
+  districtCode: string;
+  name: string;
+}
+
+export interface Address {
+  id: number;
+  receiverName: string;
+  phoneNumber: string;
+  streetAddress: string;
+  provinceCode: string;
+  districtCode: string;
+  wardCode: string;
+  isDefault: boolean;
+  provinceName?: string;
+  districtName?: string;
+  wardName?: string;
+}
+
+export type CreateAddressPayload = Omit<
+  Address,
+  "id" | "provinceName" | "districtName" | "wardName"
+>;
+
 // Schema Zod và type suy ra từ schema.
 
 const humanNameRegex = /^[\p{L}\s'.-]+$/u;

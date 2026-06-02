@@ -27,12 +27,33 @@ describe("seller routes", () => {
         "seller/profile",
         "seller/products",
         "seller/products/new",
+        "seller/products/:productId",
         "seller/products/:productId/edit",
+        "seller/orders",
         "seller/auctions",
         "seller/auctions/:auctionId",
         "seller/auctions/new",
         "seller/appraisals",
         "seller/register",
+      ]),
+    );
+  });
+
+  it("declares post-auction, admin, certificate, and address routes", () => {
+    const paths = collectPaths(routes);
+
+    expect([...paths]).toEqual(
+      expect.arrayContaining([
+        "orders",
+        "account/addresses",
+        "certificates",
+        "certificates/:certificateCode",
+        "admin",
+        "admin/revenue",
+        "admin/disputes",
+        "admin/disputes/:id",
+        "admin/categories",
+        "admin/appraisers",
       ]),
     );
   });

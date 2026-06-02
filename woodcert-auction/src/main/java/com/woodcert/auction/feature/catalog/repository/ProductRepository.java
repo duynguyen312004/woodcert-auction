@@ -32,6 +32,13 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     Page<Product> findBySellerIdAndStatusAndCategoryId(
             String sellerId, ProductStatus status, Integer categoryId, Pageable pageable);
 
+    boolean existsByCategoryId(Integer categoryId);
+
+    boolean existsByAppraisalClaimedByAndStatusAndAppraisalClaimExpiresAtAfter(
+            String appraiserId,
+            ProductStatus status,
+            Instant now);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             SELECT p

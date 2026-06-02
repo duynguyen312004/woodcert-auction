@@ -59,6 +59,7 @@ public class SecurityConfig {
             "/api/v1/locations/**",
             "/api/v1/auth/verify-email",
             "/api/v1/categories/**",
+            "/api/v1/certificates/**",
             "/api/v1/auctions/**",
             "/api/v1/wallets/vnpay/**"
     };

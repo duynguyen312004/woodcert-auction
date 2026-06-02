@@ -3,7 +3,7 @@
 > All endpoints return `ApiResponse<T>` wrapper. Error responses created from `AppException` include nullable `errorCode` for machine-readable handling.
 > Update this file whenever endpoints change.
 >
-> Current implementation note (2026-05-25): sections Auth through Auction Sessions are implemented backend contracts. Orders, order_fulfillments, and Disputes are planned Phase 4 contracts only; no `feature/fulfillment` package exists yet.
+> Current implementation note (2026-06-02): auth, identity, media, catalog/appraisal, finance, auction, orders, fulfillment, disputes, admin category/appraiser operations, and public certificate lookup are implemented backend contracts.
 
 ---
 
@@ -1411,7 +1411,7 @@ List orders where the current user is seller.
 
 ### GET /orders/{id} 🔒
 
-Fetch one order if the current user is buyer, seller, or admin.
+Fetch one order if the current user is the buyer or seller.
 
 ### POST /orders/{id}/pay 🔒
 
@@ -1439,12 +1439,107 @@ Scheduler behavior:
 
 - `PENDING_PAYMENT` past deadline: order `CANCELED`, auction participant deposit `CONFISCATED`, product returns `AVAILABLE`, platform keeps 10% of deposit, seller receives 90%.
 - `SHIPPED` past auto-complete deadline: fulfillment `AUTO_COMPLETED`, order `COMPLETED`, seller payout released.
+- `DISPUTED` orders are skipped by fulfillment auto-complete until the dispute is canceled/rejected/resolved.
 
 ## 11. Disputes
 
-Dispute is currently a reserved backend boundary (`dispute_cases`) and `OrderStatus.DISPUTED` is reserved. Public dispute API/UI is intentionally not exposed in this phase.
+Dispute v1 supports buyer-opened evidence cases only. Resolution is full outcome only: `SELLER_WINS` or `BUYER_WINS`; partial refund is not supported.
 
-## 12. WebSocket Channels (Real-time)
+Open rules:
+
+- Current user must be the buyer.
+- Order status must be `FULFILLING`.
+- Fulfillment status must be `SHIPPED`.
+- Order must not already have an active `OPEN` or `UNDER_REVIEW` dispute.
+
+### POST /disputes/evidence/upload-intent 🔒
+
+Creates a signed Cloudinary upload intent for dispute evidence image media.
+
+### PUT /disputes/evidence/confirm 🔒
+
+Confirms a dispute evidence upload by `mediaId` and Cloudinary `assetId`.
+
+### POST /orders/{orderId}/disputes 🔒
+
+Buyer opens a dispute and locks the order as `DISPUTED`.
+
+Request Body:
+
+```json
+{
+  "reason": "Product does not match appraisal",
+  "description": "The delivered item has visible damage not shown in the listing.",
+  "evidenceMediaIds": [101, 102]
+}
+```
+
+### GET /orders/{orderId}/disputes/current 🔒
+
+Returns the current active dispute for the order, or `null`.
+
+### PATCH /orders/{orderId}/disputes/{disputeId}/cancel 🔒
+
+Buyer cancels an active dispute. Order returns to `FULFILLING` so auto-complete can continue.
+
+### GET /admin/disputes 🔒
+
+Admin lists disputes. Optional query: `status`, `page`, `size`.
+
+### GET /admin/disputes/{id} 🔒
+
+Admin fetches one dispute detail including evidence.
+
+### PATCH /admin/disputes/{id}/review 🔒
+
+Admin marks `OPEN` dispute as `UNDER_REVIEW`.
+
+### PATCH /admin/disputes/{id}/resolve 🔒
+
+Request Body:
+
+```json
+{
+  "outcome": "BUYER_WINS",
+  "resolutionNote": "Refund buyer because evidence confirms wrong item."
+}
+```
+
+Outcomes:
+
+- `SELLER_WINS`: order `COMPLETED`, fulfillment `AUTO_COMPLETED`, seller payout released, platform commission recorded.
+- `BUYER_WINS`: buyer refunded `order.finalPrice` through wallet reference type `ORDER`, order `CANCELED`, fulfillment `CANCELED`, product sale status `RETURNED`.
+
+## 12. Admin Operations and Public Verification
+
+### /admin/categories 🔒
+
+Admin CRUD endpoints:
+
+- `GET /admin/categories`
+- `POST /admin/categories`
+- `PUT /admin/categories/{id}`
+- `DELETE /admin/categories/{id}`
+
+Rules: name/slug must be unique, parent must exist, and a category with children or products cannot be deleted.
+
+Public category read remains `GET /categories`.
+
+### /admin/appraisers 🔒
+
+Admin appraiser provisioning endpoints:
+
+- `GET /admin/appraisers?query=&page=1&size=20`
+- `PATCH /admin/appraisers/{userId}/promote`
+- `PATCH /admin/appraisers/{userId}/demote`
+
+Rules: promote active users only; demote is blocked while the user has an unexpired open appraisal claim.
+
+### GET /certificates/{certificateCode} 🔓
+
+Public certificate lookup. Response intentionally excludes internal appraiser notes and proof media.
+
+## 13. WebSocket Channels (Real-time)
 
 Client should subscribe to STOMP WebSocket channels for real-time updates:
 

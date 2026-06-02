@@ -10,5 +10,6 @@ public enum ProductSaleStatus {
     AVAILABLE,
     IN_AUCTION,
     PENDING_ORDER,
-    SOLD
+    SOLD,
+    RETURNED
 }

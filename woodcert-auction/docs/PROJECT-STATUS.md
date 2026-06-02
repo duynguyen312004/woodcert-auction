@@ -1,6 +1,6 @@
 # Project Status
 
-> Last updated: 2026-06-02 | By: Codex | Session: order-fulfillment-hardening
+> Last updated: 2026-06-02 | By: Codex | Session: post-auction-operations
 >
 > AI: update this file at the end of every backend session when asked.
 > Follow this exact format. Keep it concise but decision-useful.
@@ -24,38 +24,38 @@
 - [x] Buyer realtime API support: authenticated participation context, public bid history with optional `mine`, enriched `NEW_BID` payload, and Lua `extendedByMs`
 - [x] Order module: source-adapter boundary, order creation from auction settlement, buyer/seller order list/detail APIs, remainder payment, overdue payment cancellation, and forfeited deposit split
 - [x] Fulfillment module: pending shipment creation, seller shipping confirmation, buyer received confirmation, shipped auto-complete, seller payout, and platform commission recording
+- [x] Dispute module: buyer evidence upload, open/cancel/current APIs, admin queue/detail/review/resolve APIs, seller-wins payout path, buyer-wins refund path, and scheduler skip for disputed orders
+- [x] Back-office APIs: admin category CRUD, admin appraiser promote/demote, and public certificate verification lookup
+- [x] Product sale status supports `RETURNED` for buyer-wins disputes without automatic relist
 - [x] Platform revenue APIs for admin revenue stats and transaction history
-- [x] Order/Fulfillment unit coverage added for service and scheduler paths
+- [x] Order/Fulfillment/Dispute unit coverage added for service and scheduler paths
 - [x] Expose buyer outcome contract (winner, outcomeCode, outcomeMessage) và highestBidderMaskedAlias trong chi tiết đấu giá và participation context
 - [x] Backend unit/integration test suite passes with `mvn test`
 
 ## In Progress
 
-- Next backend work is dispute service/controller implementation and the deferred settlement repair path.
+- Next backend work is deploy hardening plus the deferred settlement repair path.
 
 ## Deferred Issues
 
-- Dispute service/controller/resolution workflow
 - Buyer participation history page and stored winner/loser notifications
-- Category admin CRUD
-- Admin appraiser provisioning and operational back office APIs
 - Full controller/integration coverage with a dedicated test DB + Redis environment
 - Repair job for rare close-time partial settlement after terminal auction DB commit
 
 ## Warnings
 
-- `mvn test` passed on 2026-06-02: 273 tests, 0 failures.
-- Order and fulfillment are implemented in code. Dispute currently remains a domain skeleton and needs service/controller coverage before demoing dispute flows.
+- `mvn test` passed on 2026-06-02: 282 tests, 0 failures.
+- Dispute v1 has no partial refund; admin resolution is `SELLER_WINS` or `BUYER_WINS`.
 - Wallet balance for demo must come from VNPay Sandbox. Do not add mock wallet top-up or `POST /wallets/me/top-up`.
 - Local VNPay demo may use `vnpay.confirm-on-return-enabled=true` when IPN cannot reach localhost; this still goes through VNPay Return and is not a top-up shortcut.
 
 ## Next Tasks
 
-1. Support FE integration against the new participation, bid history, and enriched WebSocket contracts.
+1. Keep FE integration aligned with order/dispute/admin/certificate contracts.
 2. Keep demo wallet funding strictly on VNPay Sandbox; do not add mock wallet top-up or dev top-up.
-3. Add dispute service/controller if dispute is required in final demo scope.
-4. Add repair path for terminal auction sessions with remaining `FROZEN` deposits after buyer realtime MVP is stable.
-5. Add API examples/docs if FE integration needs concrete response samples.
+3. Add repair path for terminal auction sessions with remaining `FROZEN` deposits after demo-critical flows are stable.
+4. Add controller/RBAC integration tests with a dedicated test DB + Redis environment.
+5. Add production migration strategy once schema stops moving.
 
 ## Milestones
 
@@ -125,4 +125,5 @@
 - [x] Escrow remainder payment, overdue cancellation, and forfeited deposit split
 - [x] Fulfillment shipment, buyer receive, and shipped auto-complete
 - [x] Seller payout and platform commission/revenue recording
-- [ ] Dispute service/controller/resolution workflow
+- [x] Dispute service/controller/resolution workflow
+- [x] Admin category CRUD, appraiser provisioning, and certificate lookup

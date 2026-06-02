@@ -6,6 +6,8 @@
  */
 import type { RouteObject } from "react-router";
 
+import { SellerOrdersPage } from "@/features/order/pages/SellerOrdersPage";
+
 import { SELLER_ROUTE_PATHS } from "./constants/routes";
 import { SellerAuctionDetailPage } from "./pages/SellerAuctionDetailPage";
 import { SellerAuctionsPage } from "./pages/SellerAuctionsPage";
@@ -13,6 +15,7 @@ import { SellerDashboardPage } from "./pages/SellerDashboardPage";
 import { SellerNewAuctionPage } from "./pages/SellerNewAuctionPage";
 import { SellerNewProductPage } from "./pages/SellerNewProductPage";
 import { SellerPlaceholderPage } from "./pages/SellerPlaceholderPage";
+import { SellerProductDetailPage } from "./pages/SellerProductDetailPage";
 import { SellerProductsPage } from "./pages/SellerProductsPage";
 import { SellerProfilePage } from "./pages/SellerProfilePage";
 import { SellerRegisterPage } from "./pages/SellerRegisterPage";
@@ -35,6 +38,10 @@ export const sellerRoutes: RouteObject[] = [
     element: <SellerNewProductPage />,
   },
   {
+    path: "seller/products/:productId",
+    element: <SellerProductDetailPage />,
+  },
+  {
     path: SELLER_ROUTE_PATHS.editProduct,
     element: <SellerNewProductPage />,
   },
@@ -45,6 +52,10 @@ export const sellerRoutes: RouteObject[] = [
   {
     path: SELLER_ROUTE_PATHS.newAuction,
     element: <SellerNewAuctionPage />,
+  },
+  {
+    path: SELLER_ROUTE_PATHS.orders,
+    element: <SellerOrdersPage />,
   },
   {
     path: SELLER_ROUTE_PATHS.auctionDetail,

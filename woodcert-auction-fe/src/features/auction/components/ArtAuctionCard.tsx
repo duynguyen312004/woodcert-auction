@@ -133,20 +133,22 @@ export function ArtAuctionCard({ auction, cardTheme = "dark" }: ArtAuctionCardPr
           </h3>
 
           <div className="mt-auto">
-            <div className="mb-4 flex items-end justify-between">
-              <div>
-                <p className="mb-1 text-[10px] font-bold uppercase tracking-tighter text-stone-500">
+            <div className="mb-4 border-y border-[#dfd0b7]/50 py-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">
                   {auction.status === "WAITING" ? "Giá khởi điểm" : "Giá hiện tại"}
-                </p>
-                <p className="font-serif text-2xl font-bold text-[#171412]">
+                </span>
+                <span className="font-serif text-lg font-bold text-[#171412] whitespace-nowrap">
                   {formatVND(auction.currentPrice)}
-                </p>
+                </span>
               </div>
-              <div className="text-right">
-                <p className="mb-1 text-[10px] font-bold uppercase tracking-tighter text-stone-500">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">
                   {auction.status === "WAITING" ? "Quan tâm" : "Lượt đấu"}
-                </p>
-                <p className="font-bold text-[#0F0F0D]">{auction.bidCount}</p>
+                </span>
+                <span className="font-bold text-[#0F0F0D] whitespace-nowrap">
+                  {auction.bidCount}
+                </span>
               </div>
             </div>
 
@@ -246,27 +248,27 @@ export function ArtAuctionCard({ auction, cardTheme = "dark" }: ArtAuctionCardPr
           {auction.title}
         </h3>
 
-        <div className="mb-4 flex items-center justify-between border-y border-white/10 py-4">
-          <div>
-            <p className="mb-1 text-[10px] uppercase tracking-widest text-muted-foreground">
+        <div className="mb-4 border-y border-white/10 py-3.5 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
               Giá hiện tại
-            </p>
-            <p className="font-serif text-xl font-bold text-primary">
+            </span>
+            <span className="font-serif text-lg font-bold text-primary whitespace-nowrap">
               {formatVND(auction.currentPrice)}
-            </p>
+            </span>
           </div>
-          <div className="text-right">
-            <p className="mb-1 text-[10px] uppercase tracking-widest text-muted-foreground">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
               Thời gian còn lại
-            </p>
-            <p
+            </span>
+            <span
               className={cn(
-                "font-sans text-sm font-bold",
+                "font-sans text-xs font-bold whitespace-nowrap",
                 isEnding ? "text-red-400" : "text-foreground",
               )}
             >
               {timeRemaining}
-            </p>
+            </span>
           </div>
         </div>
 

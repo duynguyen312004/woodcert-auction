@@ -22,6 +22,18 @@ public interface AppraisalReportRepository extends JpaRepository<AppraisalReport
 
     Optional<AppraisalReport> findByCertificateCode(String certificateCode);
 
+    @Query("""
+            SELECT ar
+            FROM AppraisalReport ar
+            LEFT JOIN FETCH ar.product p
+            LEFT JOIN FETCH p.category
+            LEFT JOIN FETCH p.seller s
+            LEFT JOIN FETCH s.sellerProfile
+            LEFT JOIN FETCH ar.appraiser a
+            WHERE ar.certificateCode = :certificateCode
+            """)
+    Optional<AppraisalReport> findByCertificateCodeWithProduct(@Param("certificateCode") String certificateCode);
+
     /**
      * Tính điểm trung thực trung bình của toàn bộ appraisal thuộc một seller.
      */

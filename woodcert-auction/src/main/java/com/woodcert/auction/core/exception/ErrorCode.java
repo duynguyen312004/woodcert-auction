@@ -88,6 +88,14 @@ public enum ErrorCode {
     ORDER_NOT_OWNED(403, "You do not own this order"),
     ORDER_INVALID_STATUS(400, "Order status does not allow this action"),
     ORDER_PAYMENT_DEADLINE_EXCEEDED(400, "Payment deadline has been exceeded"),
+
+    // --- Dispute ---
+    DISPUTE_NOT_FOUND(404, "Dispute not found"),
+    DISPUTE_ALREADY_OPEN(409, "This order already has an open dispute"),
+    DISPUTE_NOT_OWNED(403, "You do not own this dispute"),
+    DISPUTE_INVALID_STATUS(400, "Dispute status does not allow this action"),
+    DISPUTE_EVIDENCE_REQUIRED(400, "At least one dispute evidence image is required"),
+    DISPUTE_RESOLUTION_REQUIRED(400, "Dispute resolution outcome is required"),
     ;
 
     private final int statusCode;

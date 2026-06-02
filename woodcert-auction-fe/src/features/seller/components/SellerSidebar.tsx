@@ -3,7 +3,14 @@
  *
  * Lấy profile để hiện avatar/tên gian hàng và tự đánh dấu link đang mở.
  */
-import { Gavel, LayoutDashboard, Package, ShieldCheck, UserCircle } from "lucide-react";
+import {
+  Gavel,
+  LayoutDashboard,
+  Package,
+  ReceiptText,
+  ShieldCheck,
+  UserCircle,
+} from "lucide-react";
 import { Link, useLocation } from "react-router";
 
 import { useProfile, useSellerProfile } from "@/features/account";
@@ -15,6 +22,7 @@ const NAV_ITEMS = [
   { label: "Tổng quan", icon: LayoutDashboard, to: SELLER_PATHS.dashboard },
   { label: "Sản phẩm", icon: Package, to: SELLER_PATHS.products },
   { label: "Phiên đấu giá", icon: Gavel, to: SELLER_PATHS.auctions },
+  { label: "Đơn bán", icon: ReceiptText, to: SELLER_PATHS.orders },
   { label: "Kiểm định", icon: ShieldCheck, to: SELLER_PATHS.appraisals },
   { label: "Hồ sơ", icon: UserCircle, to: SELLER_PATHS.profile },
 ] as const;

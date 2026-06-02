@@ -6,6 +6,7 @@
  */
 import type { RouteObject } from "react-router";
 
+import { AdminLayout } from "@/app/layouts/AdminLayout";
 import { AppraiserLayout } from "@/app/layouts/AppraiserLayout";
 import { SellerLayout } from "@/app/layouts/SellerLayout";
 import { PublicLayout } from "@/app/layouts/PublicLayout";
@@ -22,7 +23,10 @@ import { authRoutes } from "@/features/auth";
 import { biddingRoutes } from "@/features/bidding/routes";
 import { buyerRoutes } from "@/features/buyer";
 import { catalogRoutes } from "@/features/catalog";
+import { certificateRoutes } from "@/features/certificate";
+import { blogRoutes } from "@/features/blog";
 import { homeRoutes } from "@/features/home/routes";
+import { orderRoutes } from "@/features/order/routes";
 import { sellerRegisterRoutes, sellerRoutes } from "@/features/seller";
 import { walletRoutes } from "@/features/wallet";
 
@@ -39,6 +43,15 @@ export const routes: RouteObject[] = [
   {
     element: <ProtectedRoute />,
     children: [
+      {
+        element: <AdminPortalGuard />,
+        children: [
+          {
+            element: <AdminLayout />,
+            children: adminRoutes,
+          },
+        ],
+      },
       {
         element: <SellerPortalGuard />,
         children: [
@@ -71,17 +84,16 @@ export const routes: RouteObject[] = [
           ...homeRoutes,
           ...auctionRoutes,
           ...catalogRoutes,
+          ...certificateRoutes,
+          ...blogRoutes,
           {
             element: <ProtectedRoute />,
             children: [
               ...accountRoutes,
               ...walletRoutes,
               ...buyerRoutes,
+              ...orderRoutes,
               ...sellerRegisterRoutes,
-              {
-                element: <AdminPortalGuard />,
-                children: adminRoutes,
-              },
             ],
           },
         ],

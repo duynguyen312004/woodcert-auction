@@ -5,6 +5,9 @@ import com.woodcert.auction.feature.identity.dto.request.CreateAddressReq;
 import com.woodcert.auction.feature.identity.dto.response.AddressRes;
 import com.woodcert.auction.feature.identity.entity.Address;
 import com.woodcert.auction.feature.identity.entity.User;
+import com.woodcert.auction.feature.identity.entity.Province;
+import com.woodcert.auction.feature.identity.entity.District;
+import com.woodcert.auction.feature.identity.entity.Ward;
 import com.woodcert.auction.feature.identity.repository.AddressRepository;
 import com.woodcert.auction.feature.identity.repository.DistrictRepository;
 import com.woodcert.auction.feature.identity.repository.ProvinceRepository;
@@ -60,12 +63,30 @@ class AddressServiceImplTest {
         address.setWardCode("00001");
         address.setDefault(true);
 
+        Province province = new Province();
+        province.setCode("01");
+        province.setName("Hà Nội");
+
+        District district = new District();
+        district.setCode("001");
+        district.setName("Ba Đình");
+
+        Ward ward = new Ward();
+        ward.setCode("00001");
+        ward.setName("Phúc Xá");
+
         when(addressRepository.findByUser_IdOrderByIsDefaultDescIdAsc("user-1")).thenReturn(List.of(address));
+        when(provinceRepository.findById("01")).thenReturn(Optional.of(province));
+        when(districtRepository.findById("001")).thenReturn(Optional.of(district));
+        when(wardRepository.findById("00001")).thenReturn(Optional.of(ward));
 
         List<AddressRes> result = addressService.getCurrentUserAddresses("user-1");
 
         assertEquals(1, result.size());
         assertEquals("Receiver", result.get(0).receiverName());
+        assertEquals("Hà Nội", result.get(0).provinceName());
+        assertEquals("Ba Đình", result.get(0).districtName());
+        assertEquals("Phúc Xá", result.get(0).wardName());
     }
 
     @Test
@@ -84,10 +105,27 @@ class AddressServiceImplTest {
                 true
         );
 
+        Province province = new Province();
+        province.setCode("01");
+        province.setName("Hà Nội");
+
+        District district = new District();
+        district.setCode("001");
+        district.setName("Ba Đình");
+
+        Ward ward = new Ward();
+        ward.setCode("00001");
+        ward.setName("Phúc Xá");
+
         when(userRepository.findById("user-1")).thenReturn(Optional.of(user));
         when(provinceRepository.existsById("01")).thenReturn(true);
         when(districtRepository.existsByCodeAndProvinceCode("001", "01")).thenReturn(true);
         when(wardRepository.existsByCodeAndDistrictCode("00001", "001")).thenReturn(true);
+
+        when(provinceRepository.findById("01")).thenReturn(Optional.of(province));
+        when(districtRepository.findById("001")).thenReturn(Optional.of(district));
+        when(wardRepository.findById("00001")).thenReturn(Optional.of(ward));
+
         when(addressRepository.save(any(Address.class))).thenAnswer(invocation -> {
             Address address = invocation.getArgument(0);
             address.setId(10L);
@@ -100,6 +138,9 @@ class AddressServiceImplTest {
         assertEquals("01", result.provinceCode());
         assertEquals("001", result.districtCode());
         assertEquals("00001", result.wardCode());
+        assertEquals("Hà Nội", result.provinceName());
+        assertEquals("Ba Đình", result.districtName());
+        assertEquals("Phúc Xá", result.wardName());
         verify(addressRepository).clearDefaultByUserId("user-1");
     }
 

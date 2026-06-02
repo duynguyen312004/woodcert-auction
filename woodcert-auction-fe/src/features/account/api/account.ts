@@ -11,10 +11,15 @@ import { unwrapApiResponse } from "@/shared/api/unwrap";
 import type {
   AvatarUploadIntentPayload,
   AvatarUploadIntent,
+  Address,
+  CreateAddressPayload,
   CreateSellerProfilePayload,
   SellerProfile,
   UpdateProfilePayload,
   UserProfile,
+  Province,
+  District,
+  Ward,
 } from "../types";
 
 export const accountApi = {
@@ -83,6 +88,35 @@ export const accountApi = {
    */
   deleteAvatar: async (): Promise<UserProfile> => {
     const response = await apiClient.delete<ApiResponse<UserProfile>>("/users/me/avatar");
+    return unwrapApiResponse(response);
+  },
+
+  getAddresses: async (): Promise<Address[]> => {
+    const response = await apiClient.get<ApiResponse<Address[]>>("/addresses");
+    return unwrapApiResponse(response);
+  },
+
+  createAddress: async (payload: CreateAddressPayload): Promise<Address> => {
+    const response = await apiClient.post<ApiResponse<Address>>("/addresses", payload);
+    return unwrapApiResponse(response);
+  },
+
+  getProvinces: async (): Promise<Province[]> => {
+    const response = await apiClient.get<ApiResponse<Province[]>>("/locations/provinces");
+    return unwrapApiResponse(response);
+  },
+
+  getDistricts: async (provinceCode: string): Promise<District[]> => {
+    const response = await apiClient.get<ApiResponse<District[]>>(
+      `/locations/districts?provinceCode=${provinceCode}`,
+    );
+    return unwrapApiResponse(response);
+  },
+
+  getWards: async (districtCode: string): Promise<Ward[]> => {
+    const response = await apiClient.get<ApiResponse<Ward[]>>(
+      `/locations/wards?districtCode=${districtCode}`,
+    );
     return unwrapApiResponse(response);
   },
 };

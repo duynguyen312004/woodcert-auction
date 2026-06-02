@@ -24,6 +24,7 @@ export const PRODUCT_SALE_STATUS_LABEL: Record<ProductSaleStatus, string> = {
   IN_AUCTION: "Đang đấu giá",
   PENDING_ORDER: "Chờ hoàn tất đơn",
   SOLD: "Đã bán",
+  RETURNED: "Hoàn trả sau tranh chấp",
 };
 
 export const PRODUCT_SALE_STATUS_CLASS: Record<ProductSaleStatus, string> = {
@@ -31,4 +32,5 @@ export const PRODUCT_SALE_STATUS_CLASS: Record<ProductSaleStatus, string> = {
   IN_AUCTION: "bg-[#2E4A62]/10 text-[#2E4A62] border border-[#2E4A62]/20",
   PENDING_ORDER: "bg-[#D6A84F]/10 text-[#956400] border border-[#D6A84F]/25",
   SOLD: "bg-[#181612]/10 text-[#181612] border border-[#181612]/20",
+  RETURNED: "bg-red-500/10 text-red-600 border border-red-500/20",
 };

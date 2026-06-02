@@ -99,4 +99,13 @@ public class AuctionOrderSourceAdapter implements OrderSourceAdapter {
             productRepository.save(product);
         });
     }
+
+    @Override
+    @Transactional
+    public void onDisputeBuyerWon(OrderEntity order) {
+        productRepository.findByIdForUpdate(order.getProductId()).ifPresent(product -> {
+            product.setSaleStatus(ProductSaleStatus.RETURNED);
+            productRepository.save(product);
+        });
+    }
 }

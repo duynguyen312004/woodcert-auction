@@ -1,6 +1,6 @@
 # Project Status
 
-> Last updated: 2026-06-02 | By: Codex | Session: order-fulfillment-review-followup
+> Last updated: 2026-06-02 | By: Codex | Session: post-auction-operations
 >
 > Update this file at the end of FE planning or implementation sessions.
 > Keep it concise and decision-useful.
@@ -27,21 +27,21 @@
 - [x] Public auction detail page at `/auctions/:auctionId` with gallery, product/appraisal detail, price/deposit/step summary, status-aware CTA, and list/home cards routed through detail first
 - [x] Buyer auction history at `/my-auctions` and buyer auction detail with order payment/receive integration
 - [x] Order UI primitives: summary card and fee breakdown for buyer/seller views
+- [x] Buyer `/orders` and seller `/seller/orders` pages with status tabs, pagination, payment, shipping, receive, and dispute actions
+- [x] Dispute FE integration: evidence upload, buyer open/cancel/current state, seller read-only banner/state, and admin review/resolve flow
+- [x] Dedicated admin layout with revenue, dispute queue/detail, categories, and appraisers pages
+- [x] Public certificate verification page and address book UI
+- [x] Seller product detail page and `RETURNED` sale status display
 - [x] Fulfillment API client and seller shipping confirmation UI on seller auction detail
 - [x] Admin revenue page wired to backend revenue APIs
-- [x] Automated FE unit test suite passes with 86 tests
+- [x] Automated FE unit test suite passes with 96 tests and 2 Playwright smoke tests
 
 ## In Progress
 
-- Responsive polish, order list pages, and advanced realtime/concurrency hardening.
+- Responsive polish and deploy hardening.
 
 ## Deferred
 
-- Address book UI
-- Admin module beyond revenue page
-- Public certificate verification
-- Dedicated buyer/seller order list pages
-- Dispute flows
 - Production runtime env injection beyond initial static Vite assumptions
 - Stored winner/loser notifications
 - Sound/vibration and advanced realtime effects
@@ -53,13 +53,14 @@
 - FE should consume the backend contracts directly; do not add local workarounds for participation context, bid history, or live bid payloads.
 - Wallet funding must use VNPay Sandbox. Do not add mock wallet top-up, dev top-up, or any `POST /wallets/me/top-up` integration.
 - Seller auction detail and shipping confirmation are implemented (polling is used for operational safety); realtime monitoring remains deferred until the buyer bidding cockpit is stable.
+- Order status tabs filter the currently loaded paginated page; backend order list does not yet expose a status query parameter.
 - CSRF mitigation for cookie-authenticated flows relies on backend `SameSite` behavior; explicit CSRF token strategy is deferred.
 
 ## Next Tasks
 
-1. Add dedicated buyer/seller order list pages using `/orders/my-purchases` and `/orders/my-sales`.
-2. Add focused unit tests for countdown thresholds, bid form validation, and participation-driven action states.
-3. Add advanced Playwright coverage for realtime bidding and websocket reconnect recovery.
+1. Add deploy/runtime env hardening and route-level code splitting for the large production bundle.
+2. Add advanced Playwright coverage for realtime bidding, websocket reconnect recovery, and dispute resolution happy paths.
+3. Add responsive polish pass for order/admin/certificate/address pages.
 
 ## Milestones
 
@@ -106,12 +107,12 @@
 - [x] Product media upload
 - [x] Seller auction create/list/cancel/detail real flows
 - [x] Seller shipping confirmation from auction detail when order is paid
+- [x] Seller order list and seller product detail page
 - [x] Appraiser queue/claim/appraise/reviewed workflow
-- [ ] Seller product detail page
 
 ### Phase 5 - Hardening
 
-- [x] Automated tests: 86 unit tests and 2 Playwright smoke tests
+- [x] Automated tests: 96 unit tests and 2 Playwright smoke tests
 - [ ] Responsive polish
 - [ ] Unit tests for event parsing, bid-history dedupe, countdown thresholds, bid form validation, and participation-driven action states
 - [ ] Production deploy readiness

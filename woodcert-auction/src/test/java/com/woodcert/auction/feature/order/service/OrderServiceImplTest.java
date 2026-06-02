@@ -13,6 +13,7 @@ import com.woodcert.auction.feature.order.entity.OrderSourceType;
 import com.woodcert.auction.feature.order.entity.OrderStatus;
 import com.woodcert.auction.feature.order.repository.OrderRepository;
 import com.woodcert.auction.feature.order.service.fulfillment.OrderFulfillmentPort;
+import com.woodcert.auction.feature.order.service.fulfillment.OrderFulfillmentSnapshot;
 import com.woodcert.auction.feature.order.service.source.OrderSourceAdapter;
 import com.woodcert.auction.feature.order.service.source.OrderSourceSnapshot;
 import org.junit.jupiter.api.BeforeEach;
@@ -233,6 +234,91 @@ class OrderServiceImplTest {
         verify(sourceAdapter).onOrderCompleted(order);
     }
 
+    @Test
+    void openDispute_withShippedFulfillmentLocksOrder() {
+        OrderEntity order = baseOrder();
+        order.setStatus(OrderStatus.FULFILLING);
+        when(orderRepository.findByIdForUpdate(ORDER_ID)).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(OrderEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(fulfillmentPort.findSnapshotByOrderId(ORDER_ID)).thenReturn(Optional.of(shippedFulfillment()));
+
+        var result = orderService.openDispute(BUYER_ID, ORDER_ID);
+
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.DISPUTED);
+        assertThat(result.status()).isEqualTo(OrderStatus.DISPUTED);
+        verify(walletService, never()).depositFunds(any(), any(), any(), any(), any());
+        verify(platformRevenueService, never()).recordRevenue(any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void openDispute_requiresShippedFulfillment() {
+        OrderEntity order = baseOrder();
+        order.setStatus(OrderStatus.FULFILLING);
+        when(orderRepository.findByIdForUpdate(ORDER_ID)).thenReturn(Optional.of(order));
+        when(fulfillmentPort.findSnapshotByOrderId(ORDER_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> orderService.openDispute(BUYER_ID, ORDER_ID))
+                .isInstanceOf(AppException.class)
+                .satisfies(throwable -> assertThat(((AppException) throwable).getErrorCode())
+                        .isEqualTo(ErrorCode.ORDER_INVALID_STATUS));
+
+        verify(orderRepository, never()).save(any(OrderEntity.class));
+    }
+
+    @Test
+    void resolveDisputeSellerWinsCompletesOrderAndPaysSeller() {
+        OrderEntity order = baseOrder();
+        order.setStatus(OrderStatus.DISPUTED);
+        order.setFinalPrice(money("10000000"));
+        when(orderRepository.findByIdForUpdate(ORDER_ID)).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(OrderEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = orderService.resolveDisputeSellerWins(ORDER_ID);
+
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.COMPLETED);
+        assertThat(result.status()).isEqualTo(OrderStatus.COMPLETED);
+        verify(walletService).depositFunds(
+                eq(SELLER_ID),
+                eq("order:complete:payout:" + ORDER_ID),
+                eq(money("9500000")),
+                eq(ORDER_ID),
+                eq(WalletReferenceType.ORDER)
+        );
+        verify(platformRevenueService).recordRevenue(
+                eq(PlatformRevenueType.SALE_COMMISSION),
+                eq(money("500000")),
+                eq(SELLER_ID),
+                eq(WalletReferenceType.ORDER),
+                eq(ORDER_ID),
+                eq("order:complete:commission:" + ORDER_ID)
+        );
+        verify(sourceAdapter).onOrderCompleted(order);
+    }
+
+    @Test
+    void resolveDisputeBuyerWinsRefundsBuyerAndMarksSourceReturned() {
+        OrderEntity order = baseOrder();
+        order.setStatus(OrderStatus.DISPUTED);
+        order.setFinalPrice(money("10000000"));
+        when(orderRepository.findByIdForUpdate(ORDER_ID)).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(OrderEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = orderService.resolveDisputeBuyerWins(ORDER_ID);
+
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELED);
+        assertThat(order.getCancelReason()).isEqualTo("DISPUTE_BUYER_WINS");
+        assertThat(result.status()).isEqualTo(OrderStatus.CANCELED);
+        verify(walletService).depositFunds(
+                eq(BUYER_ID),
+                eq("order:dispute:refund:" + ORDER_ID),
+                eq(money("10000000")),
+                eq(ORDER_ID),
+                eq(WalletReferenceType.ORDER)
+        );
+        verify(sourceAdapter).onDisputeBuyerWon(order);
+        verify(sourceAdapter, never()).onOrderCompleted(any(OrderEntity.class));
+    }
+
     private void saveReturnsEntityWithId() {
         when(orderRepository.save(any(OrderEntity.class))).thenAnswer(invocation -> {
             OrderEntity order = invocation.getArgument(0);
@@ -260,6 +346,10 @@ class OrderServiceImplTest {
         order.setDepositAmount(money("1000000"));
         order.setRemainingAmount(money("9000000"));
         return order;
+    }
+
+    private OrderFulfillmentSnapshot shippedFulfillment() {
+        return new OrderFulfillmentSnapshot(11L, ORDER_ID, "SHIPPED", "TRK-1", Instant.now(), null, Instant.now().plusSeconds(3600));
     }
 
     private BigDecimal money(String value) {

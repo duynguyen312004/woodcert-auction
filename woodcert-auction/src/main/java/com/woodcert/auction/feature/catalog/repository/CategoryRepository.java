@@ -14,5 +14,13 @@ public interface CategoryRepository extends JpaRepository<Category, Integer> {
 
     Optional<Category> findByNameIgnoreCase(String name);
 
+    boolean existsByNameIgnoreCase(String name);
+
+    boolean existsByNameIgnoreCaseAndIdNot(String name, Integer id);
+
     boolean existsBySlug(String slug);
+
+    boolean existsBySlugAndIdNot(String slug, Integer id);
+
+    boolean existsByParentId(Integer parentId);
 }

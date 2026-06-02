@@ -3,6 +3,7 @@ package com.woodcert.auction.feature.fulfillment.service;
 import com.woodcert.auction.feature.fulfillment.config.FulfillmentProperties;
 import com.woodcert.auction.feature.fulfillment.entity.FulfillmentStatus;
 import com.woodcert.auction.feature.fulfillment.repository.FulfillmentRepository;
+import com.woodcert.auction.feature.order.entity.OrderStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -47,6 +48,7 @@ class FulfillmentSchedulerTest {
     void autoCompleteOverdueFulfillments_completesEachOverdueShipment() {
         when(fulfillmentRepository.findOverdueAutoCompleteIds(
                 eq(FulfillmentStatus.SHIPPED),
+                eq(OrderStatus.DISPUTED),
                 any(Instant.class),
                 any(Pageable.class)
         )).thenReturn(List.of(1L, 2L));

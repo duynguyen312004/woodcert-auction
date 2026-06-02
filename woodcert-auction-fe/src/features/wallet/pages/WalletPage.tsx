@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { BookOpen, ChevronRight, Home, PlusCircle } from "lucide-react";
+import { BookOpen, PlusCircle } from "lucide-react";
 import { useWalletBalance } from "../hooks/useWalletBalance";
 import { useWalletTransactions } from "../hooks/useWalletTransactions";
 import { useDeposits } from "../hooks/useDeposits";
@@ -51,19 +50,6 @@ export function WalletPage() {
   return (
     <div className="min-h-screen bg-background pt-24 pb-16">
       <div className="mx-auto max-w-[1280px] px-6 space-y-8">
-        {/* Breadcrumbs */}
-        <nav
-          aria-label="Breadcrumb"
-          className="flex items-center gap-2 text-xs text-muted-foreground"
-        >
-          <Link to="/" className="flex items-center gap-1 transition-colors hover:text-primary">
-            <Home className="h-3 w-3" />
-            <span>Trang chủ</span>
-          </Link>
-          <ChevronRight className="h-3 w-3" />
-          <span className="text-foreground font-semibold">Ví của tôi</span>
-        </nav>
-
         {/* Page Title & CTA */}
         <div className="flex flex-col justify-between gap-4 border-b border-white/5 pb-6 sm:flex-row sm:items-center">
           <div>

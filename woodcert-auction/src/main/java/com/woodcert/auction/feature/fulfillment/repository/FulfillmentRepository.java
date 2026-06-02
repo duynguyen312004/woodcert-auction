@@ -2,6 +2,7 @@ package com.woodcert.auction.feature.fulfillment.repository;
 
 import com.woodcert.auction.feature.fulfillment.entity.FulfillmentStatus;
 import com.woodcert.auction.feature.fulfillment.entity.OrderFulfillment;
+import com.woodcert.auction.feature.order.entity.OrderStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -37,13 +38,16 @@ public interface FulfillmentRepository extends JpaRepository<OrderFulfillment, L
 
     @Query("""
             SELECT f.id
-            FROM OrderFulfillment f
+            FROM OrderFulfillment f, OrderEntity o
             WHERE f.status = :status
+              AND o.id = f.orderId
+              AND o.status <> :excludedOrderStatus
               AND f.autoCompleteDeadline <= :now
             ORDER BY f.autoCompleteDeadline ASC, f.id ASC
             """)
     List<Long> findOverdueAutoCompleteIds(
             @Param("status") FulfillmentStatus status,
+            @Param("excludedOrderStatus") OrderStatus excludedOrderStatus,
             @Param("now") Instant now,
             Pageable pageable);
 }

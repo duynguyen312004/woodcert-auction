@@ -51,7 +51,7 @@ export function formatTimeRemaining(
   if (config.showDays && days > 0) {
     return `${days} ngày ${hours.toString().padStart(2, "0")}:${minutes
       .toString()
-      .padStart(2, "0")}`;
+      .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
   }
 
   const displayedHours = config.showDays ? hours : Math.floor(totalSeconds / 3_600);

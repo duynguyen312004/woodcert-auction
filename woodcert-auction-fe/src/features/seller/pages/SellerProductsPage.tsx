@@ -61,6 +61,7 @@ const STATUS_TABS: ProductListFilter[] = [
     saleStatus: "PENDING_ORDER",
   },
   { id: "SOLD", label: PRODUCT_SALE_STATUS_LABEL.SOLD, saleStatus: "SOLD" },
+  { id: "RETURNED", label: PRODUCT_SALE_STATUS_LABEL.RETURNED, saleStatus: "RETURNED" },
   { id: "REJECTED", label: PRODUCT_STATUS_LABEL.REJECTED, status: "REJECTED" },
 ];
 
@@ -118,6 +119,7 @@ export function SellerProductsPage() {
         IN_AUCTION: 0,
         PENDING_ORDER: 0,
         SOLD: 0,
+        RETURNED: 0,
       },
     );
   }, [statsQuery.data]);

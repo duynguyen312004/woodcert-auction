@@ -1,6 +1,6 @@
 # API Integration
 
-Last updated: 2026-06-01
+Last updated: 2026-06-02
 
 This document tracks frontend usage of backend APIs. Active FE integrations use the shared `apiClient`; no feature should create ad hoc HTTP clients.
 
@@ -48,6 +48,26 @@ This document tracks frontend usage of backend APIs. Active FE integrations use 
 
 Wallet funding for buyer runtime must use the VNPay Sandbox deposit flow above. Do not add mock wallet top-up, dev top-up, or `POST /wallets/me/top-up`.
 
+### Orders, Fulfillment, and Disputes
+
+| Feature                | Endpoint                                       | FE status                       |
+| ---------------------- | ---------------------------------------------- | ------------------------------- |
+| Buyer order list       | `GET /orders/my-purchases`                     | Implemented on `/orders`        |
+| Seller order list      | `GET /orders/my-sales`                         | Implemented on `/seller/orders` |
+| Order detail           | `GET /orders/{id}`                             | Implemented through hooks       |
+| Pay order remainder    | `POST /orders/{id}/pay`                        | Implemented                     |
+| Seller ship order      | `PATCH /orders/{orderId}/fulfillment/ship`     | Implemented                     |
+| Buyer receive order    | `PATCH /orders/{orderId}/fulfillment/receive`  | Implemented                     |
+| Dispute upload intent  | `POST /disputes/evidence/upload-intent`        | Implemented                     |
+| Dispute upload confirm | `PUT /disputes/evidence/confirm`               | Implemented                     |
+| Open dispute           | `POST /orders/{orderId}/disputes`              | Implemented                     |
+| Current dispute        | `GET /orders/{orderId}/disputes/current`       | Implemented                     |
+| Cancel dispute         | `PATCH /orders/{orderId}/disputes/{id}/cancel` | Implemented                     |
+| Admin dispute queue    | `GET /admin/disputes`                          | Implemented                     |
+| Admin dispute detail   | `GET /admin/disputes/{id}`                     | Implemented                     |
+| Admin mark review      | `PATCH /admin/disputes/{id}/review`            | Implemented                     |
+| Admin resolve dispute  | `PATCH /admin/disputes/{id}/resolve`           | Implemented                     |
+
 ### Seller Workflow
 
 | Feature                     | Endpoint                               | FE status                              |
@@ -65,6 +85,16 @@ Wallet funding for buyer runtime must use the VNPay Sandbox deposit flow above. 
 | Seller auction list         | `GET /auctions/me`                     | Implemented                            |
 | Seller auction create       | `POST /auctions`                       | Implemented                            |
 | Seller auction cancel       | `PATCH /auctions/{id}/cancel`          | Implemented                            |
+
+### Admin and Public Verification
+
+| Feature                 | Endpoint                              | FE status                           |
+| ----------------------- | ------------------------------------- | ----------------------------------- |
+| Revenue dashboard       | `GET /admin/revenue/**`               | Implemented                         |
+| Admin categories        | `/admin/categories` CRUD              | Implemented                         |
+| Admin appraisers        | `/admin/appraisers` promote/demote    | Implemented                         |
+| Public certificate page | `GET /certificates/{certificateCode}` | Implemented on `/certificates`      |
+| Address book            | `GET/POST /users/me/addresses`        | Implemented on `/account/addresses` |
 
 ### Appraiser Workflow
 
@@ -141,12 +171,14 @@ Current upload intent endpoints:
 - `POST /users/me/avatar/upload-intent`
 - `POST /products/images/upload-intent`
 - `POST /appraisals/images/upload-intent`
+- `POST /disputes/evidence/upload-intent`
 
 Current confirmation endpoints:
 
 - `PUT /users/me/avatar`
 - `PUT /products/images/confirm`
 - `PUT /appraisals/images/confirm`
+- `PUT /disputes/evidence/confirm`
 
 ## WebSocket Contract
 
@@ -197,5 +229,11 @@ type BidBroadcastPayload = {
 - `["wallet", "transactions", params]`
 - `["wallet", "deposits", params]`
 - `["wallet", "deposit", txnRef]`
+- `["orders", "buyer", params]`
+- `["orders", "seller", params]`
+- `["orders", "detail", orderId]`
+- `["disputes", "current", orderId]`
+- `["admin", "disputes", params]`
+- `["admin", "disputes", disputeId]`
 - `["catalog", "products", params]`
 - `["catalog", "product", productId]`
