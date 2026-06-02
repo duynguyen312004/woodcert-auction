@@ -1,6 +1,7 @@
 package com.woodcert.auction.feature.auction.dto.response;
 
 import com.woodcert.auction.feature.auction.entity.AuctionSessionStatus;
+import com.woodcert.auction.feature.order.dto.response.OrderSummaryRes;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -24,6 +25,7 @@ public record SellerAuctionDetailRes(
         String winnerMaskedAlias,
         SellerAuctionSettlementStatus settlementStatus,
         SettlementSummary settlement,
+        OrderSummaryRes order,
         AuctionProductSummaryRes product,
         Instant createdAt,
         Instant updatedAt

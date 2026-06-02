@@ -171,6 +171,33 @@ public class WalletServiceImpl implements WalletService {
         );
     }
 
+    @Override
+    @Transactional
+    public void withdrawFunds(
+            String userId,
+            String operationKey,
+            BigDecimal amount,
+            Long referenceId,
+            WalletReferenceType referenceType) {
+        BigDecimal normalizedAmount = normalizePositiveAmount(amount);
+
+        executeIdempotentMutation(
+                userId,
+                operationKey,
+                normalizedAmount,
+                referenceId,
+                referenceType,
+                WalletTransactionType.WITHDRAW,
+                wallet -> {
+                    if (wallet.getAvailableBalance().compareTo(normalizedAmount) < 0) {
+                        throw new AppException(ErrorCode.WALLET_INSUFFICIENT_AVAILABLE_BALANCE);
+                    }
+                    wallet.setAvailableBalance(wallet.getAvailableBalance().subtract(normalizedAmount));
+                },
+                normalizedAmount.negate()
+        );
+    }
+
     private void executeIdempotentMutation(
             String userId,
             String operationKey,
@@ -281,7 +308,9 @@ public class WalletServiceImpl implements WalletService {
             throw new AppException(ErrorCode.WALLET_REFERENCE_INVALID);
         }
 
-        if ((referenceType == WalletReferenceType.AUCTION || referenceType == WalletReferenceType.ORDER)
+        if ((referenceType == WalletReferenceType.AUCTION
+                || referenceType == WalletReferenceType.APPRAISAL
+                || referenceType == WalletReferenceType.ORDER)
                 && referenceId == null) {
             throw new AppException(ErrorCode.WALLET_REFERENCE_INVALID);
         }

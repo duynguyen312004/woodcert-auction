@@ -5,3 +5,4 @@
  * dashboard seller.
  */
 export { formatTimeRemaining, useCountdown } from "./useCountdown";
+export { useScrollToTop } from "./useScrollToTop";

@@ -1,4 +1,4 @@
-﻿NHOM 1: QUAN LY DINH DANH VA PHAN QUYEN (IAM)
+NHOM 1: QUAN LY DINH DANH VA PHAN QUYEN (IAM)
 
 Tai lieu du lieu duoc format lai de de doc, de doi chieu va de chuyen thanh DDL sau nay.
 
@@ -268,56 +268,67 @@ Rang buoc quan trong:
 
 
 ==============================================================================
-NHOM 4: DON HANG, GIAO NHAN & GIAI QUYET TRANH CHAP (ORDER, SHIPPING & DISPUTE)
+NHOM 4: DON HANG, GIAO NHAN & GIAI QUYET TRANH CHAP (ORDER, FULFILLMENT & DISPUTE)
 ==============================================================================
 
-1) Bang orders (Don hang escrow)
-Cap nhat:
-- Them cot delivered_at de toi uu cron job.
-- Them trang thai REFUNDED.
+1) Bang orders (Don hang canonical)
+Mo ta:
+- Don hang luu snapshot tien bat bien va source_type/source_id de auction chi la mot nguon tao order.
 
 Cac cot:
 - id                  BIGINT        PK, auto increment.
-- auction_session_id  BIGINT        UNIQUE, FK. Lien ket 1-1 voi phien dau gia thang.
+- source_type         ENUM          AUCTION.
+- source_id           BIGINT        ID aggregate nguon, hien tai la auction_sessions.id.
 - buyer_id            VARCHAR(36)   FK. Nguoi mua (nguoi thang).
 - seller_id           VARCHAR(36)   FK. Nguoi ban (chu san pham).
-- shipping_address_id BIGINT        FK -> addresses.id.
+- product_id          BIGINT        FK -> products.id.
 - final_price         DECIMAL(19,2) Gia chot (chua tru coc).
-- platform_fee        DECIMAL(19,2) Phi san thu cua nguoi ban (VD: 5%).
-- shipping_fee        DECIMAL(19,2) Phi ship (neu co API tinh phi).
-- total_amount        DECIMAL(19,2) So tien buyer tra = final_price + shipping_fee - deposit_amount.
-- status              ENUM          PENDING_PAYMENT, PREPARING, SHIPPING, DELIVERED,
-                                    COMPLETED, DISPUTED, CANCELED, REFUNDED.
+- deposit_amount      DECIMAL(19,2) Coc cua winner da ap dung vao order.
+- remaining_amount    DECIMAL(19,2) So tien buyer tra them = final_price - deposit_amount.
+- platform_commission_rate              DECIMAL(5,4)  Ty le hoa hong seller.
+- platform_commission_amount            DECIMAL(19,2) Hoa hong san khi order COMPLETED.
+- seller_payout_amount                  DECIMAL(19,2) Seller nhan sau khi tru hoa hong.
+- forfeited_deposit_platform_fee_amount DECIMAL(19,2) San giu khi buyer qua han thanh toan.
+- forfeited_deposit_seller_amount       DECIMAL(19,2) Seller nhan tu coc phat.
+- status              ENUM          PENDING_PAYMENT, PAID, FULFILLING, COMPLETED, CANCELED, DISPUTED.
 - payment_deadline    TIMESTAMP     Han chot thanh toan not tien.
-- delivered_at        TIMESTAMP     INDEX. Moc thoi gian de chay job dem nguoc 72 gio.
-                                    Du lieu sync tu bang shipments.
+- paid_at             TIMESTAMP     Thoi diem buyer thanh toan phan con lai.
+- completed_at        TIMESTAMP     Thoi diem hoan tat va release payout.
+- canceled_at         TIMESTAMP     Thoi diem huy.
+- cancel_reason       VARCHAR(255)  Ly do huy.
 - created_at          TIMESTAMP     Thoi gian tao don hang.
+- updated_at          TIMESTAMP     Thoi gian cap nhat don hang.
 
-2) Bang shipments (Van don)
+2) Bang order_fulfillments (Van don)
 Cap nhat:
-- Them cot shipped_at de do luong toc do dong goi.
+- Tao khi order PAID, tach rieng shipping/receive/auto-complete khoi order.
 
 Cac cot:
 - id                BIGINT        PK, auto increment.
 - order_id          BIGINT        UNIQUE, FK -> orders.id.
-- carrier_name      VARCHAR(100)  Don vi van chuyen.
-- tracking_code     VARCHAR(100)  Ma tra cuu.
-- packing_video_url VARCHAR(500)  Bang chung dong goi (chong tranh chap).
-- status            ENUM          PENDING, PICKED_UP, IN_TRANSIT, DELIVERED, RETURNED.
-- shipped_at        TIMESTAMP     Thoi diem shipper lay hang thanh cong.
+- buyer_id          VARCHAR(36)   Buyer snapshot.
+- seller_id         VARCHAR(36)   Seller snapshot.
+- tracking_code     VARCHAR(120)  Ma tra cuu.
+- status            ENUM          PENDING_SHIPMENT, SHIPPED, DELIVERED, AUTO_COMPLETED, CANCELED.
+- shipped_at        TIMESTAMP     Thoi diem seller xac nhan giao hang.
+- received_at       TIMESTAMP     Thoi diem buyer nhan hoac scheduler auto-complete.
+- auto_complete_deadline TIMESTAMP Han scheduler tu dong hoan tat.
+- created_at        TIMESTAMP     Thoi gian tao fulfillment.
+- updated_at        TIMESTAMP     Thoi gian cap nhat fulfillment.
 
-3) Bang disputes (Xu ly tranh chap)
+3) Bang dispute_cases (Khung tranh chap)
 Mo ta:
-- Quan ly ho so khieu nai va ket qua xu ly cua admin.
+- Skeleton de giu boundary dispute, chua co public API/UI.
 
 Cac cot:
-- id             BIGINT        PK, auto increment.
-- order_id       BIGINT        UNIQUE, FK -> orders.id.
-- complainant_id VARCHAR(36)   FK. Nguoi nop don (thuong la buyer).
-- reason         ENUM          DAMAGED_IN_TRANSIT, NOT_AS_DESCRIBED, FAKE_MATERIAL.
-- description    TEXT          Loi to cao.
-- proof_images   JSON          Mang link anh bang chung (toi da 5 anh).
-- admin_id       VARCHAR(36)   FK. Admin thu ly.
-- status         ENUM          OPEN, UNDER_REVIEW, RESOLVED_REFUND_BUYER,
-                               RESOLVED_RELEASE_FUNDS.
-- admin_judgment TEXT          Phan quyet lam co so refund hoac release fund.
+- id                BIGINT        PK, auto increment.
+- order_id          BIGINT        FK -> orders.id.
+- fulfillment_id    BIGINT        FK -> order_fulfillments.id, nullable.
+- opened_by_user_id VARCHAR(36)   User mo tranh chap.
+- reason            VARCHAR(120)  Ly do ngan gon.
+- description       TEXT          Mo ta chi tiet.
+- status            ENUM          OPEN, UNDER_REVIEW, RESOLVED, REJECTED, CANCELED.
+- opened_at         TIMESTAMP     Thoi diem mo case.
+- resolved_at       TIMESTAMP     Thoi diem xu ly xong.
+- created_at        TIMESTAMP     Thoi gian tao case.
+- updated_at        TIMESTAMP     Thoi gian cap nhat case.

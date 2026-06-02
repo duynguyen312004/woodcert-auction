@@ -17,6 +17,11 @@ import com.woodcert.auction.feature.catalog.repository.AppraisalImageRepository;
 import com.woodcert.auction.feature.catalog.repository.CategoryRepository;
 import com.woodcert.auction.feature.catalog.repository.ProductImageRepository;
 import com.woodcert.auction.feature.catalog.repository.ProductRepository;
+import com.woodcert.auction.feature.finance.config.FinanceProperties;
+import com.woodcert.auction.feature.finance.entity.PlatformRevenueType;
+import com.woodcert.auction.feature.finance.entity.WalletReferenceType;
+import com.woodcert.auction.feature.finance.service.PlatformRevenueService;
+import com.woodcert.auction.feature.finance.service.WalletService;
 import com.woodcert.auction.feature.identity.entity.SellerProfile;
 import com.woodcert.auction.feature.identity.entity.User;
 import com.woodcert.auction.feature.identity.repository.SellerProfileRepository;
@@ -67,6 +72,9 @@ public class ProductServiceImpl implements ProductService {
     private final ProductImageHelper productImageHelper;
     private final CloudinaryProperties cloudinaryProperties;
     private final MediaUrlBuilder mediaUrlBuilder;
+    private final WalletService walletService;
+    private final PlatformRevenueService platformRevenueService;
+    private final FinanceProperties financeProperties;
 
     @Override
     @Transactional
@@ -176,6 +184,23 @@ public class ProductServiceImpl implements ProductService {
         Product product = getOwnedDraftProduct(sellerId, productId);
 
         // Bước 2: Chuyển trạng thái sang hàng chờ thẩm định và ghi thời điểm nộp.
+        String operationKey = "appraisal:submit:fee:" + productId + ":" + sellerId;
+        walletService.withdrawFunds(
+                sellerId,
+                operationKey,
+                financeProperties.getAppraisalFee(),
+                productId,
+                WalletReferenceType.APPRAISAL
+        );
+        platformRevenueService.recordRevenue(
+                PlatformRevenueType.APPRAISAL_FEE,
+                financeProperties.getAppraisalFee(),
+                sellerId,
+                WalletReferenceType.APPRAISAL,
+                productId,
+                operationKey
+        );
+
         product.setStatus(ProductStatus.PENDING_APPRAISAL);
         product.setSubmittedAt(Instant.now());
         productRepository.save(product);

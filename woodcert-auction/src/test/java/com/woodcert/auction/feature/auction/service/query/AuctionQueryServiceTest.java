@@ -28,6 +28,8 @@ import com.woodcert.auction.feature.catalog.repository.CategoryRepository;
 import com.woodcert.auction.feature.catalog.repository.ProductRepository;
 import com.woodcert.auction.feature.catalog.service.ProductImageHelper;
 import com.woodcert.auction.feature.identity.service.SellerSummaryQueryService;
+import com.woodcert.auction.feature.order.entity.OrderSourceType;
+import com.woodcert.auction.feature.order.service.OrderService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -50,10 +52,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.lenient;
 
 /**
  * Test unit cho phần đọc dữ liệu đấu giá.
@@ -89,6 +93,8 @@ class AuctionQueryServiceTest {
     private AuctionRuntimeSnapshotService runtimeSnapshotService;
     @Mock
     private AuctionResponseAssembler responseAssembler;
+    @Mock
+    private OrderService orderService;
 
     private AuctionQueryService queryService;
 
@@ -106,7 +112,9 @@ class AuctionQueryServiceTest {
                 auctionRedisService,
                 runtimeSnapshotService,
                 responseAssembler,
-                new AuctionPolicy());
+                new AuctionPolicy(),
+                orderService);
+        lenient().when(orderService.findSummaryBySource(eq(OrderSourceType.AUCTION), anyLong())).thenReturn(null);
     }
 
     @Test
@@ -471,6 +479,7 @@ class AuctionQueryServiceTest {
                 any(),
                 eq(SellerAuctionDetailRes.SellerAuctionSettlementStatus.NOT_APPLICABLE),
                 eq(null),
+                eq(null),
                 eq(snapshot))).thenReturn(expected);
 
         SellerAuctionDetailRes result = queryService.getSellerAuctionDetail("seller-1", AUCTION_ID);
@@ -485,6 +494,7 @@ class AuctionQueryServiceTest {
                 eq(2L),
                 any(),
                 eq(SellerAuctionDetailRes.SellerAuctionSettlementStatus.NOT_APPLICABLE),
+                eq(null),
                 eq(null),
                 eq(snapshot));
     }
@@ -531,6 +541,7 @@ class AuctionQueryServiceTest {
                 any(),
                 eq(SellerAuctionDetailRes.SellerAuctionSettlementStatus.PENDING),
                 eq("winn****"),
+                eq(null),
                 eq(AuctionRuntimeSnapshot.empty()));
     }
 
@@ -626,6 +637,7 @@ class AuctionQueryServiceTest {
                 null,
                 SellerAuctionDetailRes.SellerAuctionSettlementStatus.NOT_APPLICABLE,
                 new SellerAuctionDetailRes.SettlementSummary(2, 0, 0, 0),
+                null,
                 null,
                 Instant.now(),
                 Instant.now());

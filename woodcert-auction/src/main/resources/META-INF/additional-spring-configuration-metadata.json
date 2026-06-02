@@ -216,6 +216,36 @@
             "description": "A description for 'catalog.appraisal.claim-timeout'"
         },
         {
+            "name": "order.scheduler-enabled",
+            "type": "java.lang.Boolean",
+            "description": "Enable scheduled cancellation of orders whose payment deadline has passed."
+        },
+        {
+            "name": "order.payment-deadline",
+            "type": "java.lang.String",
+            "description": "Duration buyers have to pay the remaining order balance after auction settlement."
+        },
+        {
+            "name": "order.payment-deadline-cron",
+            "type": "java.lang.String",
+            "description": "Cron expression for scanning overdue order payments."
+        },
+        {
+            "name": "fulfillment.scheduler-enabled",
+            "type": "java.lang.Boolean",
+            "description": "Enable scheduled auto-completion of shipped fulfillments after their deadline."
+        },
+        {
+            "name": "fulfillment.auto-complete-after",
+            "type": "java.lang.String",
+            "description": "Duration after shipping before fulfillment can be auto-completed."
+        },
+        {
+            "name": "fulfillment.auto-complete-cron",
+            "type": "java.lang.String",
+            "description": "Cron expression for scanning shipped fulfillments ready for auto-complete."
+        },
+        {
             "name": "vnpay.tmn-code",
             "type": "java.lang.String",
             "description": "A description for 'vnpay.tmn-code'"

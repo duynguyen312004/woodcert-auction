@@ -3,6 +3,12 @@
  */
 export const ADMIN_PATHS = {
   dashboard: "/admin",
+  revenue: "/admin/revenue",
+} as const;
+
+export const BUYER_PATHS = {
+  auctions: "/my-auctions",
+  auctionDetail: (id: string | number) => `/my-auctions/${id}`,
 } as const;
 
 export const SELLER_PATHS = {

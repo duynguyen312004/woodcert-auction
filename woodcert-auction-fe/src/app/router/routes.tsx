@@ -9,6 +9,7 @@ import type { RouteObject } from "react-router";
 import { AppraiserLayout } from "@/app/layouts/AppraiserLayout";
 import { SellerLayout } from "@/app/layouts/SellerLayout";
 import { PublicLayout } from "@/app/layouts/PublicLayout";
+import { AdminPortalGuard } from "@/app/router/AdminPortalGuard";
 import { AppraiserPortalGuard } from "@/app/router/AppraiserPortalGuard";
 import { ProtectedRoute } from "@/app/router/ProtectedRoute";
 import { PublicAppraiserGuard } from "@/app/router/PublicAppraiserGuard";
@@ -19,6 +20,7 @@ import { appraisalRoutes } from "@/features/appraisal/routes";
 import { auctionRoutes } from "@/features/auction/routes";
 import { authRoutes } from "@/features/auth";
 import { biddingRoutes } from "@/features/bidding/routes";
+import { buyerRoutes } from "@/features/buyer";
 import { catalogRoutes } from "@/features/catalog";
 import { homeRoutes } from "@/features/home/routes";
 import { sellerRegisterRoutes, sellerRoutes } from "@/features/seller";
@@ -71,7 +73,16 @@ export const routes: RouteObject[] = [
           ...catalogRoutes,
           {
             element: <ProtectedRoute />,
-            children: [...accountRoutes, ...walletRoutes, ...sellerRegisterRoutes, ...adminRoutes],
+            children: [
+              ...accountRoutes,
+              ...walletRoutes,
+              ...buyerRoutes,
+              ...sellerRegisterRoutes,
+              {
+                element: <AdminPortalGuard />,
+                children: adminRoutes,
+              },
+            ],
           },
         ],
       },

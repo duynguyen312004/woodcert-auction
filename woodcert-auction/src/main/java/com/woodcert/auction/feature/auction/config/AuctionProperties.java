@@ -39,4 +39,5 @@ public class AuctionProperties {
     public static class Redis {
         private Duration stateRetentionAfterEnd = Duration.ofHours(24);
     }
+
 }

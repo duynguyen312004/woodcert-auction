@@ -16,6 +16,11 @@ import com.woodcert.auction.feature.catalog.repository.AppraisalImageRepository;
 import com.woodcert.auction.feature.catalog.repository.CategoryRepository;
 import com.woodcert.auction.feature.catalog.repository.ProductImageRepository;
 import com.woodcert.auction.feature.catalog.repository.ProductRepository;
+import com.woodcert.auction.feature.finance.config.FinanceProperties;
+import com.woodcert.auction.feature.finance.entity.PlatformRevenueType;
+import com.woodcert.auction.feature.finance.entity.WalletReferenceType;
+import com.woodcert.auction.feature.finance.service.PlatformRevenueService;
+import com.woodcert.auction.feature.finance.service.WalletService;
 import com.woodcert.auction.feature.identity.entity.User;
 import com.woodcert.auction.feature.identity.repository.SellerProfileRepository;
 import com.woodcert.auction.feature.identity.repository.UserRepository;
@@ -63,6 +68,9 @@ class ProductServiceImplTest {
     @Mock private ProductImageHelper productImageHelper;
     @Mock private CloudinaryProperties cloudinaryProperties;
     @Mock private MediaUrlBuilder mediaUrlBuilder;
+    @Mock private WalletService walletService;
+    @Mock private PlatformRevenueService platformRevenueService;
+    @Mock private FinanceProperties financeProperties;
 
     @InjectMocks
     private ProductServiceImpl productService;
@@ -458,13 +466,28 @@ class ProductServiceImplTest {
         @DisplayName("should change DRAFT to PENDING_APPRAISAL")
         void submitForAppraisal_success() {
             Product product = createDraftProduct();
+            BigDecimal appraisalFee = new BigDecimal("1000000.00");
             when(productRepository.findById(PRODUCT_ID)).thenReturn(Optional.of(product));
             when(productRepository.save(any(Product.class))).thenReturn(product);
+            when(financeProperties.getAppraisalFee()).thenReturn(appraisalFee);
 
             productService.submitForAppraisal(SELLER_ID, PRODUCT_ID);
 
             assertThat(product.getStatus()).isEqualTo(ProductStatus.PENDING_APPRAISAL);
             assertThat(product.getSubmittedAt()).isNotNull();
+            verify(walletService).withdrawFunds(
+                    eq(SELLER_ID),
+                    eq("appraisal:submit:fee:" + PRODUCT_ID + ":" + SELLER_ID),
+                    eq(appraisalFee),
+                    eq(PRODUCT_ID),
+                    eq(WalletReferenceType.APPRAISAL));
+            verify(platformRevenueService).recordRevenue(
+                    eq(PlatformRevenueType.APPRAISAL_FEE),
+                    eq(appraisalFee),
+                    eq(SELLER_ID),
+                    eq(WalletReferenceType.APPRAISAL),
+                    eq(PRODUCT_ID),
+                    eq("appraisal:submit:fee:" + PRODUCT_ID + ":" + SELLER_ID));
         }
 
         @Test

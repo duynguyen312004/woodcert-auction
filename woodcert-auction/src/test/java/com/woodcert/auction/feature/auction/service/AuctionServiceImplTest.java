@@ -195,6 +195,7 @@ class AuctionServiceImplTest {
                 SellerAuctionDetailRes.SellerAuctionSettlementStatus.NOT_APPLICABLE,
                 new SellerAuctionDetailRes.SettlementSummary(0, 0, 0, 0),
                 null,
+                null,
                 Instant.now(),
                 Instant.now());
     }

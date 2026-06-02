@@ -9,5 +9,6 @@ package com.woodcert.auction.feature.catalog.entity;
 public enum ProductSaleStatus {
     AVAILABLE,
     IN_AUCTION,
+    PENDING_ORDER,
     SOLD
 }

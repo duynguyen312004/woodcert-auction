@@ -1,6 +1,6 @@
 # Database Schema
 
-Current implementation note (2026-05-28): identity, media, catalog/appraisal, finance/wallet/VNPay, and auction/bidding tables are implemented by backend code. Fulfillment tables (`orders`, `shipments`, `disputes`) remain planned schema for Phase 4 and do not yet have a backend package/controller/service.
+Current implementation note (2026-05-28): identity, media, catalog/appraisal, finance/wallet/VNPay, and auction/bidding tables are implemented by backend code. Fulfillment tables (`orders`, `order_fulfillments`, `disputes`) remain planned schema for Phase 4 and do not yet have a backend package/controller/service.
 
 > MySQL database design for WoodCert Auction Platform.
 > Update this file whenever schema changes.
@@ -148,66 +148,21 @@ Current implementation note (2026-05-28): identity, media, catalog/appraisal, fi
                     │ created_at               │
                     └──────────────────────────┘
 
-## AUCTION & BIDDING LAYER
+## AUCTION & COMMERCE LAYER
 
-┌─────────────────────────────────────────────────┐
-│ products (appraised only) ← appraisal_reports   │
-├─────────────────────────────────────────────────┤ 1:N
-└──────────────────────┬──────────────────────────┘
-                       │
-                       ▼
-        ┌──────────────────────────────────┐
-        │    auction_sessions              │
-        ├──────────────────────────────────┤
-        │ id (PK)                          │
-        │ product_id (FK)                  │ (1:1 relationships)
-        │ highest_bidder_id (FK → users)   │
-        │ winner_bid_id (FK → bids)        │
-        │ current_price, status            │
-        │ version (optimistic)             │
-        └────────┬───────────┬─────────────┘
-                 │           │
-                 │ 1:N       │ 1:N
-                 │           │
-        ┌────────┴──┐    ┌────┴────────────────────────┐
-        │           │    │                             │
-        ▼           ▼    ▼                             ▼
- ┌──────────┐   ┌────────────────────────┐   ┌──────────────────┐
- │  bids    │   │ auction_participants   │   │     orders       │
- ├──────────┤   ├────────────────────────┤   ├──────────────────┤
- │ id (PK)  │   │ id (PK)                │   │ id (PK)          │
- │ session  │   │ auction_session_id (FK)│   │ auction_session  │
- │ user_id  │   │ user_id (FK)           │   │ buyer_id (FK)    │
- │ amount   │   │ deposit_amount         │   │ seller_id (FK)   │
- │ status   │   │ deposit_status         │   │ shipping_addr_id │
- │ bid_time │   └────────────────────────┘   │ final_price      │
- └──────────┘                                 │ platform_fee     │
-                                              │ shipping_fee     │
-                                              │ status, version  │
-                                              └────────┬─────────┘
-                                                       │ 1:1
-                                                       ▼
-                                              ┌────────────────┐
-                                              │   shipments    │
-                                              ├────────────────┤
-                                              │ id (PK)        │
-                                              │ order_id (UQ)  │
-                                              │ carrier_name   │
-                                              │ tracking_code  │
-                                              │ status         │
-                                              └────────┬───────┘
-                                                       │ 1:1
-                                                       ▼
-                                              ┌────────────────┐
-                                              │    disputes    │
-                                              ├────────────────┤
-                                              │ id (PK)        │
-                                              │ order_id (UQ)  │
-                                              │ complainant_id │
-                                              │ reason, status │
-                                              │ admin_id       │
-                                              └────────────────┘
+```text
+products -> auction_sessions -> bids
+                         |
+                         +-> auction_participants
+                         |
+                         +-> orders (source_type = AUCTION, source_id = auction_sessions.id)
+                                  |
+                                  +-> order_fulfillments
+                                  |
+                                  +-> dispute_cases
 ```
+
+Auction owns sessions, bids, participants, and settlement. Order owns post-sale payment, payout snapshots, and source callbacks. Fulfillment owns shipment and auto-complete. Dispute is a reserved boundary for future workflows.
 
 ---
 
@@ -230,7 +185,7 @@ Dữ liệu địa giới hành chính Việt Nam - Master data thường đư�
 
 - Master data table - thường được import từ database script
 - Code là khóa chính (VD: "01", "02", "HN" tùy format chọn)
-- Dùng để validate địa chỉ khi tạo orders/shipments
+- Dùng để validate địa chỉ khi tạo orders/order_fulfillments
 
 ### districts
 
@@ -647,165 +602,21 @@ Composite PK: (role_id, permission_id)
 - `txn_ref` được lock pessimistic khi xử lý IPN để tránh xử lý trùng.
 - IPN cập nhật trạng thái deposit và tạo wallet transaction `DEPOSIT` với `reference_type = VNPAY_DEPOSIT`.
 
-### auction_sessions
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| id | BIGINT | PK, AUTO_INCREMENT | |
-| product_id | BIGINT | NOT NULL, FK → products(id) | Chỉ nhận sản phẩm APPRAISED |
-| starting_price | DECIMAL(19,2) | NOT NULL | Giá khởi điểm |
-| reserve_price | DECIMAL(19,2) | NOT NULL | Giá sàn |
-| step_price | DECIMAL(19,2) | NOT NULL | Bước giá |
-| deposit_amount | DECIMAL(19,2) | NOT NULL | Tiền cọc yêu cầu |
-| start_time | TIMESTAMP | NOT NULL | Giờ bắt đầu |
-| end_time | TIMESTAMP | NOT NULL | Giờ kết thúc |
-| current_price | DECIMAL(19,2) | NULLABLE | Giá cuối cùng sync về DB |
-| highest_bidder_id | VARCHAR(36) | NULLABLE, FK → users(id) | Người đang dẫn đầu / thắng |
-| winner_bid_id | BIGINT | NULLABLE, FK → bids(id) | Bid thắng cuộc |
-| status | VARCHAR(20) | NOT NULL | Enum: WAITING, ACTIVE, ENDED_SUCCESS, ENDED_FAILED, CANCELED |
-| version | INT | NOT NULL, DEFAULT 0 | Optimistic locking DB |
+### AUCTION & COMMERCE LAYER
 
-**Indexes:**
+```text
+products -> auction_sessions -> bids
+                         |
+                         +-> auction_participants
+                         |
+                         +-> orders (source_type = AUCTION, source_id = auction_sessions.id)
+                                  |
+                                  +-> order_fulfillments
+                                  |
+                                  +-> dispute_cases
+```
 
-- INDEX idx_auction_sessions_product_id ON auction_sessions(product_id)
-- INDEX idx_auction_sessions_status ON auction_sessions(status)
-- INDEX idx_auction_sessions_end_time ON auction_sessions(end_time)
-- INDEX idx_auction_sessions_status_end_time ON auction_sessions(status, end_time)
-
-**Notes:**
-
-- Khi status = ACTIVE, Redis là source of truth cho current_price và end_time
-- DB chỉ dùng để snapshot/fallback, audit và chốt phiên
-- current_price trong MySQL chỉ là snapshot/sync value, không dùng để validate bid realtime
-Additional current implementation notes:
-
-- For `ACTIVE` sessions, read APIs overlay Redis `currentPrice` and `endTime`; missing Redis state/fields fall back to the DB snapshot.
-- Create flow locks the product through `ProductRepository.findByIdForUpdate` to reduce duplicate `WAITING`/`ACTIVE` session races for the same product.
-- Cancel flow locks the session with product through `findByIdWithProductForUpdate`; only `WAITING` can transition to `CANCELED`.
-
-### auction_participants
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| id | BIGINT | PK, AUTO_INCREMENT | |
-| auction_session_id | BIGINT | NOT NULL, FK → auction_sessions(id) | |
-| user_id | VARCHAR(36) | NOT NULL, FK → users(id) | Người tham gia |
-| deposit_amount | DECIMAL(19,2) | NOT NULL | Số tiền cọc đã khóa |
-| deposit_status | VARCHAR(20) | NOT NULL | Enum: FROZEN, REFUNDED, DEDUCTED, CONFISCATED |
-
-**Indexes:**
-
-- UNIQUE INDEX uq_auction_participants_user_session ON auction_participants(user_id, auction_session_id)
-- INDEX idx_auction_participants_session_id ON auction_participants(auction_session_id)
-
-**Notes:**
-
-- Registration is allowed while the session is `WAITING`.
-- Late join is allowed while the session is `ACTIVE` only when Redis runtime state exists and `now < endTimeEpochMs`.
-- For `ACTIVE` sessions, after deposit freeze and `AuctionParticipant(FROZEN)` insert, the userId is added to the Redis bidder set.
-- Auction list APIs must load participant counts with `GROUP BY auction_session_id`, not per-session count loops.
-
-### bids
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| id | BIGINT | PK, AUTO_INCREMENT | |
-| auction_session_id | BIGINT | NOT NULL, FK → auction_sessions(id) | |
-| user_id | VARCHAR(36) | NOT NULL, FK → users(id) | |
-| bid_amount | DECIMAL(19,2) | NOT NULL | Giá bid |
-| status | VARCHAR(20) | NOT NULL | Enum: VALID, INVALID_PRICE, REJECTED_TIME |
-| bid_time | TIMESTAMP | NOT NULL | Thời điểm ghi nhận |
-
-**Indexes:**
-
-- INDEX idx_bids_auction_session_bid_time ON bids(auction_session_id, bid_time)
-- INDEX idx_bids_auction_session_bid_amount ON bids(auction_session_id, bid_amount DESC)
-- INDEX idx_bids_bid_time ON bids(bid_time)
-
-**Notes:**
-
-- Bảng append-only, không update / delete log bid
-- Bid hợp lệ thời gian thực được xỚ lý trên Redis, bảng này là audit log
-
-### orders — Planned Phase 4
-
-Status: planned/deferred. No current backend entity/controller/service owns this table yet.
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| id | BIGINT | PK, AUTO_INCREMENT | |
-| auction_session_id | BIGINT | NOT NULL, UNIQUE, FK → auction_sessions(id) | 1 phiên thắng tạo 1 đơn |
-| buyer_id | VARCHAR(36) | NOT NULL, FK → users(id) | Người thắng |
-| seller_id | VARCHAR(36) | NOT NULL, FK → users(id) | Chủ sản phẩm |
-| shipping_address_id | BIGINT | NOT NULL, FK → addresses(id) | Địa chỉ giao hàng |
-| final_price | DECIMAL(19,2) | NOT NULL | Giá chốt chưa trừ cọc |
-| platform_fee | DECIMAL(19,2) | NOT NULL, DEFAULT 0.00 | Phí sàn |
-| shipping_fee | DECIMAL(19,2) | NOT NULL, DEFAULT 0.00 | Phí ship |
-| total_amount | DECIMAL(19,2) | NOT NULL | Số tiền buyer phải thanh toán nốt |
-| status | VARCHAR(30) | NOT NULL | Enum: PENDING_PAYMENT, PREPARING, SHIPPING, DELIVERED, COMPLETED, DISPUTED, CANCELED, REFUNDED |
-| payment_deadline | TIMESTAMP | NOT NULL | Hạn thanh toán |
-| delivered_at | TIMESTAMP | NULLABLE | Mốc đếm 72h auto-complete |
-| version | INT | NOT NULL, DEFAULT 0 | Optimistic locking |
-| created_at | TIMESTAMP | NOT NULL, DEFAULT CURRENT_TIMESTAMP | |
-| updated_at | TIMESTAMP | NOT NULL, DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP | |
-
-**Indexes:**
-
-- UNIQUE INDEX idx_orders_auction_session_id ON orders(auction_session_id)
-- INDEX idx_orders_buyer_id ON orders(buyer_id)
-- INDEX idx_orders_seller_id ON orders(seller_id)
-- INDEX idx_orders_status ON orders(status)
-- INDEX idx_orders_delivered_at ON orders(delivered_at)
-
-**Notes:**
-
-- Tiền buyer thanh toán không đi thẳng vào seller, mà giữ ở escrow của sàn
-- Khi đơn COMPLETED, hệ thống mới release funds cho seller
-
-### shipments — Planned Phase 4
-
-Status: planned/deferred. No current backend entity/controller/service owns this table yet.
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| id | BIGINT | PK, AUTO_INCREMENT | |
-| order_id | BIGINT | NOT NULL, UNIQUE, FK → orders(id) | 1 đơn = 1 vận đơn |
-| carrier_name | VARCHAR(100) | NULLABLE | Đơn vị vận chuyển |
-| tracking_code | VARCHAR(100) | NULLABLE | Mã vận đơn |
-| packing_video_url | VARCHAR(500) | NULLABLE | Video đóng gói |
-| status | VARCHAR(20) | NOT NULL | Enum: PENDING, PICKED_UP, IN_TRANSIT, DELIVERED, RETURNED |
-| shipped_at | TIMESTAMP | NULLABLE | Thời điểm shipper nhận hàng |
-
-**Indexes:**
-
-- UNIQUE INDEX idx_shipments_order_id ON shipments(order_id)
-- INDEX idx_shipments_tracking_code ON shipments(tracking_code)
-
-**Planned media migration:**
-
-- `packing_video_url` should later become `packing_video_media_id BIGINT FK -> media_assets(id)`.
-
-### disputes — Planned Phase 4
-
-Status: planned/deferred. No current backend entity/controller/service owns this table yet.
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| id | BIGINT | PK, AUTO_INCREMENT | |
-| order_id | BIGINT | NOT NULL, UNIQUE, FK → orders(id) | 1 đơn tối đa 1 dispute |
-| complainant_id | VARCHAR(36) | NOT NULL, FK → users(id) | Người khiếu nại |
-| reason | VARCHAR(30) | NOT NULL | Enum: DAMAGED_IN_TRANSIT, NOT_AS_DESCRIBED, FAKE_MATERIAL |
-| description | TEXT | NOT NULL | Nội dung khiếu nại |
-| proof_images | JSON | NULLABLE | Danh sách ảnh bằng chứng |
-| admin_id | VARCHAR(36) | NULLABLE, FK → users(id) | Admin xỚ lý |
-| status | VARCHAR(40) | NOT NULL | Enum: OPEN, UNDER_REVIEW, RESOLVED_REFUND_BUYER, RESOLVED_RELEASE_FUNDS |
-| admin_judgment | TEXT | NULLABLE | Phán quyết cuối cùng |
-| created_at | TIMESTAMP | NOT NULL, DEFAULT CURRENT_TIMESTAMP | |
-| updated_at | TIMESTAMP | NOT NULL, DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP | |
-
-**Indexes:**
-
-- UNIQUE INDEX idx_disputes_order_id ON disputes(order_id)
-- INDEX idx_disputes_status ON disputes(status)
-- INDEX idx_disputes_admin_id ON disputes(admin_id)
-
-**Planned media migration:**
-
-- `proof_images` should later be replaced by a join table such as `dispute_media(dispute_id, media_id, sort_order, description)` to reuse `media_assets`.
+Auction owns sessions, bids, participants, and settlement. Order owns post-sale payment, payout snapshots, and source callbacks. Fulfillment owns shipment and auto-complete. Dispute is a reserved boundary for future workflows.
 
 ---
 
@@ -941,7 +752,7 @@ Total tables: 27
 
 **Fulfillment (3 tables):**
 - orders
-- shipments
+- order_fulfillments
 - disputes
 
 **Note:** Total 27 tables including all join tables, master data, and operational tables. Updated count reflects `password_reset_tokens`, `media_assets`, the location hierarchy, and token/session management tables.

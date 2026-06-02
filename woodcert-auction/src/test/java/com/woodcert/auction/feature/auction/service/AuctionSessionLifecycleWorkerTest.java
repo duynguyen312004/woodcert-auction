@@ -156,7 +156,7 @@ class AuctionSessionLifecycleWorkerTest {
         assertThat(session.getCurrentPrice()).isEqualByComparingTo("250.00");
         assertThat(session.getHighestBidderId()).isEqualTo("bidder-2");
         assertThat(session.getWinnerBidId()).isEqualTo(700L);
-        assertThat(product.getSaleStatus()).isEqualTo(ProductSaleStatus.SOLD);
+        assertThat(product.getSaleStatus()).isEqualTo(ProductSaleStatus.PENDING_ORDER);
     }
 
     @Test

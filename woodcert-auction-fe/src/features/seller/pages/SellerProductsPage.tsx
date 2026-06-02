@@ -20,7 +20,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router";
 
 import { isApiError } from "@/shared/api/errors";
-import { formatDate } from "@/shared/lib/format";
+import { formatDate, formatVND } from "@/shared/lib/format";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
 import { useNotification } from "@/shared/ui/notification";
@@ -34,6 +34,7 @@ import { useSellerProducts } from "../hooks/useSellerDashboard";
 import type { ProductSaleStatus, ProductStatus, SellerProduct } from "../types";
 
 const PAGE_SIZE = 10;
+const APPRAISAL_FEE = 1_000_000;
 
 type ProductListFilter = {
   id: string;
@@ -54,6 +55,11 @@ const STATUS_TABS: ProductListFilter[] = [
   },
   { id: "APPRAISED", label: PRODUCT_STATUS_LABEL.APPRAISED, status: "APPRAISED" },
   { id: "IN_AUCTION", label: PRODUCT_SALE_STATUS_LABEL.IN_AUCTION, saleStatus: "IN_AUCTION" },
+  {
+    id: "PENDING_ORDER",
+    label: PRODUCT_SALE_STATUS_LABEL.PENDING_ORDER,
+    saleStatus: "PENDING_ORDER",
+  },
   { id: "SOLD", label: PRODUCT_SALE_STATUS_LABEL.SOLD, saleStatus: "SOLD" },
   { id: "REJECTED", label: PRODUCT_STATUS_LABEL.REJECTED, status: "REJECTED" },
 ];
@@ -110,6 +116,7 @@ export function SellerProductsPage() {
       {
         AVAILABLE: 0,
         IN_AUCTION: 0,
+        PENDING_ORDER: 0,
         SOLD: 0,
       },
     );
@@ -121,6 +128,11 @@ export function SellerProductsPage() {
   };
 
   const handleSubmitAppraisal = async (product: SellerProduct) => {
+    const confirmed = window.confirm(
+      `Gửi kiểm định sẽ trừ ${formatVND(APPRAISAL_FEE)} từ ví seller và phí này không hoàn lại nếu sản phẩm bị từ chối.`,
+    );
+    if (!confirmed) return;
+
     setSubmittingProductId(product.id);
     try {
       await submitAppraisalMutation.mutateAsync(Number(product.id));

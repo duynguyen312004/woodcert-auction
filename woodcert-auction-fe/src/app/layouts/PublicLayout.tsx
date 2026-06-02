@@ -1,9 +1,13 @@
 import { Outlet } from "react-router";
 
+import { useScrollToTop } from "@/shared/hooks";
+
 import { Footer } from "./components/Footer";
 import { Header } from "./components/Header";
 
 export function PublicLayout() {
+  useScrollToTop();
+
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col selection:bg-primary/30">
       <Header />

@@ -1,6 +1,6 @@
 # Project Status
 
-> Last updated: 2026-05-30 | By: Codex | Session: auction-bid-realtime-plan-v3
+> Last updated: 2026-06-02 | By: Codex | Session: order-fulfillment-hardening
 >
 > AI: update this file at the end of every backend session when asked.
 > Follow this exact format. Keep it concise but decision-useful.
@@ -22,16 +22,20 @@
 - [x] Auction runtime: participant registration, Redis-first bidding, Lua validation, anti-sniper extension, scheduler activation/close, STOMP broadcasts, async bid audit, and deposit settlement
 - [x] Auction service refactor: facade plus command/query/assembler/policy/runtime services; grouped participant counts; `ProductImageHelper` reuse; Redis overlay for active read models
 - [x] Buyer realtime API support: authenticated participation context, public bid history with optional `mine`, enriched `NEW_BID` payload, and Lua `extendedByMs`
+- [x] Order module: source-adapter boundary, order creation from auction settlement, buyer/seller order list/detail APIs, remainder payment, overdue payment cancellation, and forfeited deposit split
+- [x] Fulfillment module: pending shipment creation, seller shipping confirmation, buyer received confirmation, shipped auto-complete, seller payout, and platform commission recording
+- [x] Platform revenue APIs for admin revenue stats and transaction history
+- [x] Order/Fulfillment unit coverage added for service and scheduler paths
 - [x] Expose buyer outcome contract (winner, outcomeCode, outcomeMessage) và highestBidderMaskedAlias trong chi tiết đấu giá và participation context
 - [x] Backend unit/integration test suite passes with `mvn test`
 
 ## In Progress
 
-- Next backend work is the deferred settlement repair path after the buyer realtime MVP is stable.
+- Next backend work is dispute service/controller implementation and the deferred settlement repair path.
 
 ## Deferred Issues
 
-- Fulfillment/order/shipment/dispute implementation
+- Dispute service/controller/resolution workflow
 - Buyer participation history page and stored winner/loser notifications
 - Category admin CRUD
 - Admin appraiser provisioning and operational back office APIs
@@ -40,9 +44,8 @@
 
 ## Warnings
 
-- `mvn test` passed on 2026-05-30: 251 tests, 0 failures.
-- API and database docs may include planned fulfillment/order/dispute contracts, but no `feature/fulfillment` implementation exists yet.
-- Do not start fulfillment/dispute before the buyer realtime auction flow is complete.
+- `mvn test` passed on 2026-06-02: 273 tests, 0 failures.
+- Order and fulfillment are implemented in code. Dispute currently remains a domain skeleton and needs service/controller coverage before demoing dispute flows.
 - Wallet balance for demo must come from VNPay Sandbox. Do not add mock wallet top-up or `POST /wallets/me/top-up`.
 - Local VNPay demo may use `vnpay.confirm-on-return-enabled=true` when IPN cannot reach localhost; this still goes through VNPay Return and is not a top-up shortcut.
 
@@ -50,8 +53,9 @@
 
 1. Support FE integration against the new participation, bid history, and enriched WebSocket contracts.
 2. Keep demo wallet funding strictly on VNPay Sandbox; do not add mock wallet top-up or dev top-up.
-3. Add repair path for terminal auction sessions with remaining `FROZEN` deposits after buyer realtime MVP is stable.
-4. Add API examples/docs if FE integration needs concrete response samples.
+3. Add dispute service/controller if dispute is required in final demo scope.
+4. Add repair path for terminal auction sessions with remaining `FROZEN` deposits after buyer realtime MVP is stable.
+5. Add API examples/docs if FE integration needs concrete response samples.
 
 ## Milestones
 
@@ -114,8 +118,11 @@
 - [x] Lua return contract extended with `extendedByMs`
 - [x] Tests for participation context, bid history, Lua extension output, and broadcast compatibility
 
-### Phase 4 - Fulfillment & Dispute
+### Phase 4 - Fulfillment, Orders, and Dispute
 
-- [ ] Order, shipment, and dispute domain
-- [ ] Escrow remainder payment and release/refund flows
-- [ ] Auto-complete and dispute resolution
+- [x] Order domain and source-adapter boundary
+- [x] Buyer/seller order APIs
+- [x] Escrow remainder payment, overdue cancellation, and forfeited deposit split
+- [x] Fulfillment shipment, buyer receive, and shipped auto-complete
+- [x] Seller payout and platform commission/revenue recording
+- [ ] Dispute service/controller/resolution workflow

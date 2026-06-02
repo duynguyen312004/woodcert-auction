@@ -3,7 +3,7 @@
 > All endpoints return `ApiResponse<T>` wrapper. Error responses created from `AppException` include nullable `errorCode` for machine-readable handling.
 > Update this file whenever endpoints change.
 >
-> Current implementation note (2026-05-25): sections Auth through Auction Sessions are implemented backend contracts. Orders, Shipments, and Disputes are planned Phase 4 contracts only; no `feature/fulfillment` package exists yet.
+> Current implementation note (2026-05-25): sections Auth through Auction Sessions are implemented backend contracts. Orders, order_fulfillments, and Disputes are planned Phase 4 contracts only; no `feature/fulfillment` package exists yet.
 
 ---
 
@@ -1345,7 +1345,7 @@ Request Body:
 
 ```json
 {
-  "auctionSessionId": 205,
+  "sourceId": 205,
   "bidAmount": 36000000.00
 }
 ```
@@ -1372,13 +1372,13 @@ Errors:
 
 - 400: Invalid price (lower than current + step), or Auction not ACTIVE.
 
-## 10. Orders & Fulfillment (Escrow Flow) — Planned Phase 4
+## 10. Orders & Fulfillment
 
-Status: planned/deferred. These endpoints describe the intended contract after auction winner settlement. They are not implemented in the current backend.
+Post-auction order flow is implemented as a canonical order pipeline. Auction settlement creates an order with `sourceType = AUCTION` and `sourceId = auctionSessionId`.
 
-### GET /orders 🔒
+### GET /orders/my-purchases 🔒
 
-List orders. Buyers see their purchases; Sellers see items they need to ship.
+List orders where the current user is buyer.
 
 Success Response (200):
 
@@ -1390,9 +1390,11 @@ Success Response (200):
     "result": [
       {
         "id": 801,
-        "auctionSessionId": 205,
-        "productTitle": "Tượng Đạt Ma Sư Tổ",
-        "totalAmount": 41000000.00,
+        "sourceId": 205,
+        "sourceType": "AUCTION",
+        "finalPrice": 41000000.00,
+        "depositAmount": 4100000.00,
+        "remainingAmount": 36900000.00,
         "status": "PENDING_PAYMENT",
         "paymentDeadline": "2026-03-31T21:00:00"
       }
@@ -1403,21 +1405,21 @@ Success Response (200):
 }
 ```
 
+### GET /orders/my-sales 🔒
+
+List orders where the current user is seller.
+
+### GET /orders/{id} 🔒
+
+Fetch one order if the current user is buyer, seller, or admin.
+
 ### POST /orders/{id}/pay 🔒
 
-Buyer pays the remaining balance. Money is transferred from Buyer's wallet to System Escrow, and Order status changes to PREPARING.
+Buyer pays exactly `remainingAmount` from wallet. No buyer premium is applied in this phase. Order status changes to `PAID` and fulfillment becomes `PENDING_SHIPMENT`.
 
-Request Body:
+### PATCH /orders/{orderId}/fulfillment/ship 🔒
 
-```json
-{
-  "shippingAddressId": 1
-}
-```
-
-### POST /orders/{id}/shipments 🔒
-
-Seller updates shipping details. Order status changes to SHIPPING.
+Seller updates shipping details. Fulfillment status changes to `SHIPPED` and order status changes to `FULFILLING`.
 
 Requires Role: ROLE_SELLER
 
@@ -1425,50 +1427,36 @@ Request Body:
 
 ```json
 {
-  "carrierName": "Viettel Post",
-  "trackingCode": "VT123456789",
-  "packingVideoUrl": "https://s3.../packing-video.mp4"
+  "trackingCode": "VT123456789"
 }
 ```
 
-### POST /orders/{id}/deliver 🔒
+### PATCH /orders/{orderId}/fulfillment/receive 🔒
 
-Webhook or Admin/Seller marks the order as delivered. Sets delivered_at to trigger the 72-hour Escrow countdown. Order status changes to DELIVERED.
+Buyer confirms receipt. Fulfillment status changes to `DELIVERED`, order status changes to `COMPLETED`, seller receives `finalPrice - commission`, and platform records `SALE_COMMISSION`.
 
-## 11. Disputes (Tòa Án Sàn) — Planned Phase 4
+Scheduler behavior:
 
-Status: planned/deferred. This endpoint is not implemented in the current backend.
+- `PENDING_PAYMENT` past deadline: order `CANCELED`, auction participant deposit `CONFISCATED`, product returns `AVAILABLE`, platform keeps 10% of deposit, seller receives 90%.
+- `SHIPPED` past auto-complete deadline: fulfillment `AUTO_COMPLETED`, order `COMPLETED`, seller payout released.
 
-### POST /orders/{id}/disputes 🔒
+## 11. Disputes
 
-Buyer opens a dispute within 72 hours of delivery. Order status changes to DISPUTED (Freezes funds permanently until Admin resolves).
-
-Request Body:
-
-```json
-{
-  "reason": "DAMAGED_IN_TRANSIT",
-  "description": "Tượng bị nứt phần đế gỗ.",
-  "proofImages": [
-    "https://s3.../nut-de-1.jpg",
-    "https://s3.../nut-de-2.jpg"
-  ]
-}
-```
+Dispute is currently a reserved backend boundary (`dispute_cases`) and `OrderStatus.DISPUTED` is reserved. Public dispute API/UI is intentionally not exposed in this phase.
 
 ## 12. WebSocket Channels (Real-time)
 
 Client should subscribe to STOMP WebSocket channels for real-time updates:
 
 - Connect URL: ws://localhost:8080/ws-auction
-- Subscribe Topic: /topic/auctions/{auctionSessionId}
+- Subscribe Topic: /topic/auctions/{sourceId}
 
 Message Payload Example (Sent by Server when a valid bid is placed):
 
 ```json
 {
   "type": "NEW_BID",
-  "auctionSessionId": 205,
+  "sourceId": 205,
   "currentPrice": 36000000.00,
   "highestBidderId": "uuid-buyer",
   "highestBidderName": "Nguyễn Văn A",

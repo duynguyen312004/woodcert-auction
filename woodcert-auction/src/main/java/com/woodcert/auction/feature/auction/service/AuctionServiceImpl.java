@@ -5,12 +5,16 @@ import com.woodcert.auction.feature.auction.dto.request.CreateAuctionSessionReq;
 import com.woodcert.auction.feature.auction.dto.response.AuctionDetailRes;
 import com.woodcert.auction.feature.auction.dto.response.AuctionListRes;
 import com.woodcert.auction.feature.auction.dto.response.BidHistoryItemRes;
+import com.woodcert.auction.feature.auction.dto.response.BuyerAuctionDetailRes;
+import com.woodcert.auction.feature.auction.dto.response.BuyerAuctionListRes;
+import com.woodcert.auction.feature.auction.dto.response.BuyerAuctionStatsRes;
 import com.woodcert.auction.feature.auction.dto.response.MyParticipationRes;
 import com.woodcert.auction.feature.auction.dto.response.SellerAuctionDetailRes;
 import com.woodcert.auction.feature.auction.dto.response.SellerAuctionListRes;
 import com.woodcert.auction.feature.auction.dto.response.SellerAuctionStatsRes;
 import com.woodcert.auction.feature.auction.service.command.AuctionCommandService;
 import com.woodcert.auction.feature.auction.service.query.AuctionQueryService;
+import com.woodcert.auction.feature.auction.service.query.BuyerAuctionQueryService;
 import com.woodcert.auction.feature.auction.service.query.PublicAuctionSearchCriteria;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -33,6 +37,7 @@ public class AuctionServiceImpl implements AuctionService {
 
     // Xử lý dữ liệu đọc và filter cho màn public/seller.
     private final AuctionQueryService queryService;
+    private final BuyerAuctionQueryService buyerAuctionQueryService;
 
     @Override
     public AuctionDetailRes createAuctionSession(String sellerId, CreateAuctionSessionReq request) {
@@ -82,6 +87,21 @@ public class AuctionServiceImpl implements AuctionService {
     @Override
     public SellerAuctionStatsRes getSellerAuctionStats(String sellerId) {
         return queryService.getSellerAuctionStats(sellerId);
+    }
+
+    @Override
+    public PaginationResponse<BuyerAuctionListRes> getMyAuctions(String userId, int page, int size, String outcome) {
+        return buyerAuctionQueryService.getMyAuctions(userId, page, size, outcome);
+    }
+
+    @Override
+    public BuyerAuctionDetailRes getMyAuctionDetail(String userId, Long auctionId) {
+        return buyerAuctionQueryService.getMyAuctionDetail(userId, auctionId);
+    }
+
+    @Override
+    public BuyerAuctionStatsRes getMyAuctionStats(String userId) {
+        return buyerAuctionQueryService.getMyAuctionStats(userId);
     }
 
     @Override

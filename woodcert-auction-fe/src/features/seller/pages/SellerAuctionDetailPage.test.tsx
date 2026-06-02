@@ -11,6 +11,7 @@ vi.mock("@/shared/ui/notification", () => ({
 
 vi.mock("../hooks/useProductMutations", () => ({
   useCancelAuction: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useConfirmShipping: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 vi.mock("../hooks/useSellerDashboard", () => ({

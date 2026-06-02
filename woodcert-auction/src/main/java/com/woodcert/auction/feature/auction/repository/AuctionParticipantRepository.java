@@ -22,6 +22,8 @@ public interface AuctionParticipantRepository extends JpaRepository<AuctionParti
 
     List<AuctionParticipant> findByAuctionSessionIdAndDepositStatus(Long auctionSessionId, DepositStatus depositStatus);
 
+    List<AuctionParticipant> findByUserIdOrderByRegisteredAtDesc(String userId);
+
     @Query("""
             SELECT p.id
             FROM AuctionParticipant p

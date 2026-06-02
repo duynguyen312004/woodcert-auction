@@ -82,6 +82,12 @@ public enum ErrorCode {
     WALLET_OPERATION_ALREADY_FAILED(409, "Wallet operation already failed and cannot be retried with the same operation key"),
     WALLET_CONCURRENT_MODIFICATION(409, "Wallet was updated concurrently, please retry"),
     WALLET_REFERENCE_INVALID(400, "Wallet reference is invalid for this mutation source"),
+
+    // --- Order ---
+    ORDER_NOT_FOUND(404, "Order not found"),
+    ORDER_NOT_OWNED(403, "You do not own this order"),
+    ORDER_INVALID_STATUS(400, "Order status does not allow this action"),
+    ORDER_PAYMENT_DEADLINE_EXCEEDED(400, "Payment deadline has been exceeded"),
     ;
 
     private final int statusCode;

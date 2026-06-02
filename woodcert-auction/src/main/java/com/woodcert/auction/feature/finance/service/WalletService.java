@@ -40,4 +40,11 @@ public interface WalletService {
             BigDecimal amount,
             Long referenceId,
             WalletReferenceType referenceType);
+
+    void withdrawFunds(
+            String userId,
+            String operationKey,
+            BigDecimal amount,
+            Long referenceId,
+            WalletReferenceType referenceType);
 }

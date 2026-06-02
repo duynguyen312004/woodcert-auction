@@ -22,10 +22,14 @@ import com.woodcert.auction.feature.finance.entity.Wallet;
 import com.woodcert.auction.feature.finance.repository.WalletOperationRepository;
 import com.woodcert.auction.feature.finance.repository.WalletRepository;
 import com.woodcert.auction.feature.finance.repository.WalletTransactionRepository;
+import com.woodcert.auction.feature.finance.repository.PlatformRevenueTransactionRepository;
+import com.woodcert.auction.feature.dispute.repository.DisputeCaseRepository;
+import com.woodcert.auction.feature.fulfillment.repository.FulfillmentRepository;
 import com.woodcert.auction.feature.identity.entity.User;
 import com.woodcert.auction.feature.identity.entity.UserStatus;
 import com.woodcert.auction.feature.identity.repository.SellerProfileRepository;
 import com.woodcert.auction.feature.identity.repository.UserRepository;
+import com.woodcert.auction.feature.order.repository.OrderRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -118,6 +122,10 @@ public abstract class AuctionIntegrationTestBase {
     @Autowired
     protected AuctionParticipantRepository auctionParticipantRepository;
     @Autowired
+    protected OrderRepository orderRepository;
+    @Autowired
+    protected FulfillmentRepository fulfillmentRepository;
+    @Autowired
     protected BidRepository bidRepository;
     @Autowired
     protected WalletRepository walletRepository;
@@ -125,10 +133,18 @@ public abstract class AuctionIntegrationTestBase {
     protected WalletTransactionRepository walletTransactionRepository;
     @Autowired
     protected WalletOperationRepository walletOperationRepository;
+    @Autowired
+    protected PlatformRevenueTransactionRepository platformRevenueTransactionRepository;
+    @Autowired
+    protected DisputeCaseRepository disputeCaseRepository;
 
     @BeforeEach
     void cleanState() {
         redisTemplate.getConnectionFactory().getConnection().serverCommands().flushDb();
+        platformRevenueTransactionRepository.deleteAll();
+        disputeCaseRepository.deleteAll();
+        fulfillmentRepository.deleteAll();
+        orderRepository.deleteAll();
         bidRepository.deleteAll();
         auctionParticipantRepository.deleteAll();
         auctionSessionRepository.deleteAll();

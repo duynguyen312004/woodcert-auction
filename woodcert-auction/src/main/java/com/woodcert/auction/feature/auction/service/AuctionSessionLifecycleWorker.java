@@ -180,7 +180,7 @@ public class AuctionSessionLifecycleWorker {
 
         Product product = productOptional.get();
         ProductSaleStatus nextSaleStatus = outcome == AuctionSessionStatus.ENDED_SUCCESS
-                ? ProductSaleStatus.SOLD
+                ? ProductSaleStatus.PENDING_ORDER
                 : ProductSaleStatus.AVAILABLE;
         product.setSaleStatus(nextSaleStatus);
         productRepository.saveAndFlush(product);

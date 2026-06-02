@@ -8,6 +8,9 @@
 import { apiClient } from "@/shared/api/client";
 import type { ApiResponse, PaginationResponse } from "@/shared/api/types";
 import { unwrapApiResponse } from "@/shared/api/unwrap";
+import { fulfillmentApi } from "@/features/fulfillment";
+import { mapOrder } from "@/features/order";
+import type { OrderSummary } from "@/features/order";
 
 import type {
   CreateAuctionSessionPayload,
@@ -63,6 +66,7 @@ type SellerAuctionDetailDto = {
   winnerMaskedAlias: string | null;
   settlementStatus: SellerAuctionDetail["settlementStatus"];
   settlement: SellerAuctionDetail["settlement"];
+  order: OrderSummary | null;
   product: SellerAuctionDetail["product"];
   createdAt: string;
   updatedAt: string;
@@ -125,6 +129,7 @@ function mapSellerAuctionDetail(dto: SellerAuctionDetailDto): SellerAuctionDetai
     winnerMaskedAlias: dto.winnerMaskedAlias,
     settlementStatus: dto.settlementStatus,
     settlement: dto.settlement ?? { frozen: 0, refunded: 0, deducted: 0, confiscated: 0 },
+    order: mapOrder(dto.order),
     product: dto.product,
     createdAt: dto.createdAt,
     updatedAt: dto.updatedAt,
@@ -217,4 +222,6 @@ export const sellerApi = {
   cancelAuction: async (auctionId: number): Promise<void> => {
     await apiClient.patch(`/auctions/${auctionId}/cancel`);
   },
+
+  confirmShipping: fulfillmentApi.confirmShipping,
 };

@@ -40,12 +40,14 @@ import {
 } from "@/shared/ui/dialog";
 import { useNotification } from "@/shared/ui/notification";
 
+import { getOrderStatusText, OrderFeeBreakdown } from "@/features/order";
+
 import {
   SELLER_AUCTION_STATUS_CLASS,
   SELLER_AUCTION_STATUS_LABEL,
 } from "../constants/auctionStatus";
 import { SELLER_PATHS } from "../constants/routes";
-import { useCancelAuction } from "../hooks/useProductMutations";
+import { useCancelAuction, useConfirmShipping } from "../hooks/useProductMutations";
 import { useSellerAuctionDetail } from "../hooks/useSellerDashboard";
 import type { SellerAuctionDetail, SellerAuctionSettlementStatus } from "../types";
 
@@ -67,8 +69,10 @@ export function SellerAuctionDetailPage() {
   const navigate = useNavigate();
   const notification = useNotification();
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [trackingCode, setTrackingCode] = useState("");
   const detailQuery = useSellerAuctionDetail(auctionId);
   const cancelMutation = useCancelAuction();
+  const confirmShippingMutation = useConfirmShipping();
 
   const auction = detailQuery.data;
   const canCancel = auction?.status === "WAITING";
@@ -83,6 +87,26 @@ export function SellerAuctionDetailPage() {
       void detailQuery.refetch();
     } catch (error: unknown) {
       notification.error("Không thể hủy phiên", {
+        description: isApiError(error) ? error.message : "Vui lòng thử lại sau.",
+      });
+    }
+  };
+
+  const handleConfirmShipping = async () => {
+    const orderId = auction?.order?.id;
+    if (!orderId) return;
+    try {
+      await confirmShippingMutation.mutateAsync({
+        orderId,
+        trackingCode: trackingCode.trim() || undefined,
+      });
+      notification.success("Đã xác nhận giao hàng", {
+        description: trackingCode.trim() || auction?.product.title,
+      });
+      setTrackingCode("");
+      void detailQuery.refetch();
+    } catch (error: unknown) {
+      notification.error("Không thể xác nhận giao hàng", {
         description: isApiError(error) ? error.message : "Vui lòng thử lại sau.",
       });
     }
@@ -191,6 +215,13 @@ export function SellerAuctionDetailPage() {
                 </section>
                 <aside className="space-y-6 lg:col-span-5">
                   <PricePanel auction={auction} />
+                  <SellerOrderPanel
+                    auction={auction}
+                    trackingCode={trackingCode}
+                    onTrackingCodeChange={setTrackingCode}
+                    onConfirmShipping={handleConfirmShipping}
+                    isConfirmingShipping={confirmShippingMutation.isPending}
+                  />
                   <SchedulePanel auction={auction} />
                   <SettlementPanel auction={auction} />
                 </aside>
@@ -404,6 +435,80 @@ function PricePanel({ auction }: { auction: SellerAuctionDetail }) {
         <InfoLine label="Tiền cọc" value={formatVND(auction.depositAmount)} />
         <InfoLine label="Giá hiện tại" value={formatVND(auction.currentPrice)} strong />
       </div>
+    </Panel>
+  );
+}
+
+function SellerOrderPanel({
+  auction,
+  trackingCode,
+  onTrackingCodeChange,
+  onConfirmShipping,
+  isConfirmingShipping,
+}: {
+  auction: SellerAuctionDetail;
+  trackingCode: string;
+  onTrackingCodeChange: (value: string) => void;
+  onConfirmShipping: () => void;
+  isConfirmingShipping: boolean;
+}) {
+  const order = auction.order;
+
+  if (!order) {
+    return (
+      <Panel
+        title="Đơn sau đấu giá"
+        description="Đơn sẽ được tạo sau khi hệ thống đối soát winner"
+        icon={<ShieldCheck className="size-5" />}
+      >
+        <p className="rounded-lg border border-[#4e4637]/10 bg-[#F6F0E6]/70 p-4 text-sm text-muted-warm">
+          Chưa có đơn hàng cho phiên này.
+        </p>
+      </Panel>
+    );
+  }
+
+  const statusText = getOrderStatusText(order.status);
+
+  return (
+    <Panel
+      title="Đơn sau đấu giá"
+      description={statusText}
+      icon={<ShieldCheck className="size-5" />}
+    >
+      <OrderFeeBreakdown
+        order={order}
+        audience="seller"
+        lineClassName="border-[#4e4637]/10"
+        labelClassName="text-xs font-semibold text-muted-warm"
+        valueClassName="text-ink-blue"
+      />
+
+      {order.status === "PAID" && (
+        <div className="mt-5 space-y-3 border-t border-[#4e4637]/10 pt-4">
+          <input
+            type="text"
+            value={trackingCode}
+            onChange={(event) => onTrackingCodeChange(event.target.value)}
+            maxLength={120}
+            placeholder="Mã vận chuyển (không bắt buộc)"
+            className="h-10 w-full rounded-md border border-[#4e4637]/20 bg-white px-3 text-sm text-ink-blue shadow-sm focus-visible:border-brushed-brass focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brushed-brass/35"
+          />
+          <Button
+            type="button"
+            onClick={onConfirmShipping}
+            disabled={isConfirmingShipping}
+            className="w-full bg-ink-blue text-white hover:bg-ink-blue/90"
+          >
+            {isConfirmingShipping ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden />
+            ) : (
+              <CheckCircle2 className="size-4" aria-hidden />
+            )}
+            Xác nhận giao hàng
+          </Button>
+        </div>
+      )}
     </Panel>
   );
 }

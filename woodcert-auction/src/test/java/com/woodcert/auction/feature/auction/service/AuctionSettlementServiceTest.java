@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import com.woodcert.auction.feature.order.service.OrderService;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -26,10 +27,16 @@ class AuctionSettlementServiceTest {
 
     private static final Long SESSION_ID = 10L;
 
-    @Mock private AuctionParticipantRepository auctionParticipantRepository;
-    @Mock private AuctionSessionRepository auctionSessionRepository;
-    @Mock private AuctionParticipantSettlementService participantSettlementService;
-    @Mock private AuctionRedisService auctionRedisService;
+    @Mock
+    private AuctionParticipantRepository auctionParticipantRepository;
+    @Mock
+    private AuctionSessionRepository auctionSessionRepository;
+    @Mock
+    private AuctionParticipantSettlementService participantSettlementService;
+    @Mock
+    private AuctionRedisService auctionRedisService;
+    @Mock
+    private OrderService orderService;
 
     private AuctionSettlementService service;
 
@@ -39,8 +46,8 @@ class AuctionSettlementServiceTest {
                 auctionParticipantRepository,
                 auctionSessionRepository,
                 participantSettlementService,
-                auctionRedisService
-        );
+                auctionRedisService,
+                orderService);
     }
 
     @Test
@@ -84,7 +91,6 @@ class AuctionSettlementServiceTest {
                 AuctionSessionStatus.ENDED_SUCCESS,
                 new BigDecimal("250.00"),
                 Instant.parse("2026-05-01T10:00:00Z"),
-                "winner-1"
-        );
+                "winner-1");
     }
 }

@@ -1,0 +1,1 @@
+export { buyerRoutes } from "./routes";

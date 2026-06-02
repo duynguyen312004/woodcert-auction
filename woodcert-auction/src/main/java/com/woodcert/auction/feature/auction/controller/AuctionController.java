@@ -7,6 +7,9 @@ import com.woodcert.auction.feature.auction.dto.request.CreateAuctionSessionReq;
 import com.woodcert.auction.feature.auction.dto.response.AuctionDetailRes;
 import com.woodcert.auction.feature.auction.dto.response.AuctionListRes;
 import com.woodcert.auction.feature.auction.dto.response.BidHistoryItemRes;
+import com.woodcert.auction.feature.auction.dto.response.BuyerAuctionDetailRes;
+import com.woodcert.auction.feature.auction.dto.response.BuyerAuctionListRes;
+import com.woodcert.auction.feature.auction.dto.response.BuyerAuctionStatsRes;
 import com.woodcert.auction.feature.auction.dto.response.MyParticipationRes;
 import com.woodcert.auction.feature.auction.dto.response.SellerAuctionDetailRes;
 import com.woodcert.auction.feature.auction.dto.response.SellerAuctionListRes;
@@ -88,6 +91,36 @@ public class AuctionController {
             @CurrentUserId String sellerId) {
         SellerAuctionStatsRes result = auctionService.getSellerAuctionStats(sellerId);
         return ResponseEntity.ok(ApiResponse.success(result, "Fetch seller auction stats successful"));
+    }
+
+    @GetMapping("/my-participations")
+    @PreAuthorize("hasAuthority('JOIN_AUCTION')")
+    public ResponseEntity<ApiResponse<PaginationResponse<BuyerAuctionListRes>>> getMyAuctions(
+            @CurrentUserId String userId,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "ALL") String outcome) {
+        return ResponseEntity.ok(ApiResponse.success(
+                auctionService.getMyAuctions(userId, page, size, outcome),
+                "Fetch buyer auctions successful"));
+    }
+
+    @GetMapping("/my-participations/stats")
+    @PreAuthorize("hasAuthority('JOIN_AUCTION')")
+    public ResponseEntity<ApiResponse<BuyerAuctionStatsRes>> getMyAuctionStats(@CurrentUserId String userId) {
+        return ResponseEntity.ok(ApiResponse.success(
+                auctionService.getMyAuctionStats(userId),
+                "Fetch buyer auction stats successful"));
+    }
+
+    @GetMapping("/my-participations/{id}")
+    @PreAuthorize("hasAuthority('JOIN_AUCTION')")
+    public ResponseEntity<ApiResponse<BuyerAuctionDetailRes>> getMyAuctionDetail(
+            @CurrentUserId String userId,
+            @PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(
+                auctionService.getMyAuctionDetail(userId, id),
+                "Fetch buyer auction detail successful"));
     }
 
     @GetMapping("/{id}/my-participation")

@@ -1,4 +1,4 @@
-import { Loader2, LogOut, UserCircle2 } from "lucide-react";
+import { Gavel, Loader2, LogOut, UserCircle2 } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 
@@ -162,6 +162,16 @@ export function UserMenu({ onMobileClose }: { onMobileClose?: () => void }) {
               >
                 <UserCircle2 className="h-4 w-4 text-muted-foreground" />
                 Hồ sơ cá nhân
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link
+                to="/my-auctions"
+                className="flex w-full items-center gap-2.5"
+                onClick={onMobileClose}
+              >
+                <Gavel className="h-4 w-4 text-muted-foreground" />
+                Đấu giá của tôi
               </Link>
             </DropdownMenuItem>
           </DropdownMenuGroup>

@@ -5,6 +5,8 @@ import com.woodcert.auction.feature.auction.entity.AuctionSessionStatus;
 import com.woodcert.auction.feature.auction.entity.DepositStatus;
 import com.woodcert.auction.feature.auction.repository.AuctionParticipantRepository;
 import com.woodcert.auction.feature.auction.repository.AuctionSessionRepository;
+import com.woodcert.auction.feature.order.entity.OrderSourceType;
+import com.woodcert.auction.feature.order.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -21,6 +23,7 @@ public class AuctionSettlementService {
     private final AuctionSessionRepository auctionSessionRepository;
     private final AuctionParticipantSettlementService participantSettlementService;
     private final AuctionRedisService auctionRedisService;
+    private final OrderService orderService;
 
     public void settleFinalizedSession(AuctionSessionLifecycleWorker.CloseResult closeResult) {
         settleFinalizedSession(closeResult, true);
@@ -55,6 +58,17 @@ public class AuctionSettlementService {
             } catch (Exception ex) {
                 log.error("Settlement failed for participant id {} in session {}: {}",
                         participantId, closeResult.auctionSessionId(), ex.getMessage());
+            }
+        }
+
+        if (closeResult.outcome() == AuctionSessionStatus.ENDED_SUCCESS
+                && auctionParticipantRepository.findIdsByAuctionSessionIdAndDepositStatus(
+                closeResult.auctionSessionId(), DepositStatus.FROZEN).isEmpty()) {
+            try {
+                orderService.createFromSource(OrderSourceType.AUCTION, closeResult.auctionSessionId());
+            } catch (Exception ex) {
+                log.error("Order creation failed for finalized session {}: {}",
+                        closeResult.auctionSessionId(), ex.getMessage());
             }
         }
 

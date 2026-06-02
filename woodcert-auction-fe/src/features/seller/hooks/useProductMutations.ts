@@ -71,3 +71,16 @@ export function useCancelAuction() {
     },
   });
 }
+
+export function useConfirmShipping() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ orderId, trackingCode }: { orderId: number; trackingCode?: string }) =>
+      sellerApi.confirmShipping(orderId, trackingCode),
+    onSuccess: (order) => {
+      void queryClient.invalidateQueries({ queryKey: ["seller", "auction", order.sourceId] });
+      void queryClient.invalidateQueries({ queryKey: SELLER_AUCTIONS_QUERY_KEY });
+    },
+  });
+}

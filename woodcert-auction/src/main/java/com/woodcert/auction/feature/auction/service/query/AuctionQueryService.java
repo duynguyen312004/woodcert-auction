@@ -35,6 +35,8 @@ import com.woodcert.auction.feature.catalog.repository.CategoryRepository;
 import com.woodcert.auction.feature.catalog.repository.ProductRepository;
 import com.woodcert.auction.feature.catalog.service.ProductImageHelper;
 import com.woodcert.auction.feature.identity.service.SellerSummaryQueryService;
+import com.woodcert.auction.feature.order.entity.OrderSourceType;
+import com.woodcert.auction.feature.order.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -80,6 +82,7 @@ public class AuctionQueryService {
     private final AuctionRuntimeSnapshotService runtimeSnapshotService;
     private final AuctionResponseAssembler responseAssembler;
     private final AuctionPolicy auctionPolicy;
+    private final OrderService orderService;
 
     @Transactional(readOnly = true)
     public PaginationResponse<AuctionListRes> getPublicAuctions(PublicAuctionSearchCriteria criteria) {
@@ -380,6 +383,7 @@ public class AuctionQueryService {
                 depositCounts.getOrDefault(DepositStatus.DEDUCTED, 0L),
                 depositCounts.getOrDefault(DepositStatus.CONFISCATED, 0L));
         long participantCount = depositCounts.values().stream().mapToLong(Long::longValue).sum();
+        var order = orderService.findSummaryBySource(OrderSourceType.AUCTION, auctionId);
 
         return responseAssembler.toSellerDetailRes(
                 session,
@@ -391,6 +395,7 @@ public class AuctionQueryService {
                 settlement,
                 resolveSettlementStatus(session.getStatus(), settlement),
                 maskUserId(session.getHighestBidderId()),
+                order,
                 snapshot);
     }
 

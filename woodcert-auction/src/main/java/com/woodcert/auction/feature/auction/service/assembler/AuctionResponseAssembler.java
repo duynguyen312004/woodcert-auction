@@ -12,6 +12,7 @@ import com.woodcert.auction.feature.auction.service.runtime.AuctionRuntimeSnapsh
 import com.woodcert.auction.feature.catalog.entity.AppraisalReport;
 import com.woodcert.auction.feature.catalog.entity.Product;
 import com.woodcert.auction.feature.identity.service.SellerSummaryQueryService;
+import com.woodcert.auction.feature.order.dto.response.OrderSummaryRes;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -117,6 +118,7 @@ public class AuctionResponseAssembler {
             SellerAuctionDetailRes.SettlementSummary settlement,
             SellerAuctionDetailRes.SellerAuctionSettlementStatus settlementStatus,
             String winnerMaskedAlias,
+            OrderSummaryRes order,
             AuctionRuntimeSnapshot snapshot) {
         AuctionAppraisalRes appraisalRes = AuctionAppraisalRes.fromEntity(appraisalReport);
         String publicMaterial = appraisalReport != null && appraisalReport.getVerifiedMaterial() != null
@@ -145,6 +147,7 @@ public class AuctionResponseAssembler {
                 winnerMaskedAlias,
                 settlementStatus,
                 settlement,
+                order,
                 productSummary,
                 session.getCreatedAt(),
                 session.getUpdatedAt()

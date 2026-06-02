@@ -10,7 +10,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 
 /**
- * Auction session entity â€” maps to 'auction_sessions' table.
+ * Auction session entity - maps to 'auction_sessions' table.
  * Tracks the DB snapshot and lifecycle of a product auction.
  */
 @Getter

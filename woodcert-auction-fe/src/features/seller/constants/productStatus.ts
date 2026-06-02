@@ -22,11 +22,13 @@ export const PRODUCT_STATUS_CLASS: Record<ProductStatus, string> = {
 export const PRODUCT_SALE_STATUS_LABEL: Record<ProductSaleStatus, string> = {
   AVAILABLE: "Sẵn sàng đấu giá",
   IN_AUCTION: "Đang đấu giá",
+  PENDING_ORDER: "Chờ hoàn tất đơn",
   SOLD: "Đã bán",
 };
 
 export const PRODUCT_SALE_STATUS_CLASS: Record<ProductSaleStatus, string> = {
   AVAILABLE: "bg-[#2F7D68]/10 text-[#2F7D68] border border-[#2F7D68]/20",
   IN_AUCTION: "bg-[#2E4A62]/10 text-[#2E4A62] border border-[#2E4A62]/20",
+  PENDING_ORDER: "bg-[#D6A84F]/10 text-[#956400] border border-[#D6A84F]/25",
   SOLD: "bg-[#181612]/10 text-[#181612] border border-[#181612]/20",
 };

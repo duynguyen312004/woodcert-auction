@@ -6,6 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
+import java.math.BigDecimal;
 
 @Getter
 @Setter
@@ -14,11 +15,20 @@ import java.time.Duration;
 public class FinanceProperties {
 
     private final Wallet wallet = new Wallet();
+    private final Platform platform = new Platform();
 
 
 
     public Duration getWalletOperationPendingTimeout() {
         return wallet.getOperation().getPendingTimeout();
+    }
+
+    public BigDecimal getAppraisalFee() {
+        return platform.getAppraisalFee();
+    }
+
+    public BigDecimal getForfeitedDepositPlatformRate() {
+        return platform.getForfeitedDepositPlatformRate();
     }
 
     @Getter
@@ -31,5 +41,12 @@ public class FinanceProperties {
     @Setter
     public static class Operation {
         private Duration pendingTimeout = Duration.ofMinutes(5);
+    }
+
+    @Getter
+    @Setter
+    public static class Platform {
+        private BigDecimal appraisalFee = new BigDecimal("1000000.00");
+        private BigDecimal forfeitedDepositPlatformRate = new BigDecimal("0.10");
     }
 }

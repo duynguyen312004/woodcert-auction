@@ -5,6 +5,7 @@
  * phiên đang chạy. Type ở đây nhỏ hơn entity backend để giao diện dễ dùng hơn.
  */
 import { z } from "zod";
+import type { OrderSummary } from "@/features/order";
 
 export type ProductStatus =
   | "DRAFT"
@@ -13,7 +14,7 @@ export type ProductStatus =
   | "REJECTED"
   | "APPRAISED";
 
-export type ProductSaleStatus = "AVAILABLE" | "IN_AUCTION" | "SOLD";
+export type ProductSaleStatus = "AVAILABLE" | "IN_AUCTION" | "PENDING_ORDER" | "SOLD";
 
 export type SellerAuctionStatus =
   | "WAITING"
@@ -104,6 +105,7 @@ export interface SellerAuctionDetail {
   winnerMaskedAlias: string | null;
   settlementStatus: SellerAuctionSettlementStatus;
   settlement: SellerAuctionSettlementSummary;
+  order?: OrderSummary | null;
   product: SellerAuctionProductSummary;
   createdAt: string;
   updatedAt: string;

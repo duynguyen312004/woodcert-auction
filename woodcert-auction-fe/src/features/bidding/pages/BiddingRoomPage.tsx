@@ -37,13 +37,13 @@ export default function BiddingRoomPage() {
   if (!auctionId) {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-4 text-center">
-        <p className="text-sm font-semibold text-destructive">Ma phien dau gia khong hop le.</p>
+        <p className="text-sm font-semibold text-destructive">Mã phiên đấu giá không hợp lệ.</p>
         <button
           onClick={() => navigate("/auctions")}
           className="inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-xs font-semibold hover:bg-muted"
         >
           <ArrowLeft className="h-4 w-4" />
-          Quay lai danh sach
+          Quay lại danh sách
         </button>
       </div>
     );
@@ -55,7 +55,7 @@ export default function BiddingRoomPage() {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-3">
         <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
-        <span className="text-xs font-medium text-muted-foreground">Dang tai phong dau gia...</span>
+        <span className="text-xs font-medium text-muted-foreground">Đang tải phòng đấu giá...</span>
       </div>
     );
   }
@@ -63,16 +63,16 @@ export default function BiddingRoomPage() {
   if (isError || !detail) {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-4 p-6 text-center">
-        <h2 className="text-base font-bold text-foreground">Khong tim thay phong dau gia</h2>
+        <h2 className="text-base font-bold text-foreground">Không tìm thấy phòng đấu giá</h2>
         <p className="max-w-sm text-xs text-muted-foreground">
-          Phien dau gia khong ton tai hoac ban khong co quyen truy cap. Vui long kiem tra lai.
+          Phiên đấu giá không tồn tại hoặc bạn không có quyền truy cập. Vui lòng kiểm tra lại.
         </p>
         <button
           onClick={() => navigate("/auctions")}
           className="inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-xs font-semibold hover:bg-muted"
         >
           <ArrowLeft className="h-4 w-4" />
-          Quay lai danh sach dau gia
+          Quay lại danh sách đấu giá
         </button>
       </div>
     );
@@ -81,14 +81,14 @@ export default function BiddingRoomPage() {
   const hasEnded = detail.status !== "WAITING" && detail.status !== "ACTIVE";
   const showOutcome = hasEnded && participation && participation.outcomeCode !== "NONE";
   const mobilePanels = [
-    { id: "bid" as const, label: "Dat gia", icon: Gavel },
-    { id: "product" as const, label: "Tac pham", icon: PackageSearch },
-    { id: "feed" as const, label: "Lich su", icon: List },
+    { id: "bid" as const, label: "Đặt giá", icon: Gavel },
+    { id: "product" as const, label: "Tác phẩm", icon: PackageSearch },
+    { id: "feed" as const, label: "Lịch sử", icon: List },
   ];
 
   return (
     <div className="relative flex min-h-[100dvh] w-full flex-col overflow-x-hidden bg-background lg:h-screen lg:overflow-hidden">
-      <BiddingTopBar title={detail.product?.title || "Phong Dau Gia"} socketStatus={socketStatus} />
+      <BiddingTopBar title={detail.product?.title || "Phòng Đấu Giá"} socketStatus={socketStatus} />
       <ConnectionBanner status={socketStatus} />
 
       <div className="relative flex flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">

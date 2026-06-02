@@ -5,6 +5,9 @@ import com.woodcert.auction.feature.auction.dto.request.CreateAuctionSessionReq;
 import com.woodcert.auction.feature.auction.dto.response.AuctionDetailRes;
 import com.woodcert.auction.feature.auction.dto.response.AuctionListRes;
 import com.woodcert.auction.feature.auction.dto.response.BidHistoryItemRes;
+import com.woodcert.auction.feature.auction.dto.response.BuyerAuctionDetailRes;
+import com.woodcert.auction.feature.auction.dto.response.BuyerAuctionListRes;
+import com.woodcert.auction.feature.auction.dto.response.BuyerAuctionStatsRes;
 import com.woodcert.auction.feature.auction.dto.response.MyParticipationRes;
 import com.woodcert.auction.feature.auction.dto.response.SellerAuctionDetailRes;
 import com.woodcert.auction.feature.auction.dto.response.SellerAuctionListRes;
@@ -59,6 +62,12 @@ public interface AuctionService {
      * Trả về số lượng phiên theo từng trạng thái cho seller — kông load toàn bộ danh sách.
      */
     SellerAuctionStatsRes getSellerAuctionStats(String sellerId);
+
+    PaginationResponse<BuyerAuctionListRes> getMyAuctions(String userId, int page, int size, String outcome);
+
+    BuyerAuctionDetailRes getMyAuctionDetail(String userId, Long auctionId);
+
+    BuyerAuctionStatsRes getMyAuctionStats(String userId);
 
     /**
      * Hủy phiên của seller nếu đúng chủ sở hữu và trạng thái cho phép.

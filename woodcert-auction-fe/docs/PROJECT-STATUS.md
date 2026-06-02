@@ -1,6 +1,6 @@
 # Project Status
 
-> Last updated: 2026-06-01 | By: Codex | Session: buyer-auction-detail-phase-3-5
+> Last updated: 2026-06-02 | By: Codex | Session: order-fulfillment-review-followup
 >
 > Update this file at the end of FE planning or implementation sessions.
 > Keep it concise and decision-useful.
@@ -25,20 +25,24 @@
 - [x] Backend buyer realtime contracts are available: participation context, bid history, and enriched `NEW_BID` WebSocket payload
 - [x] Realtime bidding room cockpit layout at `/bidding/:auctionId` (WebSocket/SockJS client, price tick, countdown pulse, anti-sniper banner, ended outcome overlay)
 - [x] Public auction detail page at `/auctions/:auctionId` with gallery, product/appraisal detail, price/deposit/step summary, status-aware CTA, and list/home cards routed through detail first
-- [x] Automated FE unit test suite passes with 84 tests
+- [x] Buyer auction history at `/my-auctions` and buyer auction detail with order payment/receive integration
+- [x] Order UI primitives: summary card and fee breakdown for buyer/seller views
+- [x] Fulfillment API client and seller shipping confirmation UI on seller auction detail
+- [x] Admin revenue page wired to backend revenue APIs
+- [x] Automated FE unit test suite passes with 86 tests
 
 ## In Progress
 
-- Responsive polish and advanced realtime/concurrency hardening.
+- Responsive polish, order list pages, and advanced realtime/concurrency hardening.
 
 ## Deferred
 
 - Address book UI
-- Admin module beyond structural placeholder
+- Admin module beyond revenue page
 - Public certificate verification
-- Order, fulfillment, shipping, dispute flows
+- Dedicated buyer/seller order list pages
+- Dispute flows
 - Production runtime env injection beyond initial static Vite assumptions
-- Buyer participation history page (`MyAuctionsPage`)
 - Stored winner/loser notifications
 - Sound/vibration and advanced realtime effects
 - Advanced Playwright realtime/concurrency suite
@@ -48,12 +52,12 @@
 - Backend auction runtime and buyer realtime contracts are integrated through public detail and bidding room.
 - FE should consume the backend contracts directly; do not add local workarounds for participation context, bid history, or live bid payloads.
 - Wallet funding must use VNPay Sandbox. Do not add mock wallet top-up, dev top-up, or any `POST /wallets/me/top-up` integration.
-- Seller auction detail is implemented (polling is used for operational safety); realtime monitoring remains deferred until the buyer bidding cockpit is stable.
+- Seller auction detail and shipping confirmation are implemented (polling is used for operational safety); realtime monitoring remains deferred until the buyer bidding cockpit is stable.
 - CSRF mitigation for cookie-authenticated flows relies on backend `SameSite` behavior; explicit CSRF token strategy is deferred.
 
 ## Next Tasks
 
-1. Add buyer participation history page (`MyAuctionsPage`) after the bidding room and public detail flow are stable.
+1. Add dedicated buyer/seller order list pages using `/orders/my-purchases` and `/orders/my-sales`.
 2. Add focused unit tests for countdown thresholds, bid form validation, and participation-driven action states.
 3. Add advanced Playwright coverage for realtime bidding and websocket reconnect recovery.
 
@@ -94,18 +98,20 @@
 - [x] Buyer bid history from `GET /auctions/{id}/bids`
 - [x] Realtime bidding room
 - [x] Ended overlay with participation refetch for winner/loser state
+- [x] Buyer auction history and detail pages with order payment/receive actions
 
 ### Phase 4 - Seller and Appraiser Workflow
 
 - [x] Seller profile/register/dashboard/product list/product create-edit
 - [x] Product media upload
 - [x] Seller auction create/list/cancel/detail real flows
+- [x] Seller shipping confirmation from auction detail when order is paid
 - [x] Appraiser queue/claim/appraise/reviewed workflow
 - [ ] Seller product detail page
 
 ### Phase 5 - Hardening
 
-- [x] Automated tests: 84 unit tests and 2 Playwright smoke tests
+- [x] Automated tests: 86 unit tests and 2 Playwright smoke tests
 - [ ] Responsive polish
 - [ ] Unit tests for event parsing, bid-history dedupe, countdown thresholds, bid form validation, and participation-driven action states
 - [ ] Production deploy readiness
