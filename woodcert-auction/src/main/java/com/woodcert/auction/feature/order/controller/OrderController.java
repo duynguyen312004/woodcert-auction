@@ -21,7 +21,7 @@ public class OrderController {
     private final OrderService orderService;
 
     @PostMapping("/{id}/pay")
-    @PreAuthorize("hasAuthority('JOIN_AUCTION')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<OrderRes>> payRemainder(
             @CurrentUserId String buyerId,
             @PathVariable Long id) {
@@ -41,7 +41,7 @@ public class OrderController {
     }
 
     @GetMapping("/my-purchases")
-    @PreAuthorize("hasAuthority('JOIN_AUCTION')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<PaginationResponse<OrderListRes>>> getBuyerOrders(
             @CurrentUserId String buyerId,
             @RequestParam(required = false) OrderStatus status,
@@ -53,7 +53,7 @@ public class OrderController {
     }
 
     @GetMapping("/my-purchases/status-counts")
-    @PreAuthorize("hasAuthority('JOIN_AUCTION')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<OrderStatusCountsRes>> getBuyerOrderStatusCounts(
             @CurrentUserId String buyerId) {
         return ResponseEntity.ok(ApiResponse.success(

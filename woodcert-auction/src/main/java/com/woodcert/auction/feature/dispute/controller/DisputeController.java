@@ -26,7 +26,7 @@ public class DisputeController {
     private final DisputeService disputeService;
 
     @PostMapping("/api/v1/disputes/evidence/upload-intent")
-    @PreAuthorize("hasAuthority('JOIN_AUCTION')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<MediaUploadIntentRes>> createEvidenceUploadIntent(
             @CurrentUserId String userId,
             @RequestBody @Valid CreateMediaUploadIntentReq request) {
@@ -37,7 +37,7 @@ public class DisputeController {
     }
 
     @PutMapping("/api/v1/disputes/evidence/confirm")
-    @PreAuthorize("hasAuthority('JOIN_AUCTION')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Void>> confirmEvidenceUpload(
             @CurrentUserId String userId,
             @RequestBody @Valid ConfirmMediaUploadReq request) {
@@ -46,7 +46,7 @@ public class DisputeController {
     }
 
     @PostMapping("/api/v1/orders/{orderId}/disputes")
-    @PreAuthorize("hasAuthority('JOIN_AUCTION')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<DisputeRes>> openDispute(
             @CurrentUserId String buyerId,
             @PathVariable Long orderId,
@@ -78,7 +78,7 @@ public class DisputeController {
     }
 
     @PatchMapping("/api/v1/orders/{orderId}/disputes/{disputeId}/cancel")
-    @PreAuthorize("hasAuthority('JOIN_AUCTION')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<DisputeRes>> cancelDispute(
             @CurrentUserId String userId,
             @PathVariable Long orderId,

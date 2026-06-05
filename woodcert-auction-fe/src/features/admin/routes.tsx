@@ -1,9 +1,9 @@
 import { lazy } from "react";
 import type { RouteObject } from "react-router";
 
-const AdminAppraisersPage = lazy(() =>
-  import("./pages/AdminAppraisersPage").then((module) => ({
-    default: module.AdminAppraisersPage,
+const AdminAuditLogsPage = lazy(() =>
+  import("./pages/AdminAuditLogsPage").then((module) => ({
+    default: module.AdminAuditLogsPage,
   })),
 );
 const AdminCategoriesPage = lazy(() =>
@@ -63,7 +63,7 @@ export const adminRoutes: RouteObject[] = [
     element: <AdminUsersPage />,
   },
   {
-    path: "admin/appraisers",
-    element: <AdminAppraisersPage />,
+    path: "admin/audit-logs",
+    element: <AdminAuditLogsPage />,
   },
 ];

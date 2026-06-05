@@ -14,9 +14,25 @@ public record AdminUserRes(
         String phoneNumber,
         String status,
         List<String> roles,
-        Instant createdAt
+        Instant createdAt,
+        List<CapabilityStatusRes> capabilityStatuses
 ) {
+    public AdminUserRes(
+            String id,
+            String email,
+            String fullName,
+            String phoneNumber,
+            String status,
+            List<String> roles,
+            Instant createdAt) {
+        this(id, email, fullName, phoneNumber, status, roles, createdAt, List.of());
+    }
+
     public static AdminUserRes fromEntity(User user) {
+        return fromEntity(user, List.of());
+    }
+
+    public static AdminUserRes fromEntity(User user, List<CapabilityStatusRes> capabilityStatuses) {
         return new AdminUserRes(
                 user.getId(),
                 user.getEmail(),
@@ -27,7 +43,8 @@ public record AdminUserRes(
                         .map(Role::getName)
                         .sorted(Comparator.naturalOrder())
                         .toList(),
-                user.getCreatedAt()
+                user.getCreatedAt(),
+                capabilityStatuses
         );
     }
 }

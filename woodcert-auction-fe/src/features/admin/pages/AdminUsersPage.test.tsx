@@ -9,12 +9,16 @@ import { AdminUsersPage } from "./AdminUsersPage";
 const getUsers = vi.fn();
 const ban = vi.fn();
 const unban = vi.fn();
+const banCapability = vi.fn();
+const unbanCapability = vi.fn();
 
 vi.mock("../api/users", () => ({
   adminUserApi: {
     getUsers: (...args: unknown[]) => getUsers(...args),
     ban: (...args: unknown[]) => ban(...args),
     unban: (...args: unknown[]) => unban(...args),
+    banCapability: (...args: unknown[]) => banCapability(...args),
+    unbanCapability: (...args: unknown[]) => unbanCapability(...args),
   },
 }));
 
@@ -35,6 +39,7 @@ function makeUser(overrides: Partial<AdminUser> = {}): AdminUser {
     status: "ACTIVE",
     roles: ["ROLE_BIDDER"],
     createdAt: "2026-05-25T10:00:00Z",
+    capabilityStatuses: [],
     ...overrides,
   };
 }
@@ -78,14 +83,20 @@ describe("AdminUsersPage", () => {
 
     renderPage();
 
-    const banButton = await screen.findByRole("button", { name: /^khóa$/i });
+    const banButton = await screen.findByRole("button", { name: /khóa account/i });
     fireEvent.click(banButton);
 
     const confirmButton = await screen.findByRole("button", { name: /khóa tài khoản/i });
+    fireEvent.change(screen.getByPlaceholderText(/nhập lý do/i), {
+      target: { value: "Vi phạm chính sách" },
+    });
     fireEvent.click(confirmButton);
 
     await waitFor(() => expect(ban).toHaveBeenCalled());
-    expect(ban.mock.calls.at(0)?.[0]).toBe("u-1");
+    expect(ban.mock.calls.at(0)?.[0]).toEqual({
+      userId: "u-1",
+      reason: "Vi phạm chính sách",
+    });
   });
 
   it("unbans a banned user", async () => {
@@ -94,13 +105,19 @@ describe("AdminUsersPage", () => {
 
     renderPage();
 
-    const unbanButton = await screen.findByRole("button", { name: /mở khóa/i });
+    const unbanButton = await screen.findByRole("button", { name: /mở account/i });
     fireEvent.click(unbanButton);
 
-    const confirmButton = await screen.findByRole("button", { name: /^mở khóa$/i });
+    const confirmButton = await screen.findByRole("button", { name: /mở khóa tài khoản/i });
+    fireEvent.change(screen.getByPlaceholderText(/nhập lý do/i), {
+      target: { value: "Đã xử lý khiếu nại" },
+    });
     fireEvent.click(confirmButton);
 
     await waitFor(() => expect(unban).toHaveBeenCalled());
-    expect(unban.mock.calls.at(0)?.[0]).toBe("u-1");
+    expect(unban.mock.calls.at(0)?.[0]).toEqual({
+      userId: "u-1",
+      reason: "Đã xử lý khiếu nại",
+    });
   });
 });

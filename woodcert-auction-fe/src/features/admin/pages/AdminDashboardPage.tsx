@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
-import { ArrowRight, Banknote, Boxes, RefreshCw, Scale, ShieldCheck, Users } from "lucide-react";
+import { ArrowRight, Banknote, Boxes, RefreshCw, Scale, Users } from "lucide-react";
 
 import { disputeApi } from "@/features/dispute";
 import { formatVND } from "@/shared/lib/format";
@@ -15,7 +15,6 @@ const SHORTCUTS = [
   { label: "Tranh chấp", to: "/admin/disputes", icon: Scale },
   { label: "Danh mục", to: "/admin/categories", icon: Boxes },
   { label: "Người dùng", to: "/admin/users", icon: Users },
-  { label: "Appraiser", to: "/admin/appraisers", icon: ShieldCheck },
 ];
 
 export function AdminDashboardPage() {
@@ -29,7 +28,7 @@ export function AdminDashboardPage() {
   });
   const revenueQuery = useQuery({
     queryKey: ["admin", "dashboard", "revenue"],
-    queryFn: revenueApi.getStats,
+    queryFn: () => revenueApi.getStats(),
   });
 
   const isFetching =

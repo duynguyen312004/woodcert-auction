@@ -53,8 +53,10 @@ describe("seller routes", () => {
         "admin/disputes",
         "admin/disputes/:id",
         "admin/categories",
-        "admin/appraisers",
+        "admin/users",
+        "admin/audit-logs",
       ]),
     );
+    expect([...paths]).not.toContain("admin/appraisers");
   });
 });

@@ -16,6 +16,9 @@ import com.woodcert.auction.feature.dispute.repository.DisputeEvidenceRepository
 import com.woodcert.auction.feature.fulfillment.entity.FulfillmentStatus;
 import com.woodcert.auction.feature.fulfillment.entity.OrderFulfillment;
 import com.woodcert.auction.feature.fulfillment.repository.FulfillmentRepository;
+import com.woodcert.auction.feature.identity.entity.AdminAction;
+import com.woodcert.auction.feature.identity.entity.AdminTargetType;
+import com.woodcert.auction.feature.identity.service.AdminAuditLogService;
 import com.woodcert.auction.feature.media.config.CloudinaryProperties;
 import com.woodcert.auction.feature.media.dto.request.ConfirmMediaUploadReq;
 import com.woodcert.auction.feature.media.dto.request.CreateMediaUploadIntentReq;
@@ -40,6 +43,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -58,6 +62,7 @@ public class DisputeServiceImpl implements DisputeService {
     private final MediaAssetService mediaAssetService;
     private final CloudinaryProperties cloudinaryProperties;
     private final MediaUrlBuilder mediaUrlBuilder;
+    private final AdminAuditLogService adminAuditLogService;
 
     @Override
     @Transactional
@@ -198,6 +203,13 @@ public class DisputeServiceImpl implements DisputeService {
         if (dispute.getStatus() == DisputeStatus.OPEN) {
             dispute.setStatus(DisputeStatus.UNDER_REVIEW);
             dispute = disputeCaseRepository.save(dispute);
+            adminAuditLogService.log(
+                    adminId,
+                    AdminAction.DISPUTE_MARKED_UNDER_REVIEW,
+                    AdminTargetType.DISPUTE,
+                    String.valueOf(disputeId),
+                    null,
+                    Map.of("orderId", dispute.getOrderId()));
         }
         return toRes(dispute);
     }
@@ -210,6 +222,10 @@ public class DisputeServiceImpl implements DisputeService {
         ensureActive(dispute);
         if (request.outcome() == null) {
             throw new AppException(ErrorCode.DISPUTE_RESOLUTION_REQUIRED);
+        }
+        String resolutionNote = trimToNull(request.resolutionNote());
+        if (resolutionNote == null) {
+            throw new AppException(ErrorCode.DISPUTE_RESOLUTION_REQUIRED, "Resolution note is required");
         }
 
         if (request.outcome() == DisputeResolutionOutcome.SELLER_WINS) {
@@ -224,8 +240,18 @@ public class DisputeServiceImpl implements DisputeService {
         dispute.setResolvedAt(Instant.now());
         dispute.setResolvedByAdminId(adminId);
         dispute.setResolutionOutcome(request.outcome());
-        dispute.setResolutionNote(trimToNull(request.resolutionNote()));
-        return toRes(disputeCaseRepository.save(dispute));
+        dispute.setResolutionNote(resolutionNote);
+        DisputeCase saved = disputeCaseRepository.save(dispute);
+        adminAuditLogService.log(
+                adminId,
+                AdminAction.DISPUTE_RESOLVED,
+                AdminTargetType.DISPUTE,
+                String.valueOf(disputeId),
+                resolutionNote,
+                Map.of(
+                        "orderId", dispute.getOrderId(),
+                        "outcome", request.outcome().name()));
+        return toRes(saved);
     }
 
     private void validateEvidenceMedia(String ownerUserId, List<Long> mediaIds) {

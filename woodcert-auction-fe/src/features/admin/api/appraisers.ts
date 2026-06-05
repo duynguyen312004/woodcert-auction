@@ -18,11 +18,4 @@ export const adminAppraiserApi = {
     const response = await apiClient.post<ApiResponse<AdminUser>>("/admin/appraisers", payload);
     return unwrapApiResponse(response);
   },
-
-  demote: async (userId: string): Promise<AdminUser> => {
-    const response = await apiClient.patch<ApiResponse<AdminUser>>(
-      `/admin/appraisers/${userId}/demote`,
-    );
-    return unwrapApiResponse(response);
-  },
 };

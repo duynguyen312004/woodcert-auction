@@ -6,6 +6,7 @@ import com.nimbusds.jose.proc.JWSVerificationKeySelector;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import com.woodcert.auction.core.security.ActiveUserJwtValidator;
+import com.woodcert.auction.core.security.DbAwareJwtAuthoritiesConverter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -24,7 +25,6 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
-import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -50,6 +50,7 @@ public class SecurityConfig {
     private final JwtProperties jwtProperties;
     private final CorsProperties corsProperties;
     private final ActiveUserJwtValidator activeUserJwtValidator;
+    private final DbAwareJwtAuthoritiesConverter dbAwareJwtAuthoritiesConverter;
 
     private static final String[] PUBLIC_ENDPOINTS = {
             "/api/v1/auth/login",
@@ -124,12 +125,8 @@ public class SecurityConfig {
      */
     @Bean
     public JwtAuthenticationConverter jwtAuthenticationConverter() {
-        JwtGrantedAuthoritiesConverter authoritiesConverter = new JwtGrantedAuthoritiesConverter();
-        authoritiesConverter.setAuthoritiesClaimName("permissions");
-        authoritiesConverter.setAuthorityPrefix("");
-
         JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
-        converter.setJwtGrantedAuthoritiesConverter(authoritiesConverter);
+        converter.setJwtGrantedAuthoritiesConverter(dbAwareJwtAuthoritiesConverter);
         return converter;
     }
 

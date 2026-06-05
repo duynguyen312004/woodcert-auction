@@ -83,7 +83,7 @@ class AuctionSecurityIntegrationTest extends AuctionIntegrationTestBase {
 
         mockMvc.perform(post("/api/v1/auctions/{id}/register", session.getId())
                         .with(jwt().jwt(jwt -> jwt.subject(bidder.getId()))
-                                .authorities(authorities("JOIN_AUCTION"))))
+                                .authorities(authorities("REGISTER_AUCTION"))))
                 .andExpect(status().isOk());
 
         assertThat(auctionParticipantRepository.findByAuctionSessionIdAndUserId(session.getId(), bidder.getId()))

@@ -19,6 +19,7 @@ import com.woodcert.auction.feature.media.entity.MediaStatus;
 import com.woodcert.auction.feature.media.entity.MediaUsageType;
 import com.woodcert.auction.feature.media.service.MediaAssetService;
 import com.woodcert.auction.feature.media.util.MediaUrlBuilder;
+import com.woodcert.auction.feature.identity.service.AdminAuditLogService;
 import com.woodcert.auction.feature.order.dto.response.OrderFulfillmentSummaryRes;
 import com.woodcert.auction.feature.order.dto.response.OrderRes;
 import com.woodcert.auction.feature.order.entity.OrderSourceType;
@@ -57,6 +58,7 @@ class DisputeServiceImplTest {
     @Mock private OrderService orderService;
     @Mock private MediaAssetService mediaAssetService;
     @Mock private MediaUrlBuilder mediaUrlBuilder;
+    @Mock private AdminAuditLogService adminAuditLogService;
 
     private DisputeServiceImpl disputeService;
 
@@ -69,7 +71,8 @@ class DisputeServiceImplTest {
                 orderService,
                 mediaAssetService,
                 new CloudinaryProperties(),
-                mediaUrlBuilder
+                mediaUrlBuilder,
+                adminAuditLogService
         );
     }
 
@@ -181,6 +184,7 @@ class DisputeServiceImplTest {
         assertThat(fulfillment.getReceivedAt()).isNotNull();
         verify(orderService).resolveDisputeSellerWins(ORDER_ID);
         verify(fulfillmentRepository).save(fulfillment);
+        verify(adminAuditLogService).log(any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -206,6 +210,7 @@ class DisputeServiceImplTest {
         assertThat(fulfillment.getReceivedAt()).isNull();
         verify(orderService).resolveDisputeBuyerWins(ORDER_ID);
         verify(fulfillmentRepository).save(fulfillment);
+        verify(adminAuditLogService).log(any(), any(), any(), any(), any(), any());
     }
 
     private DisputeCase openDispute() {

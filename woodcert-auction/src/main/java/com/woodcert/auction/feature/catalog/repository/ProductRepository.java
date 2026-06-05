@@ -8,6 +8,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -38,6 +39,23 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             String appraiserId,
             ProductStatus status,
             Instant now);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            UPDATE Product p
+            SET p.status = :pendingStatus,
+                p.appraisalClaimedBy = null,
+                p.appraisalClaimedAt = null,
+                p.appraisalClaimExpiresAt = null
+            WHERE p.appraisalClaimedBy = :appraiserId
+              AND p.status = :underStatus
+              AND p.appraisalClaimExpiresAt > :now
+            """)
+    int releaseAllActiveClaimsByAppraiser(
+            @Param("appraiserId") String appraiserId,
+            @Param("underStatus") ProductStatus underStatus,
+            @Param("pendingStatus") ProductStatus pendingStatus,
+            @Param("now") Instant now);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""

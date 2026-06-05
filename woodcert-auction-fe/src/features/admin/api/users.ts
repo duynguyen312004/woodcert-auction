@@ -10,6 +10,18 @@ export interface AdminUser {
   status: string;
   roles: string[];
   createdAt: string;
+  capabilityStatuses: CapabilityStatus[];
+}
+
+export type UserCapability = "BUYER" | "SELLER" | "APPRAISER";
+export type CapabilityState = "ACTIVE" | "BANNED";
+
+export interface CapabilityStatus {
+  capability: UserCapability;
+  status: CapabilityState;
+  reason: string | null;
+  updatedByAdminId: string | null;
+  updatedAt: string | null;
 }
 
 export const adminUserApi = {
@@ -27,13 +39,49 @@ export const adminUserApi = {
     return unwrapApiResponse(response);
   },
 
-  ban: async (userId: string): Promise<AdminUser> => {
-    const response = await apiClient.patch<ApiResponse<AdminUser>>(`/admin/users/${userId}/ban`);
+  ban: async ({ userId, reason }: { userId: string; reason: string }): Promise<AdminUser> => {
+    const response = await apiClient.patch<ApiResponse<AdminUser>>(`/admin/users/${userId}/ban`, {
+      reason,
+    });
     return unwrapApiResponse(response);
   },
 
-  unban: async (userId: string): Promise<AdminUser> => {
-    const response = await apiClient.patch<ApiResponse<AdminUser>>(`/admin/users/${userId}/unban`);
+  unban: async ({ userId, reason }: { userId: string; reason: string }): Promise<AdminUser> => {
+    const response = await apiClient.patch<ApiResponse<AdminUser>>(`/admin/users/${userId}/unban`, {
+      reason,
+    });
+    return unwrapApiResponse(response);
+  },
+
+  banCapability: async ({
+    userId,
+    capability,
+    reason,
+  }: {
+    userId: string;
+    capability: UserCapability;
+    reason: string;
+  }): Promise<AdminUser> => {
+    const response = await apiClient.patch<ApiResponse<AdminUser>>(
+      `/admin/users/${userId}/capabilities/${capability}/ban`,
+      { reason },
+    );
+    return unwrapApiResponse(response);
+  },
+
+  unbanCapability: async ({
+    userId,
+    capability,
+    reason,
+  }: {
+    userId: string;
+    capability: UserCapability;
+    reason: string;
+  }): Promise<AdminUser> => {
+    const response = await apiClient.patch<ApiResponse<AdminUser>>(
+      `/admin/users/${userId}/capabilities/${capability}/unban`,
+      { reason },
+    );
     return unwrapApiResponse(response);
   },
 };

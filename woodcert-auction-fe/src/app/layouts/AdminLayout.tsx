@@ -1,4 +1,12 @@
-import { Banknote, Boxes, LayoutDashboard, LogOut, Scale, ShieldCheck, Users } from "lucide-react";
+import {
+  Banknote,
+  Boxes,
+  ClipboardList,
+  LayoutDashboard,
+  LogOut,
+  Scale,
+  Users,
+} from "lucide-react";
 import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router";
 import { useMutation } from "@tanstack/react-query";
@@ -18,7 +26,7 @@ const NAV = [
   { label: "Tranh chấp", to: "/admin/disputes", icon: Scale },
   { label: "Danh mục", to: "/admin/categories", icon: Boxes },
   { label: "Người dùng", to: "/admin/users", icon: Users },
-  { label: "Appraiser", to: "/admin/appraisers", icon: ShieldCheck },
+  { label: "Audit Logs", to: "/admin/audit-logs", icon: ClipboardList },
 ];
 
 export function AdminLayout() {

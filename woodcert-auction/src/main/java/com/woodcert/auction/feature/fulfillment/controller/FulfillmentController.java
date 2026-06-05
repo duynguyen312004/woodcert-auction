@@ -31,7 +31,7 @@ public class FulfillmentController {
     }
 
     @PatchMapping("/receive")
-    @PreAuthorize("hasAuthority('JOIN_AUCTION')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<OrderRes>> confirmReceived(
             @CurrentUserId String buyerId,
             @PathVariable Long orderId) {

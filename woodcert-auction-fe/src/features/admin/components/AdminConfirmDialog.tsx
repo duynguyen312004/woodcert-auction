@@ -18,6 +18,10 @@ type AdminConfirmDialogProps = {
   description: string;
   confirmLabel: string;
   isPending?: boolean;
+  reasonValue?: string;
+  reasonError?: string;
+  reasonPlaceholder?: string;
+  onReasonChange?: (value: string) => void;
   onConfirm: () => void;
 };
 
@@ -28,8 +32,14 @@ export function AdminConfirmDialog({
   description,
   confirmLabel,
   isPending = false,
+  reasonValue,
+  reasonError,
+  reasonPlaceholder,
+  onReasonChange,
   onConfirm,
 }: AdminConfirmDialogProps) {
+  const hasReasonField = onReasonChange != null;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="border-white/10 bg-[#171511] text-[#f2eee5]">
@@ -44,6 +54,23 @@ export function AdminConfirmDialog({
             </DialogHeader>
           </div>
         </div>
+        {hasReasonField ? (
+          <div className="space-y-2">
+            <label className="text-xs font-bold uppercase tracking-wide text-[#a49a88]">
+              Lý do
+            </label>
+            <textarea
+              value={reasonValue ?? ""}
+              onChange={(event) => onReasonChange(event.target.value)}
+              placeholder={reasonPlaceholder ?? "Nhập lý do thao tác"}
+              className="min-h-24 w-full resize-none rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-foreground outline-none placeholder:text-[#a49a88] focus:border-primary/50 focus:ring-1 focus:ring-primary/50"
+              disabled={isPending}
+            />
+            {reasonError ? (
+              <p className="text-xs font-semibold text-red-300">{reasonError}</p>
+            ) : null}
+          </div>
+        ) : null}
         <DialogFooter>
           <DialogClose asChild>
             <Button type="button" variant="outline" size="sm" disabled={isPending}>

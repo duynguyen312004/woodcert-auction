@@ -20,13 +20,23 @@ export function AdminDisputeDetailPage() {
   const query = useAdminDispute(Number.isFinite(disputeId) ? disputeId : undefined);
   const mutations = useAdminDisputeMutations();
   const [resolutionNote, setResolutionNote] = useState("");
+  const [resolutionNoteError, setResolutionNoteError] = useState("");
   const notification = useNotification();
   const dispute = query.data;
 
   const resolve = async (outcome: DisputeResolutionOutcome) => {
     if (!dispute) return;
+    const normalizedNote = resolutionNote.trim();
+    if (!normalizedNote) {
+      setResolutionNoteError("Vui lòng nhập decision note trước khi resolve.");
+      return;
+    }
     try {
-      await mutations.resolve.mutateAsync({ id: dispute.id, outcome, resolutionNote });
+      await mutations.resolve.mutateAsync({
+        id: dispute.id,
+        outcome,
+        resolutionNote: normalizedNote,
+      });
       notification.success("Đã xử lý tranh chấp");
     } catch (error) {
       notification.error("Không thể xử lý tranh chấp", {
@@ -48,6 +58,7 @@ export function AdminDisputeDetailPage() {
   }
 
   const canResolve = dispute.status === "OPEN" || dispute.status === "UNDER_REVIEW";
+  const canSubmitResolution = canResolve && resolutionNote.trim().length > 0;
 
   return (
     <main className="px-8 py-8">
@@ -96,11 +107,17 @@ export function AdminDisputeDetailPage() {
           <h2 className="text-lg font-bold text-[#f2eee5]">Quyết định</h2>
           <textarea
             value={resolutionNote}
-            onChange={(event) => setResolutionNote(event.target.value)}
-            placeholder="Ghi chú xử lý nội bộ"
+            onChange={(event) => {
+              setResolutionNote(event.target.value);
+              if (resolutionNoteError) setResolutionNoteError("");
+            }}
+            placeholder="Decision note bắt buộc khi resolve"
             className="mt-4 min-h-32 w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-foreground placeholder:text-[#a49a88] outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all"
             disabled={!canResolve}
           />
+          {resolutionNoteError ? (
+            <p className="mt-2 text-xs font-semibold text-red-300">{resolutionNoteError}</p>
+          ) : null}
           <div className="mt-4 grid gap-2">
             <Button
               type="button"
@@ -115,7 +132,7 @@ export function AdminDisputeDetailPage() {
             <Button
               type="button"
               className="bg-primary text-primary-foreground hover:bg-primary/95"
-              disabled={!canResolve}
+              disabled={!canSubmitResolution || mutations.resolve.isPending}
               onClick={() => void resolve("SELLER_WINS")}
             >
               Seller thắng · hoàn tất payout
@@ -123,7 +140,7 @@ export function AdminDisputeDetailPage() {
             <Button
               type="button"
               variant="destructive"
-              disabled={!canResolve}
+              disabled={!canSubmitResolution || mutations.resolve.isPending}
               onClick={() => void resolve("BUYER_WINS")}
             >
               <Undo2 className="h-4 w-4" />
@@ -131,10 +148,20 @@ export function AdminDisputeDetailPage() {
             </Button>
           </div>
           {dispute.resolutionOutcome && (
-            <p className="mt-4 rounded-md border border-white/10 bg-white/5 p-3 text-sm font-semibold text-primary">
-              Kết quả:{" "}
-              {DISPUTE_OUTCOME_LABEL[dispute.resolutionOutcome] ?? dispute.resolutionOutcome}
-            </p>
+            <div className="mt-4 rounded-md border border-white/10 bg-white/5 p-3 text-sm">
+              <p className="font-semibold text-primary">
+                Kết quả:{" "}
+                {DISPUTE_OUTCOME_LABEL[dispute.resolutionOutcome] ?? dispute.resolutionOutcome}
+              </p>
+              {dispute.resolutionNote ? (
+                <p className="mt-2 whitespace-pre-wrap text-[#d2c5b2]">{dispute.resolutionNote}</p>
+              ) : null}
+              {dispute.resolvedAt ? (
+                <p className="mt-2 text-xs text-[#a49a88]">
+                  Resolve lúc {formatDateTime(dispute.resolvedAt)}
+                </p>
+              ) : null}
+            </div>
           )}
         </aside>
       </section>

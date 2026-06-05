@@ -1,7 +1,9 @@
 package com.woodcert.auction.feature.identity.controller;
 
 import com.woodcert.auction.core.dto.PaginationResponse;
+import com.woodcert.auction.feature.identity.dto.request.BanReasonReq;
 import com.woodcert.auction.feature.identity.dto.response.AdminUserRes;
+import com.woodcert.auction.feature.identity.entity.UserCapability;
 import com.woodcert.auction.feature.identity.service.AdminUserService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,9 +24,9 @@ class AdminUserControllerTest {
 
     private static final String ADMIN_ID = "admin-1";
     private static final String TARGET_ID = "user-1";
+    private static final String REASON = "Policy violation";
 
     @Mock private AdminUserService adminUserService;
-
     @InjectMocks private AdminUserController controller;
 
     private AdminUserRes res(String status) {
@@ -48,25 +50,40 @@ class AdminUserControllerTest {
 
     @Test
     void banUser_returnsOkAndDelegates() {
-        when(adminUserService.banUser(TARGET_ID, ADMIN_ID)).thenReturn(res("BANNED"));
+        when(adminUserService.banUser(TARGET_ID, ADMIN_ID, REASON)).thenReturn(res("BANNED"));
 
-        var result = controller.banUser(ADMIN_ID, TARGET_ID);
+        var result = controller.banUser(ADMIN_ID, TARGET_ID, new BanReasonReq(REASON));
 
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(result.getBody()).isNotNull();
         assertThat(result.getBody().data().status()).isEqualTo("BANNED");
-        verify(adminUserService).banUser(TARGET_ID, ADMIN_ID);
+        verify(adminUserService).banUser(TARGET_ID, ADMIN_ID, REASON);
     }
 
     @Test
     void unbanUser_returnsOkAndDelegates() {
-        when(adminUserService.unbanUser(TARGET_ID)).thenReturn(res("ACTIVE"));
+        when(adminUserService.unbanUser(TARGET_ID, ADMIN_ID, REASON)).thenReturn(res("ACTIVE"));
 
-        var result = controller.unbanUser(TARGET_ID);
+        var result = controller.unbanUser(ADMIN_ID, TARGET_ID, new BanReasonReq(REASON));
 
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(result.getBody()).isNotNull();
         assertThat(result.getBody().data().status()).isEqualTo("ACTIVE");
-        verify(adminUserService).unbanUser(TARGET_ID);
+        verify(adminUserService).unbanUser(TARGET_ID, ADMIN_ID, REASON);
+    }
+
+    @Test
+    void banCapability_returnsOkAndDelegates() {
+        when(adminUserService.banCapability(TARGET_ID, UserCapability.BUYER, ADMIN_ID, REASON))
+                .thenReturn(res("ACTIVE"));
+
+        var result = controller.banCapability(
+                ADMIN_ID,
+                TARGET_ID,
+                UserCapability.BUYER,
+                new BanReasonReq(REASON));
+
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(adminUserService).banCapability(TARGET_ID, UserCapability.BUYER, ADMIN_ID, REASON);
     }
 }

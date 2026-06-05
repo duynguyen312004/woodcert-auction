@@ -1,6 +1,15 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Ban, RefreshCw, Search, ShieldCheck, UserRound, Users } from "lucide-react";
+import {
+  Ban,
+  RefreshCw,
+  Search,
+  ShieldCheck,
+  ShieldX,
+  UserPlus,
+  UserRound,
+  Users,
+} from "lucide-react";
 
 import { isApiError } from "@/shared/api/errors";
 import { formatDateTime } from "@/shared/lib/format";
@@ -10,7 +19,13 @@ import { Input } from "@/shared/ui/input";
 import { useNotification } from "@/shared/ui/notification";
 import { Pagination } from "@/shared/ui/pagination";
 
-import { adminUserApi, type AdminUser } from "../api/users";
+import {
+  adminUserApi,
+  type AdminUser,
+  type CapabilityState,
+  type UserCapability,
+} from "../api/users";
+import { AdminCreateAppraiserDialog } from "../components/AdminCreateAppraiserDialog";
 import { AdminConfirmDialog } from "../components/AdminConfirmDialog";
 import { AdminEmptyState } from "../components/AdminEmptyState";
 
@@ -34,6 +49,22 @@ const STATUS_LABEL: Record<string, string> = {
   BANNED: "Đã khóa",
   UNVERIFIED: "Chưa xác minh",
 };
+
+const CAPABILITY_CONFIG: Array<{
+  capability: UserCapability;
+  role: string;
+  label: string;
+}> = [
+  { capability: "BUYER", role: "ROLE_BIDDER", label: "Mua" },
+  { capability: "SELLER", role: "ROLE_SELLER", label: "Bán" },
+  { capability: "APPRAISER", role: "ROLE_APPRAISER", label: "Kiểm định" },
+];
+
+type PendingAction =
+  | { user: AdminUser; type: "account-ban" }
+  | { user: AdminUser; type: "account-unban" }
+  | { user: AdminUser; type: "capability-ban"; capability: UserCapability }
+  | { user: AdminUser; type: "capability-unban"; capability: UserCapability };
 
 function statusLabel(status: string) {
   return STATUS_LABEL[status] ?? status;
@@ -59,6 +90,42 @@ function roleBadgeClass(user: AdminUser) {
   return "bg-sky-500/10 text-sky-400 border-sky-500/20";
 }
 
+function capabilityStatus(user: AdminUser, capability: UserCapability): CapabilityState {
+  return (
+    user.capabilityStatuses?.find((item) => item.capability === capability)?.status ?? "ACTIVE"
+  );
+}
+
+function actionTitle(action: PendingAction | null) {
+  if (!action) return "";
+  if (action.type === "account-ban") return "Khóa tài khoản này?";
+  if (action.type === "account-unban") return "Mở khóa tài khoản này?";
+  if (action.type === "capability-ban") return "Khóa quyền này?";
+  return "Mở quyền này?";
+}
+
+function actionConfirmLabel(action: PendingAction | null) {
+  if (!action) return "Xác nhận";
+  if (action.type === "account-ban") return "Khóa tài khoản";
+  if (action.type === "account-unban") return "Mở khóa tài khoản";
+  if (action.type === "capability-ban") return "Khóa quyền";
+  return "Mở quyền";
+}
+
+function actionDescription(action: PendingAction | null) {
+  if (!action) return "";
+  if (action.type === "account-ban") {
+    return `Tài khoản "${action.user.fullName}" sẽ không thể đăng nhập cho đến khi được mở khóa.`;
+  }
+  if (action.type === "account-unban") {
+    return `Tài khoản "${action.user.fullName}" sẽ đăng nhập lại được, nhưng các capability đang bị khóa vẫn giữ nguyên.`;
+  }
+  const label =
+    CAPABILITY_CONFIG.find((item) => item.capability === action.capability)?.label ??
+    action.capability;
+  return `Tài khoản "${action.user.fullName}" sẽ ${action.type === "capability-ban" ? "mất" : "được khôi phục"} quyền ${label.toLowerCase()}.`;
+}
+
 export function AdminUsersPage() {
   const queryClient = useQueryClient();
   const notification = useNotification();
@@ -66,10 +133,10 @@ export function AdminUsersPage() {
   const [role, setRole] = useState<string | undefined>();
   const [status, setStatus] = useState<string | undefined>();
   const [page, setPage] = useState(1);
-  const [pendingAction, setPendingAction] = useState<{
-    user: AdminUser;
-    type: "ban" | "unban";
-  } | null>(null);
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+  const [reason, setReason] = useState("");
+  const [reasonError, setReasonError] = useState("");
+  const [createAppraiserOpen, setCreateAppraiserOpen] = useState(false);
 
   const usersQuery = useQuery({
     queryKey: ["admin", "users", { role, status, queryText, page }],
@@ -83,7 +150,6 @@ export function AdminUsersPage() {
       }),
   });
 
-  // Đếm tổng/đang hoạt động/đã khóa theo bộ lọc role hiện tại (size 1 chỉ lấy meta.total).
   const totalQuery = useQuery({
     queryKey: ["admin", "users", "count", { role, status: undefined }],
     queryFn: () => adminUserApi.getUsers({ role, size: 1 }),
@@ -97,11 +163,21 @@ export function AdminUsersPage() {
     queryFn: () => adminUserApi.getUsers({ role, status: "BANNED", size: 1 }),
   });
 
-  const banMutation = useMutation({
+  const invalidateUsers = () => {
+    void queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+  };
+
+  const closeAction = () => {
+    setPendingAction(null);
+    setReason("");
+    setReasonError("");
+  };
+
+  const accountBanMutation = useMutation({
     mutationFn: adminUserApi.ban,
     onSuccess: () => {
-      setPendingAction(null);
-      void queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+      closeAction();
+      invalidateUsers();
       notification.success("Đã khóa tài khoản");
     },
     onError: (error) =>
@@ -110,11 +186,11 @@ export function AdminUsersPage() {
       }),
   });
 
-  const unbanMutation = useMutation({
+  const accountUnbanMutation = useMutation({
     mutationFn: adminUserApi.unban,
     onSuccess: () => {
-      setPendingAction(null);
-      void queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+      closeAction();
+      invalidateUsers();
       notification.success("Đã mở khóa tài khoản");
     },
     onError: (error) =>
@@ -123,24 +199,106 @@ export function AdminUsersPage() {
       }),
   });
 
+  const capabilityBanMutation = useMutation({
+    mutationFn: adminUserApi.banCapability,
+    onSuccess: () => {
+      closeAction();
+      invalidateUsers();
+      notification.success("Đã khóa quyền");
+    },
+    onError: (error) =>
+      notification.error("Không thể khóa quyền", {
+        description: isApiError(error) ? error.message : "Vui lòng thử lại.",
+      }),
+  });
+
+  const capabilityUnbanMutation = useMutation({
+    mutationFn: adminUserApi.unbanCapability,
+    onSuccess: () => {
+      closeAction();
+      invalidateUsers();
+      notification.success("Đã mở quyền");
+    },
+    onError: (error) =>
+      notification.error("Không thể mở quyền", {
+        description: isApiError(error) ? error.message : "Vui lòng thử lại.",
+      }),
+  });
+
   const users = useMemo(() => usersQuery.data?.result ?? [], [usersQuery.data?.result]);
   const meta = usersQuery.data?.meta;
-  const actionPending = banMutation.isPending || unbanMutation.isPending;
+  const actionPending =
+    accountBanMutation.isPending ||
+    accountUnbanMutation.isPending ||
+    capabilityBanMutation.isPending ||
+    capabilityUnbanMutation.isPending;
 
   const resetPage = () => setPage(1);
 
+  const openAction = (action: PendingAction) => {
+    setPendingAction(action);
+    setReason("");
+    setReasonError("");
+  };
+
+  const confirmAction = () => {
+    const normalizedReason = reason.trim();
+    if (!pendingAction) return;
+    if (!normalizedReason) {
+      setReasonError("Vui lòng nhập lý do.");
+      return;
+    }
+    if (pendingAction.type === "account-ban") {
+      void accountBanMutation.mutateAsync({
+        userId: pendingAction.user.id,
+        reason: normalizedReason,
+      });
+      return;
+    }
+    if (pendingAction.type === "account-unban") {
+      void accountUnbanMutation.mutateAsync({
+        userId: pendingAction.user.id,
+        reason: normalizedReason,
+      });
+      return;
+    }
+    if (pendingAction.type === "capability-ban") {
+      void capabilityBanMutation.mutateAsync({
+        userId: pendingAction.user.id,
+        capability: pendingAction.capability,
+        reason: normalizedReason,
+      });
+      return;
+    }
+    void capabilityUnbanMutation.mutateAsync({
+      userId: pendingAction.user.id,
+      capability: pendingAction.capability,
+      reason: normalizedReason,
+    });
+  };
+
   return (
     <main className="min-h-screen bg-background px-4 py-8 text-foreground sm:px-6 lg:px-10">
-      <div className="mx-auto max-w-[1180px] space-y-6">
+      <div className="mx-auto max-w-[1280px] space-y-6">
         <header className="flex flex-wrap items-end justify-between gap-4 border-b border-white/10 pb-5">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Admin</p>
             <h1 className="mt-1 text-3xl font-bold tracking-tight">Người dùng</h1>
           </div>
-          <Button type="button" variant="outline" onClick={() => void usersQuery.refetch()}>
-            <RefreshCw className={cn("h-4 w-4", usersQuery.isFetching && "animate-spin")} />
-            Làm mới
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              className="bg-primary text-primary-foreground hover:bg-primary/95"
+              onClick={() => setCreateAppraiserOpen(true)}
+            >
+              <UserPlus className="h-4 w-4" />
+              Tạo appraiser
+            </Button>
+            <Button type="button" variant="outline" onClick={() => void usersQuery.refetch()}>
+              <RefreshCw className={cn("h-4 w-4", usersQuery.isFetching && "animate-spin")} />
+              Làm mới
+            </Button>
+          </div>
         </header>
 
         <section className="grid gap-4 md:grid-cols-3">
@@ -160,7 +318,7 @@ export function AdminUsersPage() {
           </div>
           <div className="rounded-lg border border-white/10 bg-card p-5 text-foreground">
             <Ban className="h-6 w-6 text-red-400" />
-            <p className="mt-4 text-xs font-semibold uppercase text-[#a49a88]">Đã khóa</p>
+            <p className="mt-4 text-xs font-semibold uppercase text-[#a49a88]">Đã khóa account</p>
             <p className="mt-2 text-2xl font-bold tabular-nums text-[#f2eee5]">
               {bannedQuery.data?.meta.total ?? 0}
             </p>
@@ -240,12 +398,13 @@ export function AdminUsersPage() {
           ) : (
             <>
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[820px] text-left text-sm">
+                <table className="w-full min-w-[1080px] text-left text-sm">
                   <thead className="bg-white/5 text-xs uppercase text-[#a49a88]">
                     <tr>
                       <th className="px-5 py-3">User</th>
                       <th className="px-5 py-3">Vai trò</th>
-                      <th className="px-5 py-3">Trạng thái</th>
+                      <th className="px-5 py-3">Account</th>
+                      <th className="px-5 py-3">Capability</th>
                       <th className="px-5 py-3">Ngày tạo</th>
                       <th className="px-5 py-3 text-right">Thao tác</th>
                     </tr>
@@ -273,46 +432,106 @@ export function AdminUsersPage() {
                         <td className="px-5 py-3">
                           <span
                             className={cn(
-                              "rounded-full px-2.5 py-1 text-xs font-bold border",
+                              "rounded-full border px-2.5 py-1 text-xs font-bold",
                               user.status === "ACTIVE" &&
-                                "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+                                "border-emerald-500/20 bg-emerald-500/10 text-emerald-400",
                               user.status === "BANNED" &&
-                                "bg-red-500/10 text-red-400 border-red-500/20",
+                                "border-red-500/20 bg-red-500/10 text-red-400",
                               user.status === "UNVERIFIED" &&
-                                "bg-amber-500/10 text-amber-400 border-amber-500/20",
+                                "border-amber-500/20 bg-amber-500/10 text-amber-400",
                             )}
                           >
                             {statusLabel(user.status)}
                           </span>
                         </td>
+                        <td className="px-5 py-3">
+                          <div className="flex flex-wrap gap-1.5">
+                            {CAPABILITY_CONFIG.filter((item) => user.roles.includes(item.role)).map(
+                              (item) => {
+                                const current = capabilityStatus(user, item.capability);
+                                return (
+                                  <span
+                                    key={item.capability}
+                                    className={cn(
+                                      "rounded-full border px-2 py-1 text-[11px] font-bold",
+                                      current === "ACTIVE"
+                                        ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
+                                        : "border-red-500/20 bg-red-500/10 text-red-400",
+                                    )}
+                                  >
+                                    {item.label}: {current === "ACTIVE" ? "Active" : "Banned"}
+                                  </span>
+                                );
+                              },
+                            )}
+                          </div>
+                        </td>
                         <td className="px-5 py-3 text-[#a49a88]">
                           {formatDateTime(user.createdAt)}
                         </td>
-                        <td className="px-5 py-3 text-right">
+                        <td className="px-5 py-3">
                           {isAdmin(user) ? (
-                            <span className="text-xs text-[#8d877c]">—</span>
-                          ) : user.status === "BANNED" ? (
-                            <Button
-                              type="button"
-                              size="sm"
-                              className="border border-emerald-500/20 bg-emerald-500/5 font-bold text-emerald-400 shadow-none hover:border-emerald-500/30 hover:bg-emerald-500/10 hover:text-emerald-300"
-                              disabled={actionPending}
-                              onClick={() => setPendingAction({ user, type: "unban" })}
-                            >
-                              <ShieldCheck className="h-4 w-4" />
-                              Mở khóa
-                            </Button>
+                            <div className="text-right text-xs text-[#8d877c]">Không áp dụng</div>
                           ) : (
-                            <Button
-                              type="button"
-                              size="sm"
-                              className="border border-red-500/20 bg-red-500/5 font-bold text-red-400 shadow-none hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-300"
-                              disabled={actionPending || user.status !== "ACTIVE"}
-                              onClick={() => setPendingAction({ user, type: "ban" })}
-                            >
-                              <Ban className="h-4 w-4" />
-                              Khóa
-                            </Button>
+                            <div className="flex flex-wrap justify-end gap-2">
+                              {user.status === "BANNED" ? (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  className="border border-emerald-500/20 bg-emerald-500/5 font-bold text-emerald-400 shadow-none hover:border-emerald-500/30 hover:bg-emerald-500/10 hover:text-emerald-300"
+                                  disabled={actionPending}
+                                  onClick={() => openAction({ user, type: "account-unban" })}
+                                >
+                                  <ShieldCheck className="h-4 w-4" />
+                                  Mở account
+                                </Button>
+                              ) : (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  className="border border-red-500/20 bg-red-500/5 font-bold text-red-400 shadow-none hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-300"
+                                  disabled={actionPending || user.status !== "ACTIVE"}
+                                  onClick={() => openAction({ user, type: "account-ban" })}
+                                >
+                                  <Ban className="h-4 w-4" />
+                                  Khóa account
+                                </Button>
+                              )}
+                              {CAPABILITY_CONFIG.filter((item) =>
+                                user.roles.includes(item.role),
+                              ).map((item) => {
+                                const current = capabilityStatus(user, item.capability);
+                                const banned = current === "BANNED";
+                                return (
+                                  <Button
+                                    key={item.capability}
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    className={cn(
+                                      "border-white/10 bg-white/5 text-[#d2c5b2] hover:bg-white/10",
+                                      banned &&
+                                        "border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/10",
+                                    )}
+                                    disabled={actionPending}
+                                    onClick={() =>
+                                      openAction({
+                                        user,
+                                        type: banned ? "capability-unban" : "capability-ban",
+                                        capability: item.capability,
+                                      })
+                                    }
+                                  >
+                                    {banned ? (
+                                      <ShieldCheck className="h-4 w-4" />
+                                    ) : (
+                                      <ShieldX className="h-4 w-4" />
+                                    )}
+                                    {banned ? `Mở ${item.label}` : `Khóa ${item.label}`}
+                                  </Button>
+                                );
+                              })}
+                            </div>
                           )}
                         </td>
                       </tr>
@@ -331,23 +550,29 @@ export function AdminUsersPage() {
       <AdminConfirmDialog
         open={Boolean(pendingAction)}
         onOpenChange={(open) => {
-          if (!open) setPendingAction(null);
+          if (!open) closeAction();
         }}
-        title={pendingAction?.type === "ban" ? "Khóa tài khoản này?" : "Mở khóa tài khoản này?"}
-        description={
-          pendingAction?.type === "ban"
-            ? `Tài khoản "${pendingAction?.user.fullName ?? ""}" sẽ không thể đăng nhập cho đến khi được mở khóa.`
-            : `Tài khoản "${pendingAction?.user.fullName ?? ""}" sẽ được kích hoạt lại và có thể đăng nhập.`
-        }
-        confirmLabel={pendingAction?.type === "ban" ? "Khóa tài khoản" : "Mở khóa"}
+        title={actionTitle(pendingAction)}
+        description={actionDescription(pendingAction)}
+        confirmLabel={actionConfirmLabel(pendingAction)}
         isPending={actionPending}
-        onConfirm={() => {
-          if (!pendingAction) return;
-          if (pendingAction.type === "ban") {
-            void banMutation.mutateAsync(pendingAction.user.id);
-          } else {
-            void unbanMutation.mutateAsync(pendingAction.user.id);
-          }
+        reasonValue={reason}
+        reasonError={reasonError}
+        reasonPlaceholder="Nhập lý do để lưu audit log"
+        onReasonChange={(value) => {
+          setReason(value);
+          if (reasonError) setReasonError("");
+        }}
+        onConfirm={confirmAction}
+      />
+      <AdminCreateAppraiserDialog
+        open={createAppraiserOpen}
+        onOpenChange={setCreateAppraiserOpen}
+        onCreated={() => {
+          setRole("ROLE_APPRAISER");
+          setStatus(undefined);
+          setPage(1);
+          invalidateUsers();
         }}
       />
     </main>

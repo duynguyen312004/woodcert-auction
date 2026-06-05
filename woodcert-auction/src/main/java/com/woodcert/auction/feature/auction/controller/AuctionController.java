@@ -94,7 +94,7 @@ public class AuctionController {
     }
 
     @GetMapping("/my-participations")
-    @PreAuthorize("hasAuthority('JOIN_AUCTION')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<PaginationResponse<BuyerAuctionListRes>>> getMyAuctions(
             @CurrentUserId String userId,
             @RequestParam(defaultValue = "1") int page,
@@ -106,7 +106,7 @@ public class AuctionController {
     }
 
     @GetMapping("/my-participations/stats")
-    @PreAuthorize("hasAuthority('JOIN_AUCTION')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<BuyerAuctionStatsRes>> getMyAuctionStats(@CurrentUserId String userId) {
         return ResponseEntity.ok(ApiResponse.success(
                 auctionService.getMyAuctionStats(userId),
@@ -114,7 +114,7 @@ public class AuctionController {
     }
 
     @GetMapping("/my-participations/{id}")
-    @PreAuthorize("hasAuthority('JOIN_AUCTION')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<BuyerAuctionDetailRes>> getMyAuctionDetail(
             @CurrentUserId String userId,
             @PathVariable Long id) {
@@ -170,7 +170,7 @@ public class AuctionController {
     }
 
     @PostMapping("/{id}/register")
-    @PreAuthorize("hasAuthority('JOIN_AUCTION')")
+    @PreAuthorize("hasAuthority('REGISTER_AUCTION')")
     public ResponseEntity<ApiResponse<Void>> registerForAuction(
             @CurrentUserId String userId,
             @PathVariable Long id) {

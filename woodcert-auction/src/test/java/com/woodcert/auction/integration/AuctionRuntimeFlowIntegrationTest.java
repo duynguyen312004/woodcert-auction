@@ -109,7 +109,7 @@ class AuctionRuntimeFlowIntegrationTest extends AuctionIntegrationTestBase {
 
                 mockMvc.perform(post("/api/v1/auctions/{id}/register", session.getId())
                                 .with(jwt().jwt(jwt -> jwt.subject(bidder.getId()))
-                                                .authorities(authorities("JOIN_AUCTION"))))
+                                                .authorities(authorities("REGISTER_AUCTION"))))
                                 .andExpect(status().isOk());
 
                 var wallet = walletRepository.findByUserId(bidder.getId()).orElseThrow();
@@ -132,7 +132,7 @@ class AuctionRuntimeFlowIntegrationTest extends AuctionIntegrationTestBase {
 
                 mockMvc.perform(post("/api/v1/auctions/{id}/register", session.getId())
                                 .with(jwt().jwt(jwt -> jwt.subject(bidder.getId()))
-                                                .authorities(authorities("JOIN_AUCTION"))))
+                                                .authorities(authorities("REGISTER_AUCTION"))))
                                 .andExpect(status().isOk());
 
                 mockMvc.perform(patch("/api/v1/auctions/{id}/cancel", session.getId())
@@ -167,7 +167,7 @@ class AuctionRuntimeFlowIntegrationTest extends AuctionIntegrationTestBase {
 
                 mockMvc.perform(post("/api/v1/auctions/{id}/register", session.getId())
                                 .with(jwt().jwt(jwt -> jwt.subject(bidder.getId()))
-                                                .authorities(authorities("JOIN_AUCTION"))))
+                                                .authorities(authorities("REGISTER_AUCTION"))))
                                 .andExpect(status().isOk());
 
                 assertThat(redisTemplate.opsForSet().isMember(auctionRedisService.biddersKey(session.getId()),
