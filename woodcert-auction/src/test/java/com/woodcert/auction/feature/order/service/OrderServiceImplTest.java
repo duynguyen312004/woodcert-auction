@@ -22,6 +22,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -66,6 +68,41 @@ class OrderServiceImplTest {
                 fulfillmentPort,
                 List.of(sourceAdapter)
         );
+    }
+
+    @Test
+    void getBuyerOrders_withStatusUsesStatusFilterRepository() {
+        OrderEntity order = baseOrder();
+        order.setStatus(OrderStatus.PAID);
+        when(orderRepository.findByBuyerIdAndStatusOrderByCreatedAtDescIdDesc(
+                eq(BUYER_ID),
+                eq(OrderStatus.PAID),
+                any()
+        )).thenReturn(new PageImpl<>(List.of(order), PageRequest.of(0, 10), 1));
+        when(fulfillmentPort.findSnapshotByOrderId(ORDER_ID)).thenReturn(Optional.empty());
+
+        var result = orderService.getBuyerOrders(BUYER_ID, OrderStatus.PAID, 1, 10);
+
+        assertThat(result.result()).hasSize(1);
+        assertThat(result.result().get(0).status()).isEqualTo(OrderStatus.PAID);
+        verify(orderRepository, never()).findByBuyerIdOrderByCreatedAtDescIdDesc(any(), any());
+    }
+
+    @Test
+    void getSellerOrderStatusCounts_returnsAllStatusesWithZeroDefaults() {
+        when(orderRepository.countBySellerIdGroupedByStatus(SELLER_ID))
+                .thenReturn(List.of(
+                        new Object[]{OrderStatus.PAID, 2L},
+                        new Object[]{OrderStatus.CANCELED, 1L}
+                ));
+
+        var result = orderService.getSellerOrderStatusCounts(SELLER_ID);
+
+        assertThat(result.total()).isEqualTo(3L);
+        assertThat(result.byStatus()).containsEntry(OrderStatus.PAID, 2L);
+        assertThat(result.byStatus()).containsEntry(OrderStatus.CANCELED, 1L);
+        assertThat(result.byStatus()).containsEntry(OrderStatus.PENDING_PAYMENT, 0L);
+        assertThat(result.byStatus().keySet()).containsExactlyInAnyOrder(OrderStatus.values());
     }
 
     @Test

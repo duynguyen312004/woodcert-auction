@@ -6,6 +6,7 @@
  */
 import { z } from "zod";
 import type { OrderSummary } from "@/features/order";
+import { getServerNow } from "@/shared/lib/serverClock";
 
 export type ProductStatus =
   | "DRAFT"
@@ -262,7 +263,7 @@ export const createAuctionSessionSchema = z
 
     // Cộng 7 phút (5 phút theo rule BE + 2 phút buffer bù lệch đồng hồ client-server).
     // Tránh trường hợp FE pass nhưng BE reject vì clock skew.
-    if (startTime.getTime() < Date.now() + 7 * 60 * 1000) {
+    if (startTime.getTime() < getServerNow() + 7 * 60 * 1000) {
       ctx.addIssue({
         code: "custom",
         path: ["startTime"],

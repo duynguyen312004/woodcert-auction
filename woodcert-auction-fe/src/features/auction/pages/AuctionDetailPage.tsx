@@ -18,11 +18,13 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
 
 import { useAuthStore } from "@/shared/auth/auth-store";
+import { FALLBACK_PRODUCT_IMAGE } from "@/shared/constants";
 import { formatTimeRemaining } from "@/shared/hooks/useCountdown";
+import { useServerNow } from "@/shared/hooks/useServerNow";
 import { formatDateTime, formatVND } from "@/shared/lib/format";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
@@ -38,7 +40,6 @@ import { AUCTION_STATUS_LABEL } from "../constants/auctionStatus";
 import { usePublicAuctionDetail } from "../hooks/usePublicAuctionDetail";
 import type { AuctionDetail } from "../types";
 
-const fallbackProductImage = "/assets/hero/woodcert-card-fallback.jpg";
 const WARNING_THRESHOLD_MS = 60 * 60 * 1000;
 const URGENT_THRESHOLD_MS = 15 * 60 * 1000;
 
@@ -47,7 +48,7 @@ export function AuctionDetailPage() {
   const authStatus = useAuthStore((state) => state.status);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
-  const [now, setNow] = useState(() => Date.now());
+  const now = useServerNow();
   const detailQuery = usePublicAuctionDetail(auctionId ?? "");
 
   const auction = detailQuery.data;
@@ -59,12 +60,6 @@ export function AuctionDetailPage() {
     endedLabel: auction?.status === "WAITING" ? "Đang mở" : "Đã kết thúc",
   });
   const timeState = getAuctionTimeState(auction, now);
-
-  useEffect(() => {
-    if (!countdownTarget) return;
-    const id = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(id);
-  }, [countdownTarget]);
 
   if (!auctionId) {
     return <DetailState title="Mã phiên đấu giá không hợp lệ" />;
@@ -85,7 +80,7 @@ export function AuctionDetailPage() {
 
   const product = auction.product;
   const activeImage =
-    imageUrls[Math.min(activeImageIndex, imageUrls.length - 1)] ?? fallbackProductImage;
+    imageUrls[Math.min(activeImageIndex, imageUrls.length - 1)] ?? FALLBACK_PRODUCT_IMAGE;
   const isLive = auction.status === "WAITING" || auction.status === "ACTIVE";
 
   return (
@@ -294,7 +289,7 @@ export function AuctionDetailPage() {
 
 function buildGalleryImages(auction: AuctionDetail | undefined) {
   const images = [
-    auction?.product?.primaryImage || fallbackProductImage,
+    auction?.product?.primaryImage || FALLBACK_PRODUCT_IMAGE,
     ...(auction?.product?.imageUrls ?? []),
   ];
   return [...new Set(images.filter(Boolean))];
@@ -378,7 +373,8 @@ function ImageViewer({
   onOpenChange: (open: boolean) => void;
   onSelectImage: (index: number) => void;
 }) {
-  const activeImage = images[Math.min(activeImageIndex, images.length - 1)] ?? fallbackProductImage;
+  const activeImage =
+    images[Math.min(activeImageIndex, images.length - 1)] ?? FALLBACK_PRODUCT_IMAGE;
   const canMove = images.length > 1;
 
   const selectOffset = (offset: number) => {

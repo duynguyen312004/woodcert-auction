@@ -229,6 +229,15 @@ public class AuthServiceImpl implements AuthService {
 
         // Bước 4: Sinh access token mới và refresh token mới cho cùng user.
         User user = storedToken.getUser();
+        if (user.getStatus() == UserStatus.BANNED) {
+            refreshTokenRepository.revokeAllByUser(user);
+            throw new AppException(ErrorCode.ACCOUNT_BANNED);
+        }
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            refreshTokenRepository.revokeAllByUser(user);
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+
         String newAccessToken = jwtService.generateAccessToken(user);
         String newRawRefreshToken = jwtService.generateRefreshToken();
 

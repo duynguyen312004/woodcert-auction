@@ -1,0 +1,44 @@
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3307/woodcert_auction?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&useUnicode=true&characterEncoding=UTF-8&connectionCollation=utf8mb4_unicode_ci
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+  devtools:
+    restart:
+      enabled: true
+    livereload:
+      enabled: true
+
+jwt:
+  secret-key: ${JWT_SECRET_KEY:replace-with-a-local-hs512-secret}
+
+identity:
+  refresh-cookie:
+    secure: false
+  email-verification:
+    verification-link-base-url: ${EMAIL_VERIFICATION_LINK_BASE_URL:http://localhost:5173/auth/verify-email}
+    from-address: ${EMAIL_VERIFICATION_FROM:no-reply@woodcert.local}
+  password-reset:
+    reset-link-base-url: ${PASSWORD_RESET_LINK_BASE_URL:http://localhost:5173/auth/reset-password}
+    from-address: ${PASSWORD_RESET_FROM:no-reply@woodcert.local}
+
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:}
+  api-key: ${CLOUDINARY_API_KEY:}
+  api-secret: ${CLOUDINARY_API_SECRET:}
+  base-folder: ${CLOUDINARY_BASE_FOLDER:woodcert/dev}
+
+vnpay:
+  tmn-code: ${VNPAY_TMN_CODE:}
+  hash-secret: ${VNPAY_HASH_SECRET:}
+  pay-url: ${VNPAY_PAY_URL:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
+  return-url: ${VNPAY_RETURN_URL:http://localhost:8080/api/v1/wallets/vnpay/return}
+  api-url: ${VNPAY_API_URL:https://sandbox.vnpayment.vn/merchant_webapi/api/transaction}
+  fe-return-url: ${VNPAY_FE_RETURN_URL:http://localhost:5173/wallet/deposit/result}
+  confirm-on-return-enabled: ${VNPAY_CONFIRM_ON_RETURN_ENABLED:true}

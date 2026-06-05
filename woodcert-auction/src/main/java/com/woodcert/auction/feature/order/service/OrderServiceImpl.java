@@ -11,6 +11,7 @@ import com.woodcert.auction.feature.finance.service.WalletService;
 import com.woodcert.auction.feature.order.config.OrderProperties;
 import com.woodcert.auction.feature.order.dto.response.OrderListRes;
 import com.woodcert.auction.feature.order.dto.response.OrderRes;
+import com.woodcert.auction.feature.order.dto.response.OrderStatusCountsRes;
 import com.woodcert.auction.feature.order.dto.response.OrderSummaryRes;
 import com.woodcert.auction.feature.order.entity.OrderEntity;
 import com.woodcert.auction.feature.order.entity.OrderSourceType;
@@ -145,20 +146,34 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public PaginationResponse<OrderListRes> getBuyerOrders(String buyerId, int page, int size) {
+    public PaginationResponse<OrderListRes> getBuyerOrders(String buyerId, OrderStatus status, int page, int size) {
         var pageable = PageRequest.of(Math.max(0, page - 1), Math.min(Math.max(size, 1), 50));
-        return PaginationResponse.of(orderRepository
-                .findByBuyerIdOrderByCreatedAtDescIdDesc(buyerId, pageable)
-                .map(this::toListRes));
+        var orders = status == null
+                ? orderRepository.findByBuyerIdOrderByCreatedAtDescIdDesc(buyerId, pageable)
+                : orderRepository.findByBuyerIdAndStatusOrderByCreatedAtDescIdDesc(buyerId, status, pageable);
+        return PaginationResponse.of(orders.map(this::toListRes));
     }
 
     @Override
     @Transactional(readOnly = true)
-    public PaginationResponse<OrderListRes> getSellerOrders(String sellerId, int page, int size) {
+    public PaginationResponse<OrderListRes> getSellerOrders(String sellerId, OrderStatus status, int page, int size) {
         var pageable = PageRequest.of(Math.max(0, page - 1), Math.min(Math.max(size, 1), 50));
-        return PaginationResponse.of(orderRepository
-                .findBySellerIdOrderByCreatedAtDescIdDesc(sellerId, pageable)
-                .map(this::toListRes));
+        var orders = status == null
+                ? orderRepository.findBySellerIdOrderByCreatedAtDescIdDesc(sellerId, pageable)
+                : orderRepository.findBySellerIdAndStatusOrderByCreatedAtDescIdDesc(sellerId, status, pageable);
+        return PaginationResponse.of(orders.map(this::toListRes));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public OrderStatusCountsRes getBuyerOrderStatusCounts(String buyerId) {
+        return statusCounts(orderRepository.countByBuyerIdGroupedByStatus(buyerId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public OrderStatusCountsRes getSellerOrderStatusCounts(String sellerId) {
+        return statusCounts(orderRepository.countBySellerIdGroupedByStatus(sellerId));
     }
 
     @Override
@@ -381,5 +396,20 @@ public class OrderServiceImpl implements OrderService {
 
     private OrderFulfillmentSnapshot fulfillmentSnapshot(Long orderId) {
         return fulfillmentPort.findSnapshotByOrderId(orderId).orElse(null);
+    }
+
+    private OrderStatusCountsRes statusCounts(List<Object[]> rows) {
+        Map<OrderStatus, Long> byStatus = new EnumMap<>(OrderStatus.class);
+        for (OrderStatus status : OrderStatus.values()) {
+            byStatus.put(status, 0L);
+        }
+        long total = 0L;
+        for (Object[] row : rows) {
+            OrderStatus status = (OrderStatus) row[0];
+            long count = (Long) row[1];
+            byStatus.put(status, count);
+            total += count;
+        }
+        return new OrderStatusCountsRes(total, byStatus);
     }
 }

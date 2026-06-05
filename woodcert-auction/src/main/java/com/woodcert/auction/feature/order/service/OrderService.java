@@ -3,8 +3,10 @@ package com.woodcert.auction.feature.order.service;
 import com.woodcert.auction.core.dto.PaginationResponse;
 import com.woodcert.auction.feature.order.dto.response.OrderListRes;
 import com.woodcert.auction.feature.order.dto.response.OrderRes;
+import com.woodcert.auction.feature.order.dto.response.OrderStatusCountsRes;
 import com.woodcert.auction.feature.order.dto.response.OrderSummaryRes;
 import com.woodcert.auction.feature.order.entity.OrderSourceType;
+import com.woodcert.auction.feature.order.entity.OrderStatus;
 
 public interface OrderService {
 
@@ -14,9 +16,13 @@ public interface OrderService {
 
     OrderRes getOrderDetail(String userId, Long orderId);
 
-    PaginationResponse<OrderListRes> getBuyerOrders(String buyerId, int page, int size);
+    PaginationResponse<OrderListRes> getBuyerOrders(String buyerId, OrderStatus status, int page, int size);
 
-    PaginationResponse<OrderListRes> getSellerOrders(String sellerId, int page, int size);
+    PaginationResponse<OrderListRes> getSellerOrders(String sellerId, OrderStatus status, int page, int size);
+
+    OrderStatusCountsRes getBuyerOrderStatusCounts(String buyerId);
+
+    OrderStatusCountsRes getSellerOrderStatusCounts(String sellerId);
 
     OrderSummaryRes findSummaryBySource(OrderSourceType sourceType, Long sourceId);
 

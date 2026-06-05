@@ -111,7 +111,8 @@ export function BidControlPanel({
         : err instanceof Error
           ? err.message
           : "Đăng ký ký quỹ thất bại.";
-      alert(errMsg);
+      setShowRegisterModal(false);
+      setErrorText(errMsg);
     }
   };
 
@@ -182,6 +183,12 @@ export function BidControlPanel({
           </button>
           {walletBalance < detail.depositAmount && (
             <span className="text-[10px] text-destructive">Số dư ví không đủ để nộp tiền cọc.</span>
+          )}
+          {errorText && (
+            <div className="flex items-start gap-1.5 rounded-lg bg-destructive/5 border border-destructive/10 p-2.5 text-[11px] text-destructive leading-normal">
+              <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+              <span>{errorText}</span>
+            </div>
           )}
         </div>
       ) : (

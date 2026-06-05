@@ -1,5 +1,6 @@
 import { apiRequest } from "@/shared/api/client";
 import type { PaginationResponse } from "@/shared/api/types";
+import { FALLBACK_PRODUCT_IMAGE } from "@/shared/constants";
 
 import type { ArtAuction, AuctionDetail, AuctionStatus, ConditionGrade } from "../types";
 
@@ -75,8 +76,6 @@ type AuctionDetailDto = {
   highestBidderMaskedAlias?: string | null;
 };
 
-const fallbackProductImage = "/assets/hero/woodcert-card-fallback.jpg";
-
 function toNumber(value: number | string | null | undefined, fallback = 0) {
   if (value === null || value === undefined || value === "") {
     return fallback;
@@ -96,7 +95,7 @@ function mapAuctionListItem(dto: AuctionListItemDto): ArtAuction {
     bidCount: dto.totalParticipants,
     startTime: dto.startTime,
     endTime: dto.endTime,
-    imageUrl: dto.product?.primaryImage || fallbackProductImage,
+    imageUrl: dto.product?.primaryImage || FALLBACK_PRODUCT_IMAGE,
     woodType: dto.product?.material ?? "Chưa xác định",
     conditionGrade: dto.product?.conditionGrade ?? "GOOD",
     categoryName: dto.product?.categoryName ?? "Đồ gỗ mỹ nghệ",
@@ -131,7 +130,7 @@ export function mapAuctionDetail(dto: AuctionDetailDto): AuctionDetail {
           material: dto.product.material,
           dimensions: dto.product.dimensions ?? null,
           weight: dto.product.weight == null ? null : toNumber(dto.product.weight),
-          primaryImage: dto.product.primaryImage || fallbackProductImage,
+          primaryImage: dto.product.primaryImage || FALLBACK_PRODUCT_IMAGE,
           imageUrls: dto.product.images || [],
           certificateCode: dto.product.appraisal?.certificateCode ?? null,
           isAuthentic: Boolean(dto.product.appraisal?.isAuthentic),

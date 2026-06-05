@@ -52,11 +52,11 @@ describe("orderApi", () => {
     apiClient.defaults.adapter = originalAdapter;
   });
 
-  it("fetches buyer orders and maps money strings to numbers", async () => {
+  it("fetches buyer orders with status filter and maps money strings to numbers", async () => {
     const adapter: AxiosAdapter = async (config) => {
       expect(config.method).toBe("get");
       expect(config.url).toBe("/orders/my-purchases");
-      expect(config.params).toEqual({ page: 1, size: 10 });
+      expect(config.params).toEqual({ page: 1, size: 10, status: "DISPUTED" });
 
       return createResponse(
         config,
@@ -94,7 +94,9 @@ describe("orderApi", () => {
     };
     apiClient.defaults.adapter = adapter;
 
-    await expect(orderApi.getMyPurchases({ page: 1, size: 10 })).resolves.toMatchObject({
+    await expect(
+      orderApi.getMyPurchases({ page: 1, size: 10, status: "DISPUTED" }),
+    ).resolves.toMatchObject({
       result: [
         {
           id: 91,
@@ -105,6 +107,33 @@ describe("orderApi", () => {
         },
       ],
     });
+  });
+
+  it("fetches buyer and seller status counts", async () => {
+    const seenUrls: string[] = [];
+    const counts = {
+      total: 3,
+      byStatus: {
+        PENDING_PAYMENT: 0,
+        PAID: 1,
+        FULFILLING: 1,
+        COMPLETED: 0,
+        CANCELED: 0,
+        DISPUTED: 1,
+      },
+    };
+    const adapter: AxiosAdapter = async (config) => {
+      seenUrls.push(config.url ?? "");
+      return createResponse(config, 200, createApiResponse(counts));
+    };
+    apiClient.defaults.adapter = adapter;
+
+    await expect(orderApi.getMyPurchaseStatusCounts()).resolves.toEqual(counts);
+    await expect(orderApi.getMySaleStatusCounts()).resolves.toEqual(counts);
+    expect(seenUrls).toEqual([
+      "/orders/my-purchases/status-counts",
+      "/orders/my-sales/status-counts",
+    ]);
   });
 
   it("posts buyer payment to the order pay endpoint", async () => {

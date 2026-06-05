@@ -10,6 +10,7 @@ import com.woodcert.auction.feature.auction.entity.DepositStatus;
 import com.woodcert.auction.feature.auction.service.AuctionRedisService;
 import com.woodcert.auction.feature.auction.service.AuctionSessionScheduler;
 import com.woodcert.auction.feature.catalog.entity.Product;
+import com.woodcert.auction.feature.catalog.entity.ProductSaleStatus;
 import com.woodcert.auction.feature.identity.entity.User;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +23,7 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -116,6 +118,40 @@ class AuctionRuntimeFlowIntegrationTest extends AuctionIntegrationTestBase {
                 var participant = auctionParticipantRepository
                                 .findByAuctionSessionIdAndUserId(session.getId(), bidder.getId()).orElseThrow();
                 assertThat(participant.getDepositStatus()).isEqualTo(DepositStatus.FROZEN);
+        }
+
+        @Test
+        void cancelWaitingAuctionRefundsFrozenDepositsAndReopensProduct() throws Exception {
+                User seller = createSeller("seller-cancel@example.com");
+                User bidder = createUser("bidder-cancel@example.com");
+                createWallet(bidder.getId(), new BigDecimal("5000000.00"), BigDecimal.ZERO);
+                Product product = createAppraisedProduct(seller.getId());
+                AuctionSession session = createSession(product, AuctionSessionStatus.WAITING,
+                                Instant.now().plusSeconds(3600), Instant.now().plusSeconds(7200),
+                                new BigDecimal("12000000.00"));
+
+                mockMvc.perform(post("/api/v1/auctions/{id}/register", session.getId())
+                                .with(jwt().jwt(jwt -> jwt.subject(bidder.getId()))
+                                                .authorities(authorities("JOIN_AUCTION"))))
+                                .andExpect(status().isOk());
+
+                mockMvc.perform(patch("/api/v1/auctions/{id}/cancel", session.getId())
+                                .with(jwt().jwt(jwt -> jwt.subject(seller.getId()))
+                                                .authorities(authorities("CREATE_AUCTION_SESSION"))))
+                                .andExpect(status().isOk());
+
+                AuctionSession canceled = auctionSessionRepository.findById(session.getId()).orElseThrow();
+                assertThat(canceled.getStatus()).isEqualTo(AuctionSessionStatus.CANCELED);
+                assertThat(productRepository.findById(product.getId()).orElseThrow().getSaleStatus())
+                                .isEqualTo(ProductSaleStatus.AVAILABLE);
+
+                var participant = auctionParticipantRepository
+                                .findByAuctionSessionIdAndUserId(session.getId(), bidder.getId()).orElseThrow();
+                assertThat(participant.getDepositStatus()).isEqualTo(DepositStatus.REFUNDED);
+
+                var wallet = walletRepository.findByUserId(bidder.getId()).orElseThrow();
+                assertThat(wallet.getAvailableBalance()).isEqualByComparingTo("5000000.00");
+                assertThat(wallet.getFrozenBalance()).isEqualByComparingTo("0.00");
         }
 
         @Test

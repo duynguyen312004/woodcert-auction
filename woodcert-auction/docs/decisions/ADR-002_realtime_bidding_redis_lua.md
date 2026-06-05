@@ -41,8 +41,8 @@ The script executes the following steps atomically in Redis (single-threaded exe
 1. Client sends POST `/api/v1/bids`.
 2. Spring Boot calls `RedisTemplate.execute(luaScript, keys, args)`.
 3. If Lua script returns SUCCESS:
-   - Spring Boot asynchronously (`@Async`) saves the `Bid` record to MySQL for audit logging.
    - Spring Boot broadcasts the `NEW_BID` event via WebSocket to all subscribed clients.
+   - Spring Boot performs best-effort `REQUIRES_NEW` persistence of the `Bid` record to MySQL for audit logging.
 4. Auction read APIs use Redis `currentPrice` and `endTime` for `ACTIVE` sessions, with MySQL snapshot fallback when Redis data is missing.
 
 ## Consequences
@@ -54,5 +54,5 @@ The script executes the following steps atomically in Redis (single-threaded exe
 
 ### Negative
 - **Complexity:** Requires maintaining Lua script code as strings inside the Java project.
-- **Data Synchronization:** Redis and MySQL might temporarily be out of sync. If Redis crashes before the `@Async` DB save completes, a bid might be lost. 
+- **Data Synchronization:** Redis and MySQL might temporarily be out of sync. If Redis crashes before best-effort DB persistence completes, a bid might be lost. 
   *Mitigation:* Enable Redis AOF (Append Only File) persistence and ensure graceful degradation.

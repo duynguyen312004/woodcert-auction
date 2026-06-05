@@ -58,4 +58,26 @@ public class AuctionParticipantSettlementService {
         auctionParticipantRepository.save(participant);
         return true;
     }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public boolean refundCanceledParticipant(Long participantId, Long auctionSessionId) {
+        AuctionParticipant participant = auctionParticipantRepository
+                .findByIdAndDepositStatusForUpdate(participantId, DepositStatus.FROZEN)
+                .orElse(null);
+        if (participant == null || !auctionSessionId.equals(participant.getAuctionSessionId())) {
+            return false;
+        }
+
+        walletService.unfreezeFunds(
+                participant.getUserId(),
+                "auction:cancel:refund:" + auctionSessionId + ":" + participant.getUserId(),
+                participant.getDepositAmount(),
+                auctionSessionId,
+                WalletReferenceType.AUCTION
+        );
+
+        participant.setDepositStatus(DepositStatus.REFUNDED);
+        auctionParticipantRepository.save(participant);
+        return true;
+    }
 }

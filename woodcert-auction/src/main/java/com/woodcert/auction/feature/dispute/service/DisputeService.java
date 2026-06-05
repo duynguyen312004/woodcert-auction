@@ -8,6 +8,8 @@ import com.woodcert.auction.feature.media.dto.request.ConfirmMediaUploadReq;
 import com.woodcert.auction.feature.media.dto.request.CreateMediaUploadIntentReq;
 import com.woodcert.auction.feature.media.dto.response.MediaUploadIntentRes;
 
+import java.util.List;
+
 public interface DisputeService {
 
     MediaUploadIntentRes createEvidenceUploadIntent(String userId, CreateMediaUploadIntentReq request);
@@ -17,6 +19,8 @@ public interface DisputeService {
     DisputeRes openDispute(String buyerId, Long orderId, CreateDisputeReq request);
 
     DisputeRes getCurrentDispute(String userId, Long orderId);
+
+    List<DisputeRes> getDisputeHistory(String userId, Long orderId);
 
     DisputeRes cancelDispute(String userId, Long orderId, Long disputeId);
 

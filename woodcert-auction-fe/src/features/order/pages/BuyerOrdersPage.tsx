@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import type { ReactNode } from "react";
 import { AlertTriangle, CheckCircle2, CreditCard, FileUp, Loader2, RefreshCw } from "lucide-react";
 
@@ -18,9 +18,10 @@ import {
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { useNotification } from "@/shared/ui/notification";
+import { Pagination } from "@/shared/ui/pagination";
 
 import { getOrderStatusText, OrderFeeBreakdown } from "../components/OrderFeeBreakdown";
-import { useBuyerOrders, useOrderMutations } from "../hooks/useOrders";
+import { useBuyerOrderStatusCounts, useBuyerOrders, useOrderMutations } from "../hooks/useOrders";
 import type { OrderStatus, OrderSummary } from "../types";
 
 const STATUS_TABS: Array<{ label: string; status: OrderStatus | "ALL" }> = [
@@ -36,14 +37,19 @@ export function BuyerOrdersPage() {
   const [status, setStatus] = useState<OrderStatus | "ALL">("ALL");
   const [page, setPage] = useState(1);
   const [disputeOrder, setDisputeOrder] = useState<OrderSummary | null>(null);
-  const ordersQuery = useBuyerOrders({ page, size: 10 });
+  const statusParam = status === "ALL" ? undefined : status;
+  const ordersQuery = useBuyerOrders({ page, size: 10, status: statusParam });
+  const countsQuery = useBuyerOrderStatusCounts();
   const mutations = useOrderMutations();
   const notification = useNotification();
+  const orders = ordersQuery.data?.result ?? [];
 
-  const orders = useMemo(() => {
-    const items = ordersQuery.data?.result ?? [];
-    return status === "ALL" ? items : items.filter((order) => order.status === status);
-  }, [ordersQuery.data, status]);
+  const countFor = (tabStatus: OrderStatus | "ALL") => {
+    if (!countsQuery.data) return null;
+    return tabStatus === "ALL"
+      ? countsQuery.data.total
+      : (countsQuery.data.byStatus[tabStatus] ?? 0);
+  };
 
   async function runAction(action: () => Promise<unknown>, success: string) {
     try {
@@ -74,21 +80,28 @@ export function BuyerOrdersPage() {
         </header>
 
         <div className="flex gap-2 overflow-x-auto">
-          {STATUS_TABS.map((tab) => (
-            <button
-              key={tab.status}
-              type="button"
-              onClick={() => setStatus(tab.status)}
-              className={cn(
-                "shrink-0 rounded-full border px-4 py-2 text-xs font-bold transition-colors",
-                status === tab.status
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-white/12 bg-white/5 text-[#d2c5b2] hover:border-primary/40",
-              )}
-            >
-              {tab.label}
-            </button>
-          ))}
+          {STATUS_TABS.map((tab) => {
+            const count = countFor(tab.status);
+            return (
+              <button
+                key={tab.status}
+                type="button"
+                onClick={() => {
+                  setStatus(tab.status);
+                  setPage(1);
+                }}
+                className={cn(
+                  "shrink-0 rounded-full border px-4 py-2 text-xs font-bold transition-colors",
+                  status === tab.status
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-white/12 bg-white/5 text-[#d2c5b2] hover:border-primary/40",
+                )}
+              >
+                {tab.label}
+                {count !== null ? ` (${count})` : ""}
+              </button>
+            );
+          })}
         </div>
 
         <section className="grid gap-4">
@@ -190,7 +203,7 @@ export function OrderRow({
           </div>
           <p className="mt-1 text-sm text-stone-500">
             Phiên #{order.sourceId} · tạo lúc{" "}
-            {order.paymentDeadline ? formatDateTime(order.paymentDeadline) : "—"}
+            {order.createdAt ? formatDateTime(order.createdAt) : "—"}
           </p>
         </div>
         {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
@@ -335,43 +348,6 @@ function EmptyState() {
   return (
     <div className="rounded-lg border border-white/10 bg-white/5 p-10 text-center text-[#d2c5b2]">
       Chưa có đơn hàng phù hợp.
-    </div>
-  );
-}
-
-export function Pagination({
-  page,
-  pages,
-  onPage,
-}: {
-  page: number;
-  pages: number;
-  onPage: (page: number) => void;
-}) {
-  if (pages <= 1) return null;
-  return (
-    <div className="flex items-center justify-end gap-2">
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        disabled={page <= 1}
-        onClick={() => onPage(page - 1)}
-      >
-        Trước
-      </Button>
-      <span className="text-sm text-[#d2c5b2]">
-        Trang {page}/{pages}
-      </span>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        disabled={page >= pages}
-        onClick={() => onPage(page + 1)}
-      >
-        Sau
-      </Button>
     </div>
   );
 }

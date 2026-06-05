@@ -26,10 +26,10 @@ function toNumber(value: number | string | null | undefined) {
 }
 
 export const revenueApi = {
-  getTransactions: async (): Promise<PaginationResponse<PlatformRevenueTransaction>> => {
+  getTransactions: async (page = 1): Promise<PaginationResponse<PlatformRevenueTransaction>> => {
     const response = await apiClient.get<
       ApiResponse<PaginationResponse<PlatformRevenueTransaction>>
-    >("/admin/revenue", { params: { size: 20 } });
+    >("/admin/revenue", { params: { page, size: 20 } });
     const data = unwrapApiResponse(response);
     return {
       ...data,
@@ -40,6 +40,15 @@ export const revenueApi = {
   getStats: async (): Promise<PlatformRevenueStats> => {
     const response = await apiClient.get<ApiResponse<PlatformRevenueStats>>("/admin/revenue/stats");
     const data = unwrapApiResponse(response);
-    return { ...data, totalAmount: toNumber(data.totalAmount) };
+    return {
+      ...data,
+      totalAmount: toNumber(data.totalAmount),
+      byType: Object.fromEntries(
+        Object.entries(data.byType ?? {}).map(([type, value]) => [
+          type,
+          { ...value, amount: toNumber(value?.amount) },
+        ]),
+      ),
+    };
   },
 };

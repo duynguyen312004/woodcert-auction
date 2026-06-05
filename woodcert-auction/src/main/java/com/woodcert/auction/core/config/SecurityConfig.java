@@ -5,6 +5,7 @@ import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import com.nimbusds.jose.proc.JWSVerificationKeySelector;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
+import com.woodcert.auction.core.security.ActiveUserJwtValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,7 +19,9 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
@@ -45,6 +48,8 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtProperties jwtProperties;
+    private final CorsProperties corsProperties;
+    private final ActiveUserJwtValidator activeUserJwtValidator;
 
     private static final String[] PUBLIC_ENDPOINTS = {
             "/api/v1/auth/login",
@@ -58,10 +63,12 @@ public class SecurityConfig {
     private static final String[] PUBLIC_GET_ENDPOINTS = {
             "/api/v1/locations/**",
             "/api/v1/auth/verify-email",
+            "/api/v1/auth/csrf",
             "/api/v1/categories/**",
             "/api/v1/certificates/**",
             "/api/v1/auctions/**",
-            "/api/v1/wallets/vnpay/**"
+            "/api/v1/wallets/vnpay/**",
+            "/api/v1/system/time"
     };
 
     @Bean
@@ -104,7 +111,11 @@ public class SecurityConfig {
                 )
         );
 
-        return new NimbusJwtDecoder(jwtProcessor);
+        NimbusJwtDecoder decoder = new NimbusJwtDecoder(jwtProcessor);
+        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
+                JwtValidators.createDefault(),
+                activeUserJwtValidator));
+        return decoder;
     }
 
     /**
@@ -136,11 +147,12 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:3000", "http://localhost:5173"));
+        configuration.setAllowedOrigins(corsProperties.getAllowedOrigins());
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
+        configuration.setExposedHeaders(List.of("Date"));
         configuration.setAllowCredentials(true);
-        configuration.setMaxAge(3600L);
+        configuration.setMaxAge(corsProperties.getMaxAge());
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

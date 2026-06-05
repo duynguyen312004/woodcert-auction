@@ -22,7 +22,9 @@ import type { ReactNode } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 
 import { isApiError } from "@/shared/api/errors";
+import { syncServerTime } from "@/shared/api/system";
 import { formatVND } from "@/shared/lib/format";
+import { getServerNow } from "@/shared/lib/serverClock";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
@@ -75,7 +77,10 @@ export function SellerNewAuctionPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const preferredProductId = productQueryId(searchParams);
-  const earliestStart = useMemo(() => toLocalDateTimeInput(new Date(Date.now() + 5 * 60_000)), []);
+  const earliestStart = useMemo(
+    () => toLocalDateTimeInput(new Date(getServerNow() + 5 * 60_000)),
+    [],
+  );
 
   const eligibleProductsQuery = useSellerProducts({
     status: "APPRAISED",
@@ -121,6 +126,10 @@ export function SellerNewAuctionPage() {
   const depositAmount = parseMoney(watchedDepositAmount);
   const reservePrice = parseMoney(watchedReservePrice);
   const isSaving = isSubmitting || createMutation.isPending;
+
+  useEffect(() => {
+    void syncServerTime();
+  }, []);
 
   useEffect(() => {
     if (

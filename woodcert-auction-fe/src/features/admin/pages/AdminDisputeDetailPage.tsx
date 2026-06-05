@@ -12,6 +12,8 @@ import { formatDateTime } from "@/shared/lib/format";
 import { Button } from "@/shared/ui/button";
 import { useNotification } from "@/shared/ui/notification";
 
+import { DISPUTE_OUTCOME_LABEL, DISPUTE_STATUS_LABEL } from "../lib/dispute-labels";
+
 export function AdminDisputeDetailPage() {
   const { id } = useParams();
   const disputeId = id ? Number(id) : undefined;
@@ -55,15 +57,16 @@ export function AdminDisputeDetailPage() {
         </p>
         <h1 className="mt-1 text-3xl font-bold">Đơn #{dispute.orderId}</h1>
         <p className="mt-2 text-sm text-[#d2c5b2]">
-          Mở lúc {formatDateTime(dispute.openedAt)} · trạng thái {dispute.status}
+          Mở lúc {formatDateTime(dispute.openedAt)} · trạng thái{" "}
+          {DISPUTE_STATUS_LABEL[dispute.status] ?? dispute.status}
         </p>
       </header>
 
       <section className="mt-6 grid gap-6 lg:grid-cols-[1fr_360px]">
-        <div className="rounded-lg border border-white/10 bg-[#f2eee5] p-5 text-stone-950">
-          <h2 className="text-lg font-bold">Nội dung khiếu nại</h2>
+        <div className="rounded-lg border border-white/10 bg-card p-5 text-foreground">
+          <h2 className="text-lg font-bold text-[#f2eee5]">Nội dung khiếu nại</h2>
           <p className="mt-4 font-semibold">{dispute.reason}</p>
-          <p className="mt-2 whitespace-pre-wrap text-sm text-stone-600">
+          <p className="mt-2 whitespace-pre-wrap text-sm text-[#a49a88]">
             {dispute.description ?? "Không có mô tả."}
           </p>
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
@@ -73,35 +76,36 @@ export function AdminDisputeDetailPage() {
                 href={item.url ?? "#"}
                 target="_blank"
                 rel="noreferrer"
-                className="overflow-hidden rounded-md border border-stone-300 bg-white"
+                className="overflow-hidden rounded-md border border-white/10 bg-white/5"
               >
                 {item.url ? (
                   <img
                     src={item.url}
                     alt={item.originalFilename ?? "Evidence"}
-                    className="h-56 w-full object-cover"
+                    className="h-56 w-full object-cover opacity-90 transition-opacity hover:opacity-100"
                   />
                 ) : (
-                  <div className="p-6">Không có ảnh</div>
+                  <div className="p-6 text-[#a49a88]">Không có ảnh</div>
                 )}
               </a>
             ))}
           </div>
         </div>
 
-        <aside className="rounded-lg border border-white/10 bg-[#f2eee5] p-5 text-stone-950">
-          <h2 className="text-lg font-bold">Quyết định</h2>
+        <aside className="rounded-lg border border-white/10 bg-card p-5 text-foreground">
+          <h2 className="text-lg font-bold text-[#f2eee5]">Quyết định</h2>
           <textarea
             value={resolutionNote}
             onChange={(event) => setResolutionNote(event.target.value)}
             placeholder="Ghi chú xử lý nội bộ"
-            className="mt-4 min-h-32 w-full rounded-md border border-stone-300 px-3 py-2 text-sm"
+            className="mt-4 min-h-32 w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-foreground placeholder:text-[#a49a88] outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all"
             disabled={!canResolve}
           />
           <div className="mt-4 grid gap-2">
             <Button
               type="button"
               variant="outline"
+              className="border-white/10 hover:bg-white/5"
               disabled={!canResolve || mutations.review.isPending}
               onClick={() => void mutations.review.mutateAsync(dispute.id)}
             >
@@ -110,6 +114,7 @@ export function AdminDisputeDetailPage() {
             </Button>
             <Button
               type="button"
+              className="bg-primary text-primary-foreground hover:bg-primary/95"
               disabled={!canResolve}
               onClick={() => void resolve("SELLER_WINS")}
             >
@@ -126,8 +131,9 @@ export function AdminDisputeDetailPage() {
             </Button>
           </div>
           {dispute.resolutionOutcome && (
-            <p className="mt-4 rounded-md border border-stone-300 bg-[#e9e2d6] p-3 text-sm font-semibold">
-              Kết quả: {dispute.resolutionOutcome}
+            <p className="mt-4 rounded-md border border-white/10 bg-white/5 p-3 text-sm font-semibold text-primary">
+              Kết quả:{" "}
+              {DISPUTE_OUTCOME_LABEL[dispute.resolutionOutcome] ?? dispute.resolutionOutcome}
             </p>
           )}
         </aside>

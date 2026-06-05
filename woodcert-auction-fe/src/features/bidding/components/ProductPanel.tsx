@@ -7,6 +7,7 @@
 
 import { FileText, ShieldCheck } from "lucide-react";
 
+import { FALLBACK_PRODUCT_IMAGE } from "@/shared/constants";
 import { cn } from "@/shared/lib/utils";
 import type { BiddingAuctionDetail } from "../types";
 import { ProductDetailDialog } from "./ProductDetailDialog";
@@ -18,7 +19,7 @@ interface ProductPanelProps {
 
 export function ProductPanel({ detail, className }: ProductPanelProps) {
   const product = detail.product;
-  const primaryImage = product?.primaryImage || "/assets/hero/woodcert-card-fallback.jpg";
+  const primaryImage = product?.primaryImage || FALLBACK_PRODUCT_IMAGE;
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(amount);

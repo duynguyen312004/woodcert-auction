@@ -11,6 +11,14 @@ export function useCurrentDispute(orderId: number | undefined, enabled = true) {
   });
 }
 
+export function useDisputeHistory(orderId: number | undefined, enabled = true) {
+  return useQuery({
+    queryKey: ["disputes", "history", orderId] as const,
+    queryFn: () => disputeApi.getDisputeHistory(orderId as number),
+    enabled: enabled && orderId !== undefined,
+  });
+}
+
 export function useOpenDispute() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -19,6 +27,7 @@ export function useOpenDispute() {
     onSuccess: (dispute) => {
       void queryClient.invalidateQueries({ queryKey: ["orders"] });
       void queryClient.invalidateQueries({ queryKey: ["disputes", "current", dispute.orderId] });
+      void queryClient.invalidateQueries({ queryKey: ["disputes", "history", dispute.orderId] });
     },
   });
 }

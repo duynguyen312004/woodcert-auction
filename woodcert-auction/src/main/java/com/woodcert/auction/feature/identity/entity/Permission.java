@@ -9,7 +9,7 @@ import java.util.Set;
 
 /**
  * Permission entity — maps to 'permissions' table.
- * Master data: CREATE_BID, APPROVE_PRODUCT, BAN_USER, etc.
+ * Master data: CREATE_BID, APPROVE_PRODUCT, ADMIN_ACCESS, BAN_USER, etc.
  * Does NOT extend BaseEntity (no audit columns in DB).
  */
 @Getter

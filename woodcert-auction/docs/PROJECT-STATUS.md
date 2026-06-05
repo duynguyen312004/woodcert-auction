@@ -1,6 +1,6 @@
 # Project Status
 
-> Last updated: 2026-06-02 | By: Codex | Session: post-auction-operations
+> Last updated: 2026-06-03 | By: Codex | Session: architecture-cleanup
 >
 > AI: update this file at the end of every backend session when asked.
 > Follow this exact format. Keep it concise but decision-useful.
@@ -25,37 +25,46 @@
 - [x] Order module: source-adapter boundary, order creation from auction settlement, buyer/seller order list/detail APIs, remainder payment, overdue payment cancellation, and forfeited deposit split
 - [x] Fulfillment module: pending shipment creation, seller shipping confirmation, buyer received confirmation, shipped auto-complete, seller payout, and platform commission recording
 - [x] Dispute module: buyer evidence upload, open/cancel/current APIs, admin queue/detail/review/resolve APIs, seller-wins payout path, buyer-wins refund path, and scheduler skip for disputed orders
-- [x] Back-office APIs: admin category CRUD, admin appraiser promote/demote, and public certificate verification lookup
+- [x] Back-office APIs: admin category CRUD, admin appraiser create/demote, and public certificate verification lookup
+- [x] Admin user management: `GET /admin/users` (role/status/keyword filter, paginated) and `PATCH /admin/users/{id}/ban|unban` guarded by `BAN_USER`, with self-ban and admin-ban protection; legacy `GET /admin/appraisers` removed in favor of `GET /admin/users?role=ROLE_APPRAISER`
 - [x] Product sale status supports `RETURNED` for buyer-wins disputes without automatic relist
 - [x] Platform revenue APIs for admin revenue stats and transaction history
 - [x] Order/Fulfillment/Dispute unit coverage added for service and scheduler paths
 - [x] Expose buyer outcome contract (winner, outcomeCode, outcomeMessage) và highestBidderMaskedAlias trong chi tiết đấu giá và participation context
 - [x] Backend unit/integration test suite passes with `mvn test`
+- [x] Flyway migrations added: baseline schema with optimistic-lock columns and reference seed data
+- [x] Production/base config hardened: Flyway enabled, Hibernate `ddl-auto=validate`, SQL init disabled, SQL logging off
+- [x] RBAC admin permissions clarified: `ADMIN_ACCESS`, `MANAGE_CATEGORIES`, `MANAGE_APPRAISERS`, `VIEW_PLATFORM_REVENUE`, `BAN_USER`
+- [x] Cookie refresh/logout protected by double-submit CSRF and `GET /auth/csrf`
+- [x] Order list APIs support backend `status` filter and buyer/seller status counts
+- [x] `GET /system/time` added for client/server clock sync
+- [x] Dispute history endpoint added for buyer/seller order participants
 
 ## In Progress
 
-- Next backend work is deploy hardening plus the deferred settlement repair path.
+- Verification of the full cleanup pass is in progress.
 
 ## Deferred Issues
 
 - Buyer participation history page and stored winner/loser notifications
-- Full controller/integration coverage with a dedicated test DB + Redis environment
+- Broader controller/RBAC integration coverage beyond the targeted cleanup tests
 - Repair job for rare close-time partial settlement after terminal auction DB commit
 
 ## Warnings
 
-- `mvn test` passed on 2026-06-02: 282 tests, 0 failures.
+- Previous baseline: `mvn test` passed on 2026-06-02 with 282 tests, 0 failures.
+- Current cleanup verification must be rerun after the Flyway/config/API updates.
 - Dispute v1 has no partial refund; admin resolution is `SELLER_WINS` or `BUYER_WINS`.
-- Wallet balance for demo must come from VNPay Sandbox. Do not add mock wallet top-up or `POST /wallets/me/top-up`.
-- Local VNPay demo may use `vnpay.confirm-on-return-enabled=true` when IPN cannot reach localhost; this still goes through VNPay Return and is not a top-up shortcut.
+- Wallet balance for demo must come from VNPay Sandbox. Do not add local wallet funding shortcuts.
+- Local VNPay demo may use `vnpay.confirm-on-return-enabled=true` when IPN cannot reach localhost; this still goes through VNPay Return and is not a wallet shortcut.
 
 ## Next Tasks
 
 1. Keep FE integration aligned with order/dispute/admin/certificate contracts.
-2. Keep demo wallet funding strictly on VNPay Sandbox; do not add mock wallet top-up or dev top-up.
-3. Add repair path for terminal auction sessions with remaining `FROZEN` deposits after demo-critical flows are stable.
+2. Keep demo wallet funding strictly on VNPay Sandbox; do not add local wallet funding shortcuts.
+3. Exercise terminal auction repair paths under Docker-backed integration runs.
 4. Add controller/RBAC integration tests with a dedicated test DB + Redis environment.
-5. Add production migration strategy once schema stops moving.
+5. Keep Flyway migrations as the production migration strategy; do not reintroduce `data.sql` bootstrap.
 
 ## Milestones
 
@@ -126,4 +135,5 @@
 - [x] Fulfillment shipment, buyer receive, and shipped auto-complete
 - [x] Seller payout and platform commission/revenue recording
 - [x] Dispute service/controller/resolution workflow
-- [x] Admin category CRUD, appraiser provisioning, and certificate lookup
+- [x] Admin category CRUD, appraiser provisioning, user ban/unban management, and certificate lookup
+- [x] Flyway baseline/seed/config hardening, server-time sync endpoint, order status counts, and dispute history

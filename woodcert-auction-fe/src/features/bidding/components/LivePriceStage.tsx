@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { AlertTriangle, Clock, Sparkles, User } from "lucide-react";
 
 import { useCountdown } from "@/shared/hooks/useCountdown";
+import { getServerNow } from "@/shared/lib/serverClock";
 import { cn } from "@/shared/lib/utils";
 import type { OutbidAlert } from "../types";
 
@@ -42,7 +43,7 @@ export function LivePriceStage({
     if (!endTime) return;
 
     const checkUrgency = () => {
-      const remaining = new Date(endTime).getTime() - Date.now();
+      const remaining = new Date(endTime).getTime() - getServerNow();
       setIsUrgent(remaining > 0 && remaining < 300_000);
     };
 
@@ -64,14 +65,22 @@ export function LivePriceStage({
       )}
     >
       {extensionSeconds && !outbidAlert && (
-        <div className="absolute top-4 flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-3.5 py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 animate-bounce">
+        <div
+          role="status"
+          aria-live="polite"
+          className="absolute top-4 flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-3.5 py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 animate-bounce"
+        >
           <Sparkles className="h-3.5 w-3.5" />
           Tự động gia hạn thêm {extensionSeconds} giây
         </div>
       )}
 
       {outbidAlert && (
-        <div className="absolute top-4 flex items-center gap-1.5 rounded-full border border-destructive/30 bg-destructive/10 px-3.5 py-1 text-xs font-semibold text-destructive shadow-lg animate-outbid-flash">
+        <div
+          role="status"
+          aria-live="polite"
+          className="absolute top-4 flex items-center gap-1.5 rounded-full border border-destructive/30 bg-destructive/10 px-3.5 py-1 text-xs font-semibold text-destructive shadow-lg animate-outbid-flash"
+        >
           <AlertTriangle className="h-3.5 w-3.5" />
           Bạn đã bị vượt giá - giá mới: {formatCurrency(outbidAlert.price)}
         </div>

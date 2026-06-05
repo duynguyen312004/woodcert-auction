@@ -84,6 +84,10 @@ public class OrderEntity extends BaseEntity {
     @Column(name = "forfeited_deposit_seller_amount", precision = 19, scale = 2)
     private BigDecimal forfeitedDepositSellerAmount;
 
+    @Version
+    @Column(name = "version", nullable = false)
+    private Integer version;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id", insertable = false, updatable = false)
     private Product product;

@@ -20,7 +20,7 @@ public class AdminCategoryController {
     private final CategoryService categoryService;
 
     @GetMapping
-    @PreAuthorize("hasAuthority('BAN_USER')")
+    @PreAuthorize("hasAuthority('MANAGE_CATEGORIES')")
     public ResponseEntity<ApiResponse<java.util.List<CategoryRes>>> getCategories() {
         return ResponseEntity.ok(ApiResponse.success(
                 categoryService.getAllCategories(),
@@ -28,7 +28,7 @@ public class AdminCategoryController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('BAN_USER')")
+    @PreAuthorize("hasAuthority('MANAGE_CATEGORIES')")
     public ResponseEntity<ApiResponse<CategoryRes>> createCategory(
             @RequestBody @Valid CreateCategoryReq request) {
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -38,7 +38,7 @@ public class AdminCategoryController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('BAN_USER')")
+    @PreAuthorize("hasAuthority('MANAGE_CATEGORIES')")
     public ResponseEntity<ApiResponse<CategoryRes>> updateCategory(
             @PathVariable Integer id,
             @RequestBody @Valid UpdateCategoryReq request) {
@@ -48,7 +48,7 @@ public class AdminCategoryController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('BAN_USER')")
+    @PreAuthorize("hasAuthority('MANAGE_CATEGORIES')")
     public ResponseEntity<ApiResponse<Void>> deleteCategory(@PathVariable Integer id) {
         categoryService.deleteCategory(id);
         return ResponseEntity.ok(ApiResponse.success(null, "Category deleted successfully"));

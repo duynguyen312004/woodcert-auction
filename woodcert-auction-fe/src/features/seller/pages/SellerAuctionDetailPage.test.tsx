@@ -9,6 +9,10 @@ vi.mock("@/shared/ui/notification", () => ({
   useNotification: () => ({ success: vi.fn(), error: vi.fn() }),
 }));
 
+vi.mock("@/shared/hooks/useCountdown", () => ({
+  useCountdown: () => "00 : 10 : 00",
+}));
+
 vi.mock("../hooks/useProductMutations", () => ({
   useCancelAuction: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useConfirmShipping: () => ({ mutateAsync: vi.fn(), isPending: false }),

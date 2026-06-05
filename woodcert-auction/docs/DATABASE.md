@@ -1,6 +1,6 @@
 # Database Schema
 
-Current implementation note (2026-06-02): identity, media, catalog/appraisal, finance/wallet/VNPay, auction/bidding, orders, fulfillment, dispute, admin category/appraiser operations, and certificate lookup are implemented by backend code.
+Current implementation note (2026-06-03): identity, media, catalog/appraisal, finance/wallet/VNPay, auction/bidding, orders, fulfillment, dispute, admin category/appraiser operations, certificate lookup, Flyway migrations, CSRF refresh protection, and server-time sync are implemented by backend code.
 
 > MySQL database design for WoodCert Auction Platform.
 > Update this file whenever schema changes.
@@ -383,7 +383,7 @@ Cloudinary metadata store. Domain tables should keep foreign keys to this table 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | id | INT | PK, AUTO_INCREMENT | |
-| name | VARCHAR(100) | NOT NULL, UNIQUE | CREATE_BID, APPROVE_PRODUCT, BAN_USER |
+| name | VARCHAR(100) | NOT NULL, UNIQUE | CREATE_BID, APPROVE_PRODUCT, ADMIN_ACCESS, MANAGE_CATEGORIES, MANAGE_APPRAISERS, VIEW_PLATFORM_REVENUE, BAN_USER |
 | description | VARCHAR(255) | NULLABLE | Mô tả quyền |
 
 ### user_roles
@@ -717,12 +717,31 @@ roles
 - CREATE_AUCTION_SESSION
 - CONFIRM_DELIVERY
 - RESOLVE_DISPUTE
+- ADMIN_ACCESS
+- MANAGE_CATEGORIES
+- MANAGE_APPRAISERS
+- VIEW_PLATFORM_REVENUE
 - BAN_USER
+
+### Seed Categories
+
+Flyway `V2__seed_reference_data.sql` seeds a flat category set:
+
+- Tượng & Điêu Khắc Gỗ (`tuong-dieu-khac-go`)
+- Tranh & Phù Điêu Gỗ (`tranh-phu-dieu-go`)
+- Đồ Thờ & Tâm Linh (`do-tho-tam-linh`)
+- Bình & Lộc Bình Gỗ (`binh-loc-binh-go`)
+- Nội Thất Nghệ Thuật (`noi-that-nghe-thuat`)
+- Gỗ Cảnh, Nu & Lũa (`go-canh-nu-lua`)
+- Hộp, Khay & Vật Phẩm Trang Trí (`hop-khay-vat-pham-trang-tri`)
+- Trang Sức & Phụ Kiện Gỗ (`trang-suc-phu-kien-go`)
+- Tác Phẩm Sưu Tầm (`tac-pham-suu-tam`)
+- Khác (`khac`)
 ### Table List
 
-Total tables: 28
+Total tables: 31
 
-**Infrastructure & Location (13 tables):**
+**Infrastructure & Location (14 tables):**
 - users
 - media_assets
 - addresses
@@ -735,6 +754,7 @@ Total tables: 28
 - user_roles
 - seller_profiles
 - refresh_tokens
+- email_verification_tokens
 - password_reset_tokens
 
 **Catalog & Appraisal (5 tables):**
@@ -744,11 +764,12 @@ Total tables: 28
 - appraisal_reports
 - appraisal_images
 
-**Finance (4 tables):**
+**Finance (5 tables):**
 - wallets
 - wallet_transactions
 - wallet_operations
 - vnpay_deposits
+- platform_revenue_transactions
 
 **Auction & Bidding (3 tables):**
 - auction_sessions
@@ -763,13 +784,13 @@ Total tables: 28
 **Dispute Evidence (1 table):**
 - dispute_evidence
 
-**Note:** Total 28 tables including all join tables, master data, and operational tables. Updated count reflects `password_reset_tokens`, `media_assets`, the location hierarchy, token/session management tables, and dispute evidence.
+**Note:** Total 31 tables including all join tables, master data, and operational tables. Updated count reflects `email_verification_tokens`, `password_reset_tokens`, `media_assets`, `platform_revenue_transactions`, the location hierarchy, token/session management tables, and dispute evidence.
 
 ### Recommended Schema Strategy
 
-- **dev:** Hibernate ddl-auto=update
-- **prod:** ddl-auto=validate
-- **Production migration:** use Flyway or Liquibase
+- **base/prod:** Flyway enabled, Hibernate `ddl-auto=validate`, SQL init disabled
+- **local:** use an ignored `application-local.yml` copied from `application-local.example.yml`
+- **Production migration:** Flyway only; do not use `data.sql` bootstrap
 
 ### Recommended Cleanup Jobs
 

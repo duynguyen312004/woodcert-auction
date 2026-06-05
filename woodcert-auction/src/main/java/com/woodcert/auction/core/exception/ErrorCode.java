@@ -89,6 +89,10 @@ public enum ErrorCode {
     ORDER_INVALID_STATUS(400, "Order status does not allow this action"),
     ORDER_PAYMENT_DEADLINE_EXCEEDED(400, "Payment deadline has been exceeded"),
 
+    // --- Admin ---
+    CANNOT_BAN_SELF(400, "Cannot ban your own account"),
+    CANNOT_BAN_ADMIN(403, "Cannot ban an admin account"),
+
     // --- Dispute ---
     DISPUTE_NOT_FOUND(404, "Dispute not found"),
     DISPUTE_ALREADY_OPEN(409, "This order already has an open dispute"),

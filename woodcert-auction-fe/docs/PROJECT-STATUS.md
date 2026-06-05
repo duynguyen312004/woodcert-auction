@@ -1,6 +1,6 @@
 # Project Status
 
-> Last updated: 2026-06-02 | By: Codex | Session: post-auction-operations
+> Last updated: 2026-06-03 | By: Codex | Session: architecture-cleanup
 >
 > Update this file at the end of FE planning or implementation sessions.
 > Keep it concise and decision-useful.
@@ -29,12 +29,23 @@
 - [x] Order UI primitives: summary card and fee breakdown for buyer/seller views
 - [x] Buyer `/orders` and seller `/seller/orders` pages with status tabs, pagination, payment, shipping, receive, and dispute actions
 - [x] Dispute FE integration: evidence upload, buyer open/cancel/current state, seller read-only banner/state, and admin review/resolve flow
-- [x] Dedicated admin layout with revenue, dispute queue/detail, categories, and appraisers pages
+- [x] Dedicated admin layout with overview dashboard, revenue, dispute queue/detail, categories, users, and appraisers pages
+- [x] Admin user management page wired to `/admin/users` (role/status filters, pagination, ban/unban actions); appraisers page lists via `/admin/users?role=ROLE_APPRAISER`
+- [x] Admin overview dashboard aggregates total users, open disputes, and total revenue from existing endpoints
+- [x] Shared `Pagination` component extracted to `shared/ui` and applied to admin revenue/disputes/users/appraisers tables
 - [x] Public certificate verification page and address book UI
 - [x] Seller product detail page and `RETURNED` sale status display
 - [x] Fulfillment API client and seller shipping confirmation UI on seller auction detail
 - [x] Admin revenue page wired to backend revenue APIs
 - [x] Automated FE unit test suite passes with 96 tests and 2 Playwright smoke tests
+- [x] Order tabs use backend `status` filter and buyer/seller status counts
+- [x] Bidding room refetches detail, participation, and bid history after socket connect/reconnect
+- [x] Auction countdown and seller auction validation use shared server clock offset from `/system/time`
+- [x] Product fallback image centralized through `FALLBACK_PRODUCT_IMAGE`
+- [x] Admin/seller/appraiser/blog/bidding route pages lazy-load in route chunks
+- [x] Seller appraisal route/menu removed; `/seller/appraisals` is no longer valid
+- [x] Home category image mapping updated for the new flat seeded category slugs
+- [x] Blog remains static/mock content, not a CMS/API-backed feature
 
 ## In Progress
 
@@ -51,14 +62,14 @@
 
 - Backend auction runtime and buyer realtime contracts are integrated through public detail and bidding room.
 - FE should consume the backend contracts directly; do not add local workarounds for participation context, bid history, or live bid payloads.
-- Wallet funding must use VNPay Sandbox. Do not add mock wallet top-up, dev top-up, or any `POST /wallets/me/top-up` integration.
+- Wallet funding must use VNPay Sandbox. Do not add local wallet funding shortcuts.
 - Seller auction detail and shipping confirmation are implemented (polling is used for operational safety); realtime monitoring remains deferred until the buyer bidding cockpit is stable.
-- Order status tabs filter the currently loaded paginated page; backend order list does not yet expose a status query parameter.
-- CSRF mitigation for cookie-authenticated flows relies on backend `SameSite` behavior; explicit CSRF token strategy is deferred.
+- Order status tabs must keep using backend `status` filters and status-count endpoints; do not reintroduce page-local filtering.
+- Cookie refresh/logout uses backend double-submit CSRF via `GET /auth/csrf` and `X-XSRF-TOKEN`.
 
 ## Next Tasks
 
-1. Add deploy/runtime env hardening and route-level code splitting for the large production bundle.
+1. Continue deploy/runtime env hardening for production hosting.
 2. Add advanced Playwright coverage for realtime bidding, websocket reconnect recovery, and dispute resolution happy paths.
 3. Add responsive polish pass for order/admin/certificate/address pages.
 
@@ -114,6 +125,6 @@
 
 - [x] Automated tests: 96 unit tests and 2 Playwright smoke tests
 - [ ] Responsive polish
-- [ ] Unit tests for event parsing, bid-history dedupe, countdown thresholds, bid form validation, and participation-driven action states
+- [x] Unit tests for server clock, reconnect callback, category slug mapping, order status API params/counts, fallback image, and seller appraisal route removal
+- [ ] Further unit tests for bid-history dedupe, countdown thresholds, bid form validation, and participation-driven action states
 - [ ] Production deploy readiness
-- [ ] Deferred module planning for `admin`

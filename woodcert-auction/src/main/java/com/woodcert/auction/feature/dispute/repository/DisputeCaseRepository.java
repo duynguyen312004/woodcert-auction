@@ -12,6 +12,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -22,6 +23,8 @@ public interface DisputeCaseRepository extends JpaRepository<DisputeCase, Long> 
             Collection<DisputeStatus> statuses);
 
     Optional<DisputeCase> findByIdAndOrderId(Long id, Long orderId);
+
+    List<DisputeCase> findByOrderIdOrderByOpenedAtDescIdDesc(Long orderId);
 
     Page<DisputeCase> findByStatusInOrderByOpenedAtDescIdDesc(Collection<DisputeStatus> statuses, Pageable pageable);
 

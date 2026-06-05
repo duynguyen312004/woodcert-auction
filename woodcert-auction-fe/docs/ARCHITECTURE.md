@@ -89,7 +89,7 @@ src/
       routes.tsx
     appraisal/
     seller/
-    admin/        # deferred
+    admin/
   assets/
 ```
 
@@ -99,7 +99,8 @@ src/
 - `features/catalog` owns category domain: `CategoryFilter`, `useCategories`, `Category` type.
 - `features/home` owns only landing page composition: `HomePage`, `HomeHero`, `FeaturedAuctionsSection`. It imports from auction and catalog — never the reverse.
 - `features/appraisal` owns the implemented appraiser portal workflow.
-- `features/seller` owns implemented seller profile/product flows; seller auction flows are still placeholders.
+- `features/seller` owns implemented seller profile, product, auction, order, and shipping workflows.
+- `/seller/appraisals` is intentionally not a route; appraisal submission stays inside product workflow.
 - `features/wallet` owns wallet balance, transaction history, VNPay deposit pages, and deposit status polling.
 - Cross-feature imports flow inward only: `home → auction`, `home → catalog`. Feature-to-feature dependencies in the other direction are not allowed.
 
@@ -108,7 +109,7 @@ src/
 - `app/` composes the application.
 - `shared/` contains only reusable cross-feature primitives and infrastructure.
 - `features/` owns business workflows, pages, feature hooks, route exports, and feature-local components.
-- `admin/` exists structurally from day one but is deferred.
+- `admin/` is implemented for revenue, disputes, categories, and appraiser provisioning.
 - Root-level `services/`, `pages/`, or `context/` folders are not part of the official architecture.
 
 ## Routing Model
@@ -180,6 +181,7 @@ Concurrency rule:
 - concurrent 401 responses must share one refresh operation
 - pending requests are replayed after refresh succeeds
 - refresh failure clears auth state and triggers consistent logout behavior
+- cookie refresh/logout must use `GET /auth/csrf` plus `X-XSRF-TOKEN`
 
 ## Auth Model
 
@@ -263,7 +265,7 @@ Where feasible:
 
 - use backend `Date` headers from normal API traffic
 - continuously refine the offset
-- do not rely on a dedicated sync endpoint unless needed later
+- use `GET /system/time` for initial sync and refine the offset with response headers when reliable
 
 If offset is stale or missing, FE should refetch before trusting long-lived countdowns.
 

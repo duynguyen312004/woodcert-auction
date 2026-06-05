@@ -82,7 +82,8 @@ Client → [Authorization: Bearer <access_token>]
 → JwtAuthenticationConverter extracts 'permissions' to SecurityContext
 → Controller (@PreAuthorize) → Service → Repository → Response
 3. Token Refresh:
-Client → POST /api/v1/auth/refresh (refresh token)
+Client → GET /api/v1/auth/csrf when using the cookie refresh flow
+Client → POST /api/v1/auth/refresh (refresh token + matching X-XSRF-TOKEN for cookie flow)
 → Validate refresh token → Issue new access token
 → Return new tokens
 ```
@@ -145,7 +146,7 @@ Client → POST /api/v1/bids (Session ID, Amount)
 → Extend auction end_time by 60 seconds (Anti-Sniper Rule)
 → Update Redis TTL
   → Push message via WebSocketBroker to all clients in Room
-  → @Async trigger to save Bid record to MySQL
+  → Best-effort REQUIRES_NEW persistence saves Bid record to MySQL
 → Return 200 OK
 ```
 
@@ -192,9 +193,9 @@ Controller -> AuctionServiceImpl -> AuctionCommandService
 -> if ACTIVE, add bidder to Redis bidder set
 ```
 
-### Planned Escrow & Auto-Complete Flow (Background Job)
+### Order, Fulfillment, Dispute, and Auto-Complete Flow (Background Job)
 
-Current status: this is the Phase 4 fulfillment target. The current backend has wallet/deposit settlement for auction registration and winner deposit deduction, but it does not yet implement orders, shipments, disputes, or the 72-hour auto-complete job.
+Current status: implemented for the DATN/MVP commerce flow. The backend keeps the current finance model with wallet operations and order payout snapshots; a separate escrow ledger is intentionally not added in this iteration.
 
 ```text
 Spring @Scheduled (Runs every 1 hour)
@@ -217,9 +218,11 @@ The application follows a Package-by-Feature architecture. Each business domain 
 feature/
 ├── identity/                # Auth, User, Role, Permission, Address, SellerProfile
 ├── catalog/                 # Internal inventory + appraisal workflow
-├── finance/                 # Wallet, WalletTransaction (Escrow / deposit)
+├── finance/                 # Wallet, wallet operations, VNPay, platform revenue
 ├── auction/                 # Buyer-facing browse/detail + AuctionSession, Bid, Participant
-└── fulfillment/             # Order, Shipment, Dispute (planned Phase 4)
+├── order/                   # Post-auction order payment and payout snapshots
+├── fulfillment/             # Shipment and auto-complete
+└── dispute/                 # Buyer evidence and admin resolution
 ```
 
 ### Feature Dependency Rules
@@ -273,7 +276,7 @@ feature/
 ### Concurrency & Data Integrity
 
 - Optimistic Locking:
-  - Applied via @Version (Wallet, AuctionSession)
+  - Applied via @Version (Wallet, AuctionSession, Order)
 
 - Transactions:
   - @Transactional on all critical state-changing operations
@@ -315,7 +318,7 @@ feature/
 
 - Redis can be scaled using Redis Cluster
 
-- Message Queue (Kafka / RabbitMQ) can replace @Async
+- Message Queue (Kafka / RabbitMQ) can replace best-effort in-process bid persistence
 
 - CDN can be used for serving product images
 

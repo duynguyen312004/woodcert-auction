@@ -2,7 +2,7 @@ import { apiClient } from "@/shared/api/client";
 import type { ApiResponse, PaginationResponse } from "@/shared/api/types";
 import { unwrapApiResponse } from "@/shared/api/unwrap";
 
-import type { OrderDetail, OrderListParams, OrderSummary } from "../types";
+import type { OrderDetail, OrderListParams, OrderStatusCounts, OrderSummary } from "../types";
 
 function toNumber(value: number | string | null | undefined, fallback = 0) {
   if (value === null || value === undefined || value === "") return fallback;
@@ -51,6 +51,20 @@ export const orderApi = {
     );
     const data = unwrapApiResponse(response);
     return { ...data, result: data.result.map((order) => mapOrder(order)) };
+  },
+
+  getMyPurchaseStatusCounts: async (): Promise<OrderStatusCounts> => {
+    const response = await apiClient.get<ApiResponse<OrderStatusCounts>>(
+      "/orders/my-purchases/status-counts",
+    );
+    return unwrapApiResponse(response);
+  },
+
+  getMySaleStatusCounts: async (): Promise<OrderStatusCounts> => {
+    const response = await apiClient.get<ApiResponse<OrderStatusCounts>>(
+      "/orders/my-sales/status-counts",
+    );
+    return unwrapApiResponse(response);
   },
 
   payRemainder: async (orderId: number): Promise<OrderDetail> => {

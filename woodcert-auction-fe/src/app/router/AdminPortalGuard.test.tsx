@@ -33,9 +33,9 @@ describe("AdminPortalGuard", () => {
     useAuthStore.setState({ accessToken: null, status: "anonymous" });
   });
 
-  it("allows users with BAN_USER permission", () => {
+  it("allows users with ADMIN_ACCESS permission", () => {
     useAuthStore.setState({
-      accessToken: createToken({ permissions: ["BAN_USER"] }),
+      accessToken: createToken({ permissions: ["ADMIN_ACCESS"] }),
       status: "authenticated",
     });
 

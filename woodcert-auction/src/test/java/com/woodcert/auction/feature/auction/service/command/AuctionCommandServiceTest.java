@@ -10,6 +10,7 @@ import com.woodcert.auction.feature.auction.entity.AuctionSessionStatus;
 import com.woodcert.auction.feature.auction.repository.AuctionParticipantRepository;
 import com.woodcert.auction.feature.auction.repository.AuctionSessionRepository;
 import com.woodcert.auction.feature.auction.service.AuctionRedisService;
+import com.woodcert.auction.feature.auction.service.AuctionSettlementService;
 import com.woodcert.auction.feature.auction.service.assembler.AuctionResponseAssembler;
 import com.woodcert.auction.feature.auction.service.policy.AuctionPolicy;
 import com.woodcert.auction.feature.auction.service.runtime.AuctionRuntimeSnapshot;
@@ -59,6 +60,8 @@ class AuctionCommandServiceTest {
     @Mock
     private AuctionRedisService auctionRedisService;
     @Mock
+    private AuctionSettlementService auctionSettlementService;
+    @Mock
     private AuctionResponseAssembler responseAssembler;
     @Mock
     private WalletService walletService;
@@ -80,6 +83,7 @@ class AuctionCommandServiceTest {
                 auctionParticipantRepository,
                 productRepository,
                 auctionRedisService,
+                auctionSettlementService,
                 responseAssembler,
                 auctionPolicy,
                 walletService,
@@ -195,6 +199,7 @@ class AuctionCommandServiceTest {
         assertThat(session.getStatus()).isEqualTo(AuctionSessionStatus.CANCELED);
         assertThat(product.getSaleStatus()).isEqualTo(ProductSaleStatus.AVAILABLE);
         verify(auctionSessionRepository).findByIdWithProductForUpdate(AUCTION_ID);
+        verify(auctionSettlementService).refundCanceledSession(AUCTION_ID);
     }
 
     @Test

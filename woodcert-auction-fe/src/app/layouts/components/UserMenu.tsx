@@ -5,6 +5,9 @@ import {
   LogOut,
   MapPin,
   ReceiptText,
+  Shield,
+  ShieldCheck,
+  Store,
   UserCircle2,
 } from "lucide-react";
 import { useState } from "react";
@@ -174,6 +177,71 @@ export function UserMenu({ onMobileClose }: { onMobileClose?: () => void }) {
           )}
 
           <DropdownMenuGroup className="space-y-0.5">
+            {profile?.roles?.includes("ADMIN") && (
+              <DropdownMenuItem
+                asChild
+                className="focus:bg-primary/10 focus:text-primary transition-all duration-150 rounded-lg group"
+              >
+                <Link
+                  to="/admin"
+                  className="flex w-full items-center gap-2.5 py-1 text-primary font-bold"
+                  onClick={onMobileClose}
+                >
+                  <ShieldCheck className="h-4 w-4 text-primary group-hover:text-primary transition-colors" />
+                  <span>Khu quản trị (Admin)</span>
+                </Link>
+              </DropdownMenuItem>
+            )}
+            {profile?.roles?.includes("APPRAISER") && (
+              <DropdownMenuItem
+                asChild
+                className="focus:bg-primary/10 focus:text-primary transition-all duration-150 rounded-lg group"
+              >
+                <Link
+                  to="/appraiser/products"
+                  className="flex w-full items-center gap-2.5 py-1 text-primary font-bold"
+                  onClick={onMobileClose}
+                >
+                  <Shield className="h-4 w-4 text-primary group-hover:text-primary transition-colors" />
+                  <span>Khu kiểm định</span>
+                </Link>
+              </DropdownMenuItem>
+            )}
+            {profile?.roles?.includes("SELLER") ? (
+              <DropdownMenuItem
+                asChild
+                className="focus:bg-primary/10 focus:text-primary transition-all duration-150 rounded-lg group"
+              >
+                <Link
+                  to="/seller/dashboard"
+                  className="flex w-full items-center gap-2.5 py-1 text-primary font-bold"
+                  onClick={onMobileClose}
+                >
+                  <Store className="h-4 w-4 text-primary group-hover:text-primary transition-colors" />
+                  <span>Khu người bán</span>
+                </Link>
+              </DropdownMenuItem>
+            ) : (
+              !profile?.roles?.includes("ADMIN") &&
+              !profile?.roles?.includes("APPRAISER") && (
+                <DropdownMenuItem
+                  asChild
+                  className="focus:bg-primary/10 focus:text-primary transition-all duration-150 rounded-lg group"
+                >
+                  <Link
+                    to="/seller/register"
+                    className="flex w-full items-center gap-2.5 py-1 text-primary font-bold"
+                    onClick={onMobileClose}
+                  >
+                    <Store className="h-4 w-4 text-primary group-hover:text-primary transition-colors" />
+                    <span>Đăng ký người bán</span>
+                  </Link>
+                </DropdownMenuItem>
+              )
+            )}
+
+            <DropdownMenuSeparator className="my-1.5 border-t border-white/5" />
+
             <DropdownMenuItem
               asChild
               className="focus:bg-primary/10 focus:text-primary transition-all duration-150 rounded-lg group"

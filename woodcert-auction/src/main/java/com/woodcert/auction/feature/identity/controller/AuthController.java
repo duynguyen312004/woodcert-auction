@@ -9,6 +9,7 @@ import com.woodcert.auction.feature.identity.dto.request.ResendVerificationReq;
 import com.woodcert.auction.feature.identity.dto.request.RegisterReq;
 import com.woodcert.auction.feature.identity.dto.request.ResetPasswordReq;
 import com.woodcert.auction.feature.identity.dto.response.AuthRes;
+import com.woodcert.auction.feature.identity.dto.response.CsrfTokenRes;
 import com.woodcert.auction.feature.identity.dto.response.RefreshRes;
 import com.woodcert.auction.feature.identity.dto.response.RegisterRes;
 import com.woodcert.auction.feature.identity.service.AuthService;
@@ -22,6 +23,8 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Duration;
+import java.security.SecureRandom;
+import java.util.Base64;
 
 /**
  * Authentication REST controller.
@@ -37,6 +40,9 @@ public class AuthController {
     private final RefreshCookieProperties cookieProperties;
 
     private static final String REFRESH_TOKEN_COOKIE = "refresh_token";
+    private static final String CSRF_COOKIE = "XSRF-TOKEN";
+    private static final String CSRF_HEADER = "X-XSRF-TOKEN";
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     /**
      * POST /api/v1/auth/login
@@ -71,6 +77,13 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success(null, "Email verified successfully"));
     }
 
+    @GetMapping("/csrf")
+    public ResponseEntity<ApiResponse<CsrfTokenRes>> csrf(HttpServletResponse response) {
+        String token = generateCsrfToken();
+        setCsrfCookie(response, token);
+        return ResponseEntity.ok(ApiResponse.success(new CsrfTokenRes(token), "CSRF token issued"));
+    }
+
     /**
      * POST /api/v1/auth/resend-verification
      * Resend the verification email if the account is still unverified.
@@ -96,6 +109,8 @@ public class AuthController {
     public ResponseEntity<ApiResponse<RefreshRes>> refresh(
             @RequestBody(required = false) @Valid RefreshReq request,
             @CookieValue(name = REFRESH_TOKEN_COOKIE, required = false) String cookieRefreshToken,
+            @CookieValue(name = CSRF_COOKIE, required = false) String csrfCookie,
+            @RequestHeader(name = CSRF_HEADER, required = false) String csrfHeader,
             HttpServletResponse response) {
 
         // Priority: body first (explicit intent), then cookie fallback (Web/SPA)
@@ -103,6 +118,7 @@ public class AuthController {
         if (request != null && request.refreshToken() != null && !request.refreshToken().isBlank()) {
             rawRefreshToken = request.refreshToken();
         }
+        boolean usingCookieRefresh = rawRefreshToken == null;
         if (rawRefreshToken == null) {
             rawRefreshToken = cookieRefreshToken;
         }
@@ -110,6 +126,10 @@ public class AuthController {
         if (rawRefreshToken == null || rawRefreshToken.isBlank()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(ApiResponse.error(401, "No refresh token provided"));
+        }
+        if (usingCookieRefresh && !isValidCsrf(csrfCookie, csrfHeader)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error(403, "Invalid CSRF token"));
         }
 
         RefreshRes refreshRes = authService.refresh(rawRefreshToken);
@@ -125,6 +145,8 @@ public class AuthController {
     public ResponseEntity<ApiResponse<Void>> logout(
             @RequestBody(required = false) @Valid RefreshReq request,
             @CookieValue(name = REFRESH_TOKEN_COOKIE, required = false) String cookieRefreshToken,
+            @CookieValue(name = CSRF_COOKIE, required = false) String csrfCookie,
+            @RequestHeader(name = CSRF_HEADER, required = false) String csrfHeader,
             HttpServletResponse response) {
 
         // Priority: body first, then cookie
@@ -132,12 +154,18 @@ public class AuthController {
         if (request != null && request.refreshToken() != null && !request.refreshToken().isBlank()) {
             rawRefreshToken = request.refreshToken();
         }
+        boolean usingCookieRefresh = rawRefreshToken == null && cookieRefreshToken != null && !cookieRefreshToken.isBlank();
         if (rawRefreshToken == null) {
             rawRefreshToken = cookieRefreshToken;
+        }
+        if (usingCookieRefresh && !isValidCsrf(csrfCookie, csrfHeader)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error(403, "Invalid CSRF token"));
         }
 
         authService.logout(rawRefreshToken);
         clearRefreshTokenCookie(response);
+        clearCsrfCookie(response);
         return ResponseEntity.ok(ApiResponse.success(null, "Logged out successfully"));
     }
 
@@ -179,11 +207,46 @@ public class AuthController {
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
 
+    private void setCsrfCookie(HttpServletResponse response, String token) {
+        ResponseCookie cookie = ResponseCookie.from(CSRF_COOKIE, token)
+                .httpOnly(false)
+                .secure(cookieProperties.isSecure())
+                .sameSite(cookieProperties.getSameSite())
+                .path(cookieProperties.getPath())
+                .maxAge(Duration.ofSeconds(Math.max(0, cookieProperties.getMaxAge())))
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    }
+
+    private void clearCsrfCookie(HttpServletResponse response) {
+        ResponseCookie cookie = ResponseCookie.from(CSRF_COOKIE, "")
+                .httpOnly(false)
+                .secure(cookieProperties.isSecure())
+                .sameSite(cookieProperties.getSameSite())
+                .path(cookieProperties.getPath())
+                .maxAge(Duration.ZERO)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    }
+
     private ResponseCookie.ResponseCookieBuilder baseRefreshCookie(String value) {
         return ResponseCookie.from(REFRESH_TOKEN_COOKIE, value)
                 .httpOnly(true)
                 .secure(cookieProperties.isSecure())
                 .sameSite(cookieProperties.getSameSite())
                 .path(cookieProperties.getPath());
+    }
+
+    private boolean isValidCsrf(String csrfCookie, String csrfHeader) {
+        return csrfCookie != null
+                && !csrfCookie.isBlank()
+                && csrfHeader != null
+                && csrfCookie.equals(csrfHeader);
+    }
+
+    private String generateCsrfToken() {
+        byte[] randomBytes = new byte[32];
+        SECURE_RANDOM.nextBytes(randomBytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
     }
 }

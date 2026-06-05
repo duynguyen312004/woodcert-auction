@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import com.woodcert.auction.feature.order.entity.OrderSourceType;
 import com.woodcert.auction.feature.order.service.OrderService;
 
 import java.math.BigDecimal;
@@ -83,6 +84,51 @@ class AuctionSettlementServiceTest {
 
         verify(participantSettlementService).settleOneParticipant(1L, closeResult());
         verify(auctionRedisService, never()).removeSession(SESSION_ID);
+    }
+
+    @Test
+    void repairFinalizedSession_refundsCanceledSessionDeposits() {
+        AuctionSession session = new AuctionSession();
+        session.setId(SESSION_ID);
+        session.setStatus(AuctionSessionStatus.CANCELED);
+
+        when(auctionSessionRepository.findById(SESSION_ID)).thenReturn(Optional.of(session));
+        when(auctionParticipantRepository.findIdsByAuctionSessionIdAndDepositStatus(SESSION_ID, DepositStatus.FROZEN))
+                .thenReturn(List.of(3L));
+
+        service.repairFinalizedSession(SESSION_ID);
+
+        verify(participantSettlementService).refundCanceledParticipant(3L, SESSION_ID);
+        verify(auctionRedisService, never()).removeSession(SESSION_ID);
+    }
+
+    @Test
+    void repairMissingOrder_retriesOrderCreationWhenSuccessSessionHasNoOrder() {
+        AuctionSession session = new AuctionSession();
+        session.setId(SESSION_ID);
+        session.setStatus(AuctionSessionStatus.ENDED_SUCCESS);
+        when(auctionSessionRepository.findById(SESSION_ID)).thenReturn(Optional.of(session));
+        when(auctionParticipantRepository.findIdsByAuctionSessionIdAndDepositStatus(SESSION_ID, DepositStatus.FROZEN))
+                .thenReturn(List.of());
+        when(orderService.findSummaryBySource(OrderSourceType.AUCTION, SESSION_ID)).thenReturn(null);
+
+        service.repairMissingOrder(SESSION_ID);
+
+        verify(orderService).createFromSource(OrderSourceType.AUCTION, SESSION_ID);
+    }
+
+    @Test
+    void repairMissingOrder_skipsWhenDepositsAreStillFrozen() {
+        AuctionSession session = new AuctionSession();
+        session.setId(SESSION_ID);
+        session.setStatus(AuctionSessionStatus.ENDED_SUCCESS);
+        when(auctionSessionRepository.findById(SESSION_ID)).thenReturn(Optional.of(session));
+        when(auctionParticipantRepository.findIdsByAuctionSessionIdAndDepositStatus(SESSION_ID, DepositStatus.FROZEN))
+                .thenReturn(List.of(7L));
+
+        service.repairMissingOrder(SESSION_ID);
+
+        verify(orderService, never()).createFromSource(OrderSourceType.AUCTION, SESSION_ID);
     }
 
     private AuctionSessionLifecycleWorker.CloseResult closeResult() {

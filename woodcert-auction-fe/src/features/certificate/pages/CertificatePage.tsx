@@ -12,6 +12,7 @@ import {
   FileCheck,
 } from "lucide-react";
 
+import { FALLBACK_PRODUCT_IMAGE } from "@/shared/constants";
 import { formatDateTime, formatVND } from "@/shared/lib/format";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
@@ -142,7 +143,7 @@ export function CertificatePage() {
                       Ảnh thực tế tác phẩm
                     </div>
                     <img
-                      src={imageUrls[activeImageIndex] ?? "/assets/hero/woodcert-card-fallback.jpg"}
+                      src={imageUrls[activeImageIndex] ?? FALLBACK_PRODUCT_IMAGE}
                       alt={data.productTitle ?? "Sản phẩm đã chứng nhận"}
                       className="h-full w-full object-cover transition-all duration-500 group-hover:scale-105"
                     />

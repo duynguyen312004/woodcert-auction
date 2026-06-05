@@ -27,9 +27,10 @@ Current status is tracked in `PROJECT-STATUS.md`; rules here apply to both imple
 - `features/` is the main business structure.
 - `app/` owns composition only.
 - `shared/` contains only reusable infrastructure and primitives.
-- `admin/` exists structurally but is deferred.
+- `admin/` is implemented for revenue, disputes, categories, and appraiser provisioning.
 - `wallet` owns balance reads, transaction history, VNPay deposit creation, result polling, and deposit history.
-- `seller` currently has product/profile flows; seller auction flows are placeholders until implemented.
+- `seller` owns profile, products, auctions, orders, and shipping-related seller workflows.
+- Seller appraisal route/menu must stay removed; sellers submit product appraisal through product workflow, not `/seller/appraisals`.
 - Do not introduce root-level `services/`, `pages/`, or `context/` as architecture primitives.
 
 ## 2. Folder Ownership
@@ -148,8 +149,8 @@ Do not build per-feature ad hoc HTTP clients.
 CSRF rule:
 
 - Because cookie-authenticated flows are used, backend must enforce a CSRF mitigation strategy for sensitive endpoints.
-- Minimum acceptable documented mitigation is safe `SameSite` behavior.
-- Stronger preferred mitigation is an explicit CSRF token strategy for refresh and authenticated mutations.
+- Refresh/logout must obtain `GET /auth/csrf` and send `X-XSRF-TOKEN` for cookie refresh flows.
+- Do not rely on `SameSite` alone for refresh/logout.
 
 ## 8. Realtime Rules
 
@@ -181,7 +182,7 @@ CSRF rule:
 
 - Countdown logic must use synchronized server time, not raw client local time.
 - Preferred offset formula is `offset = (serverTime + RTT/2) - localReceiveTime`.
-- Use backend `Date` headers from normal responses when reliable.
+- Use `GET /system/time` for initial sync and backend `Date` headers from normal responses when reliable.
 - Anti-sniper `endTime` updates from REST or websocket must immediately replace local countdown anchors.
 
 ## 10. UI Rules

@@ -1,4 +1,4 @@
-import { apiClient } from "@/shared/api/client";
+import { apiClient, ensureCsrfToken } from "@/shared/api/client";
 import { unwrapApiResponse } from "@/shared/api/unwrap";
 import type { ApiResponse } from "@/shared/api/types";
 import type { LoginCredentials, LoginResponse, RegisterCredentials } from "../types";
@@ -44,8 +44,12 @@ export const authApi = {
   },
 
   logout: async (): Promise<void> => {
+    const csrfToken = await ensureCsrfToken();
     const response = await apiClient.post<ApiResponse<void>>("/auth/logout", undefined, {
       withCredentials: true,
+      headers: {
+        "X-XSRF-TOKEN": csrfToken,
+      },
     });
     return unwrapApiResponse(response);
   },

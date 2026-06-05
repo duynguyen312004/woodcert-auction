@@ -13,7 +13,7 @@ import { PublicLayout } from "@/app/layouts/PublicLayout";
 import { AdminPortalGuard } from "@/app/router/AdminPortalGuard";
 import { AppraiserPortalGuard } from "@/app/router/AppraiserPortalGuard";
 import { ProtectedRoute } from "@/app/router/ProtectedRoute";
-import { PublicAppraiserGuard } from "@/app/router/PublicAppraiserGuard";
+import { PublicPortalGuard } from "@/app/router/PublicPortalGuard";
 import { SellerPortalGuard } from "@/app/router/SellerPortalGuard";
 import { accountRoutes } from "@/features/account";
 import { adminRoutes } from "@/features/admin/routes";
@@ -76,7 +76,7 @@ export const routes: RouteObject[] = [
 
   // Các trang public dùng header và footer chung.
   {
-    element: <PublicAppraiserGuard />,
+    element: <PublicPortalGuard />,
     children: [
       {
         element: <PublicLayout />,

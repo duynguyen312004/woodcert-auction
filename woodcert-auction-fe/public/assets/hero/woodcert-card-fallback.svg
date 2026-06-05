@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900" role="img" aria-label="WoodCert product image fallback">
+  <defs>
+    <linearGradient id="wood" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#3a271a"/>
+      <stop offset="0.42" stop-color="#7b4f2b"/>
+      <stop offset="1" stop-color="#c99a55"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="45%" r="55%">
+      <stop offset="0" stop-color="#f6dca3" stop-opacity=".4"/>
+      <stop offset="1" stop-color="#120f0b" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="900" fill="#18120d"/>
+  <rect width="1200" height="900" fill="url(#wood)" opacity=".72"/>
+  <rect width="1200" height="900" fill="url(#glow)"/>
+  <g opacity=".18" fill="none" stroke="#fff2c2" stroke-width="2">
+    <path d="M0 185c182-70 331-58 494 2 160 58 311 71 506-15 83-36 149-44 200-41"/>
+    <path d="M0 322c149-43 278-38 421 12 194 68 365 52 538-26 79-35 142-45 241-28"/>
+    <path d="M0 487c198 66 356 68 519 8 155-57 308-81 481-16 76 28 142 35 200 28"/>
+    <path d="M0 676c135-57 254-59 408-19 201 52 364 43 536-34 83-37 155-42 256-15"/>
+  </g>
+  <g transform="translate(460 260)">
+    <rect x="0" y="0" width="280" height="280" rx="20" fill="#f2eee5" opacity=".08" stroke="#f3d28a" stroke-width="3"/>
+    <path d="M140 58c57 0 103 46 103 103 0 33-16 62-40 81l-63-63-63 63a103 103 0 0 1 63-184Z" fill="#f2eee5" opacity=".34"/>
+    <circle cx="140" cy="138" r="38" fill="#f3d28a" opacity=".72"/>
+  </g>
+  <text x="600" y="650" text-anchor="middle" font-family="Georgia, serif" font-size="48" fill="#fff8db" opacity=".9">WoodCert</text>
+  <text x="600" y="700" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" letter-spacing="5" fill="#f3d28a" opacity=".78">CERTIFIED WOOD ART</text>
+</svg>

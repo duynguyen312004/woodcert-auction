@@ -18,6 +18,7 @@ import {
   X,
 } from "lucide-react";
 
+import { FALLBACK_PRODUCT_IMAGE } from "@/shared/constants";
 import { Button } from "@/shared/ui/button";
 import {
   Dialog,
@@ -62,7 +63,7 @@ export function ProductDetailDialog({ detail }: ProductDetailDialogProps) {
   const images = Array.from(
     new Set([product?.primaryImage, ...(product?.imageUrls ?? [])].filter(Boolean)),
   ) as string[];
-  const primaryImage = images[0] || "/assets/hero/woodcert-card-fallback.jpg";
+  const primaryImage = images[0] || FALLBACK_PRODUCT_IMAGE;
 
   const [open, setOpen] = useState(false);
   const [prevPrimaryImage, setPrevPrimaryImage] = useState(primaryImage);

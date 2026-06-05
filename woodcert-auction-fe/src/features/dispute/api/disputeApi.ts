@@ -52,6 +52,11 @@ export const disputeApi = {
     return unwrapApiResponse(response);
   },
 
+  getDisputeHistory: async (orderId: number): Promise<DisputeCase[]> => {
+    const response = await apiClient.get<ApiResponse<DisputeCase[]>>(`/orders/${orderId}/disputes`);
+    return unwrapApiResponse(response);
+  },
+
   cancelDispute: async (orderId: number, disputeId: number): Promise<DisputeCase> => {
     const response = await apiClient.patch<ApiResponse<DisputeCase>>(
       `/orders/${orderId}/disputes/${disputeId}/cancel`,

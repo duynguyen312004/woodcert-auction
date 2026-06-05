@@ -22,7 +22,6 @@ export const SELLER_PATHS = {
   auctionDetail: (id: string | number) => `/seller/auctions/${id}`,
   newAuction: "/seller/auctions/new",
   orders: "/seller/orders",
-  appraisals: "/seller/appraisals",
   register: "/seller/register",
 } as const;
 
@@ -42,7 +41,6 @@ export const SELLER_ROUTE_PATHS = {
   auctionDetail: "seller/auctions/:auctionId",
   newAuction: "seller/auctions/new",
   orders: "seller/orders",
-  appraisals: "seller/appraisals",
   register: "seller/register",
 } as const;
 

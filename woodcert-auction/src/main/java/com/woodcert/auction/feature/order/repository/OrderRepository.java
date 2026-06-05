@@ -26,7 +26,33 @@ public interface OrderRepository extends JpaRepository<OrderEntity, Long> {
 
     Page<OrderEntity> findByBuyerIdOrderByCreatedAtDescIdDesc(String buyerId, Pageable pageable);
 
+    Page<OrderEntity> findByBuyerIdAndStatusOrderByCreatedAtDescIdDesc(
+            String buyerId,
+            OrderStatus status,
+            Pageable pageable);
+
     Page<OrderEntity> findBySellerIdOrderByCreatedAtDescIdDesc(String sellerId, Pageable pageable);
+
+    Page<OrderEntity> findBySellerIdAndStatusOrderByCreatedAtDescIdDesc(
+            String sellerId,
+            OrderStatus status,
+            Pageable pageable);
+
+    @Query("""
+            SELECT o.status, COUNT(o)
+            FROM OrderEntity o
+            WHERE o.buyerId = :buyerId
+            GROUP BY o.status
+            """)
+    List<Object[]> countByBuyerIdGroupedByStatus(@Param("buyerId") String buyerId);
+
+    @Query("""
+            SELECT o.status, COUNT(o)
+            FROM OrderEntity o
+            WHERE o.sellerId = :sellerId
+            GROUP BY o.status
+            """)
+    List<Object[]> countBySellerIdGroupedByStatus(@Param("sellerId") String sellerId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""

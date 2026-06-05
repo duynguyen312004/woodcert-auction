@@ -5,7 +5,7 @@
  * Nếu cần tự truyền thời điểm hiện tại thì dùng formatTimeRemaining, còn muốn
  * tự cập nhật mỗi giây thì dùng useCountdown.
  */
-import { useEffect, useState } from "react";
+import { useServerNow } from "./useServerNow";
 
 type CountdownOptions = {
   emptyLabel?: string;
@@ -64,13 +64,6 @@ export function formatTimeRemaining(
  * Bọc formatTimeRemaining thành hook tự cập nhật mỗi giây.
  */
 export function useCountdown(targetTime: string | null | undefined, options?: CountdownOptions) {
-  const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    if (!targetTime) return;
-    const id = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(id);
-  }, [targetTime]);
-
+  const now = useServerNow(targetTime ? 1000 : 60_000);
   return formatTimeRemaining(targetTime, now, options);
 }

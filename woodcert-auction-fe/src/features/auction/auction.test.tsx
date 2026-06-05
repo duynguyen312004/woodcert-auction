@@ -12,6 +12,7 @@ import { MemoryRouter, Route, Routes } from "react-router";
 import { apiClient } from "@/shared/api/client";
 import type { ApiResponse } from "@/shared/api/types";
 import { useAuthStore } from "@/shared/auth/auth-store";
+import { FALLBACK_PRODUCT_IMAGE } from "@/shared/constants";
 import { getPublicAuctionDetail, mapAuctionDetail } from "./api/auctions";
 import { auctionRoutes } from "./routes";
 import { AuctionDetailPage } from "./pages/AuctionDetailPage";
@@ -146,6 +147,20 @@ describe("auctionApi", () => {
       seller: null,
       highestBidderMaskedAlias: null,
     });
+  });
+
+  it("uses the shared fallback product image when backend omits primary image", () => {
+    const mapped = mapAuctionDetail(
+      auctionDetailDto({
+        product: {
+          ...auctionDetailDto().product!,
+          primaryImage: null,
+          images: [],
+        },
+      }),
+    );
+
+    expect(mapped.product?.primaryImage).toBe(FALLBACK_PRODUCT_IMAGE);
   });
 });
 

@@ -69,4 +69,4 @@ The FE is a static SPA. Serving the build through nginx keeps runtime simple and
 
 - FE docs and later scaffold must follow the locked stack unless a new ADR replaces this one.
 - Route composition, Axios behavior, websocket lifecycle, and clock sync are now architectural standards, not implementation preferences.
-- Admin support remains structurally planned through `features/admin` but is deferred in scope.
+- Admin support is implemented through `features/admin` for revenue, disputes, categories, and appraiser provisioning.

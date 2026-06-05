@@ -19,6 +19,7 @@ interface UseAuctionSocketOptions {
   onNewBid: (payload: NewBidPayload) => void;
   onSessionActivated: (payload: SessionEndedPayload) => void;
   onSessionEnded: (payload: SessionEndedPayload) => void;
+  onConnected?: () => void;
 }
 
 function toNumber(value: string | number | null | undefined, fallback = 0) {
@@ -55,14 +56,15 @@ export function useAuctionSocket({
   onNewBid,
   onSessionActivated,
   onSessionEnded,
+  onConnected,
 }: UseAuctionSocketOptions) {
   const [status, setStatus] = useState<ConnectionStatus>("connecting");
   const stompClientRef = useRef<Client | null>(null);
-  const callbacksRef = useRef({ onNewBid, onSessionActivated, onSessionEnded });
+  const callbacksRef = useRef({ onNewBid, onSessionActivated, onSessionEnded, onConnected });
 
   useEffect(() => {
-    callbacksRef.current = { onNewBid, onSessionActivated, onSessionEnded };
-  }, [onNewBid, onSessionActivated, onSessionEnded]);
+    callbacksRef.current = { onNewBid, onSessionActivated, onSessionEnded, onConnected };
+  }, [onNewBid, onSessionActivated, onSessionEnded, onConnected]);
 
   useEffect(() => {
     if (!auctionId) return;
@@ -81,6 +83,7 @@ export function useAuctionSocket({
 
     client.onConnect = () => {
       setStatus("connected");
+      callbacksRef.current.onConnected?.();
 
       // Subscribe nhận thông báo realtime cho phiên đấu giá cụ thể
       client.subscribe(`/topic/auctions/${auctionId}`, (message) => {

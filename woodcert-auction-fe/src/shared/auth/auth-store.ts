@@ -1,5 +1,8 @@
 import { create } from "zustand";
 
+import { queryClient } from "@/shared/query/query-client";
+import { decodeCurrentUserId } from "./decode-token";
+
 /**
  * Auth session status.
  *
@@ -20,9 +23,21 @@ type AuthState = {
 export const useAuthStore = create<AuthState>()((set) => ({
   accessToken: null,
   status: "loading",
-  setAccessToken: (accessToken) => set({ accessToken, status: "authenticated" }),
+  setAccessToken: (accessToken) =>
+    set((state) => {
+      const currentUserId = decodeCurrentUserId(state.accessToken);
+      const nextUserId = decodeCurrentUserId(accessToken);
+      if (currentUserId && nextUserId && currentUserId !== nextUserId) {
+        queryClient.clear();
+      }
+
+      return { accessToken, status: "authenticated" };
+    }),
   setStatus: (status) => set({ status }),
-  clearSession: () => set({ accessToken: null, status: "anonymous" }),
+  clearSession: () => {
+    queryClient.clear();
+    set({ accessToken: null, status: "anonymous" });
+  },
 }));
 
 export function getAccessToken() {

@@ -157,19 +157,6 @@ export function useBiddingRoom(auctionId: string | number) {
       if (payload.extendedBySeconds) {
         setExtensionSeconds(payload.extendedBySeconds);
       }
-
-      queryClient.invalidateQueries({
-        queryKey: ["auctions", "detail", auctionIdString],
-        refetchType: "all",
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["auctions", "bids", auctionIdString],
-        refetchType: "all",
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["auctions", "participation", auctionIdString],
-        refetchType: "all",
-      });
     },
     [auctionIdString, notification, queryClient],
   );
@@ -186,11 +173,27 @@ export function useBiddingRoom(auctionId: string | number) {
     queryClient.invalidateQueries({ queryKey: ["auctions", "bids", auctionIdString] });
   }, [auctionIdString, queryClient]);
 
+  const handleSocketConnected = useCallback(() => {
+    queryClient.invalidateQueries({
+      queryKey: ["auctions", "detail", auctionIdString],
+      refetchType: "all",
+    });
+    queryClient.invalidateQueries({
+      queryKey: ["auctions", "participation", auctionIdString],
+      refetchType: "all",
+    });
+    queryClient.invalidateQueries({
+      queryKey: ["auctions", "bids", auctionIdString],
+      refetchType: "all",
+    });
+  }, [auctionIdString, queryClient]);
+
   const { status: socketStatus } = useAuctionSocket({
     auctionId,
     onNewBid: handleNewBid,
     onSessionActivated: handleSessionActivated,
     onSessionEnded: handleSessionEnded,
+    onConnected: handleSocketConnected,
   });
 
   return {

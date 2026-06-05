@@ -33,10 +33,10 @@ describe("seller routes", () => {
         "seller/auctions",
         "seller/auctions/:auctionId",
         "seller/auctions/new",
-        "seller/appraisals",
         "seller/register",
       ]),
     );
+    expect([...paths]).not.toContain("seller/appraisals");
   });
 
   it("declares post-auction, admin, certificate, and address routes", () => {

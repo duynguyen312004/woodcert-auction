@@ -12,7 +12,7 @@ import { useAuthStore } from "@/shared/auth/auth-store";
 import { Button } from "@/shared/ui/button";
 
 function hasAdminAuthority(accessToken: string | null) {
-  return tokenHasRole(accessToken, "ROLE_ADMIN") || tokenHasPermission(accessToken, "BAN_USER");
+  return tokenHasRole(accessToken, "ROLE_ADMIN") || tokenHasPermission(accessToken, "ADMIN_ACCESS");
 }
 
 function NoPermissionState() {

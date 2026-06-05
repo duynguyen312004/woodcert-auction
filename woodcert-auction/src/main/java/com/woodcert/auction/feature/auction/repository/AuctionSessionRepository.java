@@ -13,6 +13,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
+import com.woodcert.auction.feature.order.entity.OrderSourceType;
 
 import java.time.Instant;
 import java.util.Collection;
@@ -139,6 +140,28 @@ public interface AuctionSessionRepository
       """)
   List<Long> findTerminalSessionIdsWithFrozenDeposits(
       @Param("statuses") Collection<AuctionSessionStatus> statuses,
+      Pageable pageable);
+
+  @Query("""
+      SELECT a.id
+      FROM AuctionSession a
+      WHERE a.status = 'ENDED_SUCCESS'
+        AND NOT EXISTS (
+          SELECT p.id
+          FROM AuctionParticipant p
+          WHERE p.auctionSessionId = a.id
+            AND p.depositStatus = 'FROZEN'
+        )
+        AND NOT EXISTS (
+          SELECT o.id
+          FROM OrderEntity o
+          WHERE o.sourceType = :sourceType
+            AND o.sourceId = a.id
+        )
+      ORDER BY a.id ASC
+      """)
+  List<Long> findEndedSuccessSessionIdsMissingOrder(
+      @Param("sourceType") OrderSourceType sourceType,
       Pageable pageable);
 
   @Modifying(clearAutomatically = true, flushAutomatically = true)

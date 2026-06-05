@@ -43,17 +43,23 @@ export interface OrderSummary {
   canceledAt: string | null;
   cancelReason: string | null;
   fulfillment: OrderFulfillmentSummary | null;
+  createdAt: string;
 }
 
 export type OrderDetail = OrderSummary & {
   productId: number;
   buyerId: string;
   sellerId: string;
-  createdAt: string;
   updatedAt: string;
 };
 
 export type OrderListParams = {
   page?: number;
   size?: number;
+  status?: OrderStatus;
+};
+
+export type OrderStatusCounts = {
+  total: number;
+  byStatus: Record<OrderStatus, number>;
 };

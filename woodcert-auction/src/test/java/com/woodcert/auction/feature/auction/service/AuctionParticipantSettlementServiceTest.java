@@ -75,6 +75,26 @@ class AuctionParticipantSettlementServiceTest {
         verify(auctionParticipantRepository).save(participant);
     }
 
+    @Test
+    void refundCanceledParticipant_unfreezesDepositAndMarksRefunded() {
+        AuctionParticipant participant = participant(3L, "bidder-1");
+        when(auctionParticipantRepository.findByIdAndDepositStatusForUpdate(3L, DepositStatus.FROZEN))
+                .thenReturn(Optional.of(participant));
+
+        boolean refunded = service.refundCanceledParticipant(3L, SESSION_ID);
+
+        assertThat(refunded).isTrue();
+        assertThat(participant.getDepositStatus()).isEqualTo(DepositStatus.REFUNDED);
+        verify(walletService).unfreezeFunds(
+                "bidder-1",
+                "auction:cancel:refund:10:bidder-1",
+                new BigDecimal("1000.00"),
+                SESSION_ID,
+                WalletReferenceType.AUCTION
+        );
+        verify(auctionParticipantRepository).save(participant);
+    }
+
     private AuctionSessionLifecycleWorker.CloseResult closeResult(AuctionSessionStatus status, String highestBidderId) {
         return new AuctionSessionLifecycleWorker.CloseResult(
                 SESSION_ID,

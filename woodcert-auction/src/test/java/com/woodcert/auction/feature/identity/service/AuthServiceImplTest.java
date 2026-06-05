@@ -4,6 +4,7 @@ import com.woodcert.auction.core.config.EmailVerificationProperties;
 import com.woodcert.auction.core.exception.AppException;
 import com.woodcert.auction.feature.identity.dto.request.RegisterReq;
 import com.woodcert.auction.feature.identity.entity.EmailVerificationToken;
+import com.woodcert.auction.feature.identity.entity.RefreshToken;
 import com.woodcert.auction.feature.identity.entity.Role;
 import com.woodcert.auction.feature.identity.entity.User;
 import com.woodcert.auction.feature.identity.entity.UserStatus;
@@ -181,5 +182,28 @@ class AuthServiceImplTest {
                 () -> authService.resendVerificationEmail("user@example.com"));
 
         assertEquals(429, ex.getStatusCode());
+    }
+
+    @Test
+    @DisplayName("refresh rejects banned accounts and revokes their remaining refresh tokens")
+    void refresh_bannedUser_rejectsAndRevokesTokens() {
+        User user = new User();
+        user.setId("user-1");
+        user.setEmail("user@example.com");
+        user.setStatus(UserStatus.BANNED);
+
+        RefreshToken refreshToken = new RefreshToken();
+        refreshToken.setToken("refresh-hash");
+        refreshToken.setUser(user);
+        refreshToken.setExpiresAt(Instant.now().plusSeconds(3600));
+
+        when(identityTokenService.hash("raw-refresh-token")).thenReturn("refresh-hash");
+        when(refreshTokenRepository.findByToken("refresh-hash")).thenReturn(Optional.of(refreshToken));
+
+        AppException ex = assertThrows(AppException.class,
+                () -> authService.refresh("raw-refresh-token"));
+
+        assertEquals(403, ex.getStatusCode());
+        verify(refreshTokenRepository).revokeAllByUser(user);
     }
 }

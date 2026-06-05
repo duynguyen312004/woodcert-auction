@@ -137,6 +137,16 @@ public class DisputeServiceImpl implements DisputeService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<DisputeRes> getDisputeHistory(String userId, Long orderId) {
+        orderService.getOrderDetail(userId, orderId);
+        return disputeCaseRepository.findByOrderIdOrderByOpenedAtDescIdDesc(orderId)
+                .stream()
+                .map(this::toRes)
+                .toList();
+    }
+
+    @Override
     @Transactional
     public DisputeRes cancelDispute(String userId, Long orderId, Long disputeId) {
         DisputeCase dispute = disputeCaseRepository.findByIdForUpdate(disputeId)

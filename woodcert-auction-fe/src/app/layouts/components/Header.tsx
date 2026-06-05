@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router";
 
 import logoUrl from "@/assets/brand/logo.jpg";
+import { useProfile } from "@/features/account";
 import { authApi } from "@/features/auth";
 import { useWalletBalance } from "@/features/wallet";
 import { clearAuthSession, useAuthStore } from "@/shared/auth/auth-store";
@@ -26,6 +27,12 @@ export function Header() {
   const isAuthLoading = authStatus === "loading";
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Lấy thông tin profile để xác định vai trò điều hướng
+  const { data: profile } = useProfile();
+  const isAdmin = profile?.roles?.includes("ADMIN");
+  const isAppraiser = profile?.roles?.includes("APPRAISER");
+  const isSeller = profile?.roles?.includes("SELLER");
 
   // Chỉ fetch wallet khi đã đăng nhập
   const { data: wallet } = useWalletBalance(isAuthenticated);
@@ -137,6 +144,45 @@ export function Header() {
           <div className="mt-4 flex flex-col gap-2 px-6">
             {isAuthenticated ? (
               <>
+                {isAdmin && (
+                  <Link
+                    to="/admin"
+                    onClick={() => setMobileOpen(false)}
+                    className="flex items-center justify-center gap-2 rounded-lg bg-primary/10 border border-primary/20 py-2.5 text-sm font-bold text-primary transition-colors hover:bg-primary/20"
+                  >
+                    Khu quản trị (Admin)
+                  </Link>
+                )}
+                {isAppraiser && (
+                  <Link
+                    to="/appraiser/products"
+                    onClick={() => setMobileOpen(false)}
+                    className="flex items-center justify-center gap-2 rounded-lg bg-primary/10 border border-primary/20 py-2.5 text-sm font-bold text-primary transition-colors hover:bg-primary/20"
+                  >
+                    Khu kiểm định
+                  </Link>
+                )}
+                {isSeller ? (
+                  <Link
+                    to="/seller/dashboard"
+                    onClick={() => setMobileOpen(false)}
+                    className="flex items-center justify-center gap-2 rounded-lg bg-primary/10 border border-primary/20 py-2.5 text-sm font-bold text-primary transition-colors hover:bg-primary/20"
+                  >
+                    Khu người bán
+                  </Link>
+                ) : (
+                  !isAdmin &&
+                  !isAppraiser && (
+                    <Link
+                      to="/seller/register"
+                      onClick={() => setMobileOpen(false)}
+                      className="flex items-center justify-center gap-2 rounded-lg bg-primary/10 border border-primary/20 py-2.5 text-sm font-bold text-primary transition-colors hover:bg-primary/20"
+                    >
+                      Đăng ký người bán
+                    </Link>
+                  )
+                )}
+
                 <Link
                   to="/account"
                   onClick={() => setMobileOpen(false)}

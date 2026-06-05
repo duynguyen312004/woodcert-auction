@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { fulfillmentApi } from "@/features/fulfillment";
+import { fulfillmentApi } from "@/features/fulfillment/api/fulfillmentApi";
 
 import { orderApi } from "../api/orderApi";
 import type { OrderListParams } from "../types";
@@ -12,10 +12,24 @@ export function useBuyerOrders(params?: OrderListParams) {
   });
 }
 
+export function useBuyerOrderStatusCounts() {
+  return useQuery({
+    queryKey: ["orders", "buyer", "status-counts"] as const,
+    queryFn: orderApi.getMyPurchaseStatusCounts,
+  });
+}
+
 export function useSellerOrders(params?: OrderListParams) {
   return useQuery({
     queryKey: ["orders", "seller", params] as const,
     queryFn: () => orderApi.getMySales(params),
+  });
+}
+
+export function useSellerOrderStatusCounts() {
+  return useQuery({
+    queryKey: ["orders", "seller", "status-counts"] as const,
+    queryFn: orderApi.getMySaleStatusCounts,
   });
 }
 

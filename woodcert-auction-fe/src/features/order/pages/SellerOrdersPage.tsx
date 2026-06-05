@@ -1,14 +1,15 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Loader2, PackageCheck, RefreshCw } from "lucide-react";
 
 import { isApiError } from "@/shared/api/errors";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { useNotification } from "@/shared/ui/notification";
+import { Pagination } from "@/shared/ui/pagination";
 
-import { useOrderMutations, useSellerOrders } from "../hooks/useOrders";
+import { useOrderMutations, useSellerOrderStatusCounts, useSellerOrders } from "../hooks/useOrders";
 import type { OrderStatus, OrderSummary } from "../types";
-import { OrderRow, Pagination } from "./BuyerOrdersPage";
+import { OrderRow } from "./BuyerOrdersPage";
 
 const STATUS_TABS: Array<{ label: string; status: OrderStatus | "ALL" }> = [
   { label: "Tất cả", status: "ALL" },
@@ -23,14 +24,19 @@ export function SellerOrdersPage() {
   const [status, setStatus] = useState<OrderStatus | "ALL">("ALL");
   const [page, setPage] = useState(1);
   const [trackingByOrder, setTrackingByOrder] = useState<Record<number, string>>({});
-  const ordersQuery = useSellerOrders({ page, size: 10 });
+  const statusParam = status === "ALL" ? undefined : status;
+  const ordersQuery = useSellerOrders({ page, size: 10, status: statusParam });
+  const countsQuery = useSellerOrderStatusCounts();
   const mutations = useOrderMutations();
   const notification = useNotification();
+  const orders = ordersQuery.data?.result ?? [];
 
-  const orders = useMemo(() => {
-    const items = ordersQuery.data?.result ?? [];
-    return status === "ALL" ? items : items.filter((order) => order.status === status);
-  }, [ordersQuery.data, status]);
+  const countFor = (tabStatus: OrderStatus | "ALL") => {
+    if (!countsQuery.data) return null;
+    return tabStatus === "ALL"
+      ? countsQuery.data.total
+      : (countsQuery.data.byStatus[tabStatus] ?? 0);
+  };
 
   const ship = async (order: OrderSummary) => {
     try {
@@ -63,20 +69,27 @@ export function SellerOrdersPage() {
 
       <main className="mx-auto w-full max-w-[1180px] flex-1 space-y-6 overflow-y-auto p-8">
         <div className="flex gap-2 overflow-x-auto">
-          {STATUS_TABS.map((tab) => (
-            <button
-              key={tab.status}
-              type="button"
-              onClick={() => setStatus(tab.status)}
-              className={
-                status === tab.status
-                  ? "shrink-0 rounded-full border border-ink-blue bg-ink-blue px-4 py-2 text-xs font-bold text-white"
-                  : "shrink-0 rounded-full border border-[#4e4637]/15 bg-white px-4 py-2 text-xs font-bold text-muted-warm"
-              }
-            >
-              {tab.label}
-            </button>
-          ))}
+          {STATUS_TABS.map((tab) => {
+            const count = countFor(tab.status);
+            return (
+              <button
+                key={tab.status}
+                type="button"
+                onClick={() => {
+                  setStatus(tab.status);
+                  setPage(1);
+                }}
+                className={
+                  status === tab.status
+                    ? "shrink-0 rounded-full border border-ink-blue bg-ink-blue px-4 py-2 text-xs font-bold text-white"
+                    : "shrink-0 rounded-full border border-[#4e4637]/15 bg-white px-4 py-2 text-xs font-bold text-muted-warm"
+                }
+              >
+                {tab.label}
+                {count !== null ? ` (${count})` : ""}
+              </button>
+            );
+          })}
         </div>
 
         {ordersQuery.isPending ? (

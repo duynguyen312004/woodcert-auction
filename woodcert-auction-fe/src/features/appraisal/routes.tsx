@@ -1,15 +1,23 @@
-/**
- * Khai báo route cho khu appraiser.
- *
- * Các route này chạy trong AppraiserLayout và được bảo vệ bởi AppraiserPortalGuard.
- */
+import { lazy } from "react";
 import type { RouteObject } from "react-router";
 
 import { APPRAISER_ROUTE_PATHS } from "@/shared/constants/routes";
 
-import { AppraiserProductDetailPage } from "./pages/AppraiserProductDetailPage";
-import { AppraiserQueuePage } from "./pages/AppraiserQueuePage";
-import { AppraiserReviewedPage } from "./pages/AppraiserReviewedPage";
+const AppraiserProductDetailPage = lazy(() =>
+  import("./pages/AppraiserProductDetailPage").then((module) => ({
+    default: module.AppraiserProductDetailPage,
+  })),
+);
+const AppraiserQueuePage = lazy(() =>
+  import("./pages/AppraiserQueuePage").then((module) => ({
+    default: module.AppraiserQueuePage,
+  })),
+);
+const AppraiserReviewedPage = lazy(() =>
+  import("./pages/AppraiserReviewedPage").then((module) => ({
+    default: module.AppraiserReviewedPage,
+  })),
+);
 
 export const appraisalRoutes: RouteObject[] = [
   {

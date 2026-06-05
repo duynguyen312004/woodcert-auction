@@ -99,6 +99,21 @@ describe("disputeApi", () => {
     });
   });
 
+  it("fetches dispute history for an order", async () => {
+    const adapter: AxiosAdapter = async (config) => {
+      expect(config.method).toBe("get");
+      expect(config.url).toBe("/orders/91/disputes");
+
+      return createResponse(config, 200, createApiResponse([dispute("RESOLVED"), dispute("OPEN")]));
+    };
+    apiClient.defaults.adapter = adapter;
+
+    await expect(disputeApi.getDisputeHistory(91)).resolves.toMatchObject([
+      { id: 31, status: "RESOLVED" },
+      { id: 31, status: "OPEN" },
+    ]);
+  });
+
   it("resolves an admin dispute with explicit outcome and note", async () => {
     const adapter: AxiosAdapter = async (config) => {
       expect(config.method).toBe("patch");

@@ -1,13 +1,21 @@
 /**
  * Quy tắc điều hướng sau khi phiên đăng nhập đã được xác thực.
  */
-import { tokenHasRole } from "@/shared/auth/decode-token";
+import { tokenHasPermission, tokenHasRole } from "@/shared/auth/decode-token";
 import { ADMIN_PATHS, APPRAISER_PATHS } from "@/shared/constants/routes";
 
 import { hasAppraiserAuthority } from "./appraiser-authority";
 
 function isAppraiserPath(path: string) {
   return path === "/appraiser" || path.startsWith("/appraiser/");
+}
+
+function isAdminPath(path: string) {
+  return path === "/admin" || path.startsWith("/admin/");
+}
+
+function hasAdminAuthority(accessToken: string | null) {
+  return tokenHasRole(accessToken, "ROLE_ADMIN") || tokenHasPermission(accessToken, "ADMIN_ACCESS");
 }
 
 export function resolveAuthenticatedRedirect({
@@ -23,7 +31,17 @@ export function resolveAuthenticatedRedirect({
     return from && isAppraiserPath(from) ? from : APPRAISER_PATHS.products;
   }
 
-  if (from && !isAppraiserPath(from)) return from;
-  if (tokenHasRole(accessToken, "ROLE_ADMIN")) return ADMIN_PATHS.dashboard;
+  const isAdmin = hasAdminAuthority(accessToken);
+
+  if (from) {
+    if (isAdminPath(from)) {
+      return isAdmin ? from : "/";
+    }
+    if (!isAppraiserPath(from)) {
+      return from;
+    }
+  }
+
+  if (isAdmin) return ADMIN_PATHS.dashboard;
   return "/";
 }

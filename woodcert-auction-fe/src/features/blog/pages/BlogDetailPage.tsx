@@ -3,10 +3,12 @@ import { Link, useParams } from "react-router";
 import { Calendar, Clock, ArrowLeft, Share2, Tag } from "lucide-react";
 
 import { formatDateTime } from "@/shared/lib/format";
+import { useNotification } from "@/shared/ui/notification";
 import { mockPosts } from "../data/mockPosts";
 
 export function BlogDetailPage() {
   const { postId } = useParams();
+  const notification = useNotification();
 
   const post = useMemo(() => {
     return mockPosts.find((p) => p.id === postId);
@@ -16,6 +18,15 @@ export function BlogDetailPage() {
     if (!post) return [];
     return mockPosts.filter((p) => p.id !== post.id && p.category === post.category).slice(0, 3);
   }, [post]);
+
+  const handleShare = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      notification.success("Đã sao chép liên kết bài viết");
+    } catch {
+      notification.error("Không thể sao chép liên kết bài viết");
+    }
+  };
 
   if (!post) {
     return (
@@ -63,10 +74,7 @@ export function BlogDetailPage() {
               Thời gian đọc: {post.readTime}
             </span>
             <button
-              onClick={() => {
-                navigator.clipboard.writeText(window.location.href);
-                alert("Đã sao chép liên kết bài viết!");
-              }}
+              onClick={() => void handleShare()}
               className="ml-auto flex items-center gap-1.5 transition-colors hover:text-white"
             >
               <Share2 className="h-4 w-4" />

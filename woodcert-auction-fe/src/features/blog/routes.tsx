@@ -1,6 +1,16 @@
+import { lazy } from "react";
 import type { RouteObject } from "react-router";
-import { BlogListPage } from "./pages/BlogListPage";
-import { BlogDetailPage } from "./pages/BlogDetailPage";
+
+const BlogDetailPage = lazy(() =>
+  import("./pages/BlogDetailPage").then((module) => ({
+    default: module.BlogDetailPage,
+  })),
+);
+const BlogListPage = lazy(() =>
+  import("./pages/BlogListPage").then((module) => ({
+    default: module.BlogListPage,
+  })),
+);
 
 export const blogRoutes: RouteObject[] = [
   {

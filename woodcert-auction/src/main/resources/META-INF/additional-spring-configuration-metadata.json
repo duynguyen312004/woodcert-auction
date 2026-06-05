@@ -126,11 +126,6 @@
             "description": "Maximum allowed video upload size in bytes."
         },
         {
-            "name": "finance.wallet.top-up-enabled",
-            "type": "java.lang.String",
-            "description": "A description for 'finance.wallet.top-up-enabled'"
-        },
-        {
             "name": "finance.wallet.operation.pending-timeout",
             "type": "java.lang.String",
             "description": "A description for 'finance.wallet.operation.pending-timeout'"
@@ -289,6 +284,26 @@
             "name": "auction.scheduler.repair-batch-size",
             "type": "java.lang.String",
             "description": "A description for 'auction.scheduler.repair-batch-size'"
+        },
+        {
+            "name": "finance.platform.appraisal-fee",
+            "type": "java.lang.String",
+            "description": "A description for 'finance.platform.appraisal-fee'"
+        },
+        {
+            "name": "finance.platform.forfeited-deposit-platform-rate",
+            "type": "java.lang.String",
+            "description": "A description for 'finance.platform.forfeited-deposit-platform-rate'"
+        },
+        {
+            "name": "app.cors.allowed-origins",
+            "type": "java.lang.String",
+            "description": "A description for 'app.cors.allowed-origins'"
+        },
+        {
+            "name": "app.cors.max-age",
+            "type": "java.lang.String",
+            "description": "A description for 'app.cors.max-age'"
         }
     ]
 }

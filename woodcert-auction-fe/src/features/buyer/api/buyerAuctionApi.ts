@@ -1,7 +1,7 @@
 import { apiClient } from "@/shared/api/client";
 import type { ApiResponse, PaginationResponse } from "@/shared/api/types";
 import { unwrapApiResponse } from "@/shared/api/unwrap";
-import { fulfillmentApi } from "@/features/fulfillment";
+import { fulfillmentApi } from "@/features/fulfillment/api/fulfillmentApi";
 import { mapOrder, orderApi } from "@/features/order";
 
 import type { BuyerAuction, BuyerAuctionDetail, BuyerAuctionStats } from "../types";

@@ -11,6 +11,7 @@ import com.woodcert.auction.feature.auction.entity.DepositStatus;
 import com.woodcert.auction.feature.auction.repository.AuctionParticipantRepository;
 import com.woodcert.auction.feature.auction.repository.AuctionSessionRepository;
 import com.woodcert.auction.feature.auction.service.AuctionRedisService;
+import com.woodcert.auction.feature.auction.service.AuctionSettlementService;
 import com.woodcert.auction.feature.auction.service.assembler.AuctionResponseAssembler;
 import com.woodcert.auction.feature.auction.service.policy.AuctionPolicy;
 import com.woodcert.auction.feature.auction.service.runtime.AuctionRuntimeSnapshot;
@@ -27,6 +28,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Instant;
 
@@ -38,6 +41,7 @@ public class AuctionCommandService {
     private final AuctionParticipantRepository auctionParticipantRepository;
     private final ProductRepository productRepository;
     private final AuctionRedisService auctionRedisService;
+    private final AuctionSettlementService auctionSettlementService;
     private final AuctionResponseAssembler responseAssembler;
     private final AuctionPolicy auctionPolicy;
     private final WalletService walletService;
@@ -103,6 +107,7 @@ public class AuctionCommandService {
         // Bước 4: Đánh dấu phiên CANCELED và trả sản phẩm về trạng thái có thể tạo phiên khác.
         session.setStatus(AuctionSessionStatus.CANCELED);
         product.setSaleStatus(ProductSaleStatus.AVAILABLE);
+        refundCanceledDepositsAfterCommit(auctionId);
     }
 
     @Transactional
@@ -171,6 +176,20 @@ public class AuctionCommandService {
         if (!runtimeEndTime.isAfter(Instant.now())) {
             throw new AppException(ErrorCode.AUCTION_NOT_ACTIVE);
         }
+    }
+
+    private void refundCanceledDepositsAfterCommit(Long auctionId) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            auctionSettlementService.refundCanceledSession(auctionId);
+            return;
+        }
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                auctionSettlementService.refundCanceledSession(auctionId);
+            }
+        });
     }
 
     private AuctionDetailRes toDetailRes(AuctionSession session, Product product) {

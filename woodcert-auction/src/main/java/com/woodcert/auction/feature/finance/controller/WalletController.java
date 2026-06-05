@@ -13,7 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * Wallet endpoints for balance read, transaction history, and dev/test top-up.
+ * Wallet endpoints for balance read, transaction history, and VNPay deposit flow.
  */
 @RestController
 @RequestMapping("/api/v1/wallets/me")

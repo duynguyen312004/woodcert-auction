@@ -3,7 +3,7 @@
 > All endpoints return `ApiResponse<T>` wrapper. Error responses created from `AppException` include nullable `errorCode` for machine-readable handling.
 > Update this file whenever endpoints change.
 >
-> Current implementation note (2026-06-02): auth, identity, media, catalog/appraisal, finance, auction, orders, fulfillment, disputes, admin category/appraiser operations, and public certificate lookup are implemented backend contracts.
+> Current implementation note (2026-06-03): auth, identity, media, catalog/appraisal, finance, auction, orders, fulfillment, disputes, admin category/appraiser operations, public certificate lookup, Flyway-seeded reference data, CSRF refresh protection, and server-time sync are implemented backend contracts.
 
 ---
 
@@ -17,6 +17,8 @@ Production:  https://api.woodcert.com/api/v1
 ## Authentication
 
 All endpoints require JWT in `Authorization: Bearer <accessToken>` header, except those marked as Public (🔓).
+
+Cookie-based refresh/logout uses double-submit CSRF. Browser clients should call `GET /auth/csrf` first and send the returned cookie value as `X-XSRF-TOKEN` on refresh/logout requests that rely on the `refresh_token` cookie.
 
 ## 1. Auth & Session
 
@@ -214,14 +216,37 @@ Errors:
 
 - 400: Missing token, weak password, invalid token, used token, or expired token. Error responses include `errorCode` when raised by `AppException`.
 
+### GET /auth/csrf 🔓
+
+Issue a CSRF token for browser refresh/logout flows.
+
+Success Response (200):
+
+```json
+{
+  "statusCode": 200,
+  "data": {
+    "token": "base64url-random-token"
+  },
+  "message": "CSRF token issued",
+  "timestamp": "2026-06-03T10:00:00Z"
+}
+```
+
+Also sets:
+
+```http
+Set-Cookie: XSRF-TOKEN=base64url-random-token; SameSite=Lax; Path=/api/v1/auth; Max-Age=604800
+```
+
 ### POST /auth/refresh 🔓
 
 Get a new access token using the refresh token.
 
 Sources (backend checks in order):
 
-- Cookie refresh_token (Web/SPA)
-- Request body refreshToken (Mobile)
+- Request body refreshToken (mobile/non-browser explicit fallback)
+- Cookie refresh_token (Web/SPA; requires matching `X-XSRF-TOKEN`)
 
 Success Response (200):
 
@@ -242,6 +267,7 @@ Success Response (200):
 Errors:
 
 - 401: No refresh token provided, expired, or revoked
+- 403: Missing or mismatched CSRF token when using cookie refresh
 
 ### POST /auth/logout 🔒
 
@@ -259,6 +285,28 @@ Success Response (200):
 ```
 
 (Also clears cookie)
+
+Cookie-based logout requires matching `X-XSRF-TOKEN`; body refresh-token logout does not.
+
+## 1.1 System
+
+### GET /system/time 🔓
+
+Returns server time for browser clock-offset sync.
+
+Success Response (200):
+
+```json
+{
+  "statusCode": 200,
+  "data": {
+    "serverTime": "2026-06-03T10:00:00Z",
+    "epochMillis": 1780484400000
+  },
+  "message": "Fetch server time successful",
+  "timestamp": "2026-06-03T10:00:00Z"
+}
+```
 
 ## 2. Users (Identity)
 
@@ -620,17 +668,17 @@ Success Response (200):
   "data": [
     {
       "id": 1,
-      "name": "Tượng Gỗ Phong Thủy",
-      "slug": "tuong-go-phong-thuy",
+      "name": "Tượng & Điêu Khắc Gỗ",
+      "slug": "tuong-dieu-khac-go",
       "parentId": null,
-      "description": "Các loại tượng gỗ Đạt Ma, Di Lặc..."
+      "description": "Tượng gỗ, phù điêu độc bản và tác phẩm điêu khắc thủ công"
     },
     {
       "id": 2,
-      "name": "Lục Bình",
-      "slug": "luc-binh",
+      "name": "Tranh & Phù Điêu Gỗ",
+      "slug": "tranh-phu-dieu-go",
       "parentId": null,
-      "description": "Lục bình gỗ nguyên khối"
+      "description": "Tranh gỗ, phù điêu treo tường và tác phẩm trang trí không gian"
     }
   ],
   "message": "Fetch categories successful",
@@ -671,7 +719,7 @@ Success Response (200):
       {
         "id": 1001,
         "title": "Tượng Đạt Ma Sư Tổ Gỗ Sưa Đỏ",
-        "category": { "id": 1, "name": "Tượng Gỗ Phong Thủy" },
+        "category": { "id": 1, "name": "Tượng & Điêu Khắc Gỗ" },
         "status": "PENDING_APPRAISAL",
         "primaryImage": "https://res.cloudinary.com/.../products/1001-main.jpg",
         "createdAt": "2026-04-18T08:00:00"
@@ -712,8 +760,8 @@ Success Response (200):
     "status": "APPRAISED",
     "category": {
       "id": 1,
-      "name": "Tượng Gỗ Phong Thủy",
-      "slug": "tuong-go-phong-thuy",
+      "name": "Tượng & Điêu Khắc Gỗ",
+      "slug": "tuong-dieu-khac-go",
       "parentId": null,
       "description": "Các loại tượng gỗ Đạt Ma, Di Lặc..."
     },
@@ -1115,7 +1163,7 @@ Success Response (200):
           "title": "Tượng Đạt Ma Sư Tổ Gỗ Sưa Đỏ",
           "primaryImage": "https://res.cloudinary.com/.../products/1001-main.jpg",
           "material": "Gỗ Sưa Đỏ",
-          "categoryName": "Tượng Gỗ Phong Thủy",
+          "categoryName": "Tượng & Điêu Khắc Gỗ",
           "conditionGrade": "EXCELLENT",
           "certificateCode": "CERT-2026-001",
           "isAuthentic": true,
@@ -1380,6 +1428,14 @@ Post-auction order flow is implemented as a canonical order pipeline. Auction se
 
 List orders where the current user is buyer.
 
+Query Parameters:
+
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| status | string | null | Optional `OrderStatus` filter |
+| page | int | 1 | Page number |
+| size | int | 10 | Page size |
+
 Success Response (200):
 
 ```json
@@ -1408,6 +1464,37 @@ Success Response (200):
 ### GET /orders/my-sales 🔒
 
 List orders where the current user is seller.
+
+Supports the same `status`, `page`, and `size` query parameters as buyer purchases.
+
+### GET /orders/my-purchases/status-counts 🔒
+
+Returns buyer order counts grouped by every `OrderStatus`, including zero-count statuses.
+
+Success Response (200):
+
+```json
+{
+  "statusCode": 200,
+  "data": {
+    "total": 3,
+    "byStatus": {
+      "PENDING_PAYMENT": 1,
+      "PAID": 1,
+      "FULFILLING": 0,
+      "COMPLETED": 0,
+      "CANCELED": 0,
+      "DISPUTED": 1
+    }
+  },
+  "message": "Fetch buyer order status counts successful",
+  "timestamp": "2026-06-03T10:00:00Z"
+}
+```
+
+### GET /orders/my-sales/status-counts 🔒
+
+Returns seller order counts grouped by every `OrderStatus`, including zero-count statuses.
 
 ### GET /orders/{id} 🔒
 
@@ -1478,6 +1565,10 @@ Request Body:
 
 Returns the current active dispute for the order, or `null`.
 
+### GET /orders/{orderId}/disputes 🔒
+
+Returns full dispute history for an order. Only the buyer or seller of the order may read it.
+
 ### PATCH /orders/{orderId}/disputes/{disputeId}/cancel 🔒
 
 Buyer cancels an active dispute. Order returns to `FULFILLING` so auto-complete can continue.
@@ -1512,6 +1603,8 @@ Outcomes:
 
 ## 12. Admin Operations and Public Verification
 
+Admin portal access uses `ROLE_ADMIN` or `ADMIN_ACCESS`. Specific backend endpoints use semantic permissions such as `MANAGE_CATEGORIES`, `MANAGE_APPRAISERS`, `VIEW_PLATFORM_REVENUE`, `RESOLVE_DISPUTE`, and `BAN_USER`. `BAN_USER` guards the user management endpoints (`/admin/users`) including account ban/unban.
+
 ### /admin/categories 🔒
 
 Admin CRUD endpoints:
@@ -1525,15 +1618,24 @@ Rules: name/slug must be unique, parent must exist, and a category with children
 
 Public category read remains `GET /categories`.
 
+### /admin/users 🔒
+
+Permission: `BAN_USER`. User management endpoints:
+
+- `GET /admin/users?role=&status=&query=&page=1&size=20` — filter by role (`ROLE_BIDDER`, `ROLE_SELLER`, `ROLE_APPRAISER`, `ROLE_ADMIN`), status (`ACTIVE`, `BANNED`, `UNVERIFIED`), and email/name keyword. Returns `PaginationResponse<AdminUserRes>`.
+- `PATCH /admin/users/{userId}/ban` — `ACTIVE` → `BANNED`. Blocked when banning yourself (`CANNOT_BAN_SELF`) or an admin account (`CANNOT_BAN_ADMIN`); only `ACTIVE` users can be banned.
+- `PATCH /admin/users/{userId}/unban` — `BANNED` → `ACTIVE`. Only `BANNED` users can be unbanned.
+
+This is the single source for listing users; appraiser and other admin pages list via `GET /admin/users` with a `role` filter.
+
 ### /admin/appraisers 🔒
 
-Admin appraiser provisioning endpoints:
+Permission: `MANAGE_APPRAISERS`. Admin appraiser provisioning endpoints:
 
-- `GET /admin/appraisers?query=&page=1&size=20`
-- `PATCH /admin/appraisers/{userId}/promote`
-- `PATCH /admin/appraisers/{userId}/demote`
+- `POST /admin/appraisers` — create a new appraiser account (email, password, fullName, phoneNumber).
+- `PATCH /admin/appraisers/{userId}/demote` — revoke the `ROLE_APPRAISER` role.
 
-Rules: promote active users only; demote is blocked while the user has an unexpired open appraisal claim.
+Rules: demote is blocked while the user has an unexpired open appraisal claim. Listing appraisers uses `GET /admin/users?role=ROLE_APPRAISER` (the previous `GET /admin/appraisers` was removed).
 
 ### GET /certificates/{certificateCode} 🔓
 

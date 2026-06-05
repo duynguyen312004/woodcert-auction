@@ -3,6 +3,7 @@ package com.woodcert.auction.feature.auction.service;
 import com.woodcert.auction.feature.auction.config.AuctionProperties;
 import com.woodcert.auction.feature.auction.entity.AuctionSessionStatus;
 import com.woodcert.auction.feature.auction.repository.AuctionSessionRepository;
+import com.woodcert.auction.feature.order.entity.OrderSourceType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -79,7 +80,8 @@ public class AuctionSessionScheduler {
 
         int batchSize = Math.max(1, auctionProperties.getScheduler().getRepairBatchSize());
         List<Long> sessionIds = auctionSessionRepository.findTerminalSessionIdsWithFrozenDeposits(
-                List.of(AuctionSessionStatus.ENDED_SUCCESS, AuctionSessionStatus.ENDED_FAILED),
+                List.of(AuctionSessionStatus.ENDED_SUCCESS, AuctionSessionStatus.ENDED_FAILED,
+                        AuctionSessionStatus.CANCELED),
                 PageRequest.of(0, batchSize)
         );
 
@@ -88,6 +90,19 @@ public class AuctionSessionScheduler {
                 settlementService.repairFinalizedSession(sessionId);
             } catch (Exception ex) {
                 log.warn("Failed to repair settlement for session {}: {}", sessionId, ex.getMessage());
+            }
+        }
+
+        List<Long> missingOrderSessionIds = auctionSessionRepository.findEndedSuccessSessionIdsMissingOrder(
+                OrderSourceType.AUCTION,
+                PageRequest.of(0, batchSize)
+        );
+
+        for (Long sessionId : missingOrderSessionIds) {
+            try {
+                settlementService.repairMissingOrder(sessionId);
+            } catch (Exception ex) {
+                log.warn("Failed to repair missing order for session {}: {}", sessionId, ex.getMessage());
             }
         }
     }

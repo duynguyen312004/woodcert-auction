@@ -5,10 +5,11 @@
  * Phần badge thời gian nằm ở đây để card tự đổi khi phiên sắp kết thúc.
  */
 import { ShieldCheck } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router";
 
 import { formatTimeRemaining } from "@/shared/hooks/useCountdown";
+import { useServerNow } from "@/shared/hooks/useServerNow";
 import { formatVND } from "@/shared/lib/format";
 import { cn } from "@/shared/lib/utils";
 
@@ -66,13 +67,8 @@ function getCardActionLabel(status: ArtAuction["status"]) {
 }
 
 export function ArtAuctionCard({ auction, cardTheme = "dark" }: ArtAuctionCardProps) {
-  const [now, setNow] = useState(() => Date.now());
+  const now = useServerNow();
   const [imageFailed, setImageFailed] = useState(false);
-
-  useEffect(() => {
-    const id = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(id);
-  }, []);
 
   const isEnding =
     auction.status === "ACTIVE" &&

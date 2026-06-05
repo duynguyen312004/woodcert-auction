@@ -31,11 +31,16 @@ public class AuctionSettlementService {
 
     public void repairFinalizedSession(Long auctionSessionId) {
         Optional<AuctionSession> session = auctionSessionRepository.findById(auctionSessionId);
-        if (session.isEmpty() || !isTerminal(session.get().getStatus())) {
+        if (session.isEmpty() || !isRepairable(session.get().getStatus())) {
             return;
         }
 
         AuctionSession terminalSession = session.get();
+        if (terminalSession.getStatus() == AuctionSessionStatus.CANCELED) {
+            refundCanceledSession(auctionSessionId);
+            return;
+        }
+
         var closeResult = new AuctionSessionLifecycleWorker.CloseResult(
                 terminalSession.getId(),
                 terminalSession.getStatus(),
@@ -44,6 +49,42 @@ public class AuctionSettlementService {
                 terminalSession.getHighestBidderId()
         );
         settleFinalizedSession(closeResult, false);
+    }
+
+    public void refundCanceledSession(Long auctionSessionId) {
+        List<Long> frozenParticipantIds = auctionParticipantRepository.findIdsByAuctionSessionIdAndDepositStatus(
+                auctionSessionId,
+                DepositStatus.FROZEN
+        );
+
+        for (Long participantId : frozenParticipantIds) {
+            try {
+                participantSettlementService.refundCanceledParticipant(participantId, auctionSessionId);
+            } catch (Exception ex) {
+                log.error("Cancel refund failed for participant id {} in session {}: {}",
+                        participantId, auctionSessionId, ex.getMessage());
+            }
+        }
+    }
+
+    public void repairMissingOrder(Long auctionSessionId) {
+        Optional<AuctionSession> session = auctionSessionRepository.findById(auctionSessionId);
+        if (session.isEmpty() || session.get().getStatus() != AuctionSessionStatus.ENDED_SUCCESS) {
+            return;
+        }
+        if (!auctionParticipantRepository.findIdsByAuctionSessionIdAndDepositStatus(
+                auctionSessionId, DepositStatus.FROZEN).isEmpty()) {
+            return;
+        }
+        if (orderService.findSummaryBySource(OrderSourceType.AUCTION, auctionSessionId) != null) {
+            return;
+        }
+
+        try {
+            orderService.createFromSource(OrderSourceType.AUCTION, auctionSessionId);
+        } catch (Exception ex) {
+            log.error("Order repair failed for finalized session {}: {}", auctionSessionId, ex.getMessage());
+        }
     }
 
     private void settleFinalizedSession(AuctionSessionLifecycleWorker.CloseResult closeResult, boolean cleanupRedis) {
@@ -82,8 +123,9 @@ public class AuctionSettlementService {
         }
     }
 
-    private boolean isTerminal(AuctionSessionStatus status) {
+    private boolean isRepairable(AuctionSessionStatus status) {
         return status == AuctionSessionStatus.ENDED_SUCCESS
-                || status == AuctionSessionStatus.ENDED_FAILED;
+                || status == AuctionSessionStatus.ENDED_FAILED
+                || status == AuctionSessionStatus.CANCELED;
     }
 }

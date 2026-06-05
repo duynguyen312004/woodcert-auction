@@ -17,6 +17,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequiredArgsConstructor
 public class DisputeController {
@@ -63,6 +65,16 @@ public class DisputeController {
         return ResponseEntity.ok(ApiResponse.success(
                 disputeService.getCurrentDispute(userId, orderId),
                 "Fetch current dispute successful"));
+    }
+
+    @GetMapping("/api/v1/orders/{orderId}/disputes")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<List<DisputeRes>>> getDisputeHistory(
+            @CurrentUserId String userId,
+            @PathVariable Long orderId) {
+        return ResponseEntity.ok(ApiResponse.success(
+                disputeService.getDisputeHistory(userId, orderId),
+                "Fetch dispute history successful"));
     }
 
     @PatchMapping("/api/v1/orders/{orderId}/disputes/{disputeId}/cancel")

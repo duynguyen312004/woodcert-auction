@@ -1,6 +1,6 @@
 # API Integration
 
-Last updated: 2026-06-02
+Last updated: 2026-06-03
 
 This document tracks frontend usage of backend APIs. Active FE integrations use the shared `apiClient`; no feature should create ad hoc HTTP clients.
 
@@ -13,6 +13,7 @@ This document tracks frontend usage of backend APIs. Active FE integrations use 
 | Register             | `POST /auth/register`                 | Implemented                      |
 | Login                | `POST /auth/login`                    | Implemented                      |
 | Refresh              | `POST /auth/refresh`                  | Implemented in Axios interceptor |
+| CSRF token           | `GET /auth/csrf`                      | Implemented for refresh/logout   |
 | Logout               | `POST /auth/logout`                   | Implemented                      |
 | Verify email         | `GET /auth/verify-email`              | Implemented                      |
 | Resend verification  | `POST /auth/resend-verification`      | Implemented                      |
@@ -45,15 +46,18 @@ This document tracks frontend usage of backend APIs. Active FE integrations use 
 | VNPay deposit status  | `GET /wallets/me/deposits/{txnRef}` | Implemented                            |
 | Auction registration  | `POST /auctions/{id}/register`      | Implemented                            |
 | Bid placement         | `POST /bids`                        | Implemented                            |
+| Server time sync      | `GET /system/time`                  | Implemented                            |
 
-Wallet funding for buyer runtime must use the VNPay Sandbox deposit flow above. Do not add mock wallet top-up, dev top-up, or `POST /wallets/me/top-up`.
+Wallet funding for buyer runtime must use the VNPay Sandbox deposit flow above. Do not add local wallet funding shortcuts.
 
 ### Orders, Fulfillment, and Disputes
 
 | Feature                | Endpoint                                       | FE status                       |
 | ---------------------- | ---------------------------------------------- | ------------------------------- |
-| Buyer order list       | `GET /orders/my-purchases`                     | Implemented on `/orders`        |
-| Seller order list      | `GET /orders/my-sales`                         | Implemented on `/seller/orders` |
+| Buyer order list       | `GET /orders/my-purchases?status=&page=&size=` | Implemented on `/orders`        |
+| Seller order list      | `GET /orders/my-sales?status=&page=&size=`     | Implemented on `/seller/orders` |
+| Buyer order counts     | `GET /orders/my-purchases/status-counts`       | Implemented                     |
+| Seller order counts    | `GET /orders/my-sales/status-counts`           | Implemented                     |
 | Order detail           | `GET /orders/{id}`                             | Implemented through hooks       |
 | Pay order remainder    | `POST /orders/{id}/pay`                        | Implemented                     |
 | Seller ship order      | `PATCH /orders/{orderId}/fulfillment/ship`     | Implemented                     |
@@ -62,6 +66,7 @@ Wallet funding for buyer runtime must use the VNPay Sandbox deposit flow above. 
 | Dispute upload confirm | `PUT /disputes/evidence/confirm`               | Implemented                     |
 | Open dispute           | `POST /orders/{orderId}/disputes`              | Implemented                     |
 | Current dispute        | `GET /orders/{orderId}/disputes/current`       | Implemented                     |
+| Dispute history        | `GET /orders/{orderId}/disputes`               | Implemented API/hook            |
 | Cancel dispute         | `PATCH /orders/{orderId}/disputes/{id}/cancel` | Implemented                     |
 | Admin dispute queue    | `GET /admin/disputes`                          | Implemented                     |
 | Admin dispute detail   | `GET /admin/disputes/{id}`                     | Implemented                     |
@@ -157,6 +162,8 @@ type PaginationResponse<T> = {
 5. On success, pending requests replay once.
 6. On failure, auth state is cleared and logout/redirect behavior runs.
 
+Refresh/logout cookie flows first call `GET /auth/csrf` and send the returned token as `X-XSRF-TOKEN`.
+
 Bid mutations must not be blindly retried after ambiguous network failure.
 
 ## Media Upload Sequence
@@ -231,8 +238,11 @@ type BidBroadcastPayload = {
 - `["wallet", "deposit", txnRef]`
 - `["orders", "buyer", params]`
 - `["orders", "seller", params]`
+- `["orders", "buyer", "status-counts"]`
+- `["orders", "seller", "status-counts"]`
 - `["orders", "detail", orderId]`
 - `["disputes", "current", orderId]`
+- `["disputes", "history", orderId]`
 - `["admin", "disputes", params]`
 - `["admin", "disputes", disputeId]`
 - `["catalog", "products", params]`

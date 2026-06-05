@@ -1,11 +1,7 @@
-/**
- * Định nghĩa các routes cho chức năng Bidding.
- *
- * Chứa cấu hình route để trỏ đường dẫn "bidding/:auctionId" về trang BiddingRoomPage.
- */
-
+import { lazy } from "react";
 import type { RouteObject } from "react-router";
-import BiddingRoomPage from "./pages/BiddingRoomPage";
+
+const BiddingRoomPage = lazy(() => import("./pages/BiddingRoomPage"));
 
 export const biddingRoutes: RouteObject[] = [
   {

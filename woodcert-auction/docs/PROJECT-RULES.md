@@ -13,6 +13,7 @@ ALL AI tools (Claude, Cursor, Copilot, Gemini) MUST follow this file.
 | Security | Spring Security 6 + OAuth2 Resource Server |
 | JWT | Custom JwtService (Nimbus JOSE) |
 | Database | MySQL + Spring Data JPA |
+| Migration | Flyway |
 | Cache & Lock | Redis (Lettuce) |
 | Real-time | WebSocket (STOMP) |
 | Build | Maven |
@@ -20,11 +21,15 @@ ALL AI tools (Claude, Cursor, Copilot, Gemini) MUST follow this file.
 
 ## 0.1 Bootstrap Data
 
-- Small bootstrap data may stay in `src/main/resources/data.sql`
+- Bootstrap data must be versioned in Flyway migrations under `src/main/resources/db/migration`
+- `src/main/resources/data.sql` is not used by the production/base profile
+- Runtime schema management uses Flyway plus `spring.jpa.hibernate.ddl-auto=validate`
 - Large read-only master data may use dedicated startup seed services when the source is external and the data should only be fetched once on empty tables
 - Runtime business flows must still read local database state after seeding; do not call external master-data APIs per request
 
 ## 1. Package Structure (Modular Monolith)
+
+Current implemented commerce packages include `order`, `fulfillment`, and `dispute`. Treat older diagrams that collapse these into a planned fulfillment module as historical context only.
 
 ```text
 com.woodcert.auction/
@@ -41,7 +46,9 @@ com.woodcert.auction/
     ├── catalog/               # Product, Category, Appraisal
     ├── finance/               # Wallet, Transactions
     ├── auction/               # AuctionSession, Bid
-    └── fulfillment/           # Order, Shipment, Dispute (planned; not implemented yet)
+    ├── order/                 # Order payment and payout snapshots
+    ├── fulfillment/           # Shipment and auto-complete
+    └── dispute/               # Buyer evidence and admin resolution
 ```
 
 ### Package Rules
@@ -190,6 +197,14 @@ Use:
 @PreAuthorize("hasAuthority('CREATE_BID')")
 ```
 
+Admin permissions must be semantic. Use `ADMIN_ACCESS`, `MANAGE_CATEGORIES`, `MANAGE_APPRAISERS`, and `VIEW_PLATFORM_REVENUE` for admin surfaces. Do not use `BAN_USER` as a generic admin-access permission.
+
+Cookie refresh flow must use double-submit CSRF:
+
+- `GET /api/v1/auth/csrf` issues the non-HttpOnly `XSRF-TOKEN` cookie.
+- `POST /api/v1/auth/refresh` and `POST /api/v1/auth/logout` require matching `X-XSRF-TOKEN` when the refresh token is read from the cookie.
+- Body refresh-token fallback remains available for non-browser/mobile clients.
+
 JWT Payload MUST include:
 
 - userId
@@ -232,8 +247,8 @@ Payload MUST be minimal:
 
 ### Async
 
-- Save bid log using @Async
-- Sync Redis → MySQL asynchronously
+- Save bid log with best-effort `REQUIRES_NEW` persistence after broadcast
+- Sync Redis → MySQL through in-process best-effort persistence
 - Auction read APIs overlay Redis `currentPrice` and `endTime` for `ACTIVE` sessions and fall back to DB snapshots when Redis state or fields are missing
 
 ## 9. Exception Handling
@@ -327,7 +342,14 @@ if (remaining_time <= 30s)
 
 ## 13. Order & Escrow Rules
 
-Current status: planned for Phase 4. These rules are the target contract for the future `feature/fulfillment` module; do not treat them as implemented backend behavior until the package, entities, controllers, and tests exist.
+Current status: implemented for DATN/MVP order, fulfillment, and dispute flows. There is no separate production-grade escrow ledger in this iteration; invariants are enforced through wallet operations, order payout snapshots, and tests.
+
+Additional current rules:
+
+- Buyer/seller order list APIs must support optional `status` filter and status-count endpoints.
+- Order uses `@Version` optimistic locking.
+- Dispute history is readable by buyer/seller through `GET /orders/{orderId}/disputes`.
+- Active duplicate disputes are prevented by order lock plus service invariant tests.
 
 ### Payment Flow
 

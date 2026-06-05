@@ -74,6 +74,28 @@ class DisputeServiceImplTest {
     }
 
     @Test
+    void getDisputeHistory_authorizesThroughOrderAndReturnsAllDisputes() {
+        DisputeCase open = openDispute();
+        DisputeCase resolved = openDispute();
+        resolved.setId(DISPUTE_ID + 1);
+        resolved.setStatus(DisputeStatus.RESOLVED);
+        resolved.setResolvedAt(Instant.now());
+
+        when(orderService.getOrderDetail(BUYER_ID, ORDER_ID)).thenReturn(orderRes(OrderStatus.DISPUTED));
+        when(disputeCaseRepository.findByOrderIdOrderByOpenedAtDescIdDesc(ORDER_ID))
+                .thenReturn(List.of(open, resolved));
+        when(disputeEvidenceRepository.findByDisputeCaseIdOrderBySortOrderAscIdAsc(DISPUTE_ID))
+                .thenReturn(List.of());
+        when(disputeEvidenceRepository.findByDisputeCaseIdOrderBySortOrderAscIdAsc(DISPUTE_ID + 1))
+                .thenReturn(List.of());
+
+        var result = disputeService.getDisputeHistory(BUYER_ID, ORDER_ID);
+
+        assertThat(result).extracting("id").containsExactly(DISPUTE_ID, DISPUTE_ID + 1);
+        verify(orderService).getOrderDetail(BUYER_ID, ORDER_ID);
+    }
+
+    @Test
     void openDispute_rejectsWhenAnotherActiveDisputeExists() {
         when(disputeCaseRepository.findFirstByOrderIdAndStatusInOrderByOpenedAtDescIdDesc(any(), any()))
                 .thenReturn(Optional.of(openDispute()));

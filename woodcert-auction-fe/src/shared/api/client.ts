@@ -21,12 +21,18 @@ type RefreshPayload = {
 };
 
 type RefreshResult = RefreshPayload | string | null;
+type CsrfResult = {
+  token: string;
+};
 
 export const apiClient = axios.create({
   baseURL: env.apiBaseUrl,
+  xsrfCookieName: "XSRF-TOKEN",
+  xsrfHeaderName: "X-XSRF-TOKEN",
 });
 
 let refreshPromise: Promise<string> | null = null;
+let csrfPromise: Promise<string> | null = null;
 
 function extractAccessToken(result: RefreshResult) {
   if (typeof result === "string") {
@@ -37,11 +43,15 @@ function extractAccessToken(result: RefreshResult) {
 }
 
 async function requestRefreshToken() {
+  const csrfToken = await ensureCsrfToken();
   const response = await apiClient.request<ApiResponse<RefreshResult>>({
     method: "POST",
     url: "/auth/refresh",
     withCredentials: true,
     skipAuthRefresh: true,
+    headers: {
+      "X-XSRF-TOKEN": csrfToken,
+    },
   });
   const nextAccessToken = extractAccessToken(unwrapApiResponse(response));
 
@@ -51,6 +61,25 @@ async function requestRefreshToken() {
 
   setAccessToken(nextAccessToken);
   return nextAccessToken;
+}
+
+async function requestCsrfToken() {
+  const response = await apiClient.request<ApiResponse<CsrfResult>>({
+    method: "GET",
+    url: "/auth/csrf",
+    withCredentials: true,
+    skipAuthRefresh: true,
+    skipAutoRetry: true,
+  });
+  return unwrapApiResponse(response).token;
+}
+
+export function ensureCsrfToken() {
+  csrfPromise ??= requestCsrfToken().finally(() => {
+    csrfPromise = null;
+  });
+
+  return csrfPromise;
 }
 
 export function refreshAccessToken() {

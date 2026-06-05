@@ -11,6 +11,7 @@ import type { ApiResponse } from "@/shared/api/types";
 import { clearAuthSession, getAccessToken, setAccessToken } from "@/shared/auth/auth-store";
 
 type AdapterScenario = {
+  csrfCount: number;
   refreshCount: number;
   protectedCount: number;
 };
@@ -40,8 +41,15 @@ function createApiResponse<T>(data: T, statusCode = 200): ApiResponse<T> {
 
 function createSingleFlightAdapter(scenario: AdapterScenario): AxiosAdapter {
   return async (config) => {
+    if (config.url === "/auth/csrf") {
+      scenario.csrfCount += 1;
+
+      return createResponse(config, 200, createApiResponse({ token: "csrf-token" }));
+    }
+
     if (config.url === "/auth/refresh") {
       scenario.refreshCount += 1;
+      expect(config.headers.get("X-XSRF-TOKEN")).toBe("csrf-token");
 
       await Promise.resolve();
 
@@ -79,6 +87,7 @@ describe("apiClient refresh flow", () => {
 
   it("shares one refresh request across concurrent 401 responses and retries once", async () => {
     const scenario: AdapterScenario = {
+      csrfCount: 0,
       refreshCount: 0,
       protectedCount: 0,
     };
@@ -100,6 +109,7 @@ describe("apiClient refresh flow", () => {
 
     expect(firstResult).toEqual({ ok: true });
     expect(secondResult).toEqual({ ok: true });
+    expect(scenario.csrfCount).toBe(1);
     expect(scenario.refreshCount).toBe(1);
     expect(scenario.protectedCount).toBe(4);
     expect(getAccessToken()).toBe("next-token");

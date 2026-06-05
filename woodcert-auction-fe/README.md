@@ -4,10 +4,10 @@ React SPA for WoodCert Auction, integrated with the Spring Boot backend in `../w
 
 ## Current State
 
-- Implemented: app shell, route composition, auth/session recovery, public home, auction list, account/profile/avatar, seller profile/product flows, seller auction flows, appraiser workflow, wallet page, wallet transaction history, and VNPay deposit flow.
-- Pending: auction detail, auction registration, realtime bidding room, buyer bid history, and address book.
-- Deferred: admin operations, orders, fulfillment, shipping, disputes.
-- Tests: `pnpm test` passed on 2026-05-28 with 24 files and 69 tests.
+- Implemented: app shell, route composition, auth/session recovery with CSRF refresh, public home, auction list/detail, bidding room, buyer auction history, buyer/seller orders, fulfillment/dispute flows, admin revenue/disputes/categories/appraisers, certificate lookup, address book, seller product/auction flows, appraiser workflow, wallet/VNPay, lazy route chunks, server-clock sync, and shared fallback product image.
+- Removed: seller appraisal route/menu (`/seller/appraisals`).
+- Static: blog content remains mock/static, not CMS/API-backed.
+- Verification commands: `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm build`, `pnpm test:e2e`.
 
 ## Document Index
 

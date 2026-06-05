@@ -21,7 +21,7 @@ public class PlatformRevenueController {
     private final PlatformRevenueService platformRevenueService;
 
     @GetMapping
-    @PreAuthorize("hasAuthority('BAN_USER')")
+    @PreAuthorize("hasAuthority('VIEW_PLATFORM_REVENUE')")
     public ResponseEntity<ApiResponse<PaginationResponse<PlatformRevenueTransactionRes>>> getTransactions(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size) {
@@ -31,7 +31,7 @@ public class PlatformRevenueController {
     }
 
     @GetMapping("/stats")
-    @PreAuthorize("hasAuthority('BAN_USER')")
+    @PreAuthorize("hasAuthority('VIEW_PLATFORM_REVENUE')")
     public ResponseEntity<ApiResponse<PlatformRevenueStatsRes>> getStats() {
         return ResponseEntity.ok(ApiResponse.success(
                 platformRevenueService.getStats(),
