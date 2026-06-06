@@ -5,12 +5,12 @@ import {
   type InternalAxiosRequestConfig,
 } from "axios";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 
 import { apiClient } from "@/shared/api/client";
 import type { ApiResponse } from "@/shared/api/types";
-import { getBiddingAuctionDetail, getBiddingParticipation } from "./api/bidding";
+import { getBiddingAuctionDetail, getBiddingParticipation, withdrawAuction } from "./api/bidding";
 import { BidControlPanel } from "./components/BidControlPanel";
 import { ConnectionBanner } from "./components/ConnectionBanner";
 import { EndedOverlay } from "./components/EndedOverlay";
@@ -62,6 +62,7 @@ describe("biddingApi", () => {
           depositStatus: "FROZEN",
           highestBidder: true,
           canRegister: false,
+          canWithdraw: false,
           canBid: false,
           reasonCode: "CURRENT_HIGHEST_BIDDER",
           reasonMessage: "You are currently the highest bidder",
@@ -81,6 +82,18 @@ describe("biddingApi", () => {
       depositAmount: 5000000,
       outcomeCode: "NONE",
     });
+  });
+
+  it("withdraws from a waiting auction", async () => {
+    const adapter: AxiosAdapter = async (config) => {
+      expect(config.method).toBe("post");
+      expect(config.url).toBe("/auctions/501/withdraw");
+      expect(config.requiresAuth).toBe(true);
+      return createResponse(config, 200, createApiResponse(null));
+    };
+    apiClient.defaults.adapter = adapter;
+
+    await expect(withdrawAuction(501)).resolves.toBeNull();
   });
 
   it("maps public auction detail appraisal and image fields from backend DTO", async () => {
@@ -205,6 +218,7 @@ describe("BidControlPanel", () => {
     depositStatus: "FROZEN",
     highestBidder: false,
     canRegister: false,
+    canWithdraw: false,
     canBid: true,
     reasonCode: "CAN_BID",
     reasonMessage: "You can place bids in this auction",
@@ -216,6 +230,7 @@ describe("BidControlPanel", () => {
 
   const mockOnPlaceBid = vi.fn();
   const mockOnRegister = vi.fn();
+  const mockOnWithdraw = vi.fn();
 
   it("shows registration prompt when user has not registered", () => {
     render(
@@ -231,8 +246,10 @@ describe("BidControlPanel", () => {
           }}
           isPlacingBid={false}
           isRegistering={false}
+          isWithdrawing={false}
           onPlaceBid={mockOnPlaceBid}
           onRegister={mockOnRegister}
+          onWithdraw={mockOnWithdraw}
           walletBalance={200000}
         />
       </MemoryRouter>,
@@ -250,8 +267,10 @@ describe("BidControlPanel", () => {
           participation={baseParticipation}
           isPlacingBid={false}
           isRegistering={false}
+          isWithdrawing={false}
           onPlaceBid={mockOnPlaceBid}
           onRegister={mockOnRegister}
+          onWithdraw={mockOnWithdraw}
           walletBalance={200000}
         />
       </MemoryRouter>,
@@ -274,8 +293,10 @@ describe("BidControlPanel", () => {
           }}
           isPlacingBid={false}
           isRegistering={false}
+          isWithdrawing={false}
           onPlaceBid={mockOnPlaceBid}
           onRegister={mockOnRegister}
+          onWithdraw={mockOnWithdraw}
           walletBalance={200000}
         />
       </MemoryRouter>,
@@ -301,13 +322,98 @@ describe("BidControlPanel", () => {
           }}
           isPlacingBid={false}
           isRegistering={false}
+          isWithdrawing={false}
           onPlaceBid={mockOnPlaceBid}
           onRegister={mockOnRegister}
+          onWithdraw={mockOnWithdraw}
           walletBalance={200000}
         />
       </MemoryRouter>,
     );
 
     expect(screen.getByText(/Bạn là chủ sở hữu/i)).toBeInTheDocument();
+  });
+
+  it("shows withdrawal action for a waiting frozen participant", () => {
+    render(
+      <MemoryRouter>
+        <BidControlPanel
+          detail={{ ...mockDetail, status: "WAITING" }}
+          participation={{
+            ...baseParticipation,
+            canBid: false,
+            canWithdraw: true,
+            reasonCode: "WAITING_FOR_ACTIVATION",
+          }}
+          isPlacingBid={false}
+          isRegistering={false}
+          isWithdrawing={false}
+          onPlaceBid={mockOnPlaceBid}
+          onRegister={mockOnRegister}
+          onWithdraw={mockOnWithdraw}
+          walletBalance={200000}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("button", { name: /Rút khỏi phiên/i })).toBeInTheDocument();
+  });
+
+  it("confirms withdrawal through the modal", async () => {
+    mockOnWithdraw.mockResolvedValueOnce(undefined);
+    render(
+      <MemoryRouter>
+        <BidControlPanel
+          detail={{ ...mockDetail, status: "WAITING" }}
+          participation={{
+            ...baseParticipation,
+            canBid: false,
+            canWithdraw: true,
+            reasonCode: "WAITING_FOR_ACTIVATION",
+          }}
+          isPlacingBid={false}
+          isRegistering={false}
+          isWithdrawing={false}
+          onPlaceBid={mockOnPlaceBid}
+          onRegister={mockOnRegister}
+          onWithdraw={mockOnWithdraw}
+          walletBalance={200000}
+        />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Rút khỏi phiên/i }));
+    expect(screen.getByText(/Bạn sẽ không thể đăng ký lại phiên này/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Xác nhận rút/i }));
+
+    await waitFor(() => expect(mockOnWithdraw).toHaveBeenCalledTimes(1));
+  });
+
+  it("shows withdrawn state without registration or bid actions", () => {
+    render(
+      <MemoryRouter>
+        <BidControlPanel
+          detail={{ ...mockDetail, status: "WAITING" }}
+          participation={{
+            ...baseParticipation,
+            depositStatus: "WITHDRAWN",
+            canBid: false,
+            canWithdraw: false,
+            reasonCode: "PARTICIPATION_WITHDRAWN",
+            outcomeCode: "WITHDRAWN",
+          }}
+          isPlacingBid={false}
+          isRegistering={false}
+          isWithdrawing={false}
+          onPlaceBid={mockOnPlaceBid}
+          onRegister={mockOnRegister}
+          onWithdraw={mockOnWithdraw}
+          walletBalance={200000}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText(/Đã rút khỏi phiên/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Đăng ký ký quỹ ngay/i })).not.toBeInTheDocument();
   });
 });

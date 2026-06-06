@@ -43,4 +43,7 @@ public class AuctionParticipant {
     @CreationTimestamp
     @Column(name = "registered_at", nullable = false, updatable = false)
     private Instant registeredAt;
+
+    @Column(name = "withdrawn_at")
+    private Instant withdrawnAt;
 }

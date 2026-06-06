@@ -14,8 +14,7 @@ public class CapabilityPermissionMapper {
             UserCapability.SELLER, Set.of(
                     "CREATE_PRODUCT",
                     "SUBMIT_APPRAISAL_REQUEST",
-                    "CREATE_AUCTION_SESSION",
-                    "CONFIRM_DELIVERY"),
+                    "CREATE_AUCTION_SESSION"),
             UserCapability.APPRAISER, Set.of("APPROVE_PRODUCT"));
 
     public Set<String> getPermissionsForCapability(UserCapability capability) {

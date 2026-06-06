@@ -271,7 +271,7 @@ describe("sellerApi", () => {
           participantCount: 3,
           winnerMaskedAlias: "winn****",
           settlementStatus: "SETTLED",
-          settlement: { frozen: 0, refunded: 2, deducted: 1, confiscated: 0 },
+          settlement: { frozen: 0, withdrawn: 0, refunded: 2, deducted: 1, confiscated: 0 },
           product: {
             id: 101,
             title: "Tượng gỗ trắc",
@@ -307,7 +307,7 @@ describe("sellerApi", () => {
       participantCount: 3,
       winnerMaskedAlias: "winn****",
       settlementStatus: "SETTLED",
-      settlement: { refunded: 2, deducted: 1 },
+      settlement: { withdrawn: 0, refunded: 2, deducted: 1 },
       product: { id: 101, title: "Tượng gỗ trắc" },
     });
   });

@@ -5,6 +5,7 @@ import com.woodcert.auction.feature.finance.dto.response.PlatformRevenueStatsRes
 import com.woodcert.auction.feature.finance.dto.response.PlatformRevenueTransactionRes;
 import com.woodcert.auction.feature.finance.entity.PlatformRevenueType;
 import com.woodcert.auction.feature.finance.entity.WalletReferenceType;
+import com.woodcert.auction.feature.finance.support.FinanceOperationKey;
 
 import java.io.OutputStream;
 import java.math.BigDecimal;
@@ -18,7 +19,7 @@ public interface PlatformRevenueService {
             String sourceUserId,
             WalletReferenceType referenceType,
             Long referenceId,
-            String operationKey);
+            FinanceOperationKey operationKey);
 
     PaginationResponse<PlatformRevenueTransactionRes> getTransactions(
             int page,

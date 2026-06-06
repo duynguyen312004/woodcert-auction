@@ -141,6 +141,9 @@ public class BuyerAuctionQueryService {
             AuctionSession session,
             AuctionParticipant participant,
             OrderSummaryRes order) {
+        if (participant.getDepositStatus() == DepositStatus.WITHDRAWN) {
+            return "WITHDRAWN";
+        }
         if (session.getStatus() == AuctionSessionStatus.WAITING) {
             return "PENDING";
         }
@@ -184,6 +187,7 @@ public class BuyerAuctionQueryService {
             case "PENDING_SETTLEMENT" -> "Hệ thống đang đối soát kết quả.";
             case "ACTIVE" -> "Phiên đang diễn ra.";
             case "PENDING" -> "Phiên đang chờ bắt đầu.";
+            case "WITHDRAWN" -> "Bạn đã rút khỏi phiên trước khi bắt đầu và tiền cọc đã được hoàn.";
             default -> "";
         };
     }

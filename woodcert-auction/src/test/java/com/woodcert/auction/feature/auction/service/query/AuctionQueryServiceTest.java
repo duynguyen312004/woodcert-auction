@@ -241,6 +241,7 @@ class AuctionQueryServiceTest {
         assertThat(result.sellerOwned()).isTrue();
         assertThat(result.registered()).isFalse();
         assertThat(result.canRegister()).isFalse();
+        assertThat(result.canWithdraw()).isFalse();
         assertThat(result.canBid()).isFalse();
         assertThat(result.reasonCode()).isEqualTo("SELLER_OWN_AUCTION");
         assertThat(result.depositAmount()).isEqualByComparingTo("1000000");
@@ -265,6 +266,7 @@ class AuctionQueryServiceTest {
         assertThat(result.registered()).isTrue();
         assertThat(result.depositStatus()).isEqualTo(DepositStatus.FROZEN);
         assertThat(result.canRegister()).isFalse();
+        assertThat(result.canWithdraw()).isFalse();
         assertThat(result.canBid()).isTrue();
         assertThat(result.reasonCode()).isEqualTo("CAN_BID");
     }
@@ -288,6 +290,45 @@ class AuctionQueryServiceTest {
         assertThat(result.highestBidder()).isTrue();
         assertThat(result.canBid()).isFalse();
         assertThat(result.reasonCode()).isEqualTo("CURRENT_HIGHEST_BIDDER");
+    }
+
+    @Test
+    void getMyParticipation_allowsWithdrawalForWaitingFrozenParticipant() {
+        AuctionSession session = session(AuctionSessionStatus.WAITING);
+        Product product = product();
+        session.setProduct(product);
+        AuctionParticipant participant = participant("bidder-1", DepositStatus.FROZEN);
+
+        when(auctionSessionRepository.findByIdWithProduct(AUCTION_ID)).thenReturn(Optional.of(session));
+        when(auctionParticipantRepository.findByAuctionSessionIdAndUserId(AUCTION_ID, "bidder-1"))
+                .thenReturn(Optional.of(participant));
+
+        MyParticipationRes result = queryService.getMyParticipation("bidder-1", AUCTION_ID);
+
+        assertThat(result.canWithdraw()).isTrue();
+        assertThat(result.canRegister()).isFalse();
+        assertThat(result.canBid()).isFalse();
+        assertThat(result.reasonCode()).isEqualTo("WAITING_FOR_ACTIVATION");
+    }
+
+    @Test
+    void getMyParticipation_returnsWithdrawnContext() {
+        AuctionSession session = session(AuctionSessionStatus.WAITING);
+        Product product = product();
+        session.setProduct(product);
+        AuctionParticipant participant = participant("bidder-1", DepositStatus.WITHDRAWN);
+
+        when(auctionSessionRepository.findByIdWithProduct(AUCTION_ID)).thenReturn(Optional.of(session));
+        when(auctionParticipantRepository.findByAuctionSessionIdAndUserId(AUCTION_ID, "bidder-1"))
+                .thenReturn(Optional.of(participant));
+
+        MyParticipationRes result = queryService.getMyParticipation("bidder-1", AUCTION_ID);
+
+        assertThat(result.registered()).isTrue();
+        assertThat(result.depositStatus()).isEqualTo(DepositStatus.WITHDRAWN);
+        assertThat(result.canRegister()).isFalse();
+        assertThat(result.canWithdraw()).isFalse();
+        assertThat(result.outcomeCode()).isEqualTo("WITHDRAWN");
     }
 
     @Test
@@ -636,7 +677,7 @@ class AuctionQueryServiceTest {
                 2,
                 null,
                 SellerAuctionDetailRes.SellerAuctionSettlementStatus.NOT_APPLICABLE,
-                new SellerAuctionDetailRes.SettlementSummary(2, 0, 0, 0),
+                new SellerAuctionDetailRes.SettlementSummary(2, 0, 0, 0, 0),
                 null,
                 null,
                 Instant.now(),

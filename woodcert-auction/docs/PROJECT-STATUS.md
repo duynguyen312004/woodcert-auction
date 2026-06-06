@@ -1,6 +1,6 @@
 # Project Status
 
-> Last updated: 2026-06-03 | By: Codex | Session: architecture-cleanup
+> Last updated: 2026-06-06 | By: Codex | Session: seller-capability-suspension
 >
 > AI: update this file at the end of every backend session when asked.
 > Follow this exact format. Keep it concise but decision-useful.
@@ -27,6 +27,7 @@
 - [x] Dispute module: buyer evidence upload, open/cancel/current APIs, admin queue/detail/review/resolve APIs, seller-wins payout path, buyer-wins refund path, and scheduler skip for disputed orders
 - [x] Back-office APIs: admin category CRUD, admin appraiser create/demote, and public certificate verification lookup
 - [x] Admin user management: `GET /admin/users` (role/status/keyword filter, paginated) and `PATCH /admin/users/{id}/ban|unban` guarded by `BAN_USER`, with self-ban and admin-ban protection; legacy `GET /admin/appraisers` removed in favor of `GET /admin/users?role=ROLE_APPRAISER`
+- [x] Seller capability suspension is read-only: historical seller data stays accessible, new listing/auction actions are blocked, paid-order fulfillment remains available, and `/users/me` exposes the reason and update time
 - [x] Product sale status supports `RETURNED` for buyer-wins disputes without automatic relist
 - [x] Platform revenue APIs for admin revenue stats and transaction history
 - [x] Order/Fulfillment/Dispute unit coverage added for service and scheduler paths

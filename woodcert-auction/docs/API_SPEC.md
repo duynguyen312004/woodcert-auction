@@ -328,12 +328,27 @@ Success Response (200):
     "status": "ACTIVE",
     "roles": ["ROLE_BIDDER", "ROLE_SELLER"],
     "createdAt": "2026-03-28T10:00:00Z",
-    "hasSellerProfile": true
+    "hasSellerProfile": true,
+    "capabilityStatuses": [
+      {
+        "capability": "SELLER",
+        "status": "BANNED",
+        "reason": "Repeated listing policy violations",
+        "updatedAt": "2026-06-06T08:30:00Z"
+      }
+    ]
   },
   "message": "Fetch user profile successful",
   "timestamp": "2026-03-28T10:00:00"
 }
 ```
+
+`capabilityStatuses` describes role-scoped restrictions for the current user without
+exposing the admin who applied them. A banned `SELLER` capability is a read-only
+suspension: seller history, products, auctions, and sales remain readable; creating
+or changing listings and auctions is blocked. Required fulfillment for already-paid
+orders remains available. A top-level user `status` of `BANNED` is still a full
+account lock.
 
 ### PUT /users/me 🔒
 
@@ -1380,8 +1395,36 @@ Success Response (200):
 
 Errors:
 
-- 400: insufficient available balance, already registered, session not registrable, or active Redis state no longer valid.
+- 400: insufficient available balance, session not registrable, or active Redis state no longer valid.
+- 409: already registered, or the bidder previously withdrew and cannot register again.
 - 403: seller cannot register for their own auction.
+
+### POST /auctions/{id}/withdraw 🔒
+
+Bidder withdraws a previously registered participation. Withdrawal is allowed only while the session is
+`WAITING` and the participant deposit is still `FROZEN`. The full deposit is unfrozen with operation key
+`auction:withdraw:refund:{auctionId}:{userId}`.
+
+The participant row is retained with `depositStatus = WITHDRAWN` and `withdrawnAt` populated. The unique
+participant constraint remains in force, so the bidder cannot register again for the same session.
+
+Request Body: Empty.
+
+Success Response (200):
+
+```json
+{
+  "statusCode": 200,
+  "data": null,
+  "message": "Auction participation withdrawn successfully",
+  "timestamp": "2026-06-06T12:00:00"
+}
+```
+
+Errors:
+
+- 404: session not found or the bidder never registered.
+- 409: session is no longer `WAITING`, deposit is no longer `FROZEN`, or participation was already withdrawn.
 
 ### POST /bids 🔒 (Real-time Entry Point)
 

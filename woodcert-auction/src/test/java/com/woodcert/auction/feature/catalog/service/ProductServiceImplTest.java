@@ -21,6 +21,7 @@ import com.woodcert.auction.feature.finance.entity.PlatformRevenueType;
 import com.woodcert.auction.feature.finance.entity.WalletReferenceType;
 import com.woodcert.auction.feature.finance.service.PlatformRevenueService;
 import com.woodcert.auction.feature.finance.service.WalletService;
+import com.woodcert.auction.feature.finance.support.FinanceOperationKeys;
 import com.woodcert.auction.feature.identity.entity.User;
 import com.woodcert.auction.feature.identity.repository.SellerProfileRepository;
 import com.woodcert.auction.feature.identity.repository.UserRepository;
@@ -176,11 +177,18 @@ class ProductServiceImplTest {
             setupCreateProductMocks();
             MediaAsset asset = createActiveProductMediaAsset(100L);
             when(mediaAssetService.getOwnedAssetOrThrow(100L, SELLER_ID)).thenReturn(asset);
+            Category category = new Category();
+            category.setId(1);
+            category.setName("Gỗ mỹ nghệ");
+            when(categoryRepository.findById(1)).thenReturn(Optional.of(category));
 
             List<ProductImageReq> images = List.of(imageReq(100L, true, 0));
             ProductDetailRes result = productService.createProduct(SELLER_ID, createProductReq(images));
 
             assertThat(result).isNotNull();
+            assertThat(result.category()).isNotNull();
+            assertThat(result.category().name()).isEqualTo("Gỗ mỹ nghệ");
+            verify(productRepository).save(argThat(product -> product.getCategory() == null));
             verify(productRepository).save(any(Product.class));
             verify(productImageRepository).saveAll(anyList());
         }
@@ -477,7 +485,7 @@ class ProductServiceImplTest {
             assertThat(product.getSubmittedAt()).isNotNull();
             verify(walletService).withdrawFunds(
                     eq(SELLER_ID),
-                    eq("appraisal:submit:fee:" + PRODUCT_ID + ":" + SELLER_ID),
+                    eq(FinanceOperationKeys.appraisalSubmissionFee(PRODUCT_ID, SELLER_ID)),
                     eq(appraisalFee),
                     eq(PRODUCT_ID),
                     eq(WalletReferenceType.APPRAISAL));
@@ -487,7 +495,7 @@ class ProductServiceImplTest {
                     eq(SELLER_ID),
                     eq(WalletReferenceType.APPRAISAL),
                     eq(PRODUCT_ID),
-                    eq("appraisal:submit:fee:" + PRODUCT_ID + ":" + SELLER_ID));
+                    eq(FinanceOperationKeys.appraisalSubmissionFee(PRODUCT_ID, SELLER_ID)));
         }
 
         @Test
@@ -696,20 +704,32 @@ class ProductServiceImplTest {
         }
 
         @Test
-        @DisplayName("APPRAISED product - owner does not see internal report fields")
-        void getDetail_appraised_ownerDoesNotSeeInternalFields() {
+        @DisplayName("APPRAISED product - owner sees review details but not seller accuracy")
+        void getDetail_appraised_ownerSeesReviewDetailsWithoutSellerAccuracy() {
             Product product = createProductWithStatus(ProductStatus.APPRAISED);
             product.setCategory(new Category());
             product.setAppraisalReport(createAppraisalReport("appraiser-id"));
+
+            MediaAsset proofAsset = createActiveProductMediaAsset(200L);
+            AppraisalImage proofImage = new AppraisalImage();
+            proofImage.setId(7L);
+            proofImage.setAppraisalReportId(42L);
+            proofImage.setMediaId(200L);
+            proofImage.setDescription("End-grain close-up");
+            proofImage.setMediaAsset(proofAsset);
+
             when(productRepository.findByIdWithCategoryAndAppraisalReport(PRODUCT_ID)).thenReturn(Optional.of(product));
+            when(appraisalImageRepository.findByAppraisalReportIdOrderByIdAsc(42L)).thenReturn(List.of(proofImage));
+            when(mediaUrlBuilder.buildAppraisalImageUrl(proofAsset)).thenReturn("https://cdn.example/proof.jpg");
 
             ProductDetailRes result = productService.getProductDetail(PRODUCT_ID, SELLER_ID, false);
 
             assertThat(result.appraisalReport()).isNotNull();
-            assertThat(result.appraisalReport().appraiserNotes()).isNull();
+            assertThat(result.appraisalReport().appraiserNotes()).isEqualTo("Verified grain and finish.");
             assertThat(result.appraisalReport().sellerAccuracy()).isNull();
-            assertThat(result.appraisalReport().proofImages()).isEmpty();
-            verify(appraisalImageRepository, never()).findByAppraisalReportIdOrderByIdAsc(any());
+            assertThat(result.appraisalReport().proofImages()).hasSize(1);
+            assertThat(result.appraisalReport().proofImages().get(0).imageUrl())
+                    .isEqualTo("https://cdn.example/proof.jpg");
         }
 
         @Test

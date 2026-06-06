@@ -60,6 +60,29 @@ const CAPABILITY_CONFIG: Array<{
   { capability: "APPRAISER", role: "ROLE_APPRAISER", label: "Kiểm định" },
 ];
 
+const ROLE_CONFIG = [
+  {
+    role: "ROLE_ADMIN",
+    label: "Admin",
+    className: "border-primary/20 bg-primary/10 text-primary",
+  },
+  {
+    role: "ROLE_APPRAISER",
+    label: "Appraiser",
+    className: "border-violet-500/20 bg-violet-500/10 text-violet-300",
+  },
+  {
+    role: "ROLE_SELLER",
+    label: "Người bán",
+    className: "border-emerald-500/20 bg-emerald-500/10 text-emerald-400",
+  },
+  {
+    role: "ROLE_BIDDER",
+    label: "Người mua",
+    className: "border-sky-500/20 bg-sky-500/10 text-sky-400",
+  },
+] as const;
+
 type PendingAction =
   | { user: AdminUser; type: "account-ban" }
   | { user: AdminUser; type: "account-unban" }
@@ -74,20 +97,8 @@ function isAdmin(user: AdminUser) {
   return user.roles.includes("ROLE_ADMIN");
 }
 
-function roleLabel(user: AdminUser) {
-  if (user.roles.includes("ROLE_ADMIN")) return "Admin";
-  if (user.roles.includes("ROLE_APPRAISER")) return "Appraiser";
-  if (user.roles.includes("ROLE_SELLER")) return "Người bán";
-  return "Người mua";
-}
-
-function roleBadgeClass(user: AdminUser) {
-  if (user.roles.includes("ROLE_ADMIN")) return "bg-primary/10 text-primary border-primary/20";
-  if (user.roles.includes("ROLE_APPRAISER"))
-    return "bg-violet-500/10 text-violet-300 border-violet-500/20";
-  if (user.roles.includes("ROLE_SELLER"))
-    return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
-  return "bg-sky-500/10 text-sky-400 border-sky-500/20";
+function userRoleBadges(user: AdminUser) {
+  return ROLE_CONFIG.filter((item) => user.roles.includes(item.role));
 }
 
 function capabilityStatus(user: AdminUser, capability: UserCapability): CapabilityState {
@@ -100,6 +111,9 @@ function actionTitle(action: PendingAction | null) {
   if (!action) return "";
   if (action.type === "account-ban") return "Khóa tài khoản này?";
   if (action.type === "account-unban") return "Mở khóa tài khoản này?";
+  if (action.type === "capability-ban" && action.capability === "SELLER") {
+    return "Đình chỉ quyền bán?";
+  }
   if (action.type === "capability-ban") return "Khóa quyền này?";
   return "Mở quyền này?";
 }
@@ -108,6 +122,9 @@ function actionConfirmLabel(action: PendingAction | null) {
   if (!action) return "Xác nhận";
   if (action.type === "account-ban") return "Khóa tài khoản";
   if (action.type === "account-unban") return "Mở khóa tài khoản";
+  if (action.type === "capability-ban" && action.capability === "SELLER") {
+    return "Đình chỉ quyền bán";
+  }
   if (action.type === "capability-ban") return "Khóa quyền";
   return "Mở quyền";
 }
@@ -119,6 +136,9 @@ function actionDescription(action: PendingAction | null) {
   }
   if (action.type === "account-unban") {
     return `Tài khoản "${action.user.fullName}" sẽ đăng nhập lại được, nhưng các capability đang bị khóa vẫn giữ nguyên.`;
+  }
+  if (action.type === "capability-ban" && action.capability === "SELLER") {
+    return `Tài khoản "${action.user.fullName}" sẽ không thể tạo hoặc thay đổi sản phẩm và phiên đấu giá. Các phiên hiện hữu vẫn tiếp tục; seller vẫn xem được dữ liệu và phải hoàn tất giao hàng cho đơn đã thanh toán.`;
   }
   const label =
     CAPABILITY_CONFIG.find((item) => item.capability === action.capability)?.label ??
@@ -325,7 +345,7 @@ export function AdminUsersPage() {
           </div>
         </section>
 
-        <section className="rounded-lg border border-white/10 bg-card text-foreground">
+        <section className="overflow-hidden rounded-lg border border-white/10 bg-card text-foreground">
           <div className="space-y-4 border-b border-white/10 px-5 py-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="font-bold text-[#f2eee5]">Danh sách người dùng</h2>
@@ -397,42 +417,59 @@ export function AdminUsersPage() {
             />
           ) : (
             <>
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[1080px] text-left text-sm">
+              <div className="w-full overflow-hidden">
+                <table className="w-full table-fixed text-left text-sm">
+                  <colgroup>
+                    <col className="w-[21%]" />
+                    <col className="w-[12%]" />
+                    <col className="w-[13%]" />
+                    <col className="w-[18%]" />
+                    <col className="w-[11%]" />
+                    <col className="w-[25%]" />
+                  </colgroup>
                   <thead className="bg-white/5 text-xs uppercase text-[#a49a88]">
                     <tr>
-                      <th className="px-5 py-3">User</th>
-                      <th className="px-5 py-3">Vai trò</th>
-                      <th className="px-5 py-3">Account</th>
-                      <th className="px-5 py-3">Capability</th>
-                      <th className="px-5 py-3">Ngày tạo</th>
-                      <th className="px-5 py-3 text-right">Thao tác</th>
+                      <th className="px-3 py-3 xl:px-4">User</th>
+                      <th className="px-3 py-3 xl:px-4">Vai trò</th>
+                      <th className="px-3 py-3 xl:px-4">Account</th>
+                      <th className="px-3 py-3 xl:px-4">Capability</th>
+                      <th className="px-3 py-3 xl:px-4">Ngày tạo</th>
+                      <th className="px-3 py-3 text-right xl:px-4">Thao tác</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/10">
                     {users.map((user) => (
                       <tr key={user.id} className="transition-colors hover:bg-white/5">
-                        <td className="px-5 py-3">
-                          <p className="font-bold text-[#f2eee5]">{user.fullName}</p>
-                          <p className="text-xs text-[#a49a88]">{user.email}</p>
+                        <td className="min-w-0 px-3 py-4 align-top xl:px-4">
+                          <p className="truncate font-bold text-[#f2eee5]" title={user.fullName}>
+                            {user.fullName}
+                          </p>
+                          <p className="truncate text-xs text-[#a49a88]" title={user.email}>
+                            {user.email}
+                          </p>
                           {user.phoneNumber ? (
                             <p className="mt-1 text-xs text-[#8d877c]">{user.phoneNumber}</p>
                           ) : null}
                         </td>
-                        <td className="px-5 py-3">
-                          <span
-                            className={cn(
-                              "rounded-full border px-2.5 py-1 text-xs font-bold",
-                              roleBadgeClass(user),
-                            )}
-                          >
-                            {roleLabel(user)}
-                          </span>
+                        <td className="min-w-0 px-3 py-4 align-top xl:px-4">
+                          <div className="flex flex-wrap gap-1.5">
+                            {userRoleBadges(user).map((roleItem) => (
+                              <span
+                                key={roleItem.role}
+                                className={cn(
+                                  "whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-bold",
+                                  roleItem.className,
+                                )}
+                              >
+                                {roleItem.label}
+                              </span>
+                            ))}
+                          </div>
                         </td>
-                        <td className="px-5 py-3">
+                        <td className="min-w-0 px-3 py-4 align-top xl:px-4">
                           <span
                             className={cn(
-                              "rounded-full border px-2.5 py-1 text-xs font-bold",
+                              "inline-flex whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-bold",
                               user.status === "ACTIVE" &&
                                 "border-emerald-500/20 bg-emerald-500/10 text-emerald-400",
                               user.status === "BANNED" &&
@@ -444,7 +481,7 @@ export function AdminUsersPage() {
                             {statusLabel(user.status)}
                           </span>
                         </td>
-                        <td className="px-5 py-3">
+                        <td className="min-w-0 px-3 py-4 align-top xl:px-4">
                           <div className="flex flex-wrap gap-1.5">
                             {CAPABILITY_CONFIG.filter((item) => user.roles.includes(item.role)).map(
                               (item) => {
@@ -453,7 +490,7 @@ export function AdminUsersPage() {
                                   <span
                                     key={item.capability}
                                     className={cn(
-                                      "rounded-full border px-2 py-1 text-[11px] font-bold",
+                                      "whitespace-nowrap rounded-full border px-2 py-1 text-[11px] font-bold",
                                       current === "ACTIVE"
                                         ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
                                         : "border-red-500/20 bg-red-500/10 text-red-400",
@@ -466,35 +503,41 @@ export function AdminUsersPage() {
                             )}
                           </div>
                         </td>
-                        <td className="px-5 py-3 text-[#a49a88]">
+                        <td className="min-w-0 px-3 py-4 align-top text-xs text-[#a49a88] xl:px-4">
                           {formatDateTime(user.createdAt)}
                         </td>
-                        <td className="px-5 py-3">
+                        <td className="min-w-0 px-3 py-4 align-top xl:px-4">
                           {isAdmin(user) ? (
-                            <div className="text-right text-xs text-[#8d877c]">Không áp dụng</div>
+                            <div className="pt-2 text-right text-xs text-[#8d877c]">
+                              Không áp dụng
+                            </div>
                           ) : (
-                            <div className="flex flex-wrap justify-end gap-2">
+                            <div className="ml-auto grid min-w-0 max-w-[300px] grid-cols-2 gap-1.5">
                               {user.status === "BANNED" ? (
                                 <Button
                                   type="button"
-                                  size="sm"
-                                  className="border border-emerald-500/20 bg-emerald-500/5 font-bold text-emerald-400 shadow-none hover:border-emerald-500/30 hover:bg-emerald-500/10 hover:text-emerald-300"
+                                  size="xs"
+                                  aria-label="Mở account"
+                                  title="Mở khóa tài khoản"
+                                  className="min-w-0 border border-emerald-500/20 bg-emerald-500/5 font-bold text-emerald-400 shadow-none hover:border-emerald-500/30 hover:bg-emerald-500/10 hover:text-emerald-300"
                                   disabled={actionPending}
                                   onClick={() => openAction({ user, type: "account-unban" })}
                                 >
-                                  <ShieldCheck className="h-4 w-4" />
-                                  Mở account
+                                  <ShieldCheck />
+                                  <span className="truncate">Mở TK</span>
                                 </Button>
                               ) : (
                                 <Button
                                   type="button"
-                                  size="sm"
-                                  className="border border-red-500/20 bg-red-500/5 font-bold text-red-400 shadow-none hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-300"
+                                  size="xs"
+                                  aria-label="Khóa account"
+                                  title="Khóa tài khoản"
+                                  className="min-w-0 border border-red-500/20 bg-red-500/5 font-bold text-red-400 shadow-none hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-300"
                                   disabled={actionPending || user.status !== "ACTIVE"}
                                   onClick={() => openAction({ user, type: "account-ban" })}
                                 >
-                                  <Ban className="h-4 w-4" />
-                                  Khóa account
+                                  <Ban />
+                                  <span className="truncate">Khóa TK</span>
                                 </Button>
                               )}
                               {CAPABILITY_CONFIG.filter((item) =>
@@ -506,10 +549,12 @@ export function AdminUsersPage() {
                                   <Button
                                     key={item.capability}
                                     type="button"
-                                    size="sm"
+                                    size="xs"
                                     variant="outline"
+                                    aria-label={banned ? `Mở ${item.label}` : `Khóa ${item.label}`}
+                                    title={banned ? `Mở ${item.label}` : `Khóa ${item.label}`}
                                     className={cn(
-                                      "border-white/10 bg-white/5 text-[#d2c5b2] hover:bg-white/10",
+                                      "min-w-0 border-white/10 bg-white/5 text-[#d2c5b2] hover:bg-white/10",
                                       banned &&
                                         "border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/10",
                                     )}
@@ -522,12 +567,10 @@ export function AdminUsersPage() {
                                       })
                                     }
                                   >
-                                    {banned ? (
-                                      <ShieldCheck className="h-4 w-4" />
-                                    ) : (
-                                      <ShieldX className="h-4 w-4" />
-                                    )}
-                                    {banned ? `Mở ${item.label}` : `Khóa ${item.label}`}
+                                    {banned ? <ShieldCheck /> : <ShieldX />}
+                                    <span className="truncate">
+                                      {banned ? `Mở ${item.label}` : `Khóa ${item.label}`}
+                                    </span>
                                   </Button>
                                 );
                               })}

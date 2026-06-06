@@ -78,4 +78,9 @@ public interface AuctionService {
      * Đăng ký buyer vào phiên trước khi tham gia đấu giá.
      */
     void registerForAuction(String userId, Long auctionId);
+
+    /**
+     * Rút đăng ký và hoàn cọc khi phiên vẫn đang chờ bắt đầu.
+     */
+    void withdrawFromAuction(String userId, Long auctionId);
 }

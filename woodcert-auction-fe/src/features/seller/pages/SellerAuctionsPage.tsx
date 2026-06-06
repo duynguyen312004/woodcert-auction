@@ -39,6 +39,7 @@ import {
   SELLER_AUCTION_STATUS_CLASS,
   SELLER_AUCTION_STATUS_LABEL,
 } from "../constants/auctionStatus";
+import { useSellerCapability } from "../components/SellerCapabilityProvider";
 import { SELLER_PATHS } from "../constants/routes";
 import { useCancelAuction } from "../hooks/useProductMutations";
 import { useSellerAuctions, useSellerAuctionStats } from "../hooks/useSellerDashboard";
@@ -72,6 +73,7 @@ const STATUS_FILTERS: AuctionFilter[] = [
 ];
 
 export function SellerAuctionsPage() {
+  const { isSuspended } = useSellerCapability();
   const [activeFilter, setActiveFilter] = useState<AuctionFilter>(ALL_AUCTIONS_FILTER);
   const [page, setPage] = useState(1);
   const [cancelTarget, setCancelTarget] = useState<SellerAuction | null>(null);
@@ -101,7 +103,7 @@ export function SellerAuctionsPage() {
   };
 
   const handleConfirmCancel = async () => {
-    if (!cancelTarget) return;
+    if (!cancelTarget || isSuspended) return;
 
     try {
       await cancelMutation.mutateAsync(Number(cancelTarget.id));
@@ -126,12 +128,19 @@ export function SellerAuctionsPage() {
           <h1 className="font-serif text-xl font-bold text-ink-blue">Phiên đấu giá</h1>
         </div>
 
-        <Button asChild className="bg-brushed-brass text-[#181612] hover:bg-brushed-brass/90">
-          <Link to={SELLER_PATHS.newAuction}>
+        {isSuspended ? (
+          <Button disabled title="Quyền bán đang bị đình chỉ">
             <Plus className="size-4" aria-hidden />
             Tạo phiên
-          </Link>
-        </Button>
+          </Button>
+        ) : (
+          <Button asChild className="bg-brushed-brass text-[#181612] hover:bg-brushed-brass/90">
+            <Link to={SELLER_PATHS.newAuction}>
+              <Plus className="size-4" aria-hidden />
+              Tạo phiên
+            </Link>
+          </Button>
+        )}
       </header>
 
       <div className="flex-1 overflow-y-auto">
@@ -244,6 +253,7 @@ export function SellerAuctionsPage() {
                           <AuctionRow
                             key={auction.id}
                             auction={auction}
+                            isSuspended={isSuspended}
                             onCancel={setCancelTarget}
                           />
                         ))
@@ -266,7 +276,10 @@ export function SellerAuctionsPage() {
         </div>
       </div>
 
-      <Dialog open={cancelTarget !== null} onOpenChange={(open) => !open && setCancelTarget(null)}>
+      <Dialog
+        open={cancelTarget !== null && !isSuspended}
+        onOpenChange={(open) => !open && setCancelTarget(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Hủy phiên đấu giá?</DialogTitle>
@@ -316,12 +329,14 @@ function AuctionStatusBadge({ status }: { status: SellerAuctionStatus }) {
 
 function AuctionRow({
   auction,
+  isSuspended,
   onCancel,
 }: {
   auction: SellerAuction;
+  isSuspended: boolean;
   onCancel: (auction: SellerAuction) => void;
 }) {
-  const canCancel = auction.status === "WAITING";
+  const canCancel = !isSuspended && auction.status === "WAITING";
 
   return (
     <tr className="transition-colors hover:bg-[#F6F0E6]/30">

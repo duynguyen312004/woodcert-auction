@@ -38,6 +38,7 @@ public record SellerAuctionDetailRes(
 
     public record SettlementSummary(
             long frozen,
+            long withdrawn,
             long refunded,
             long deducted,
             long confiscated

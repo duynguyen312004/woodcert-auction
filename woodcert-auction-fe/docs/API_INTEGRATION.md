@@ -1,6 +1,6 @@
 # API Integration
 
-Last updated: 2026-06-03
+Last updated: 2026-06-06
 
 This document tracks frontend usage of backend APIs. Active FE integrations use the shared `apiClient`; no feature should create ad hoc HTTP clients.
 
@@ -8,21 +8,21 @@ This document tracks frontend usage of backend APIs. Active FE integrations use 
 
 ### Authentication and Account
 
-| Feature              | Endpoint                              | FE status                        |
-| -------------------- | ------------------------------------- | -------------------------------- |
-| Register             | `POST /auth/register`                 | Implemented                      |
-| Login                | `POST /auth/login`                    | Implemented                      |
-| Refresh              | `POST /auth/refresh`                  | Implemented in Axios interceptor |
-| CSRF token           | `GET /auth/csrf`                      | Implemented for refresh/logout   |
-| Logout               | `POST /auth/logout`                   | Implemented                      |
-| Verify email         | `GET /auth/verify-email`              | Implemented                      |
-| Resend verification  | `POST /auth/resend-verification`      | Implemented                      |
-| Forgot password      | `POST /auth/forgot-password`          | Implemented                      |
-| Reset password       | `POST /auth/reset-password`           | Implemented                      |
-| Current profile      | `GET /users/me`                       | Implemented                      |
-| Update profile       | `PUT /users/me`                       | Implemented                      |
-| Avatar upload intent | `POST /users/me/avatar/upload-intent` | Implemented                      |
-| Attach avatar        | `PUT /users/me/avatar`                | Implemented                      |
+| Feature              | Endpoint                              | FE status                          |
+| -------------------- | ------------------------------------- | ---------------------------------- |
+| Register             | `POST /auth/register`                 | Implemented                        |
+| Login                | `POST /auth/login`                    | Implemented                        |
+| Refresh              | `POST /auth/refresh`                  | Implemented in Axios interceptor   |
+| CSRF token           | `GET /auth/csrf`                      | Implemented for refresh/logout     |
+| Logout               | `POST /auth/logout`                   | Implemented                        |
+| Verify email         | `GET /auth/verify-email`              | Implemented                        |
+| Resend verification  | `POST /auth/resend-verification`      | Implemented                        |
+| Forgot password      | `POST /auth/forgot-password`          | Implemented                        |
+| Reset password       | `POST /auth/reset-password`           | Implemented                        |
+| Current profile      | `GET /users/me`                       | Implemented with capability status |
+| Update profile       | `PUT /users/me`                       | Implemented                        |
+| Avatar upload intent | `POST /users/me/avatar/upload-intent` | Implemented                        |
+| Attach avatar        | `PUT /users/me/avatar`                | Implemented                        |
 
 ### Public Auction and Catalog
 
@@ -45,6 +45,7 @@ This document tracks frontend usage of backend APIs. Active FE integrations use 
 | VNPay deposit history | `GET /wallets/me/deposits`          | Implemented                            |
 | VNPay deposit status  | `GET /wallets/me/deposits/{txnRef}` | Implemented                            |
 | Auction registration  | `POST /auctions/{id}/register`      | Implemented                            |
+| Auction withdrawal    | `POST /auctions/{id}/withdraw`      | Implemented for `WAITING` sessions     |
 | Bid placement         | `POST /bids`                        | Implemented                            |
 | Server time sync      | `GET /system/time`                  | Implemented                            |
 
@@ -90,6 +91,13 @@ Wallet funding for buyer runtime must use the VNPay Sandbox deposit flow above. 
 | Seller auction list         | `GET /auctions/me`                     | Implemented                            |
 | Seller auction create       | `POST /auctions`                       | Implemented                            |
 | Seller auction cancel       | `PATCH /auctions/{id}/cancel`          | Implemented                            |
+
+Seller capability suspension is treated as read-only access, not as an account
+logout. `GET /users/me` supplies `capabilityStatuses` so the seller portal can show
+the exact reason and update time. Existing products, auctions, and sales remain
+visible; create/edit/submit/cancel actions are disabled. Shipping an already-paid
+order remains available. A top-level account ban still uses the normal hard-lock
+session behavior.
 
 ### Admin and Public Verification
 

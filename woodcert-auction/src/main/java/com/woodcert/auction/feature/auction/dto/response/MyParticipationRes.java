@@ -10,6 +10,7 @@ public record MyParticipationRes(
         DepositStatus depositStatus,
         boolean highestBidder,
         boolean canRegister,
+        boolean canWithdraw,
         boolean canBid,
         String reasonCode,
         String reasonMessage,

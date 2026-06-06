@@ -28,6 +28,8 @@ export default function BiddingRoomPage() {
     isPlacingBid,
     register,
     isRegistering,
+    withdraw,
+    isWithdrawing,
     extensionSeconds,
     outbidAlert,
   } = useBiddingRoom(auctionId ?? "");
@@ -141,8 +143,10 @@ export default function BiddingRoomPage() {
           participation={participation}
           isPlacingBid={isPlacingBid}
           isRegistering={isRegistering}
+          isWithdrawing={isWithdrawing}
           onPlaceBid={placeBid}
           onRegister={register}
+          onWithdraw={withdraw}
           walletBalance={walletBalance}
           className={`${mobilePanel === "bid" ? "flex" : "hidden"} h-auto w-full border-l-0 border-t lg:flex lg:h-full lg:w-[320px] lg:border-l lg:border-t-0`}
         />

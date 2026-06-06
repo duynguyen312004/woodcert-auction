@@ -14,11 +14,13 @@ import { ActiveAuctionWidget } from "../components/ActiveAuctionWidget";
 import { KpiCard } from "../components/KpiCard";
 import { ProductRow } from "../components/ProductRow";
 import { ProductTableSkeleton } from "../components/ProductTableSkeleton";
+import { useSellerCapability } from "../components/SellerCapabilityProvider";
 import { SELLER_PATHS } from "../constants/routes";
 import { useSellerDashboard } from "../hooks/useSellerDashboard";
 
 export function SellerDashboardPage() {
   const navigate = useNavigate();
+  const { isSuspended } = useSellerCapability();
   const { data: profile } = useProfile();
   const { data: sellerProfile } = useSellerProfile();
 
@@ -151,16 +153,20 @@ export function SellerDashboardPage() {
               <div className="grid grid-cols-2 gap-4">
                 <button
                   type="button"
-                  onClick={() => navigate(SELLER_PATHS.newProduct)}
-                  className="h-32 cursor-pointer bg-brushed-brass text-[#181612] rounded-xl flex flex-col items-center justify-center gap-3 transition-transform active:scale-95 hover:brightness-105 shadow-md"
+                  onClick={() => !isSuspended && navigate(SELLER_PATHS.newProduct)}
+                  disabled={isSuspended}
+                  title={isSuspended ? "Quyền bán đang bị đình chỉ" : undefined}
+                  className="h-32 cursor-pointer bg-brushed-brass text-[#181612] rounded-xl flex flex-col items-center justify-center gap-3 transition-transform active:scale-95 hover:brightness-105 shadow-md disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <PackagePlus className="size-7" />
                   <span className="font-bold text-sm">Đăng sản phẩm mới</span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => navigate(SELLER_PATHS.newAuction)}
-                  className="h-32 cursor-pointer bg-ink-blue text-white rounded-xl flex flex-col items-center justify-center gap-3 transition-transform active:scale-95 hover:brightness-110 shadow-md"
+                  onClick={() => !isSuspended && navigate(SELLER_PATHS.newAuction)}
+                  disabled={isSuspended}
+                  title={isSuspended ? "Quyền bán đang bị đình chỉ" : undefined}
+                  className="h-32 cursor-pointer bg-ink-blue text-white rounded-xl flex flex-col items-center justify-center gap-3 transition-transform active:scale-95 hover:brightness-110 shadow-md disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Gavel className="size-7" />
                   <span className="font-bold text-sm">Tạo phiên đấu giá</span>

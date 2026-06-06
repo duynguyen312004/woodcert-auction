@@ -10,6 +10,7 @@ import com.woodcert.auction.feature.finance.entity.VnPayDeposit;
 import com.woodcert.auction.feature.finance.entity.VnPayDepositStatus;
 import com.woodcert.auction.feature.finance.entity.WalletReferenceType;
 import com.woodcert.auction.feature.finance.repository.VnPayDepositRepository;
+import com.woodcert.auction.feature.finance.support.FinanceOperationKeys;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -254,7 +255,7 @@ public class VnPayServiceImpl implements VnPayService {
 
             walletService.depositFunds(
                     deposit.getUserId(),
-                    "vnpay:" + txnRef,
+                    FinanceOperationKeys.vnpayDeposit(txnRef),
                     deposit.getAmount(),
                     deposit.getId(),
                     WalletReferenceType.VNPAY_DEPOSIT);

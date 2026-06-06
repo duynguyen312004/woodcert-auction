@@ -4,6 +4,7 @@ import com.woodcert.auction.core.dto.PaginationResponse;
 import com.woodcert.auction.feature.finance.dto.response.WalletRes;
 import com.woodcert.auction.feature.finance.dto.response.WalletTransactionRes;
 import com.woodcert.auction.feature.finance.entity.WalletReferenceType;
+import com.woodcert.auction.feature.finance.support.FinanceOperationKey;
 
 import java.math.BigDecimal;
 
@@ -15,35 +16,35 @@ public interface WalletService {
 
     void depositFunds(
             String userId,
-            String operationKey,
+            FinanceOperationKey operationKey,
             BigDecimal amount,
             Long referenceId,
             WalletReferenceType referenceType);
 
     void freezeFunds(
             String userId,
-            String operationKey,
+            FinanceOperationKey operationKey,
             BigDecimal amount,
             Long referenceId,
             WalletReferenceType referenceType);
 
     void unfreezeFunds(
             String userId,
-            String operationKey,
+            FinanceOperationKey operationKey,
             BigDecimal amount,
             Long referenceId,
             WalletReferenceType referenceType);
 
     void deductFrozenFunds(
             String userId,
-            String operationKey,
+            FinanceOperationKey operationKey,
             BigDecimal amount,
             Long referenceId,
             WalletReferenceType referenceType);
 
     void withdrawFunds(
             String userId,
-            String operationKey,
+            FinanceOperationKey operationKey,
             BigDecimal amount,
             Long referenceId,
             WalletReferenceType referenceType);

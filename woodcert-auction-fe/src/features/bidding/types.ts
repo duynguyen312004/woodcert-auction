@@ -24,15 +24,17 @@ export type OutcomeCode =
   | "LOSER"
   | "ENDED_FAILED"
   | "NOT_PARTICIPATED"
+  | "WITHDRAWN"
   | "PENDING_SETTLEMENT"
   | "SELLER_VIEW";
 
 export interface ParticipationStatus {
   sellerOwned: boolean;
   registered: boolean;
-  depositStatus: "FROZEN" | "REFUNDED" | "DEDUCTED" | "CONFISCATED" | null;
+  depositStatus: "FROZEN" | "WITHDRAWN" | "REFUNDED" | "DEDUCTED" | "CONFISCATED" | null;
   highestBidder: boolean;
   canRegister: boolean;
+  canWithdraw: boolean;
   canBid: boolean;
   reasonCode: string;
   reasonMessage: string;

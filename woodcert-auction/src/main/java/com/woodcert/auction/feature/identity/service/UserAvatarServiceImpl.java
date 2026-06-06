@@ -2,9 +2,11 @@ package com.woodcert.auction.feature.identity.service;
 
 import com.woodcert.auction.core.exception.AppException;
 import com.woodcert.auction.core.exception.ErrorCode;
+import com.woodcert.auction.feature.identity.dto.response.CurrentUserCapabilityStatusRes;
 import com.woodcert.auction.feature.identity.dto.response.UserProfileRes;
 import com.woodcert.auction.feature.identity.entity.User;
 import com.woodcert.auction.feature.identity.repository.SellerProfileRepository;
+import com.woodcert.auction.feature.identity.repository.UserCapabilityStatusRepository;
 import com.woodcert.auction.feature.identity.repository.UserRepository;
 import com.woodcert.auction.feature.media.config.CloudinaryProperties;
 import com.woodcert.auction.feature.media.dto.request.ConfirmMediaUploadReq;
@@ -26,6 +28,7 @@ public class UserAvatarServiceImpl implements UserAvatarService {
 
     private final UserRepository userRepository;
     private final SellerProfileRepository sellerProfileRepository;
+    private final UserCapabilityStatusRepository capabilityStatusRepository;
     private final CloudinaryProperties properties;
     private final MediaAssetService mediaAssetService;
     private final MediaUrlBuilder mediaUrlBuilder;
@@ -59,7 +62,7 @@ public class UserAvatarServiceImpl implements UserAvatarService {
         // Bước 4: Lưu user và trả profile với URL avatar mới.
         boolean hasSellerProfile = sellerProfileRepository.existsById(userId);
         User savedUser = userRepository.save(user);
-        return UserProfileRes.fromEntity(savedUser, hasSellerProfile, mediaUrlBuilder.buildAvatarUrl(uploadedAvatar));
+        return toUserProfile(savedUser, hasSellerProfile, mediaUrlBuilder.buildAvatarUrl(uploadedAvatar));
     }
 
     @Override
@@ -78,7 +81,7 @@ public class UserAvatarServiceImpl implements UserAvatarService {
         // Bước 3: Lưu user và trả profile không còn avatar URL.
         boolean hasSellerProfile = sellerProfileRepository.existsById(userId);
         User savedUser = userRepository.save(user);
-        return UserProfileRes.fromEntity(savedUser, hasSellerProfile, null);
+        return toUserProfile(savedUser, hasSellerProfile, null);
     }
 
     private void ensureUserExists(String userId) {
@@ -90,6 +93,13 @@ public class UserAvatarServiceImpl implements UserAvatarService {
     private User findUser(String userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "User not found"));
+    }
+
+    private UserProfileRes toUserProfile(User user, boolean hasSellerProfile, String avatarUrl) {
+        var capabilityStatuses = capabilityStatusRepository.findByUserId(user.getId()).stream()
+                .map(CurrentUserCapabilityStatusRes::fromEntity)
+                .toList();
+        return UserProfileRes.fromEntity(user, hasSellerProfile, avatarUrl, capabilityStatuses);
     }
 
     private MediaUploadContext buildAvatarContext(String userId) {

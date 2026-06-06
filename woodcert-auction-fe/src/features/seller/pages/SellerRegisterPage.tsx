@@ -19,6 +19,7 @@ import {
   type CreateSellerProfilePayload,
   useProfile,
 } from "@/features/account";
+import { refreshAccessToken } from "@/shared/api/client";
 import { isApiError } from "@/shared/api/errors";
 import { clearAuthSession } from "@/shared/auth/auth-store";
 import { SELLER_PATHS } from "@/shared/constants";
@@ -95,12 +96,19 @@ export function SellerRegisterPage() {
 
   const onSubmit = async (data: CreateSellerProfilePayload) => {
     setSubmitError(null);
+    let sellerProfileCreated = false;
     try {
       await accountApi.createSellerProfile(data);
+      sellerProfileCreated = true;
+      await refreshAccessToken();
       await queryClient.invalidateQueries({ queryKey: SELLER_PROFILE_QUERY_KEY });
       await queryClient.invalidateQueries({ queryKey: PROFILE_QUERY_KEY });
-      setIsCreated(true);
+      navigate(SELLER_PATHS.dashboard, { replace: true });
     } catch (error: unknown) {
+      if (sellerProfileCreated) {
+        setIsCreated(true);
+        return;
+      }
       if (isApiError(error)) {
         for (const field of ["storeName", "identityCardNumber", "taxCode"] as const) {
           const message = error.fieldErrors?.[field];

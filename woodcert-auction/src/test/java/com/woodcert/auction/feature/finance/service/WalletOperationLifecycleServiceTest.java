@@ -120,6 +120,31 @@ class WalletOperationLifecycleServiceTest {
     }
 
     @Test
+    @DisplayName("should retry a matching operation after insufficient available balance")
+    void reserveOrReuseOperation_retryableFailure_resetsToPending() {
+        WalletOperation existing = existingOperation(WalletTransactionStatus.FAILED);
+        existing.setFailureCode(ErrorCode.WALLET_INSUFFICIENT_AVAILABLE_BALANCE.name());
+        existing.setFailureMessage(ErrorCode.WALLET_INSUFFICIENT_AVAILABLE_BALANCE.getMessage());
+        when(walletOperationRepository.findByOperationKey("freeze-1")).thenReturn(Optional.of(existing));
+        when(walletOperationRepository.saveAndFlush(existing)).thenReturn(existing);
+
+        WalletOperation result = walletOperationLifecycleService.reserveOrReuseOperation(
+                10L,
+                "freeze-1",
+                new BigDecimal("1000000.00"),
+                WalletTransactionType.FREEZE,
+                205L,
+                WalletReferenceType.AUCTION
+        );
+
+        assertThat(result).isSameAs(existing);
+        assertThat(result.getStatus()).isEqualTo(WalletTransactionStatus.PENDING);
+        assertThat(result.getFailureCode()).isNull();
+        assertThat(result.getFailureMessage()).isNull();
+        verify(walletOperationRepository).saveAndFlush(existing);
+    }
+
+    @Test
     @DisplayName("should reject fresh pending operations as in progress")
     void reserveOrReuseOperation_freshPending_throws() {
         when(financeProperties.getWalletOperationPendingTimeout()).thenReturn(Duration.ofMinutes(5));

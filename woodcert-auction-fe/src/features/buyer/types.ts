@@ -8,6 +8,7 @@ export type BuyerOutcomeCode =
   | "WINNER"
   | "LOSER"
   | "ENDED_FAILED"
+  | "WITHDRAWN"
   | "PENDING_SETTLEMENT";
 
 export interface BuyerAuction {

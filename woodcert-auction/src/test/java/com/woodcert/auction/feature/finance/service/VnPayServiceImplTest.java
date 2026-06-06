@@ -7,6 +7,7 @@ import com.woodcert.auction.feature.finance.entity.VnPayDeposit;
 import com.woodcert.auction.feature.finance.entity.VnPayDepositStatus;
 import com.woodcert.auction.feature.finance.entity.WalletReferenceType;
 import com.woodcert.auction.feature.finance.repository.VnPayDepositRepository;
+import com.woodcert.auction.feature.finance.support.FinanceOperationKeys;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -194,7 +195,7 @@ class VnPayServiceImplTest {
         verify(depositRepository).saveAndFlush(deposit);
         verify(walletService).depositFunds(
                 eq(USER_ID),
-                eq("vnpay:" + txnRef),
+                eq(FinanceOperationKeys.vnpayDeposit(txnRef)),
                 eq(BigDecimal.valueOf(100000)),
                 eq(9L),
                 eq(WalletReferenceType.VNPAY_DEPOSIT)
@@ -283,7 +284,7 @@ class VnPayServiceImplTest {
         verify(depositRepository).findByTxnRefForUpdate(txnRef);
         verify(walletService).depositFunds(
                 eq(USER_ID),
-                eq("vnpay:" + txnRef),
+                eq(FinanceOperationKeys.vnpayDeposit(txnRef)),
                 eq(BigDecimal.valueOf(100000)),
                 eq(3L),
                 eq(WalletReferenceType.VNPAY_DEPOSIT)

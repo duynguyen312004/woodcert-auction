@@ -14,6 +14,13 @@
 5. Insert `AuctionParticipant(FROZEN)`.
 6. If session is `ACTIVE`, add user to Redis bidder set.
 
+## Withdraw
+1. Lock session and product.
+2. Require session status `WAITING`.
+3. Lock the current user's participant row and require deposit status `FROZEN`.
+4. Unfreeze the full deposit with key `auction:withdraw:refund:{auctionId}:{userId}`.
+5. Mark the participant `WITHDRAWN` and record `withdrawnAt`; never delete the row.
+
 ## Activate
 1. Scheduler locks due `WAITING` sessions.
 2. Build Redis state and bidder set from `FROZEN` participants.

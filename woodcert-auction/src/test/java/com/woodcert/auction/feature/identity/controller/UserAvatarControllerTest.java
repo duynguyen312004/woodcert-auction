@@ -68,7 +68,8 @@ class UserAvatarControllerTest {
                 "ACTIVE",
                 List.of("ROLE_BIDDER"),
                 Instant.parse("2026-03-28T10:00:00Z"),
-                false);
+                false,
+                List.of());
 
         when(userAvatarService.attachCurrentUserAvatar("user-1", request)).thenReturn(profile);
 
@@ -92,7 +93,8 @@ class UserAvatarControllerTest {
                 "ACTIVE",
                 List.of("ROLE_BIDDER"),
                 Instant.parse("2026-03-28T10:00:00Z"),
-                false);
+                false,
+                List.of());
 
         when(userAvatarService.clearCurrentUserAvatar("user-1")).thenReturn(profile);
 

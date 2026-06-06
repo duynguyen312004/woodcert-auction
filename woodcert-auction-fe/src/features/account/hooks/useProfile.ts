@@ -8,11 +8,12 @@ export const SELLER_PROFILE_QUERY_KEY = ["account", "seller-profile"] as const;
 /**
  * Lấy profile của người dùng đang đăng nhập.
  */
-export function useProfile() {
+export function useProfile(options?: { refetchInterval?: number | false }) {
   return useQuery({
     queryKey: PROFILE_QUERY_KEY,
     queryFn: accountApi.getProfile,
     staleTime: 1000 * 60 * 5, // 5 phút
+    ...options,
   });
 }
 

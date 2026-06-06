@@ -41,15 +41,23 @@ class EffectivePermissionServiceImplTest {
     @Test
     void sellerBanned_losesSellerPermissions() {
         when(effectivePermissionQueryRepository.findAllPermissionNamesByUserId("user-1"))
-                .thenReturn(Set.of("CREATE_PRODUCT", "CREATE_AUCTION_SESSION", "CREATE_BID"));
+                .thenReturn(Set.of(
+                        "CREATE_PRODUCT",
+                        "SUBMIT_APPRAISAL_REQUEST",
+                        "CREATE_AUCTION_SESSION",
+                        "CONFIRM_DELIVERY",
+                        "CREATE_BID"));
         when(capabilityStatusRepository.findCapabilitiesByUserIdAndStatus("user-1", CapabilityStatus.BANNED))
                 .thenReturn(List.of(UserCapability.SELLER));
         when(capabilityPermissionMapper.getPermissionsForCapability(UserCapability.SELLER))
-                .thenReturn(Set.of("CREATE_PRODUCT", "CREATE_AUCTION_SESSION"));
+                .thenReturn(Set.of(
+                        "CREATE_PRODUCT",
+                        "SUBMIT_APPRAISAL_REQUEST",
+                        "CREATE_AUCTION_SESSION"));
 
         Set<String> permissions = service.getEffectivePermissions("user-1");
 
-        assertThat(permissions).containsExactly("CREATE_BID");
+        assertThat(permissions).containsExactlyInAnyOrder("CONFIRM_DELIVERY", "CREATE_BID");
     }
 
     @Test

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CheckCircle2, Gavel, Info, PlusCircle, ShieldAlert, Wallet } from "lucide-react";
+import { CheckCircle2, Gavel, Info, LogOut, PlusCircle, ShieldAlert, Wallet } from "lucide-react";
 
 import { isApiError } from "@/shared/api/errors";
 import { cn } from "@/shared/lib/utils";
@@ -10,8 +10,10 @@ interface BidControlPanelProps {
   participation: ParticipationStatus | null;
   isPlacingBid: boolean;
   isRegistering: boolean;
+  isWithdrawing: boolean;
   onPlaceBid: (amount: number) => Promise<unknown>;
   onRegister: () => Promise<unknown>;
+  onWithdraw: () => Promise<unknown>;
   walletBalance: number;
   className?: string;
 }
@@ -21,8 +23,10 @@ export function BidControlPanel({
   participation,
   isPlacingBid,
   isRegistering,
+  isWithdrawing,
   onPlaceBid,
   onRegister,
+  onWithdraw,
   walletBalance,
   className,
 }: BidControlPanelProps) {
@@ -35,6 +39,7 @@ export function BidControlPanel({
   const [errorText, setErrorText] = useState<string | null>(null);
   const [successText, setSuccessText] = useState<string | null>(null);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
 
   if (minBid !== prevMinBid) {
     setPrevMinBid(minBid);
@@ -116,6 +121,23 @@ export function BidControlPanel({
     }
   };
 
+  const handleWithdrawConfirm = async () => {
+    try {
+      setErrorText(null);
+      await onWithdraw();
+      setShowWithdrawModal(false);
+      setSuccessText("Đã rút khỏi phiên. Tiền cọc đã được hoàn về số dư khả dụng.");
+    } catch (err: unknown) {
+      const errMsg = isApiError(err)
+        ? err.message
+        : err instanceof Error
+          ? err.message
+          : "Không thể rút khỏi phiên đấu giá.";
+      setShowWithdrawModal(false);
+      setErrorText(errMsg);
+    }
+  };
+
   const getBidDisabledReason = () => {
     if (!participation) return "Đang tải dữ liệu tham gia...";
     if (participation.sellerOwned) return "Bạn là chủ sở hữu của phiên đấu giá này.";
@@ -159,7 +181,26 @@ export function BidControlPanel({
         </a>
       </div>
 
-      {!participation?.registered && !participation?.sellerOwned ? (
+      {participation?.depositStatus === "WITHDRAWN" ? (
+        <div className="flex flex-col gap-3 rounded-xl border border-stone-300 bg-stone-100/70 p-4">
+          <div className="flex items-start gap-3">
+            <div className="rounded-full bg-stone-200 p-2 text-stone-600">
+              <LogOut className="h-4 w-4" />
+            </div>
+            <div>
+              <h3 className="text-xs font-bold text-foreground">Đã rút khỏi phiên</h3>
+              <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                Tiền cọc đã được hoàn về ví. Bạn không thể đăng ký lại phiên đấu giá này.
+              </p>
+            </div>
+          </div>
+          {successText && (
+            <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-2.5 text-[11px] text-emerald-700">
+              {successText}
+            </div>
+          )}
+        </div>
+      ) : !participation?.registered && !participation?.sellerOwned ? (
         <div className="flex flex-col gap-4 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-center">
           <div className="mx-auto rounded-full bg-amber-500/10 p-2.5 text-amber-600 dark:text-amber-400">
             <ShieldAlert className="h-5 w-5" />
@@ -176,7 +217,9 @@ export function BidControlPanel({
           </div>
           <button
             onClick={() => setShowRegisterModal(true)}
-            disabled={isRegistering || walletBalance < detail.depositAmount}
+            disabled={
+              isRegistering || !participation?.canRegister || walletBalance < detail.depositAmount
+            }
             className="rounded-lg bg-amber-600 dark:bg-amber-500 text-white py-2 text-xs font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isRegistering ? "Đang xử lý..." : "Đăng ký ký quỹ ngay"}
@@ -196,6 +239,23 @@ export function BidControlPanel({
           {participation?.highestBidder && (
             <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3 text-[11px] leading-normal text-emerald-600 dark:text-emerald-400">
               Bạn đang là người dẫn đầu. Hệ thống sẽ mở lại form đặt giá nếu có người khác vượt bạn.
+            </div>
+          )}
+
+          {participation?.canWithdraw && detail.status === "WAITING" && (
+            <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-3">
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                Bạn có thể rút trước khi phiên bắt đầu. Sau khi rút, bạn không thể đăng ký lại.
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowWithdrawModal(true)}
+                disabled={isWithdrawing}
+                className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-red-500/30 px-3 py-2 text-xs font-bold text-red-600 transition-colors hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                {isWithdrawing ? "Đang hoàn cọc..." : "Rút khỏi phiên"}
+              </button>
             </div>
           )}
 
@@ -291,6 +351,46 @@ export function BidControlPanel({
                 className="rounded-lg bg-amber-600 dark:bg-amber-500 text-white px-4 py-2 text-xs font-semibold hover:opacity-90 transition-opacity"
               >
                 {isRegistering ? "Đang xử lý..." : "Xác nhận ký quỹ"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showWithdrawModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-sm rounded-xl border bg-card p-6 shadow-2xl">
+            <div className="mb-4 flex items-start gap-3">
+              <div className="rounded-full bg-red-500/10 p-2.5 text-red-600">
+                <LogOut className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-foreground">Rút khỏi phiên đấu giá?</h3>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  Hệ thống sẽ hoàn{" "}
+                  <strong className="text-foreground">
+                    {formatCurrency(detail.depositAmount)}
+                  </strong>{" "}
+                  về ví. Bạn sẽ không thể đăng ký lại phiên này.
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowWithdrawModal(false)}
+                disabled={isWithdrawing}
+                className="rounded-lg border px-4 py-2 text-xs font-semibold hover:bg-muted disabled:opacity-50"
+              >
+                Giữ đăng ký
+              </button>
+              <button
+                type="button"
+                onClick={handleWithdrawConfirm}
+                disabled={isWithdrawing}
+                className="rounded-lg bg-red-600 px-4 py-2 text-xs font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+              >
+                {isWithdrawing ? "Đang xử lý..." : "Xác nhận rút"}
               </button>
             </div>
           </div>

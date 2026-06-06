@@ -1,7 +1,7 @@
 /**
  * Sidebar điều hướng cố định của khu appraiser.
  */
-import { ArrowLeft, ClipboardList, History, Loader2, LogOut, ShieldCheck } from "lucide-react";
+import { ClipboardList, History, Loader2, LogOut, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 
@@ -55,13 +55,6 @@ export function AppraiserSidebar() {
             )}
           </div>
           <div className="flex flex-col min-w-0">
-            <Link
-              to="/"
-              className="inline-flex items-center gap-1.5 text-[10px] text-muted-warm hover:text-primary mb-1 transition-colors font-medium group"
-            >
-              <ArrowLeft className="size-3 transition-transform group-hover:-translate-x-0.5" />
-              Về trang chủ
-            </Link>
             <h1 className="text-[#eae1d6] text-sm font-semibold truncate leading-tight">
               WoodCert Auction
             </h1>

@@ -1,5 +1,6 @@
 package com.woodcert.auction.feature.catalog.dto.response;
 
+import com.woodcert.auction.feature.catalog.entity.Category;
 import com.woodcert.auction.feature.catalog.entity.Product;
 import com.woodcert.auction.feature.catalog.entity.ProductSaleStatus;
 import com.woodcert.auction.feature.catalog.entity.ProductStatus;
@@ -36,11 +37,9 @@ public record ProductDetailRes(
             Product product,
             SellerSummaryRes sellerSummary,
             List<ProductImageRes> imageResponses,
-            AppraisalReportRes appraisalReportRes) {
-        CategoryRes categoryRes = null;
-        if (product.getCategory() != null) {
-            categoryRes = CategoryRes.fromEntity(product.getCategory());
-        }
+            AppraisalReportRes appraisalReportRes,
+            Category category) {
+        CategoryRes categoryRes = category != null ? CategoryRes.fromEntity(category) : null;
         return new ProductDetailRes(
                 product.getId(),
                 sellerSummary,

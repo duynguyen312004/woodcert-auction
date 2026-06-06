@@ -8,6 +8,27 @@ It does not own auction, order, fulfillment, or dispute state; those modules cal
 ## Wallet Contract
 Every successful wallet mutation writes one `wallet_transactions` row. Internal wallet mutations are idempotent by `operationKey`.
 
+Operation keys are created only through `FinanceOperationKeys`. The factory preserves
+the persisted key grammar and validates IDs, actor/reference segments, separators,
+and the shared 160-character storage limit.
+
+Key grammar:
+- `appraisal:submit:fee:{productId}:{sellerId}`
+- `auction:register:freeze:{auctionId}:{userId}`
+- `auction:close:{deduct|refund}:{auctionId}:{userId}`
+- `auction:cancel:refund:{auctionId}:{userId}`
+- `order:{action}:{effect?}:{orderId}:{actorId?}`
+- `vnpay:{txnRef}`
+
+Operation lifecycle:
+- `PENDING`: reserved; concurrent duplicate requests are rejected.
+- `SUCCESS`: terminal; retries become no-ops.
+- `FAILED`: retryable only for insufficient balance or optimistic concurrency failures.
+- stale `PENDING`: persisted as terminal `FAILED` for fail-closed reconciliation.
+
+The same key may be used in `wallet_operations` and
+`platform_revenue_transactions` when both rows represent the same business action.
+
 Service methods:
 - `depositFunds`
 - `freezeFunds`

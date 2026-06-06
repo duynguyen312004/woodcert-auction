@@ -39,6 +39,11 @@ export const API_ERROR_MESSAGES: Record<string, string> = {
   "Phone number must not exceed 20 characters": "Số điện thoại không được vượt quá 20 ký tự.",
   "Phone number must be a valid Vietnamese phone number":
     "Vui lòng nhập số điện thoại Việt Nam hợp lệ.",
+  "Insufficient available balance": "Số dư khả dụng không đủ để thanh toán lệ phí kiểm định.",
+  WALLET_INSUFFICIENT_AVAILABLE_BALANCE: "Số dư khả dụng không đủ để thanh toán lệ phí kiểm định.",
+  "Wallet operation already failed and cannot be retried with the same operation key":
+    "Giao dịch ví trước đó chưa thể hoàn tất. Vui lòng thử gửi lại.",
+  WALLET_OPERATION_ALREADY_FAILED: "Giao dịch ví trước đó chưa thể hoàn tất. Vui lòng thử gửi lại.",
 
   // Misconfiguration surfaced by register endpoint
   "Default role ROLE_BIDDER not found":

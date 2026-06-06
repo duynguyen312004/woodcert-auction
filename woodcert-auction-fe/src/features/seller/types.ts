@@ -28,6 +28,7 @@ export type SellerAuctionSettlementStatus = "NOT_APPLICABLE" | "PENDING" | "SETT
 
 export interface SellerAuctionSettlementSummary {
   frozen: number;
+  withdrawn: number;
   refunded: number;
   deducted: number;
   confiscated: number;
@@ -126,6 +127,30 @@ export interface ProductDetailImage {
   sortOrder: number;
 }
 
+export type ConditionGrade = "EXCELLENT" | "GOOD" | "FAIR" | "POOR";
+
+export interface AppraisalProofImage {
+  id: number;
+  mediaId: number;
+  description: string | null;
+  imageUrl: string | null;
+}
+
+export interface SellerAppraisalReport {
+  certificateCode: string;
+  verifiedMaterial: string;
+  origin: string | null;
+  ageEstimation: string | null;
+  conditionGrade: ConditionGrade | null;
+  estimatedValue: number | string;
+  isAuthentic: boolean;
+  digitalSignature: string;
+  appraisedAt: string;
+  appraiserNotes: string | null;
+  sellerAccuracy: number | string | null;
+  proofImages: AppraisalProofImage[];
+}
+
 export interface ProductDetail {
   id: number;
   title: string;
@@ -143,6 +168,7 @@ export interface ProductDetail {
     description?: string | null;
   } | null;
   images: ProductDetailImage[];
+  appraisalReport: SellerAppraisalReport | null;
   submittedAt?: string | null;
   appraisalClaimedBy?: string | null;
   appraisalClaimedAt?: string | null;
@@ -261,9 +287,7 @@ export const createAuctionSessionSchema = z
       return;
     }
 
-    // Cộng 7 phút (5 phút theo rule BE + 2 phút buffer bù lệch đồng hồ client-server).
-    // Tránh trường hợp FE pass nhưng BE reject vì clock skew.
-    if (startTime.getTime() < getServerNow() + 7 * 60 * 1000) {
+    if (startTime.getTime() < getServerNow() + 5 * 60 * 1000) {
       ctx.addIssue({
         code: "custom",
         path: ["startTime"],

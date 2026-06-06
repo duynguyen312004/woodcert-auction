@@ -61,7 +61,7 @@ public class AuctionController {
     }
 
     @GetMapping("/me")
-    @PreAuthorize("hasAuthority('CREATE_AUCTION_SESSION')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<PaginationResponse<SellerAuctionListRes>>> getSellerAuctions(
             @CurrentUserId String sellerId,
             @RequestParam(defaultValue = "1") int page,
@@ -73,7 +73,7 @@ public class AuctionController {
     }
 
     @GetMapping("/me/{id}")
-    @PreAuthorize("hasAuthority('CREATE_AUCTION_SESSION')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<SellerAuctionDetailRes>> getSellerAuctionDetail(
             @CurrentUserId String sellerId,
             @PathVariable Long id) {
@@ -86,7 +86,7 @@ public class AuctionController {
      * Đặt trước /me/{id} nhưng Spring MVC luôn ưu tiên literal path nên không cần lo thứ tự.
      */
     @GetMapping("/me/stats")
-    @PreAuthorize("hasAuthority('CREATE_AUCTION_SESSION')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<SellerAuctionStatsRes>> getSellerAuctionStats(
             @CurrentUserId String sellerId) {
         SellerAuctionStatsRes result = auctionService.getSellerAuctionStats(sellerId);
@@ -177,5 +177,14 @@ public class AuctionController {
         // Đăng ký buyer vào phiên trước khi cho phép tham gia đặt giá.
         auctionService.registerForAuction(userId, id);
         return ResponseEntity.ok(ApiResponse.success(null, "Registration successful"));
+    }
+
+    @PostMapping("/{id}/withdraw")
+    @PreAuthorize("hasAuthority('REGISTER_AUCTION')")
+    public ResponseEntity<ApiResponse<Void>> withdrawFromAuction(
+            @CurrentUserId String userId,
+            @PathVariable Long id) {
+        auctionService.withdrawFromAuction(userId, id);
+        return ResponseEntity.ok(ApiResponse.success(null, "Auction participation withdrawn successfully"));
     }
 }

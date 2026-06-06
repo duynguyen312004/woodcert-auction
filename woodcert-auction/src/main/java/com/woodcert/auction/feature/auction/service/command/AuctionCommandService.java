@@ -23,6 +23,8 @@ import com.woodcert.auction.feature.catalog.repository.ProductRepository;
 import com.woodcert.auction.feature.catalog.service.ProductImageHelper;
 import com.woodcert.auction.feature.finance.entity.WalletReferenceType;
 import com.woodcert.auction.feature.finance.service.WalletService;
+import com.woodcert.auction.feature.finance.support.FinanceOperationKey;
+import com.woodcert.auction.feature.finance.support.FinanceOperationKeys;
 import com.woodcert.auction.feature.identity.service.SellerSummaryQueryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -134,12 +136,17 @@ public class AuctionCommandService {
         }
 
         // Bước 5: Chặn đăng ký trùng trước khi đóng băng tiền cọc.
-        if (auctionParticipantRepository.existsByAuctionSessionIdAndUserId(auctionId, userId)) {
+        var existingParticipant = auctionParticipantRepository.findByAuctionSessionIdAndUserId(auctionId, userId);
+        if (existingParticipant.isPresent()
+                && existingParticipant.get().getDepositStatus() == DepositStatus.WITHDRAWN) {
+            throw new AppException(ErrorCode.AUCTION_REGISTRATION_WITHDRAWN);
+        }
+        if (existingParticipant.isPresent()) {
             throw new AppException(ErrorCode.AUCTION_ALREADY_REGISTERED);
         }
 
         // Bước 6: Đóng băng tiền cọc trong ví bằng operation key idempotent theo user và auction.
-        String operationKey = "auction:register:freeze:" + auctionId + ":" + userId;
+        FinanceOperationKey operationKey = FinanceOperationKeys.auctionRegistrationFreeze(auctionId, userId);
         walletService.freezeFunds(userId, operationKey, session.getDepositAmount(),
                 auctionId, WalletReferenceType.AUCTION);
 
@@ -162,6 +169,38 @@ public class AuctionCommandService {
                 throw new AppException(ErrorCode.AUCTION_NOT_ACTIVE);
             }
         }
+    }
+
+    @Transactional
+    public void withdrawFromAuction(String userId, Long auctionId) {
+        AuctionSession session = auctionSessionRepository.findByIdWithProductForUpdate(auctionId)
+                .orElseThrow(() -> new AppException(ErrorCode.AUCTION_SESSION_NOT_FOUND));
+
+        if (session.getStatus() != AuctionSessionStatus.WAITING) {
+            throw new AppException(ErrorCode.AUCTION_PARTICIPATION_NOT_WITHDRAWABLE);
+        }
+
+        AuctionParticipant participant = auctionParticipantRepository
+                .findByAuctionSessionIdAndUserIdForUpdate(auctionId, userId)
+                .orElseThrow(() -> new AppException(ErrorCode.AUCTION_PARTICIPATION_NOT_FOUND));
+
+        if (participant.getDepositStatus() == DepositStatus.WITHDRAWN) {
+            throw new AppException(ErrorCode.AUCTION_PARTICIPATION_ALREADY_WITHDRAWN);
+        }
+        if (participant.getDepositStatus() != DepositStatus.FROZEN) {
+            throw new AppException(ErrorCode.AUCTION_PARTICIPATION_NOT_WITHDRAWABLE);
+        }
+
+        walletService.unfreezeFunds(
+                userId,
+                FinanceOperationKeys.auctionWithdrawalRefund(auctionId, userId),
+                participant.getDepositAmount(),
+                auctionId,
+                WalletReferenceType.AUCTION);
+
+        participant.setDepositStatus(DepositStatus.WITHDRAWN);
+        participant.setWithdrawnAt(Instant.now());
+        auctionParticipantRepository.save(participant);
     }
 
     private void validateActiveRegistrationWindow(Long auctionId) {

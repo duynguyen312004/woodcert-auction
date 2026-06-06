@@ -90,6 +90,9 @@ identity:
     path: ${REFRESH_COOKIE_PATH:/api/v1/auth}
     max-age: ${REFRESH_COOKIE_MAX_AGE:604800}
     same-site: ${REFRESH_COOKIE_SAME_SITE:Lax}
+  brute-force:
+    max-attempts: ${IDENTITY_BRUTE_FORCE_MAX_ATTEMPTS:5}
+    lock-duration-seconds: ${IDENTITY_BRUTE_FORCE_LOCK_DURATION_SECONDS:900}
 
 cloudinary:
   cloud-name: ${CLOUDINARY_CLOUD_NAME:}

@@ -8,6 +8,7 @@ import { useBidHistory } from "./useBidHistory";
 import { useParticipation } from "./useParticipation";
 import { usePlaceBid } from "./usePlaceBid";
 import { useRegisterAuction } from "./useRegisterAuction";
+import { useWithdrawAuction } from "./useWithdrawAuction";
 import type {
   BiddingAuctionDetail,
   BidHistoryItem,
@@ -31,6 +32,7 @@ export function useBiddingRoom(auctionId: string | number) {
   const bidsQuery = useBidHistory(auctionId);
   const placeBidMutation = usePlaceBid(auctionId);
   const registerMutation = useRegisterAuction(auctionId);
+  const withdrawMutation = useWithdrawAuction(auctionId);
 
   const [extensionSeconds, setExtensionSeconds] = useState<number | null>(null);
   const [outbidAlert, setOutbidAlert] = useState<OutbidAlert | null>(null);
@@ -207,6 +209,8 @@ export function useBiddingRoom(auctionId: string | number) {
     isPlacingBid: placeBidMutation.isPending,
     register: registerMutation.mutateAsync,
     isRegistering: registerMutation.isPending,
+    withdraw: withdrawMutation.mutateAsync,
+    isWithdrawing: withdrawMutation.isPending,
     extensionSeconds,
     outbidAlert,
     refetchAll: () => {

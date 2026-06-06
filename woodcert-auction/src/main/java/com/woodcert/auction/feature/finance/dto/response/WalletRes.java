@@ -8,14 +8,16 @@ public record WalletRes(
         Long id,
         String userId,
         BigDecimal availableBalance,
-        BigDecimal frozenBalance
+        BigDecimal frozenBalance,
+        BigDecimal appraisalFee
 ) {
-    public static WalletRes fromEntity(Wallet wallet) {
+    public static WalletRes fromEntity(Wallet wallet, BigDecimal appraisalFee) {
         return new WalletRes(
                 wallet.getId(),
                 wallet.getUserId(),
                 wallet.getAvailableBalance(),
-                wallet.getFrozenBalance()
+                wallet.getFrozenBalance(),
+                appraisalFee
         );
     }
 }

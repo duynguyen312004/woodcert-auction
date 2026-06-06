@@ -6,6 +6,7 @@ import com.woodcert.auction.feature.identity.entity.Role;
 import com.woodcert.auction.feature.identity.entity.User;
 import com.woodcert.auction.feature.identity.entity.UserStatus;
 import com.woodcert.auction.feature.identity.repository.SellerProfileRepository;
+import com.woodcert.auction.feature.identity.repository.UserCapabilityStatusRepository;
 import com.woodcert.auction.feature.identity.repository.UserRepository;
 import com.woodcert.auction.feature.media.config.CloudinaryProperties;
 import com.woodcert.auction.feature.media.dto.request.ConfirmMediaUploadReq;
@@ -44,6 +45,9 @@ class UserAvatarServiceImplTest {
     private SellerProfileRepository sellerProfileRepository;
 
     @Mock
+    private UserCapabilityStatusRepository capabilityStatusRepository;
+
+    @Mock
     private MediaAssetService mediaAssetService;
 
     @Mock
@@ -60,6 +64,7 @@ class UserAvatarServiceImplTest {
         userAvatarService = new UserAvatarServiceImpl(
                 userRepository,
                 sellerProfileRepository,
+                capabilityStatusRepository,
                 properties,
                 mediaAssetService,
                 mediaUrlBuilder);

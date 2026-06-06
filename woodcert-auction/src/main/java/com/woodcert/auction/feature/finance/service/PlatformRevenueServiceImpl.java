@@ -9,6 +9,7 @@ import com.woodcert.auction.feature.finance.entity.PlatformRevenueTransaction;
 import com.woodcert.auction.feature.finance.entity.PlatformRevenueType;
 import com.woodcert.auction.feature.finance.entity.WalletReferenceType;
 import com.woodcert.auction.feature.finance.repository.PlatformRevenueTransactionRepository;
+import com.woodcert.auction.feature.finance.support.FinanceOperationKey;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -43,13 +44,13 @@ public class PlatformRevenueServiceImpl implements PlatformRevenueService {
             String sourceUserId,
             WalletReferenceType referenceType,
             Long referenceId,
-            String operationKey) {
-        if (type == null || referenceType == null || operationKey == null || operationKey.isBlank()) {
+            FinanceOperationKey operationKey) {
+        if (type == null || referenceType == null || operationKey == null) {
             throw new AppException(ErrorCode.INVALID_REQUEST);
         }
 
         BigDecimal normalizedAmount = normalizePositiveMoney(amount);
-        String normalizedOperationKey = operationKey.trim();
+        String normalizedOperationKey = operationKey.value();
         if (repository.existsByOperationKey(normalizedOperationKey)) {
             return;
         }

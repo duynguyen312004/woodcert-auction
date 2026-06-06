@@ -6,6 +6,8 @@ import com.woodcert.auction.feature.auction.entity.DepositStatus;
 import com.woodcert.auction.feature.auction.repository.AuctionParticipantRepository;
 import com.woodcert.auction.feature.finance.entity.WalletReferenceType;
 import com.woodcert.auction.feature.finance.service.WalletService;
+import com.woodcert.auction.feature.finance.support.FinanceOperationKey;
+import com.woodcert.auction.feature.finance.support.FinanceOperationKeys;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -31,9 +33,11 @@ public class AuctionParticipantSettlementService {
         boolean isWinner = closeResult.outcome() == AuctionSessionStatus.ENDED_SUCCESS
                 && participantUserId.equals(closeResult.highestBidderId());
 
-        String operationKey = isWinner
-                ? "auction:close:deduct:" + closeResult.auctionSessionId() + ":" + participantUserId
-                : "auction:close:refund:" + closeResult.auctionSessionId() + ":" + participantUserId;
+        FinanceOperationKey operationKey = isWinner
+                ? FinanceOperationKeys.auctionCloseDeduct(
+                        closeResult.auctionSessionId(), participantUserId)
+                : FinanceOperationKeys.auctionCloseRefund(
+                        closeResult.auctionSessionId(), participantUserId);
         DepositStatus targetStatus = isWinner ? DepositStatus.DEDUCTED : DepositStatus.REFUNDED;
 
         if (isWinner) {
@@ -70,7 +74,7 @@ public class AuctionParticipantSettlementService {
 
         walletService.unfreezeFunds(
                 participant.getUserId(),
-                "auction:cancel:refund:" + auctionSessionId + ":" + participant.getUserId(),
+                FinanceOperationKeys.auctionCancelRefund(auctionSessionId, participant.getUserId()),
                 participant.getDepositAmount(),
                 auctionSessionId,
                 WalletReferenceType.AUCTION

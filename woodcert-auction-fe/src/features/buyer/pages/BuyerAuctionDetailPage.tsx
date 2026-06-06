@@ -248,6 +248,7 @@ function DetailStatusBadge({ code }: { code: string }) {
       PENDING: "Chờ mở phiên",
       PENDING_SETTLEMENT: "Chờ đối soát tài chính",
       ENDED_FAILED: "Thất bại (Không đạt giá sàn)",
+      WITHDRAWN: "Đã rút trước khi bắt đầu",
       NONE: "Chưa xác định",
     }[code] ?? code;
 
@@ -259,6 +260,7 @@ function DetailStatusBadge({ code }: { code: string }) {
       PENDING: "bg-[#2e4a62]/15 text-[#2e4a62] border border-[#2e4a62]/30",
       PENDING_SETTLEMENT: "bg-[#2e4a62]/15 text-[#2e4a62] border border-[#2e4a62]/30",
       ENDED_FAILED: "bg-[#b5533e]/15 text-[#b5533e] border border-[#b5533e]/30",
+      WITHDRAWN: "bg-stone-200 text-stone-700 border border-stone-300",
       NONE: "bg-stone-100 text-stone-600 border border-stone-200",
     }[code] ?? "bg-stone-900 text-white";
 

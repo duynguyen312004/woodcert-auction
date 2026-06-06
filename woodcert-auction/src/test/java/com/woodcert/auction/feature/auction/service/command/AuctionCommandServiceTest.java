@@ -7,6 +7,7 @@ import com.woodcert.auction.feature.auction.dto.response.AuctionDetailRes;
 import com.woodcert.auction.feature.auction.entity.AuctionParticipant;
 import com.woodcert.auction.feature.auction.entity.AuctionSession;
 import com.woodcert.auction.feature.auction.entity.AuctionSessionStatus;
+import com.woodcert.auction.feature.auction.entity.DepositStatus;
 import com.woodcert.auction.feature.auction.repository.AuctionParticipantRepository;
 import com.woodcert.auction.feature.auction.repository.AuctionSessionRepository;
 import com.woodcert.auction.feature.auction.service.AuctionRedisService;
@@ -22,6 +23,7 @@ import com.woodcert.auction.feature.catalog.repository.ProductRepository;
 import com.woodcert.auction.feature.catalog.service.ProductImageHelper;
 import com.woodcert.auction.feature.finance.entity.WalletReferenceType;
 import com.woodcert.auction.feature.finance.service.WalletService;
+import com.woodcert.auction.feature.finance.support.FinanceOperationKeys;
 import com.woodcert.auction.feature.identity.service.SellerSummaryQueryService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -218,13 +220,14 @@ class AuctionCommandServiceTest {
         AuctionSession session = session(AuctionSessionStatus.WAITING);
         session.setProduct(product(ProductStatus.APPRAISED));
         when(auctionSessionRepository.findByIdWithProductForUpdate(AUCTION_ID)).thenReturn(Optional.of(session));
-        when(auctionParticipantRepository.existsByAuctionSessionIdAndUserId(AUCTION_ID, BIDDER_ID)).thenReturn(false);
+        when(auctionParticipantRepository.findByAuctionSessionIdAndUserId(AUCTION_ID, BIDDER_ID))
+                .thenReturn(Optional.empty());
 
         commandService.registerForAuction(BIDDER_ID, AUCTION_ID);
 
         verify(walletService).freezeFunds(
                 BIDDER_ID,
-                "auction:register:freeze:" + AUCTION_ID + ":" + BIDDER_ID,
+                FinanceOperationKeys.auctionRegistrationFreeze(AUCTION_ID, BIDDER_ID),
                 session.getDepositAmount(),
                 AUCTION_ID,
                 WalletReferenceType.AUCTION);
@@ -237,7 +240,8 @@ class AuctionCommandServiceTest {
         session.setProduct(product(ProductStatus.APPRAISED));
         when(auctionSessionRepository.findByIdWithProductForUpdate(AUCTION_ID)).thenReturn(Optional.of(session));
         when(auctionRedisService.getEndTimeEpochMs(AUCTION_ID)).thenReturn(Instant.now().plusSeconds(600).toEpochMilli());
-        when(auctionParticipantRepository.existsByAuctionSessionIdAndUserId(AUCTION_ID, BIDDER_ID)).thenReturn(false);
+        when(auctionParticipantRepository.findByAuctionSessionIdAndUserId(AUCTION_ID, BIDDER_ID))
+                .thenReturn(Optional.empty());
         when(auctionRedisService.addBidder(AUCTION_ID, BIDDER_ID)).thenReturn(true);
 
         commandService.registerForAuction(BIDDER_ID, AUCTION_ID);
@@ -281,7 +285,8 @@ class AuctionCommandServiceTest {
         session.setProduct(product(ProductStatus.APPRAISED));
         when(auctionSessionRepository.findByIdWithProductForUpdate(AUCTION_ID)).thenReturn(Optional.of(session));
         when(auctionRedisService.getEndTimeEpochMs(AUCTION_ID)).thenReturn(Instant.now().plusSeconds(600).toEpochMilli());
-        when(auctionParticipantRepository.existsByAuctionSessionIdAndUserId(AUCTION_ID, BIDDER_ID)).thenReturn(false);
+        when(auctionParticipantRepository.findByAuctionSessionIdAndUserId(AUCTION_ID, BIDDER_ID))
+                .thenReturn(Optional.empty());
         when(auctionRedisService.addBidder(AUCTION_ID, BIDDER_ID)).thenReturn(false);
 
         assertAppException(
@@ -290,7 +295,7 @@ class AuctionCommandServiceTest {
 
         verify(walletService).freezeFunds(
                 BIDDER_ID,
-                "auction:register:freeze:" + AUCTION_ID + ":" + BIDDER_ID,
+                FinanceOperationKeys.auctionRegistrationFreeze(AUCTION_ID, BIDDER_ID),
                 session.getDepositAmount(),
                 AUCTION_ID,
                 WalletReferenceType.AUCTION);
@@ -315,7 +320,8 @@ class AuctionCommandServiceTest {
         AuctionSession session = session(AuctionSessionStatus.WAITING);
         session.setProduct(product(ProductStatus.APPRAISED));
         when(auctionSessionRepository.findByIdWithProductForUpdate(AUCTION_ID)).thenReturn(Optional.of(session));
-        when(auctionParticipantRepository.existsByAuctionSessionIdAndUserId(AUCTION_ID, BIDDER_ID)).thenReturn(true);
+        when(auctionParticipantRepository.findByAuctionSessionIdAndUserId(AUCTION_ID, BIDDER_ID))
+                .thenReturn(Optional.of(participant(DepositStatus.FROZEN)));
 
         assertAppException(
                 () -> commandService.registerForAuction(BIDDER_ID, AUCTION_ID),
@@ -330,13 +336,108 @@ class AuctionCommandServiceTest {
         AuctionSession session = session(AuctionSessionStatus.WAITING);
         session.setProduct(product(ProductStatus.APPRAISED));
         when(auctionSessionRepository.findByIdWithProductForUpdate(AUCTION_ID)).thenReturn(Optional.of(session));
-        when(auctionParticipantRepository.existsByAuctionSessionIdAndUserId(AUCTION_ID, BIDDER_ID)).thenReturn(false);
+        when(auctionParticipantRepository.findByAuctionSessionIdAndUserId(AUCTION_ID, BIDDER_ID))
+                .thenReturn(Optional.empty());
         doThrow(new DataIntegrityViolationException("duplicate"))
                 .when(auctionParticipantRepository).saveAndFlush(any(AuctionParticipant.class));
 
         assertAppException(
                 () -> commandService.registerForAuction(BIDDER_ID, AUCTION_ID),
                 ErrorCode.AUCTION_ALREADY_REGISTERED);
+    }
+
+    @Test
+    void registerForAuction_withdrawnParticipant_throwsCannotRegisterAgain() {
+        AuctionSession session = session(AuctionSessionStatus.WAITING);
+        session.setProduct(product(ProductStatus.APPRAISED));
+        when(auctionSessionRepository.findByIdWithProductForUpdate(AUCTION_ID)).thenReturn(Optional.of(session));
+        when(auctionParticipantRepository.findByAuctionSessionIdAndUserId(AUCTION_ID, BIDDER_ID))
+                .thenReturn(Optional.of(participant(DepositStatus.WITHDRAWN)));
+
+        assertAppException(
+                () -> commandService.registerForAuction(BIDDER_ID, AUCTION_ID),
+                ErrorCode.AUCTION_REGISTRATION_WITHDRAWN);
+
+        verify(walletService, never()).freezeFunds(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void withdrawFromAuction_waitingFrozenParticipant_refundsAndMarksWithdrawn() {
+        AuctionSession session = session(AuctionSessionStatus.WAITING);
+        AuctionParticipant participant = participant(DepositStatus.FROZEN);
+        when(auctionSessionRepository.findByIdWithProductForUpdate(AUCTION_ID)).thenReturn(Optional.of(session));
+        when(auctionParticipantRepository.findByAuctionSessionIdAndUserIdForUpdate(AUCTION_ID, BIDDER_ID))
+                .thenReturn(Optional.of(participant));
+
+        commandService.withdrawFromAuction(BIDDER_ID, AUCTION_ID);
+
+        verify(walletService).unfreezeFunds(
+                BIDDER_ID,
+                FinanceOperationKeys.auctionWithdrawalRefund(AUCTION_ID, BIDDER_ID),
+                participant.getDepositAmount(),
+                AUCTION_ID,
+                WalletReferenceType.AUCTION);
+        assertThat(participant.getDepositStatus()).isEqualTo(DepositStatus.WITHDRAWN);
+        assertThat(participant.getWithdrawnAt()).isNotNull();
+        verify(auctionParticipantRepository).save(participant);
+    }
+
+    @Test
+    void withdrawFromAuction_active_throwsBeforeParticipantLookup() {
+        when(auctionSessionRepository.findByIdWithProductForUpdate(AUCTION_ID))
+                .thenReturn(Optional.of(session(AuctionSessionStatus.ACTIVE)));
+
+        assertAppException(
+                () -> commandService.withdrawFromAuction(BIDDER_ID, AUCTION_ID),
+                ErrorCode.AUCTION_PARTICIPATION_NOT_WITHDRAWABLE);
+
+        verify(auctionParticipantRepository, never())
+                .findByAuctionSessionIdAndUserIdForUpdate(AUCTION_ID, BIDDER_ID);
+        verify(walletService, never()).unfreezeFunds(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void withdrawFromAuction_missingParticipant_throws() {
+        when(auctionSessionRepository.findByIdWithProductForUpdate(AUCTION_ID))
+                .thenReturn(Optional.of(session(AuctionSessionStatus.WAITING)));
+        when(auctionParticipantRepository.findByAuctionSessionIdAndUserIdForUpdate(AUCTION_ID, BIDDER_ID))
+                .thenReturn(Optional.empty());
+
+        assertAppException(
+                () -> commandService.withdrawFromAuction(BIDDER_ID, AUCTION_ID),
+                ErrorCode.AUCTION_PARTICIPATION_NOT_FOUND);
+    }
+
+    @Test
+    void withdrawFromAuction_alreadyWithdrawn_throwsConflict() {
+        when(auctionSessionRepository.findByIdWithProductForUpdate(AUCTION_ID))
+                .thenReturn(Optional.of(session(AuctionSessionStatus.WAITING)));
+        when(auctionParticipantRepository.findByAuctionSessionIdAndUserIdForUpdate(AUCTION_ID, BIDDER_ID))
+                .thenReturn(Optional.of(participant(DepositStatus.WITHDRAWN)));
+
+        assertAppException(
+                () -> commandService.withdrawFromAuction(BIDDER_ID, AUCTION_ID),
+                ErrorCode.AUCTION_PARTICIPATION_ALREADY_WITHDRAWN);
+    }
+
+    @Test
+    void withdrawFromAuction_walletFailure_keepsParticipantFrozen() {
+        AuctionParticipant participant = participant(DepositStatus.FROZEN);
+        when(auctionSessionRepository.findByIdWithProductForUpdate(AUCTION_ID))
+                .thenReturn(Optional.of(session(AuctionSessionStatus.WAITING)));
+        when(auctionParticipantRepository.findByAuctionSessionIdAndUserIdForUpdate(AUCTION_ID, BIDDER_ID))
+                .thenReturn(Optional.of(participant));
+        doThrow(new AppException(ErrorCode.WALLET_INSUFFICIENT_FROZEN_BALANCE))
+                .when(walletService)
+                .unfreezeFunds(any(), any(), any(), any(), any());
+
+        assertAppException(
+                () -> commandService.withdrawFromAuction(BIDDER_ID, AUCTION_ID),
+                ErrorCode.WALLET_INSUFFICIENT_FROZEN_BALANCE);
+
+        assertThat(participant.getDepositStatus()).isEqualTo(DepositStatus.FROZEN);
+        assertThat(participant.getWithdrawnAt()).isNull();
+        verify(auctionParticipantRepository, never()).save(participant);
     }
 
     private Product product(ProductStatus status) {
@@ -362,6 +463,16 @@ class AuctionCommandServiceTest {
         session.setEndTime(Instant.now().plusSeconds(7200));
         session.setStatus(status);
         return session;
+    }
+
+    private AuctionParticipant participant(DepositStatus status) {
+        AuctionParticipant participant = new AuctionParticipant();
+        participant.setId(30L);
+        participant.setAuctionSessionId(AUCTION_ID);
+        participant.setUserId(BIDDER_ID);
+        participant.setDepositAmount(new BigDecimal("1000000"));
+        participant.setDepositStatus(status);
+        return participant;
     }
 
     private CreateAuctionSessionReq validRequest() {

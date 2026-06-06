@@ -32,6 +32,7 @@ import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { NotificationCard, useNotification } from "@/shared/ui/notification";
 
+import { AppraisalSubmissionDialog } from "../components/AppraisalSubmissionDialog";
 import { ProductImageUploader, type UploadedImage } from "../components/ProductImageUploader";
 import { SELLER_PATHS } from "../constants/routes";
 import {
@@ -93,37 +94,50 @@ function SuccessState({ productId, onSubmitAppraisal, isSubmitting }: SuccessSta
   const navigate = useNavigate();
 
   return (
-    <div className="flex flex-1 items-center justify-center p-8">
+    <div className="flex flex-1 items-center justify-center px-4 py-8 sm:p-8">
       <section
         aria-labelledby="success-heading"
-        className="w-full max-w-md animate-fade-in-up rounded-xl border border-[#4e4637]/15 bg-white p-8 text-center shadow-sm"
+        className="w-full max-w-lg animate-fade-in-up overflow-hidden rounded-2xl border border-[#4e4637]/15 bg-white shadow-[0_20px_60px_rgba(41,55,69,0.12)]"
       >
-        <div className="mx-auto flex size-16 items-center justify-center rounded-full border border-verdigris/20 bg-verdigris/10">
-          <CheckCircle2 className="size-8 text-verdigris" aria-hidden />
-        </div>
+        <div className="px-6 pb-6 pt-8 text-center sm:px-10 sm:pb-8 sm:pt-10">
+          <div className="mx-auto flex size-16 items-center justify-center rounded-full border border-verdigris/20 bg-verdigris/10 shadow-[0_8px_24px_rgba(52,133,113,0.12)]">
+            <CheckCircle2 className="size-8 text-verdigris" aria-hidden />
+          </div>
 
-        <h2 id="success-heading" className="mt-6 font-serif text-2xl font-bold text-ink-blue">
-          Sản phẩm đã được tạo
-        </h2>
-        <p className="mt-2 text-sm leading-relaxed text-muted-warm">
-          Sản phẩm #{productId} đã lưu thành công. Bạn có thể gửi yêu cầu kiểm định ngay để bắt đầu
-          quy trình thẩm định.
-        </p>
-
-        <div className="mt-5 rounded-lg border border-ink-blue/15 bg-ink-blue/5 p-3 text-left">
-          <p className="flex items-start gap-2 text-xs text-muted-warm leading-relaxed">
-            <ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-ink-blue" aria-hidden />
-            Sau khi gửi kiểm định, sản phẩm sẽ chuyển sang trạng thái{" "}
-            <strong className="text-ink-blue">Chờ kiểm định</strong> và không thể chỉnh sửa.
+          <h2
+            id="success-heading"
+            className="mt-5 text-balance font-serif text-2xl font-bold tracking-tight text-ink-blue sm:text-3xl"
+          >
+            Sản phẩm đã được tạo
+          </h2>
+          <p className="mx-auto mt-3 max-w-md text-pretty text-sm leading-6 text-muted-warm sm:text-base">
+            Sản phẩm #{productId} đã được lưu thành công. Gửi yêu cầu kiểm định để bắt đầu quy trình
+            thẩm định.
           </p>
+
+          <div className="mt-6 flex items-start gap-3 rounded-xl border border-ink-blue/15 bg-ink-blue/5 p-4 text-left">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-ink-blue shadow-sm ring-1 ring-ink-blue/10">
+              <ShieldCheck className="size-4.5" aria-hidden />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-ink-blue">Bước tiếp theo: gửi kiểm định</p>
+              <p className="mt-1 text-sm leading-6 text-muted-warm">
+                Sau khi gửi, sản phẩm chuyển sang trạng thái{" "}
+                <strong className="whitespace-nowrap font-semibold text-ink-blue">
+                  Chờ kiểm định
+                </strong>{" "}
+                và tạm thời không thể chỉnh sửa.
+              </p>
+            </div>
+          </div>
         </div>
 
-        <div className="mt-6 flex flex-col gap-3">
+        <div className="flex flex-col gap-3 border-t border-[#4e4637]/10 bg-[#f8f6f2] px-6 py-5 sm:px-10 sm:py-6">
           <Button
             type="button"
             onClick={onSubmitAppraisal}
             disabled={isSubmitting}
-            className="w-full gap-2"
+            className="h-11 w-full gap-2 font-bold shadow-sm"
           >
             {isSubmitting ? (
               <Loader2 className="size-4 animate-spin" aria-hidden />
@@ -136,7 +150,7 @@ function SuccessState({ productId, onSubmitAppraisal, isSubmitting }: SuccessSta
             type="button"
             variant="outline"
             onClick={() => navigate(SELLER_PATHS.products)}
-            className="w-full border-[#4e4637]/20 bg-white text-ink-blue hover:bg-[#eae1d6]/50 hover:text-ink-blue hover:border-brushed-brass/40 active:scale-97 transition-all cursor-pointer"
+            className="h-11 w-full border-[#4e4637]/20 bg-white font-semibold text-ink-blue hover:border-brushed-brass/40 hover:bg-[#eae1d6]/50 hover:text-ink-blue"
           >
             Để sau, xem danh sách sản phẩm
           </Button>
@@ -193,7 +207,8 @@ export function SellerNewProductPage() {
   const [imageError, setImageError] = useState<string | undefined>();
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [createdProductId, setCreatedProductId] = useState<number | null>(null);
-  const [appraisalError, setAppraisalError] = useState<string | null>(null);
+  const [createdProductTitle, setCreatedProductTitle] = useState("");
+  const [appraisalDialogOpen, setAppraisalDialogOpen] = useState(false);
   const hydratedProductIdRef = useRef<number | null>(null);
 
   const { data: categories = [], isLoading: categoriesLoading } = useCategories();
@@ -278,6 +293,7 @@ export function SellerNewProductPage() {
 
       const result = await createMutation.mutateAsync(payload);
       setCreatedProductId(result.id);
+      setCreatedProductTitle(payload.title);
     } catch (error: unknown) {
       if (isApiError(error)) {
         setSubmitError(error.message);
@@ -293,17 +309,7 @@ export function SellerNewProductPage() {
 
   const handleSubmitAppraisal = async () => {
     if (!createdProductId) return;
-    setAppraisalError(null);
-    try {
-      await submitAppraisalMutation.mutateAsync(createdProductId);
-      window.location.assign(SELLER_PATHS.products);
-    } catch (error: unknown) {
-      if (isApiError(error)) {
-        setAppraisalError(error.message);
-      } else {
-        setAppraisalError("Không thể gửi yêu cầu kiểm định. Vui lòng thử lại sau.");
-      }
-    }
+    await submitAppraisalMutation.mutateAsync(createdProductId);
   };
 
   const pageTitle = isEditMode ? "Chỉnh sửa bản nháp" : "Đăng sản phẩm mới";
@@ -329,22 +335,11 @@ export function SellerNewProductPage() {
       {/* Nội dung */}
       <div className="flex-1 overflow-y-auto">
         {createdProductId && !isEditMode ? (
-          <>
-            {appraisalError && (
-              <div className="mx-auto max-w-2xl px-8 pt-6">
-                <NotificationCard
-                  tone="error"
-                  title="Không thể gửi kiểm định"
-                  description={appraisalError}
-                />
-              </div>
-            )}
-            <SuccessState
-              productId={createdProductId}
-              onSubmitAppraisal={handleSubmitAppraisal}
-              isSubmitting={submitAppraisalMutation.isPending}
-            />
-          </>
+          <SuccessState
+            productId={createdProductId}
+            onSubmitAppraisal={() => setAppraisalDialogOpen(true)}
+            isSubmitting={false}
+          />
         ) : isInvalidProductId ? (
           <BlockingState
             icon="warning"
@@ -702,6 +697,14 @@ export function SellerNewProductPage() {
           </div>
         )}
       </div>
+
+      <AppraisalSubmissionDialog
+        open={appraisalDialogOpen}
+        productTitle={createdProductTitle}
+        onOpenChange={setAppraisalDialogOpen}
+        onConfirm={handleSubmitAppraisal}
+        onSuccess={() => window.location.assign(SELLER_PATHS.products)}
+      />
     </div>
   );
 }

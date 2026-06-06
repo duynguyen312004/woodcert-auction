@@ -7,8 +7,10 @@ import com.woodcert.auction.feature.identity.dto.request.UpdateUserProfileReq;
 import com.woodcert.auction.feature.identity.dto.response.UserProfileRes;
 import com.woodcert.auction.feature.identity.entity.Role;
 import com.woodcert.auction.feature.identity.entity.User;
+import com.woodcert.auction.feature.identity.entity.UserCapabilityStatus;
 import com.woodcert.auction.feature.identity.entity.UserStatus;
 import com.woodcert.auction.feature.identity.repository.SellerProfileRepository;
+import com.woodcert.auction.feature.identity.repository.UserCapabilityStatusRepository;
 import com.woodcert.auction.feature.identity.repository.UserRepository;
 import com.woodcert.auction.feature.media.util.MediaUrlBuilder;
 import org.junit.jupiter.api.DisplayName;
@@ -19,6 +21,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -38,6 +41,9 @@ class UserProfileServiceImplTest {
     private SellerProfileRepository sellerProfileRepository;
 
     @Mock
+    private UserCapabilityStatusRepository capabilityStatusRepository;
+
+    @Mock
     private MediaUrlBuilder mediaUrlBuilder;
 
     @InjectMocks
@@ -50,6 +56,7 @@ class UserProfileServiceImplTest {
 
         when(userRepository.findById("user-1")).thenReturn(java.util.Optional.of(user));
         when(sellerProfileRepository.existsById("user-1")).thenReturn(true);
+        when(capabilityStatusRepository.findByUserId("user-1")).thenReturn(List.of(new UserCapabilityStatus()));
 
         UserProfileRes result = userProfileService.getCurrentUserProfile("user-1");
 
@@ -58,6 +65,7 @@ class UserProfileServiceImplTest {
         assertEquals(2, result.roles().size());
         assertEquals(Instant.parse("2026-03-28T10:00:00Z"), result.createdAt());
         assertTrue(result.hasSellerProfile());
+        assertEquals(1, result.capabilityStatuses().size());
     }
 
     @Test

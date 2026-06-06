@@ -8,8 +8,9 @@ import java.time.Instant;
 import java.util.List;
 
 /**
- * Appraisal report response DTO. Internal-only fields stay null/empty unless
- * the current viewer is the appraiser who submitted the report.
+ * Appraisal report response DTO. Owners can see review notes and proof images
+ * for their product; seller accuracy remains visible only to the appraiser who
+ * submitted the report.
  */
 public record AppraisalReportRes(
         String certificateCode,
@@ -26,12 +27,13 @@ public record AppraisalReportRes(
         List<AppraisalImageRes> proofImages
 ) {
     public static AppraisalReportRes fromEntity(AppraisalReport report) {
-        return fromEntity(report, false, List.of());
+        return fromEntity(report, false, false, List.of());
     }
 
     public static AppraisalReportRes fromEntity(
             AppraisalReport report,
-            boolean includeInternalFields,
+            boolean includeReviewDetails,
+            boolean includeSellerAccuracy,
             List<AppraisalImageRes> proofImages) {
         if (report == null) {
             return null;
@@ -46,9 +48,9 @@ public record AppraisalReportRes(
                 report.isAuthentic(),
                 report.getDigitalSignature(),
                 report.getAppraisedAt(),
-                includeInternalFields ? report.getAppraiserNotes() : null,
-                includeInternalFields ? report.getSellerAccuracy() : null,
-                includeInternalFields && proofImages != null ? proofImages : List.of()
+                includeReviewDetails ? report.getAppraiserNotes() : null,
+                includeSellerAccuracy ? report.getSellerAccuracy() : null,
+                includeReviewDetails && proofImages != null ? proofImages : List.of()
         );
     }
 }

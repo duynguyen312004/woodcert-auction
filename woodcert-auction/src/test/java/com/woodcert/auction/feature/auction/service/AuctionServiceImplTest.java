@@ -94,7 +94,8 @@ class AuctionServiceImplTest {
     @Test
     void getMyParticipation_delegatesToQueryService() {
         MyParticipationRes expected = new MyParticipationRes(
-                false, true, null, false, false, true, "CAN_BID", "ok", BigDecimal.ONE, false, "NONE", "");
+                false, true, null, false, false, false, true,
+                "CAN_BID", "ok", BigDecimal.ONE, false, "NONE", "");
         when(queryService.getMyParticipation("bidder-1", 10L)).thenReturn(expected);
 
         MyParticipationRes result = auctionService.getMyParticipation("bidder-1", 10L);
@@ -152,6 +153,13 @@ class AuctionServiceImplTest {
         verify(commandService).registerForAuction("bidder-1", 10L);
     }
 
+    @Test
+    void withdrawFromAuction_delegatesToCommandService() {
+        auctionService.withdrawFromAuction("bidder-1", 10L);
+
+        verify(commandService).withdrawFromAuction("bidder-1", 10L);
+    }
+
     private CreateAuctionSessionReq validRequest() {
         return new CreateAuctionSessionReq(
                 1L,
@@ -193,7 +201,7 @@ class AuctionServiceImplTest {
                 0,
                 null,
                 SellerAuctionDetailRes.SellerAuctionSettlementStatus.NOT_APPLICABLE,
-                new SellerAuctionDetailRes.SettlementSummary(0, 0, 0, 0),
+                new SellerAuctionDetailRes.SettlementSummary(0, 0, 0, 0, 0),
                 null,
                 null,
                 Instant.now(),

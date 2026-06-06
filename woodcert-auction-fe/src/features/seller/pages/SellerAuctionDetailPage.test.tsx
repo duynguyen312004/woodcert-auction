@@ -39,7 +39,7 @@ function makeAuction(overrides: Partial<SellerAuctionDetail> = {}): SellerAuctio
     participantCount: 3,
     winnerMaskedAlias: null,
     settlementStatus: "NOT_APPLICABLE",
-    settlement: { frozen: 3, refunded: 0, deducted: 0, confiscated: 0 },
+    settlement: { frozen: 3, withdrawn: 0, refunded: 0, deducted: 0, confiscated: 0 },
     product: {
       id: 101,
       title: "Tượng gỗ trắc",
@@ -88,7 +88,7 @@ describe("SellerAuctionDetailPage", () => {
         finalPrice: 15000000,
         winnerMaskedAlias: "winn****",
         settlementStatus: "SETTLED",
-        settlement: { frozen: 0, refunded: 2, deducted: 1, confiscated: 0 },
+        settlement: { frozen: 0, withdrawn: 0, refunded: 2, deducted: 1, confiscated: 0 },
       }),
       isPending: false,
       isError: false,

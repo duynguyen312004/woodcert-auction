@@ -8,6 +8,7 @@ export interface WalletBalance {
   userId: string;
   availableBalance: number;
   frozenBalance: number;
+  appraisalFee: number;
 }
 
 // DTO khớp WalletTransactionRes
@@ -39,7 +40,15 @@ export const walletApi = {
    */
   getBalance: async (): Promise<WalletBalance> => {
     const response = await apiClient.get<ApiResponse<WalletBalance>>("/wallets/me");
-    return unwrapApiResponse(response);
+    const wallet = unwrapApiResponse(response);
+
+    if (!Number.isFinite(wallet.appraisalFee) || wallet.appraisalFee <= 0) {
+      throw new Error(
+        "Dữ liệu lệ phí kiểm định chưa được backend cung cấp. Vui lòng khởi động lại dịch vụ.",
+      );
+    }
+
+    return wallet;
   },
 
   /**

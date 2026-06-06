@@ -53,6 +53,7 @@ public class AuthServiceImpl implements AuthService {
     private final IdentityTokenService identityTokenService;
     private final IdentityEmailService identityEmailService;
     private final PasswordResetService passwordResetService;
+    private final LoginAttemptService loginAttemptService;
 
     @Override
     @Transactional
@@ -60,13 +61,22 @@ public class AuthServiceImpl implements AuthService {
         // Bước 1: Chuẩn hóa email để authentication và truy vấn DB dùng cùng một định dạng.
         String normalizedEmail = IdentityNormalizationUtils.normalizeEmail(request.email());
 
+        // Kiểm tra xem tài khoản có bị khóa brute force không
+        if (loginAttemptService.isBlocked(normalizedEmail)) {
+            throw new AppException(ErrorCode.ACCOUNT_LOCKED);
+        }
+
         // Bước 2: Xác thực mật khẩu qua Spring Security AuthenticationManager.
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(normalizedEmail, request.password()));
         } catch (BadCredentialsException e) {
+            loginAttemptService.loginFailed(normalizedEmail);
             throw new AppException(ErrorCode.INVALID_CREDENTIALS);
         }
+
+        // Đăng nhập thành công -> xóa số lần sai
+        loginAttemptService.loginSucceeded(normalizedEmail);
 
         // Bước 3: Đọc user kèm role để sinh JWT và trả role cho client.
         User user = userRepository.findByEmail(normalizedEmail)

@@ -113,4 +113,9 @@ public class AuctionServiceImpl implements AuctionService {
     public void registerForAuction(String userId, Long auctionId) {
         commandService.registerForAuction(userId, auctionId);
     }
+
+    @Override
+    public void withdrawFromAuction(String userId, Long auctionId) {
+        commandService.withdrawFromAuction(userId, auctionId);
+    }
 }

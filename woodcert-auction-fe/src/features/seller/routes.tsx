@@ -1,6 +1,7 @@
 import { lazy } from "react";
 import type { RouteObject } from "react-router";
 
+import { SellerWriteAccessGuard } from "./components/SellerWriteAccessGuard";
 import { SELLER_ROUTE_PATHS } from "./constants/routes";
 
 const SellerAuctionDetailPage = lazy(() =>
@@ -69,15 +70,23 @@ export const sellerRoutes: RouteObject[] = [
   },
   {
     path: SELLER_ROUTE_PATHS.newProduct,
-    element: <SellerNewProductPage />,
+    element: (
+      <SellerWriteAccessGuard>
+        <SellerNewProductPage />
+      </SellerWriteAccessGuard>
+    ),
   },
   {
-    path: "seller/products/:productId",
+    path: SELLER_ROUTE_PATHS.productDetail,
     element: <SellerProductDetailPage />,
   },
   {
     path: SELLER_ROUTE_PATHS.editProduct,
-    element: <SellerNewProductPage />,
+    element: (
+      <SellerWriteAccessGuard>
+        <SellerNewProductPage />
+      </SellerWriteAccessGuard>
+    ),
   },
   {
     path: SELLER_ROUTE_PATHS.auctions,
@@ -85,7 +94,11 @@ export const sellerRoutes: RouteObject[] = [
   },
   {
     path: SELLER_ROUTE_PATHS.newAuction,
-    element: <SellerNewAuctionPage />,
+    element: (
+      <SellerWriteAccessGuard>
+        <SellerNewAuctionPage />
+      </SellerWriteAccessGuard>
+    ),
   },
   {
     path: SELLER_ROUTE_PATHS.orders,

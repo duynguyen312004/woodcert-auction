@@ -3,11 +3,13 @@ package com.woodcert.auction.feature.finance.service;
 import com.woodcert.auction.core.dto.PaginationResponse;
 import com.woodcert.auction.core.exception.AppException;
 import com.woodcert.auction.core.exception.ErrorCode;
+import com.woodcert.auction.feature.finance.config.FinanceProperties;
 import com.woodcert.auction.feature.finance.dto.response.WalletRes;
 import com.woodcert.auction.feature.finance.dto.response.WalletTransactionRes;
 import com.woodcert.auction.feature.finance.entity.*;
 import com.woodcert.auction.feature.finance.repository.WalletRepository;
 import com.woodcert.auction.feature.finance.repository.WalletTransactionRepository;
+import com.woodcert.auction.feature.finance.support.FinanceOperationKey;
 import com.woodcert.auction.feature.identity.repository.UserRepository;
 import jakarta.persistence.OptimisticLockException;
 import lombok.RequiredArgsConstructor;
@@ -38,11 +40,12 @@ public class WalletServiceImpl implements WalletService {
     private final WalletRepository walletRepository;
     private final WalletTransactionRepository walletTransactionRepository;
     private final UserRepository userRepository;
+    private final FinanceProperties financeProperties;
 
     @Override
     @Transactional
     public WalletRes getMyWallet(String userId) {
-        return WalletRes.fromEntity(getOrCreateWallet(userId));
+        return WalletRes.fromEntity(getOrCreateWallet(userId), financeProperties.getAppraisalFee());
     }
 
     @Override
@@ -62,7 +65,7 @@ public class WalletServiceImpl implements WalletService {
     @Transactional
     public void depositFunds(
             String userId,
-            String operationKey,
+            FinanceOperationKey operationKey,
             BigDecimal amount,
             Long referenceId,
             WalletReferenceType referenceType) {
@@ -86,7 +89,7 @@ public class WalletServiceImpl implements WalletService {
     @Transactional
     public void freezeFunds(
             String userId,
-            String operationKey,
+            FinanceOperationKey operationKey,
             BigDecimal amount,
             Long referenceId,
             WalletReferenceType referenceType) {
@@ -116,7 +119,7 @@ public class WalletServiceImpl implements WalletService {
     @Transactional
     public void unfreezeFunds(
             String userId,
-            String operationKey,
+            FinanceOperationKey operationKey,
             BigDecimal amount,
             Long referenceId,
             WalletReferenceType referenceType) {
@@ -146,7 +149,7 @@ public class WalletServiceImpl implements WalletService {
     @Transactional
     public void deductFrozenFunds(
             String userId,
-            String operationKey,
+            FinanceOperationKey operationKey,
             BigDecimal amount,
             Long referenceId,
             WalletReferenceType referenceType) {
@@ -175,7 +178,7 @@ public class WalletServiceImpl implements WalletService {
     @Transactional
     public void withdrawFunds(
             String userId,
-            String operationKey,
+            FinanceOperationKey operationKey,
             BigDecimal amount,
             Long referenceId,
             WalletReferenceType referenceType) {
@@ -200,7 +203,7 @@ public class WalletServiceImpl implements WalletService {
 
     private void executeIdempotentMutation(
             String userId,
-            String operationKey,
+            FinanceOperationKey operationKey,
             BigDecimal amount,
             Long referenceId,
             WalletReferenceType referenceType,
@@ -208,7 +211,10 @@ public class WalletServiceImpl implements WalletService {
             Consumer<Wallet> mutation,
             BigDecimal signedAvailableDelta) {
         // Bước 1: Chuẩn hóa operation key, kiểm tra reference và lấy ví hiện tại hoặc tạo ví mới.
-        String normalizedOperationKey = normalizeOperationKey(operationKey);
+        if (operationKey == null) {
+            throw new AppException(ErrorCode.WALLET_OPERATION_KEY_INVALID);
+        }
+        String normalizedOperationKey = operationKey.value();
         validateReference(referenceType, referenceId);
         Wallet wallet = getOrCreateWallet(userId);
 
@@ -321,13 +327,6 @@ public class WalletServiceImpl implements WalletService {
             throw new AppException(ErrorCode.WALLET_AMOUNT_INVALID);
         }
         return amount.setScale(MONEY_SCALE, MONEY_ROUNDING);
-    }
-
-    private String normalizeOperationKey(String operationKey) {
-        if (operationKey == null || operationKey.isBlank()) {
-            throw new AppException(ErrorCode.WALLET_OPERATION_KEY_INVALID);
-        }
-        return operationKey.trim();
     }
 
     private boolean registerOperationCompletionHooks(Long operationId) {

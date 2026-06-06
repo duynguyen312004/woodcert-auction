@@ -8,6 +8,7 @@ import com.woodcert.auction.feature.finance.entity.PlatformRevenueType;
 import com.woodcert.auction.feature.finance.entity.WalletReferenceType;
 import com.woodcert.auction.feature.finance.service.PlatformRevenueService;
 import com.woodcert.auction.feature.finance.service.WalletService;
+import com.woodcert.auction.feature.finance.support.FinanceOperationKeys;
 import com.woodcert.auction.feature.order.config.OrderProperties;
 import com.woodcert.auction.feature.order.dto.response.OrderListRes;
 import com.woodcert.auction.feature.order.dto.response.OrderRes;
@@ -121,7 +122,7 @@ public class OrderServiceImpl implements OrderService {
 
         walletService.withdrawFunds(
                 buyerId,
-                "order:pay:" + order.getId() + ":" + buyerId,
+                FinanceOperationKeys.orderPayment(order.getId(), buyerId),
                 order.getRemainingAmount(),
                 order.getId(),
                 WalletReferenceType.ORDER
@@ -203,7 +204,7 @@ public class OrderServiceImpl implements OrderService {
         if (sellerAmount.compareTo(BigDecimal.ZERO) > 0) {
             walletService.depositFunds(
                     order.getSellerId(),
-                    "order:forfeit:seller:" + order.getId(),
+                    FinanceOperationKeys.orderForfeitSeller(order.getId()),
                     sellerAmount,
                     order.getId(),
                     WalletReferenceType.ORDER
@@ -216,7 +217,7 @@ public class OrderServiceImpl implements OrderService {
                     order.getBuyerId(),
                     WalletReferenceType.ORDER,
                     order.getId(),
-                    "order:forfeit:platform:" + order.getId()
+                    FinanceOperationKeys.orderForfeitPlatform(order.getId())
             );
         }
 
@@ -311,7 +312,7 @@ public class OrderServiceImpl implements OrderService {
 
         walletService.depositFunds(
                 order.getBuyerId(),
-                "order:dispute:refund:" + order.getId(),
+                FinanceOperationKeys.orderDisputeRefund(order.getId()),
                 order.getFinalPrice(),
                 order.getId(),
                 WalletReferenceType.ORDER
@@ -334,7 +335,7 @@ public class OrderServiceImpl implements OrderService {
         if (payout.compareTo(BigDecimal.ZERO) > 0) {
             walletService.depositFunds(
                     order.getSellerId(),
-                    "order:complete:payout:" + order.getId(),
+                    FinanceOperationKeys.orderCompletionPayout(order.getId()),
                     payout,
                     order.getId(),
                     WalletReferenceType.ORDER
@@ -347,7 +348,7 @@ public class OrderServiceImpl implements OrderService {
                     order.getSellerId(),
                     WalletReferenceType.ORDER,
                     order.getId(),
-                    "order:complete:commission:" + order.getId()
+                    FinanceOperationKeys.orderCompletionCommission(order.getId())
             );
         }
 

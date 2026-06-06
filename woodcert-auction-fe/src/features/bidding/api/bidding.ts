@@ -24,6 +24,7 @@ interface ParticipationStatusDto {
   depositStatus?: string | null;
   highestBidder?: boolean;
   canRegister?: boolean;
+  canWithdraw?: boolean;
   canBid?: boolean;
   reasonCode?: string;
   reasonMessage?: string;
@@ -66,9 +67,16 @@ export async function getBiddingParticipation(
     sellerOwned: Boolean(response.sellerOwned),
     registered: Boolean(response.registered),
     depositStatus:
-      (response.depositStatus as "FROZEN" | "REFUNDED" | "DEDUCTED" | "CONFISCATED" | null) || null,
+      (response.depositStatus as
+        | "FROZEN"
+        | "WITHDRAWN"
+        | "REFUNDED"
+        | "DEDUCTED"
+        | "CONFISCATED"
+        | null) || null,
     highestBidder: Boolean(response.highestBidder),
     canRegister: Boolean(response.canRegister),
+    canWithdraw: Boolean(response.canWithdraw),
     canBid: Boolean(response.canBid),
     reasonCode: response.reasonCode || "",
     reasonMessage: response.reasonMessage || "",
@@ -128,6 +136,15 @@ export async function registerAuction(auctionId: string | number): Promise<unkno
   return apiRequest<unknown>({
     method: "POST",
     url: `/auctions/${auctionId}/register`,
+    requiresAuth: true,
+  });
+}
+
+// 6. POST /auctions/{id}/withdraw
+export async function withdrawAuction(auctionId: string | number): Promise<unknown> {
+  return apiRequest<unknown>({
+    method: "POST",
+    url: `/auctions/${auctionId}/withdraw`,
     requiresAuth: true,
   });
 }

@@ -18,6 +18,17 @@ export interface UserProfile {
   roles: string[];
   createdAt: string;
   hasSellerProfile: boolean;
+  capabilityStatuses?: CapabilityStatus[];
+}
+
+export type UserCapability = "BUYER" | "SELLER" | "APPRAISER";
+export type CapabilityState = "ACTIVE" | "BANNED";
+
+export interface CapabilityStatus {
+  capability: UserCapability;
+  status: CapabilityState;
+  reason: string | null;
+  updatedAt: string | null;
 }
 
 export interface SellerProfile {

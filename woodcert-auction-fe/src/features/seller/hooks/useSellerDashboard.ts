@@ -10,6 +10,8 @@ import { useMemo } from "react";
 import { sellerApi } from "../api/seller";
 import type { ProductStatus } from "../types";
 
+const SELLER_AUCTION_REFRESH_INTERVAL_MS = 5_000;
+
 export function useSellerProducts(params?: {
   page?: number;
   size?: number;
@@ -34,6 +36,7 @@ export function useSellerAuctions(params?: { page?: number; size?: number; statu
   return useQuery({
     queryKey: ["seller", "auctions", params] as const,
     queryFn: () => sellerApi.getMyAuctions(params),
+    refetchInterval: SELLER_AUCTION_REFRESH_INTERVAL_MS,
   });
 }
 
@@ -45,6 +48,7 @@ export function useSellerAuctionStats() {
   return useQuery({
     queryKey: ["seller", "auction-stats"] as const,
     queryFn: () => sellerApi.getMyAuctionStats(),
+    refetchInterval: SELLER_AUCTION_REFRESH_INTERVAL_MS,
   });
 }
 
@@ -55,7 +59,9 @@ export function useSellerAuctionDetail(auctionId: number | undefined) {
     enabled: auctionId !== undefined,
     refetchInterval: (query) => {
       const status = query.state.data?.status;
-      return status === "WAITING" || status === "ACTIVE" ? 15_000 : false;
+      return status === "WAITING" || status === "ACTIVE"
+        ? SELLER_AUCTION_REFRESH_INTERVAL_MS
+        : false;
     },
   });
 }

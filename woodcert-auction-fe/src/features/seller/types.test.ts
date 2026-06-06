@@ -83,6 +83,19 @@ describe("createAuctionSessionSchema", () => {
     expect(result.error?.issues.some((issue) => issue.path[0] === "startTime")).toBe(true);
   });
 
+  it("accepts the backend minimum start lead time", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-25T10:00:00"));
+
+    const result = createAuctionSessionSchema.safeParse({
+      ...validAuctionForm,
+      startTime: "2026-05-25T10:05",
+      endTime: "2026-05-25T11:05",
+    });
+
+    expect(result.success).toBe(true);
+  });
+
   it("rejects duration shorter than one hour or longer than thirty days", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-05-25T10:00:00"));

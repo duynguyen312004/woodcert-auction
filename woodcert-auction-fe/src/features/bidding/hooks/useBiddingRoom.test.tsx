@@ -79,6 +79,7 @@ function createParticipation(): ParticipationStatus {
   return {
     canBid: true,
     canRegister: false,
+    canWithdraw: false,
     depositAmount: 100_000,
     depositStatus: "FROZEN",
     highestBidder: false,

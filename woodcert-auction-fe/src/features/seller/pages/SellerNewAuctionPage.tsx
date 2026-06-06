@@ -43,6 +43,8 @@ import {
 const ELIGIBLE_PRODUCTS_SIZE = 50;
 const MIN_STEP_PRICE = 100000;
 const MIN_DEPOSIT_AMOUNT = 1000000;
+const MIN_START_LEAD_TIME_MS = 5 * 60_000;
+const DEFAULT_START_LEAD_TIME_MS = 7 * 60_000;
 
 function digitsOnly(value: string) {
   return value.replace(/[^\d]/g, "");
@@ -56,6 +58,12 @@ function formatMoneyInput(value: string | number) {
 function toLocalDateTimeInput(date: Date) {
   const offsetMs = date.getTimezoneOffset() * 60_000;
   return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+}
+
+function startTimeInput(leadTimeMs: number) {
+  const target = getServerNow() + leadTimeMs;
+  const roundedUpToMinute = Math.ceil(target / 60_000) * 60_000;
+  return toLocalDateTimeInput(new Date(roundedUpToMinute));
 }
 
 function parseMoney(value: string) {
@@ -77,10 +85,7 @@ export function SellerNewAuctionPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const preferredProductId = productQueryId(searchParams);
-  const earliestStart = useMemo(
-    () => toLocalDateTimeInput(new Date(getServerNow() + 5 * 60_000)),
-    [],
-  );
+  const [earliestStart, setEarliestStart] = useState(() => startTimeInput(MIN_START_LEAD_TIME_MS));
 
   const eligibleProductsQuery = useSellerProducts({
     status: "APPRAISED",
@@ -97,6 +102,7 @@ export function SellerNewAuctionPage() {
   const {
     register,
     handleSubmit,
+    getFieldState,
     setValue,
     watch,
     formState: { errors, isSubmitting },
@@ -108,7 +114,7 @@ export function SellerNewAuctionPage() {
       reservePrice: "",
       stepPrice: formatMoneyInput(MIN_STEP_PRICE),
       depositAmount: formatMoneyInput(MIN_DEPOSIT_AMOUNT),
-      startTime: earliestStart,
+      startTime: startTimeInput(DEFAULT_START_LEAD_TIME_MS),
       endTime: "",
     },
   });
@@ -128,8 +134,25 @@ export function SellerNewAuctionPage() {
   const isSaving = isSubmitting || createMutation.isPending;
 
   useEffect(() => {
-    void syncServerTime();
-  }, []);
+    let active = true;
+
+    void syncServerTime()
+      .then(() => {
+        if (!active) return;
+
+        setEarliestStart(startTimeInput(MIN_START_LEAD_TIME_MS));
+        if (!getFieldState("startTime").isDirty) {
+          setValue("startTime", startTimeInput(DEFAULT_START_LEAD_TIME_MS));
+        }
+      })
+      .catch(() => {
+        // Keep the local-clock fallback already initialized in the form.
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [getFieldState, setValue]);
 
   useEffect(() => {
     if (

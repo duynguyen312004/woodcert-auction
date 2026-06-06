@@ -77,6 +77,22 @@ describe("AdminUsersPage", () => {
     expect(screen.getByText("buyer@example.com")).toBeVisible();
   });
 
+  it("renders every role for a user with multiple roles", async () => {
+    getUsers.mockResolvedValue(
+      paginated([
+        makeUser({
+          roles: ["ROLE_BIDDER", "ROLE_SELLER", "ROLE_APPRAISER"],
+        }),
+      ]),
+    );
+
+    renderPage();
+
+    expect(await screen.findByText("Người mua")).toBeVisible();
+    expect(screen.getByText("Người bán")).toBeVisible();
+    expect(screen.getByText("Appraiser")).toBeVisible();
+  });
+
   it("bans an active user after confirming the dialog", async () => {
     getUsers.mockResolvedValue(paginated([makeUser()]));
     ban.mockResolvedValue(makeUser({ status: "BANNED" }));

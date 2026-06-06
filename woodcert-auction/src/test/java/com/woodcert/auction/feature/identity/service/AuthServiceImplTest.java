@@ -13,6 +13,11 @@ import com.woodcert.auction.feature.identity.repository.RefreshTokenRepository;
 import com.woodcert.auction.feature.identity.repository.RoleRepository;
 import com.woodcert.auction.feature.identity.repository.UserRepository;
 import com.woodcert.auction.core.security.JwtService;
+import com.woodcert.auction.core.exception.ErrorCode;
+import com.woodcert.auction.feature.identity.dto.request.LoginReq;
+import com.woodcert.auction.feature.identity.dto.response.AuthRes;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -68,6 +73,9 @@ class AuthServiceImplTest {
 
     @Mock
     private PasswordResetService passwordResetService;
+
+    @Mock
+    private LoginAttemptService loginAttemptService;
 
     @InjectMocks
     private AuthServiceImpl authService;
@@ -205,5 +213,61 @@ class AuthServiceImplTest {
 
         assertEquals(403, ex.getStatusCode());
         verify(refreshTokenRepository).revokeAllByUser(user);
+    }
+
+    @Test
+    @DisplayName("login throws ACCOUNT_LOCKED when account is blocked")
+    void login_blockedAccount_throwsAppException() {
+        LoginReq request = new LoginReq("user@example.com", "Password123");
+
+        when(loginAttemptService.isBlocked("user@example.com")).thenReturn(true);
+
+        AppException ex = assertThrows(AppException.class, () -> authService.login(request));
+
+        assertEquals(ErrorCode.ACCOUNT_LOCKED, ex.getErrorCode());
+        assertEquals(403, ex.getStatusCode());
+    }
+
+    @Test
+    @DisplayName("login calls loginFailed and throws INVALID_CREDENTIALS when authentication fails")
+    void login_failedCredentials_callsLoginFailedAndThrowsAppException() {
+        LoginReq request = new LoginReq("user@example.com", "Password123");
+
+        when(loginAttemptService.isBlocked("user@example.com")).thenReturn(false);
+        when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
+                .thenThrow(new BadCredentialsException("Bad credentials"));
+
+        AppException ex = assertThrows(AppException.class, () -> authService.login(request));
+
+        assertEquals(ErrorCode.INVALID_CREDENTIALS, ex.getErrorCode());
+        assertEquals(401, ex.getStatusCode());
+        verify(loginAttemptService).loginFailed("user@example.com");
+    }
+
+    @Test
+    @DisplayName("login calls loginSucceeded and returns tokens on success")
+    void login_success_callsLoginSucceededAndReturnsTokens() {
+        LoginReq request = new LoginReq("user@example.com", "Password123");
+
+        User user = new User();
+        user.setId("user-1");
+        user.setEmail("user@example.com");
+        user.setStatus(UserStatus.ACTIVE);
+        user.setRoles(java.util.Set.of());
+
+        when(loginAttemptService.isBlocked("user@example.com")).thenReturn(false);
+        when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
+                .thenReturn(new UsernamePasswordAuthenticationToken("user@example.com", "Password123"));
+        when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(user));
+        when(jwtService.generateAccessToken(user)).thenReturn("access-token");
+        when(jwtService.generateRefreshToken()).thenReturn("refresh-token");
+
+        AuthRes res = authService.login(request);
+
+        assertNotNull(res);
+        assertEquals("access-token", res.accessToken());
+        assertEquals("refresh-token", res.refreshToken());
+        verify(loginAttemptService).loginSucceeded("user@example.com");
+        verify(refreshTokenRepository).save(any(RefreshToken.class));
     }
 }

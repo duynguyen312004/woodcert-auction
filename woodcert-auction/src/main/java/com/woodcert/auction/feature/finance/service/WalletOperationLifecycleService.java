@@ -8,6 +8,7 @@ import com.woodcert.auction.feature.finance.entity.WalletReferenceType;
 import com.woodcert.auction.feature.finance.entity.WalletTransactionStatus;
 import com.woodcert.auction.feature.finance.entity.WalletTransactionType;
 import com.woodcert.auction.feature.finance.repository.WalletOperationRepository;
+import com.woodcert.auction.feature.finance.support.WalletOperationRetryPolicy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -26,11 +27,10 @@ public class WalletOperationLifecycleService {
     private static final String STALE_PENDING_FAILURE_CODE = "STALE_PENDING_TIMEOUT";
     private static final String STALE_PENDING_FAILURE_MESSAGE = "Wallet operation remained pending past the configured timeout";
     private static final int FAILURE_MESSAGE_MAX_LENGTH = 255;
-
     private final WalletOperationRepository walletOperationRepository;
     private final FinanceProperties financeProperties;
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.REQUIRES_NEW, noRollbackFor = AppException.class)
     public WalletOperation reserveOrReuseOperation(
             Long walletId,
             String operationKey,
@@ -110,6 +110,13 @@ public class WalletOperationLifecycleService {
         }
 
         if (existing.getStatus() == WalletTransactionStatus.FAILED) {
+            String failureCode = existing.getFailureCode();
+            if (WalletOperationRetryPolicy.isRetryable(failureCode)) {
+                existing.setStatus(WalletTransactionStatus.PENDING);
+                existing.setFailureCode(null);
+                existing.setFailureMessage(null);
+                return walletOperationRepository.saveAndFlush(existing);
+            }
             throw new AppException(ErrorCode.WALLET_OPERATION_ALREADY_FAILED);
         }
 

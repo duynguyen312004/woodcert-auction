@@ -556,7 +556,7 @@ Composite PK: (role_id, permission_id)
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | id | BIGINT | PK, AUTO_INCREMENT | |
-| operation_key | VARCHAR(100) | NOT NULL, UNIQUE | Idempotency key cho business wallet mutation |
+| operation_key | VARCHAR(200) | NOT NULL, UNIQUE | Idempotency key cho business wallet mutation |
 | wallet_id | BIGINT | NOT NULL, FK → wallets(id) | |
 | amount | DECIMAL(19,2) | NOT NULL | Số tiền business đã normalize |
 | type | VARCHAR(20) | NOT NULL | Enum: DEPOSIT, WITHDRAW, FREEZE, UNFREEZE, PAYMENT |
@@ -577,8 +577,13 @@ Composite PK: (role_id, permission_id)
 
 - Dùng để chống duplicate business action khi command/event bị retry hoặc xử lý lặp
 - Cùng `operation_key` với payload khác phải bị reject
-- `FAILED` là terminal; caller phải dùng `operation_key` mới nếu muốn retry
+- `FAILED` chỉ được retry với cùng key khi `failure_code` thuộc nhóm có thể khắc phục:
+  thiếu số dư khả dụng, thiếu số dư đóng băng hoặc xung đột optimistic locking
+- `FAILED` không xác định và stale `PENDING` là terminal, cần reconciliation thay vì tự động chạy lại
 - `PENDING` quá `finance.wallet.operation.pending-timeout` sẽ bị fail-close thành `FAILED`
+- Key phải được tạo qua `FinanceOperationKeys`; không ghép chuỗi trực tiếp trong business service
+- `FinanceOperationKey` giới hạn 160 ký tự để cùng một key luôn dùng được cho cả
+  `wallet_operations` và `platform_revenue_transactions`
 
 ### vnpay_deposits
 | Column | Type | Constraints | Description |
@@ -685,6 +690,8 @@ Seller reputation được tính từ trung bình toàn bộ appraisal_reports.s
 Catalog list/detail hiện là internal workflow APIs cho seller/appraiser; buyer-facing browse/detail nên đi qua auction read model sau này
 Escrow Rules
 Khi tham gia đấu giá: tiền cọc chuyển từ available_balance → frozen_balance
+Người tham gia rút khi phiên còn WAITING: deposit_status = WITHDRAWN, withdrawn_at được ghi nhận và tiền cọc được hoàn toàn bộ
+Participant đã WITHDRAWN vẫn giữ bản ghi và không thể đăng ký lại cùng phiên
 Người thua: deposit_status = REFUNDED
 Người thắng nhưng không thanh toán: deposit_status = CONFISCATED
 Tiền seller chỉ được nhả khi đơn hoàn tất hoặc dispute được giải quyết theo hướng seller thắng

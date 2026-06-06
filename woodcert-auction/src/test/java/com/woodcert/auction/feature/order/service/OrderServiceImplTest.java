@@ -7,6 +7,7 @@ import com.woodcert.auction.feature.finance.entity.PlatformRevenueType;
 import com.woodcert.auction.feature.finance.entity.WalletReferenceType;
 import com.woodcert.auction.feature.finance.service.PlatformRevenueService;
 import com.woodcert.auction.feature.finance.service.WalletService;
+import com.woodcert.auction.feature.finance.support.FinanceOperationKeys;
 import com.woodcert.auction.feature.order.config.OrderProperties;
 import com.woodcert.auction.feature.order.entity.OrderEntity;
 import com.woodcert.auction.feature.order.entity.OrderSourceType;
@@ -168,7 +169,7 @@ class OrderServiceImplTest {
 
         verify(walletService).withdrawFunds(
                 eq(BUYER_ID),
-                eq("order:pay:" + ORDER_ID + ":" + BUYER_ID),
+                eq(FinanceOperationKeys.orderPayment(ORDER_ID, BUYER_ID)),
                 eq(money("9000000")),
                 eq(ORDER_ID),
                 eq(WalletReferenceType.ORDER)
@@ -223,7 +224,7 @@ class OrderServiceImplTest {
         assertThat(order.getForfeitedDepositSellerAmount()).isEqualByComparingTo("900000.00");
         verify(walletService).depositFunds(
                 eq(SELLER_ID),
-                eq("order:forfeit:seller:" + ORDER_ID),
+                eq(FinanceOperationKeys.orderForfeitSeller(ORDER_ID)),
                 eq(money("900000")),
                 eq(ORDER_ID),
                 eq(WalletReferenceType.ORDER)
@@ -234,7 +235,7 @@ class OrderServiceImplTest {
                 eq(BUYER_ID),
                 eq(WalletReferenceType.ORDER),
                 eq(ORDER_ID),
-                eq("order:forfeit:platform:" + ORDER_ID)
+                eq(FinanceOperationKeys.orderForfeitPlatform(ORDER_ID))
         );
         verify(sourceAdapter).onPaymentCanceled(order);
     }
@@ -255,7 +256,7 @@ class OrderServiceImplTest {
         assertThat(order.getSellerPayoutAmount()).isEqualByComparingTo("9500000.00");
         verify(walletService).depositFunds(
                 eq(SELLER_ID),
-                eq("order:complete:payout:" + ORDER_ID),
+                eq(FinanceOperationKeys.orderCompletionPayout(ORDER_ID)),
                 eq(money("9500000")),
                 eq(ORDER_ID),
                 eq(WalletReferenceType.ORDER)
@@ -266,7 +267,7 @@ class OrderServiceImplTest {
                 eq(SELLER_ID),
                 eq(WalletReferenceType.ORDER),
                 eq(ORDER_ID),
-                eq("order:complete:commission:" + ORDER_ID)
+                eq(FinanceOperationKeys.orderCompletionCommission(ORDER_ID))
         );
         verify(sourceAdapter).onOrderCompleted(order);
     }
@@ -316,7 +317,7 @@ class OrderServiceImplTest {
         assertThat(result.status()).isEqualTo(OrderStatus.COMPLETED);
         verify(walletService).depositFunds(
                 eq(SELLER_ID),
-                eq("order:complete:payout:" + ORDER_ID),
+                eq(FinanceOperationKeys.orderCompletionPayout(ORDER_ID)),
                 eq(money("9500000")),
                 eq(ORDER_ID),
                 eq(WalletReferenceType.ORDER)
@@ -327,7 +328,7 @@ class OrderServiceImplTest {
                 eq(SELLER_ID),
                 eq(WalletReferenceType.ORDER),
                 eq(ORDER_ID),
-                eq("order:complete:commission:" + ORDER_ID)
+                eq(FinanceOperationKeys.orderCompletionCommission(ORDER_ID))
         );
         verify(sourceAdapter).onOrderCompleted(order);
     }
@@ -347,7 +348,7 @@ class OrderServiceImplTest {
         assertThat(result.status()).isEqualTo(OrderStatus.CANCELED);
         verify(walletService).depositFunds(
                 eq(BUYER_ID),
-                eq("order:dispute:refund:" + ORDER_ID),
+                eq(FinanceOperationKeys.orderDisputeRefund(ORDER_ID)),
                 eq(money("10000000")),
                 eq(ORDER_ID),
                 eq(WalletReferenceType.ORDER)

@@ -1,6 +1,6 @@
 # Project Status
 
-> Last updated: 2026-06-03 | By: Codex | Session: architecture-cleanup
+> Last updated: 2026-06-06 | By: Codex | Session: seller-capability-suspension
 >
 > Update this file at the end of FE planning or implementation sessions.
 > Keep it concise and decision-useful.
@@ -31,6 +31,7 @@
 - [x] Dispute FE integration: evidence upload, buyer open/cancel/current state, seller read-only banner/state, and admin review/resolve flow
 - [x] Dedicated admin layout with overview dashboard, revenue, dispute queue/detail, categories, users, and appraisers pages
 - [x] Admin user management page wired to `/admin/users` (role/status filters, pagination, ban/unban actions); appraisers page lists via `/admin/users?role=ROLE_APPRAISER`
+- [x] Seller capability suspension UI keeps historical data readable, shows the admin reason/time, disables commercial write actions, and preserves paid-order shipping
 - [x] Admin overview dashboard aggregates total users, open disputes, and total revenue from existing endpoints
 - [x] Shared `Pagination` component extracted to `shared/ui` and applied to admin revenue/disputes/users/appraisers tables
 - [x] Public certificate verification page and address book UI
@@ -40,6 +41,7 @@
 - [x] Automated FE unit test suite passes with 96 tests and 2 Playwright smoke tests
 - [x] Order tabs use backend `status` filter and buyer/seller status counts
 - [x] Bidding room refetches detail, participation, and bid history after socket connect/reconnect
+- [x] Buyer can withdraw once from a `WAITING` auction, receive the full deposit refund, and cannot register again
 - [x] Auction countdown and seller auction validation use shared server clock offset from `/system/time`
 - [x] Product fallback image centralized through `FALLBACK_PRODUCT_IMAGE`
 - [x] Admin/seller/appraiser/blog/bidding route pages lazy-load in route chunks

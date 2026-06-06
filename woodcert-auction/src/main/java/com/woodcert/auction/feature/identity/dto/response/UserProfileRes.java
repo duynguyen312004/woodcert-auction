@@ -21,9 +21,14 @@ public record UserProfileRes(
         String status,
         List<String> roles,
         Instant createdAt,
-        boolean hasSellerProfile
+        boolean hasSellerProfile,
+        List<CurrentUserCapabilityStatusRes> capabilityStatuses
 ) {
-    public static UserProfileRes fromEntity(User user, boolean hasSellerProfile, String avatarUrl) {
+    public static UserProfileRes fromEntity(
+            User user,
+            boolean hasSellerProfile,
+            String avatarUrl,
+            List<CurrentUserCapabilityStatusRes> capabilityStatuses) {
         List<String> roles = user.getRoles().stream()
                 .map(Role::getName)
                 .sorted(Comparator.naturalOrder())
@@ -38,7 +43,8 @@ public record UserProfileRes(
                 user.getStatus().name(),
                 roles,
                 user.getCreatedAt(),
-                hasSellerProfile
+                hasSellerProfile,
+                capabilityStatuses
         );
     }
 }

@@ -231,6 +231,9 @@ public class AuctionQueryService {
         if (sellerOwned) {
             outcomeCode = "SELLER_VIEW";
             outcomeMessage = "Seller view of the auction";
+        } else if (depositStatus == DepositStatus.WITHDRAWN) {
+            outcomeCode = "WITHDRAWN";
+            outcomeMessage = "You withdrew before the auction started and your deposit was refunded";
         } else {
             if (session.getStatus() == AuctionSessionStatus.WAITING || session.getStatus() == AuctionSessionStatus.ACTIVE) {
                 outcomeCode = "NONE";
@@ -269,6 +272,7 @@ public class AuctionQueryService {
                 depositStatus,
                 highestBidder,
                 decision.canRegister(),
+                decision.canWithdraw(),
                 decision.canBid(),
                 decision.reasonCode(),
                 decision.reasonMessage(),
@@ -379,10 +383,14 @@ public class AuctionQueryService {
         Map<DepositStatus, Long> depositCounts = loadDepositStatusCounts(auctionId);
         SellerAuctionDetailRes.SettlementSummary settlement = new SellerAuctionDetailRes.SettlementSummary(
                 depositCounts.getOrDefault(DepositStatus.FROZEN, 0L),
+                depositCounts.getOrDefault(DepositStatus.WITHDRAWN, 0L),
                 depositCounts.getOrDefault(DepositStatus.REFUNDED, 0L),
                 depositCounts.getOrDefault(DepositStatus.DEDUCTED, 0L),
                 depositCounts.getOrDefault(DepositStatus.CONFISCATED, 0L));
-        long participantCount = depositCounts.values().stream().mapToLong(Long::longValue).sum();
+        long participantCount = depositCounts.entrySet().stream()
+                .filter(entry -> entry.getKey() != DepositStatus.WITHDRAWN)
+                .mapToLong(Map.Entry::getValue)
+                .sum();
         var order = orderService.findSummaryBySource(OrderSourceType.AUCTION, auctionId);
 
         return responseAssembler.toSellerDetailRes(
@@ -587,15 +595,29 @@ public class AuctionQueryService {
         }
 
         if (registered) {
+            if (depositStatus == DepositStatus.WITHDRAWN) {
+                return blocked("PARTICIPATION_WITHDRAWN",
+                        "You withdrew from this auction and cannot register again");
+            }
             if (depositStatus == DepositStatus.FROZEN && status == AuctionSessionStatus.ACTIVE
                     && activeWindowOpen && highestBidder) {
                 return blocked("CURRENT_HIGHEST_BIDDER", "You are currently the highest bidder");
             }
             if (depositStatus == DepositStatus.FROZEN && status == AuctionSessionStatus.ACTIVE && activeWindowOpen) {
-                return new ParticipationDecision(false, true, "CAN_BID", "You can place bids in this auction");
+                return new ParticipationDecision(
+                        false,
+                        false,
+                        true,
+                        "CAN_BID",
+                        "You can place bids in this auction");
             }
             if (depositStatus == DepositStatus.FROZEN && status == AuctionSessionStatus.WAITING) {
-                return blocked("WAITING_FOR_ACTIVATION", "You are registered and waiting for the auction to start");
+                return new ParticipationDecision(
+                        false,
+                        true,
+                        false,
+                        "WAITING_FOR_ACTIVATION",
+                        "You are registered and waiting for the auction to start");
             }
             if (depositStatus == DepositStatus.FROZEN && status == AuctionSessionStatus.ACTIVE) {
                 return blocked("AUCTION_RUNTIME_UNAVAILABLE", "Auction runtime is not available for bidding");
@@ -613,10 +635,12 @@ public class AuctionQueryService {
         }
 
         if (status == AuctionSessionStatus.WAITING) {
-            return new ParticipationDecision(true, false, "CAN_REGISTER", "You can register for this auction");
+            return new ParticipationDecision(true, false, false,
+                    "CAN_REGISTER", "You can register for this auction");
         }
         if (status == AuctionSessionStatus.ACTIVE && activeWindowOpen) {
-            return new ParticipationDecision(true, false, "CAN_REGISTER", "You can register and join this active auction");
+            return new ParticipationDecision(true, false, false,
+                    "CAN_REGISTER", "You can register and join this active auction");
         }
         if (status == AuctionSessionStatus.ACTIVE) {
             return blocked("AUCTION_RUNTIME_UNAVAILABLE", "Auction runtime is not available for registration");
@@ -629,7 +653,7 @@ public class AuctionQueryService {
     }
 
     private ParticipationDecision blocked(String reasonCode, String reasonMessage) {
-        return new ParticipationDecision(false, false, reasonCode, reasonMessage);
+        return new ParticipationDecision(false, false, false, reasonCode, reasonMessage);
     }
 
     private BidHistoryItemRes toBidHistoryItem(Bid bid, String currentUserId) {
@@ -650,6 +674,7 @@ public class AuctionQueryService {
 
     private record ParticipationDecision(
             boolean canRegister,
+            boolean canWithdraw,
             boolean canBid,
             String reasonCode,
             String reasonMessage

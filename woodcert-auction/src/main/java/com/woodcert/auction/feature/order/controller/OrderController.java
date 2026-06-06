@@ -62,7 +62,7 @@ public class OrderController {
     }
 
     @GetMapping("/my-sales")
-    @PreAuthorize("hasAuthority('CONFIRM_DELIVERY')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<PaginationResponse<OrderListRes>>> getSellerOrders(
             @CurrentUserId String sellerId,
             @RequestParam(required = false) OrderStatus status,
@@ -74,7 +74,7 @@ public class OrderController {
     }
 
     @GetMapping("/my-sales/status-counts")
-    @PreAuthorize("hasAuthority('CONFIRM_DELIVERY')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<OrderStatusCountsRes>> getSellerOrderStatusCounts(
             @CurrentUserId String sellerId) {
         return ResponseEntity.ok(ApiResponse.success(

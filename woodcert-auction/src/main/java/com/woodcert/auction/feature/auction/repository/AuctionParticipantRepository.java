@@ -20,6 +20,17 @@ public interface AuctionParticipantRepository extends JpaRepository<AuctionParti
 
     Optional<AuctionParticipant> findByAuctionSessionIdAndUserId(Long auctionSessionId, String userId);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT p
+            FROM AuctionParticipant p
+            WHERE p.auctionSessionId = :auctionSessionId
+              AND p.userId = :userId
+            """)
+    Optional<AuctionParticipant> findByAuctionSessionIdAndUserIdForUpdate(
+            @Param("auctionSessionId") Long auctionSessionId,
+            @Param("userId") String userId);
+
     List<AuctionParticipant> findByAuctionSessionIdAndDepositStatus(Long auctionSessionId, DepositStatus depositStatus);
 
     List<AuctionParticipant> findByUserIdOrderByRegisteredAtDesc(String userId);
@@ -61,6 +72,7 @@ public interface AuctionParticipantRepository extends JpaRepository<AuctionParti
                    COUNT(p.id) AS participantCount
             FROM AuctionParticipant p
             WHERE p.auctionSessionId IN :auctionSessionIds
+              AND p.depositStatus <> com.woodcert.auction.feature.auction.entity.DepositStatus.WITHDRAWN
             GROUP BY p.auctionSessionId
             """)
     List<AuctionParticipantCountView> countByAuctionSessionIdsGrouped(

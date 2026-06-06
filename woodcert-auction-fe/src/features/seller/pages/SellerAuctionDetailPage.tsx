@@ -42,6 +42,7 @@ import { useNotification } from "@/shared/ui/notification";
 
 import { getOrderStatusText, OrderFeeBreakdown } from "@/features/order";
 
+import { useSellerCapability } from "../components/SellerCapabilityProvider";
 import {
   SELLER_AUCTION_STATUS_CLASS,
   SELLER_AUCTION_STATUS_LABEL,
@@ -64,6 +65,7 @@ function settlementLabel(status: SellerAuctionSettlementStatus) {
 }
 
 export function SellerAuctionDetailPage() {
+  const { isSuspended } = useSellerCapability();
   const params = useParams();
   const auctionId = parseAuctionId(params.auctionId);
   const navigate = useNavigate();
@@ -75,10 +77,10 @@ export function SellerAuctionDetailPage() {
   const confirmShippingMutation = useConfirmShipping();
 
   const auction = detailQuery.data;
-  const canCancel = auction?.status === "WAITING";
+  const canCancel = !isSuspended && auction?.status === "WAITING";
 
   const handleCancel = async () => {
-    if (!auctionId || !auction) return;
+    if (!auctionId || !auction || isSuspended) return;
 
     try {
       await cancelMutation.mutateAsync(auctionId);
@@ -231,7 +233,7 @@ export function SellerAuctionDetailPage() {
         </div>
       </main>
 
-      <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
+      <Dialog open={cancelOpen && !isSuspended} onOpenChange={setCancelOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Hủy phiên đấu giá?</DialogTitle>
@@ -601,6 +603,7 @@ function SettlementPanel({ auction }: { auction: SellerAuctionDetail }) {
     >
       <div className="grid grid-cols-2 gap-3">
         <SettlementItem label="Đang giữ" value={settlement.frozen} tone="red" />
+        <SettlementItem label="Đã rút" value={settlement.withdrawn} tone="brass" />
         <SettlementItem label="Đã hoàn" value={settlement.refunded} tone="green" />
         <SettlementItem label="Đã trừ" value={settlement.deducted} tone="ink" />
         <SettlementItem label="Tịch thu" value={settlement.confiscated} tone="brass" />

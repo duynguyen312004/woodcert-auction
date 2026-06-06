@@ -6,9 +6,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.woodcert.auction.feature.identity.dto.request.IdentityRequestPatterns;
 import com.woodcert.auction.feature.identity.dto.request.PatchUserProfileReq;
 import com.woodcert.auction.feature.identity.dto.request.UpdateUserProfileReq;
+import com.woodcert.auction.feature.identity.dto.response.CurrentUserCapabilityStatusRes;
 import com.woodcert.auction.feature.identity.dto.response.UserProfileRes;
 import com.woodcert.auction.feature.identity.entity.User;
 import com.woodcert.auction.feature.identity.repository.SellerProfileRepository;
+import com.woodcert.auction.feature.identity.repository.UserCapabilityStatusRepository;
 import com.woodcert.auction.feature.identity.repository.UserRepository;
 import com.woodcert.auction.feature.identity.util.IdentityNormalizationUtils;
 import com.woodcert.auction.feature.media.util.MediaUrlBuilder;
@@ -22,6 +24,7 @@ public class UserProfileServiceImpl implements UserProfileService {
 
     private final UserRepository userRepository;
     private final SellerProfileRepository sellerProfileRepository;
+    private final UserCapabilityStatusRepository capabilityStatusRepository;
     private final MediaUrlBuilder mediaUrlBuilder;
 
     @Override
@@ -137,6 +140,13 @@ public class UserProfileServiceImpl implements UserProfileService {
     }
 
     private UserProfileRes toUserProfile(User user, boolean hasSellerProfile) {
-        return UserProfileRes.fromEntity(user, hasSellerProfile, mediaUrlBuilder.buildAvatarUrl(user.getAvatarMedia()));
+        var capabilityStatuses = capabilityStatusRepository.findByUserId(user.getId()).stream()
+                .map(CurrentUserCapabilityStatusRes::fromEntity)
+                .toList();
+        return UserProfileRes.fromEntity(
+                user,
+                hasSellerProfile,
+                mediaUrlBuilder.buildAvatarUrl(user.getAvatarMedia()),
+                capabilityStatuses);
     }
 }

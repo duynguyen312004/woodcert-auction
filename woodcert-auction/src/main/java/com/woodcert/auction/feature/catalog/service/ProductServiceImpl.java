@@ -9,6 +9,7 @@ import com.woodcert.auction.feature.catalog.dto.request.UpdateProductReq;
 import com.woodcert.auction.feature.catalog.dto.response.*;
 import com.woodcert.auction.feature.catalog.entity.AppraisalImage;
 import com.woodcert.auction.feature.catalog.entity.AppraisalReport;
+import com.woodcert.auction.feature.catalog.entity.Category;
 import com.woodcert.auction.feature.catalog.entity.Product;
 import com.woodcert.auction.feature.catalog.entity.ProductImage;
 import com.woodcert.auction.feature.catalog.entity.ProductSaleStatus;
@@ -22,6 +23,8 @@ import com.woodcert.auction.feature.finance.entity.PlatformRevenueType;
 import com.woodcert.auction.feature.finance.entity.WalletReferenceType;
 import com.woodcert.auction.feature.finance.service.PlatformRevenueService;
 import com.woodcert.auction.feature.finance.service.WalletService;
+import com.woodcert.auction.feature.finance.support.FinanceOperationKey;
+import com.woodcert.auction.feature.finance.support.FinanceOperationKeys;
 import com.woodcert.auction.feature.identity.entity.SellerProfile;
 import com.woodcert.auction.feature.identity.entity.User;
 import com.woodcert.auction.feature.identity.repository.SellerProfileRepository;
@@ -184,7 +187,7 @@ public class ProductServiceImpl implements ProductService {
         Product product = getOwnedDraftProduct(sellerId, productId);
 
         // Bước 2: Chuyển trạng thái sang hàng chờ thẩm định và ghi thời điểm nộp.
-        String operationKey = "appraisal:submit:fee:" + productId + ":" + sellerId;
+        FinanceOperationKey operationKey = FinanceOperationKeys.appraisalSubmissionFee(productId, sellerId);
         walletService.withdrawFunds(
                 sellerId,
                 operationKey,
@@ -450,14 +453,20 @@ public class ProductServiceImpl implements ProductService {
         // Bước 3: Nếu đã có báo cáo thẩm định thì map kèm vào response chi tiết.
         AppraisalReportRes appraisalReportRes = buildAppraisalReportRes(product, viewerUserId, isAppraiser);
 
-        // Bước 4: Bổ sung category khi entity đầu vào chưa được fetch join category.
-        if (product.getCategory() == null && product.getCategoryId() != null) {
-            categoryRepository.findById(product.getCategoryId())
-                    .ifPresent(product::setCategory);
+        // Bước 4: Resolve category riêng để không mutate quan hệ read-only trên managed entity.
+        Category category = product.getCategory();
+        if (category == null && product.getCategoryId() != null) {
+            category = categoryRepository.findById(product.getCategoryId()).orElse(null);
         }
 
         // Bước 5: Gom product, seller, ảnh và appraisal report thành DTO trả về.
-        return ProductDetailRes.fromEntity(product, sellerSummary, imageResponses, appraisalReportRes);
+        return ProductDetailRes.fromEntity(
+                product,
+                sellerSummary,
+                imageResponses,
+                appraisalReportRes,
+                category
+        );
     }
 
     private AppraisalReportRes buildAppraisalReportRes(Product product, String viewerUserId, boolean isAppraiser) {
@@ -466,15 +475,22 @@ public class ProductServiceImpl implements ProductService {
             return null;
         }
 
-        boolean includeInternalFields = isAppraiser
+        boolean isOwner = viewerUserId != null && viewerUserId.equals(product.getSellerId());
+        boolean isReviewingAppraiser = isAppraiser
                 && viewerUserId != null
                 && viewerUserId.equals(appraisalReport.getAppraiserId());
+        boolean includeReviewDetails = isOwner || isReviewingAppraiser;
 
-        List<AppraisalImageRes> proofImages = includeInternalFields
+        List<AppraisalImageRes> proofImages = includeReviewDetails
                 ? buildAppraisalProofImages(appraisalReport.getId())
                 : List.of();
 
-        return AppraisalReportRes.fromEntity(appraisalReport, includeInternalFields, proofImages);
+        return AppraisalReportRes.fromEntity(
+                appraisalReport,
+                includeReviewDetails,
+                isReviewingAppraiser,
+                proofImages
+        );
     }
 
     private List<AppraisalImageRes> buildAppraisalProofImages(Long appraisalReportId) {

@@ -9,24 +9,25 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardList,
+  Eye,
   Gavel,
-  Loader2,
   PackagePlus,
   Pencil,
   RefreshCw,
   SendHorizonal,
 } from "lucide-react";
-import { useMemo, useState } from "react";
-import { Link } from "react-router";
+import { useMemo, useState, type KeyboardEvent, type MouseEvent } from "react";
+import { Link, useNavigate } from "react-router";
 
-import { isApiError } from "@/shared/api/errors";
-import { formatDate, formatVND } from "@/shared/lib/format";
+import { formatDate } from "@/shared/lib/format";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
-import { useNotification } from "@/shared/ui/notification";
+import { NotificationCard } from "@/shared/ui/notification";
 
+import { AppraisalSubmissionDialog } from "../components/AppraisalSubmissionDialog";
 import { ProductSaleStatusBadge, ProductStatusBadge } from "../components/ProductStatusBadge";
 import { ProductTableSkeleton } from "../components/ProductTableSkeleton";
+import { useSellerCapability } from "../components/SellerCapabilityProvider";
 import { PRODUCT_SALE_STATUS_LABEL, PRODUCT_STATUS_LABEL } from "../constants/productStatus";
 import { SELLER_PATHS } from "../constants/routes";
 import { useSubmitAppraisal } from "../hooks/useProductMutations";
@@ -34,7 +35,6 @@ import { useSellerProducts } from "../hooks/useSellerDashboard";
 import type { ProductSaleStatus, ProductStatus, SellerProduct } from "../types";
 
 const PAGE_SIZE = 10;
-const APPRAISAL_FEE = 1_000_000;
 
 type ProductListFilter = {
   id: string;
@@ -66,10 +66,11 @@ const STATUS_TABS: ProductListFilter[] = [
 ];
 
 export function SellerProductsPage() {
+  const { isSuspended } = useSellerCapability();
   const [activeFilter, setActiveFilter] = useState<ProductListFilter>(ALL_PRODUCTS_FILTER);
   const [page, setPage] = useState(1);
-  const [submittingProductId, setSubmittingProductId] = useState<string | null>(null);
-  const notification = useNotification();
+  const [selectedProduct, setSelectedProduct] = useState<SellerProduct | null>(null);
+  const [submittedProductTitle, setSubmittedProductTitle] = useState<string | null>(null);
   const submitAppraisalMutation = useSubmitAppraisal();
 
   const listParams = useMemo(
@@ -129,25 +130,9 @@ export function SellerProductsPage() {
     setPage(1);
   };
 
-  const handleSubmitAppraisal = async (product: SellerProduct) => {
-    const confirmed = window.confirm(
-      `Gửi kiểm định sẽ trừ ${formatVND(APPRAISAL_FEE)} từ ví seller và phí này không hoàn lại nếu sản phẩm bị từ chối.`,
-    );
-    if (!confirmed) return;
-
-    setSubmittingProductId(product.id);
-    try {
-      await submitAppraisalMutation.mutateAsync(Number(product.id));
-      notification.success("Đã gửi yêu cầu kiểm định", {
-        description: product.title,
-      });
-    } catch (error: unknown) {
-      notification.error("Không thể gửi kiểm định", {
-        description: isApiError(error) ? error.message : "Vui lòng thử lại sau.",
-      });
-    } finally {
-      setSubmittingProductId(null);
-    }
+  const handleSubmitAppraisal = async () => {
+    if (!selectedProduct || isSuspended) return;
+    await submitAppraisalMutation.mutateAsync(Number(selectedProduct.id));
   };
 
   const isLoading = productsQuery.isPending;
@@ -162,16 +147,38 @@ export function SellerProductsPage() {
           <h1 className="font-serif text-xl font-bold text-ink-blue">Quản lý sản phẩm</h1>
         </div>
 
-        <Button asChild className="bg-brushed-brass text-[#181612] hover:bg-brushed-brass/90">
-          <Link to={SELLER_PATHS.newProduct}>
+        {isSuspended ? (
+          <Button disabled title="Quyền bán đang bị đình chỉ">
             <PackagePlus className="size-4" aria-hidden />
             Đăng sản phẩm
-          </Link>
-        </Button>
+          </Button>
+        ) : (
+          <Button asChild className="bg-brushed-brass text-[#181612] hover:bg-brushed-brass/90">
+            <Link to={SELLER_PATHS.newProduct}>
+              <PackagePlus className="size-4" aria-hidden />
+              Đăng sản phẩm
+            </Link>
+          </Button>
+        )}
       </header>
 
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-[1280px] space-y-6 p-8">
+          {submittedProductTitle && (
+            <NotificationCard
+              tone="success"
+              title="Đã gửi yêu cầu kiểm định"
+              description={
+                <>
+                  Sản phẩm <strong>{submittedProductTitle}</strong> đã được chuyển vào hàng chờ kiểm
+                  định. Lệ phí đã được trừ từ ví seller.
+                </>
+              }
+              onDismiss={() => setSubmittedProductTitle(null)}
+              className="border-verdigris/20 bg-white shadow-sm"
+            />
+          )}
+
           <section className="grid grid-cols-2 gap-4 lg:grid-cols-5" aria-label="Thống kê sản phẩm">
             <StatCard label="Tổng sản phẩm" value={totalProducts} tone="ink" />
             <StatCard label={PRODUCT_STATUS_LABEL.DRAFT} value={statusCounts.DRAFT} tone="muted" />
@@ -269,8 +276,8 @@ export function SellerProductsPage() {
                           <ProductManagementRow
                             key={product.id}
                             product={product}
-                            isSubmitting={submittingProductId === product.id}
-                            onSubmitAppraisal={handleSubmitAppraisal}
+                            isSuspended={isSuspended}
+                            onSubmitAppraisal={setSelectedProduct}
                           />
                         ))
                       )}
@@ -291,6 +298,19 @@ export function SellerProductsPage() {
           </section>
         </div>
       </div>
+
+      <AppraisalSubmissionDialog
+        open={selectedProduct !== null && !isSuspended}
+        productTitle={selectedProduct?.title ?? ""}
+        onOpenChange={(open) => {
+          if (!open) setSelectedProduct(null);
+        }}
+        onConfirm={handleSubmitAppraisal}
+        onSuccess={() => {
+          setSubmittedProductTitle(selectedProduct?.title ?? null);
+          setSelectedProduct(null);
+        }}
+      />
     </div>
   );
 }
@@ -323,22 +343,49 @@ function StatCard({
 
 function ProductManagementRow({
   product,
-  isSubmitting,
+  isSuspended,
   onSubmitAppraisal,
 }: {
   product: SellerProduct;
-  isSubmitting: boolean;
+  isSuspended: boolean;
   onSubmitAppraisal: (product: SellerProduct) => void;
 }) {
+  const navigate = useNavigate();
   const [imgFailed, setImgFailed] = useState(false);
-  const canSubmitAppraisal = product.status === "DRAFT" && product.saleStatus === "AVAILABLE";
-  const canCreateAuction = product.status === "APPRAISED" && product.saleStatus === "AVAILABLE";
+  const canSubmitAppraisal =
+    !isSuspended && product.status === "DRAFT" && product.saleStatus === "AVAILABLE";
+  const canCreateAuction =
+    !isSuspended && product.status === "APPRAISED" && product.saleStatus === "AVAILABLE";
+  const detailPath = SELLER_PATHS.productDetail(product.id);
+
+  const openDetailFromRow = (event: MouseEvent<HTMLTableRowElement>) => {
+    if ((event.target as Element).closest("a, button, input, select, textarea")) return;
+    void navigate(detailPath);
+  };
+
+  const openDetailFromKeyboard = (event: KeyboardEvent<HTMLTableRowElement>) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    if ((event.target as Element).closest("a, button, input, select, textarea")) return;
+    event.preventDefault();
+    void navigate(detailPath);
+  };
 
   return (
-    <tr className="transition-colors hover:bg-[#F6F0E6]/60">
+    <tr
+      role="link"
+      tabIndex={0}
+      aria-label={`Xem chi tiết ${product.title}`}
+      onClick={openDetailFromRow}
+      onKeyDown={openDetailFromKeyboard}
+      className="cursor-pointer transition-colors hover:bg-[#F6F0E6]/60 focus-visible:bg-[#F6F0E6]/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brushed-brass/40"
+    >
       <td className="px-6 py-4">
         <div className="flex items-center gap-4">
-          <div className="size-12 shrink-0 overflow-hidden rounded border border-[#4e4637]/20 bg-[#eae1d6]">
+          <Link
+            to={detailPath}
+            className="size-12 shrink-0 overflow-hidden rounded border border-[#4e4637]/20 bg-[#eae1d6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brushed-brass/50"
+            aria-label={`Xem ảnh và chi tiết ${product.title}`}
+          >
             {product.imageUrl && !imgFailed ? (
               <img
                 src={product.imageUrl}
@@ -351,9 +398,14 @@ function ProductManagementRow({
                 <ClipboardList className="size-5 text-[#8D877C]" />
               </div>
             )}
-          </div>
+          </Link>
           <div className="min-w-0">
-            <p className="truncate text-sm font-bold text-ink-blue">{product.title}</p>
+            <Link
+              to={detailPath}
+              className="block truncate text-sm font-bold text-ink-blue transition-colors hover:text-brushed-brass hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brushed-brass/50"
+            >
+              {product.title}
+            </Link>
             <p className="mt-0.5 text-xs text-muted-warm">Mã SP #{product.id}</p>
           </div>
         </div>
@@ -369,50 +421,60 @@ function ProductManagementRow({
       </td>
       <td className="px-6 py-4 text-sm text-muted-warm">{formatDate(product.createdAt)}</td>
       <td className="px-6 py-4 text-right">
-        {canSubmitAppraisal ? (
-          <div className="flex justify-end gap-2">
-            <Button
-              asChild
-              type="button"
-              size="sm"
-              variant="outline"
-              className="border-[#4e4637]/20 bg-white text-ink-blue hover:bg-[#eae1d6]/50 hover:text-ink-blue hover:border-brushed-brass/40 active:scale-97 transition-all cursor-pointer"
-            >
-              <Link to={SELLER_PATHS.editProduct(product.id)} aria-label="Chinh sua san pham">
-                <Pencil className="size-4" aria-hidden />
-                Chỉnh sửa
-              </Link>
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => onSubmitAppraisal(product)}
-              disabled={isSubmitting}
-              className="bg-ink-blue text-white hover:bg-ink-blue/90"
-            >
-              {isSubmitting ? (
-                <Loader2 className="size-4 animate-spin" aria-hidden />
-              ) : (
-                <SendHorizonal className="size-4" aria-hidden />
-              )}
-              Gửi kiểm định
-            </Button>
-          </div>
-        ) : canCreateAuction ? (
+        <div className="flex flex-wrap justify-end gap-2">
           <Button
             asChild
             type="button"
             size="sm"
-            className="bg-ink-blue text-white hover:bg-ink-blue/90"
+            variant="outline"
+            className="border-[#4e4637]/20 bg-white text-ink-blue hover:border-brushed-brass/40 hover:bg-[#eae1d6]/50 hover:text-ink-blue"
           >
-            <Link to={`${SELLER_PATHS.newAuction}?productId=${product.id}`}>
-              <Gavel className="size-4" aria-hidden />
-              Tạo phiên
+            <Link to={detailPath}>
+              <Eye className="size-4" aria-hidden />
+              Xem chi tiết
             </Link>
           </Button>
-        ) : (
-          <span className="text-xs font-semibold text-muted-warm">Không có thao tác</span>
-        )}
+
+          {canSubmitAppraisal && (
+            <>
+              <Button
+                asChild
+                type="button"
+                size="sm"
+                variant="outline"
+                className="border-[#4e4637]/20 bg-white text-ink-blue hover:bg-[#eae1d6]/50 hover:text-ink-blue hover:border-brushed-brass/40 active:scale-97 transition-all cursor-pointer"
+              >
+                <Link to={SELLER_PATHS.editProduct(product.id)} aria-label="Chỉnh sửa sản phẩm">
+                  <Pencil className="size-4" aria-hidden />
+                  Chỉnh sửa
+                </Link>
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => onSubmitAppraisal(product)}
+                className="bg-ink-blue text-white hover:bg-ink-blue/90"
+              >
+                <SendHorizonal className="size-4" aria-hidden />
+                Gửi kiểm định
+              </Button>
+            </>
+          )}
+
+          {canCreateAuction && (
+            <Button
+              asChild
+              type="button"
+              size="sm"
+              className="bg-ink-blue text-white hover:bg-ink-blue/90"
+            >
+              <Link to={`${SELLER_PATHS.newAuction}?productId=${product.id}`}>
+                <Gavel className="size-4" aria-hidden />
+                Tạo phiên
+              </Link>
+            </Button>
+          )}
+        </div>
       </td>
     </tr>
   );

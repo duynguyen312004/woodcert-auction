@@ -35,6 +35,6 @@ public class SellerProfileController {
             @RequestBody @Valid CreateSellerProfileReq request) {
         SellerProfileRes sellerProfile = sellerProfileService.createSellerProfile(userId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.created(sellerProfile, "Seller profile created. Please re-login to update roles."));
+                .body(ApiResponse.created(sellerProfile, "Seller profile created successfully."));
     }
 }

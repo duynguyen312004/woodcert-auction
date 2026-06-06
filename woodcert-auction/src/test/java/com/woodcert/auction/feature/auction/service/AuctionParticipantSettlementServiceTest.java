@@ -6,6 +6,7 @@ import com.woodcert.auction.feature.auction.entity.DepositStatus;
 import com.woodcert.auction.feature.auction.repository.AuctionParticipantRepository;
 import com.woodcert.auction.feature.finance.entity.WalletReferenceType;
 import com.woodcert.auction.feature.finance.service.WalletService;
+import com.woodcert.auction.feature.finance.support.FinanceOperationKeys;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -47,7 +48,7 @@ class AuctionParticipantSettlementServiceTest {
         assertThat(participant.getDepositStatus()).isEqualTo(DepositStatus.DEDUCTED);
         verify(walletService).deductFrozenFunds(
                 "winner-1",
-                "auction:close:deduct:10:winner-1",
+                FinanceOperationKeys.auctionCloseDeduct(10L, "winner-1"),
                 new BigDecimal("1000.00"),
                 SESSION_ID,
                 WalletReferenceType.AUCTION
@@ -67,7 +68,7 @@ class AuctionParticipantSettlementServiceTest {
         assertThat(participant.getDepositStatus()).isEqualTo(DepositStatus.REFUNDED);
         verify(walletService).unfreezeFunds(
                 "loser-1",
-                "auction:close:refund:10:loser-1",
+                FinanceOperationKeys.auctionCloseRefund(10L, "loser-1"),
                 new BigDecimal("1000.00"),
                 SESSION_ID,
                 WalletReferenceType.AUCTION
@@ -87,7 +88,7 @@ class AuctionParticipantSettlementServiceTest {
         assertThat(participant.getDepositStatus()).isEqualTo(DepositStatus.REFUNDED);
         verify(walletService).unfreezeFunds(
                 "bidder-1",
-                "auction:cancel:refund:10:bidder-1",
+                FinanceOperationKeys.auctionCancelRefund(10L, "bidder-1"),
                 new BigDecimal("1000.00"),
                 SESSION_ID,
                 WalletReferenceType.AUCTION

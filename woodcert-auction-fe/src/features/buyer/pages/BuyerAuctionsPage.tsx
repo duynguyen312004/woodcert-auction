@@ -194,6 +194,7 @@ function OutcomeBadge({ code }: { code: BuyerAuction["outcomeCode"] }) {
       PENDING: "Chờ mở",
       PENDING_SETTLEMENT: "Đối soát",
       ENDED_FAILED: "Không đạt sàn",
+      WITHDRAWN: "Đã rút",
       NONE: "—",
     }[code] ?? code;
 
@@ -205,6 +206,7 @@ function OutcomeBadge({ code }: { code: BuyerAuction["outcomeCode"] }) {
       PENDING: "bg-[#2e4a62] text-white border border-[#2e4a62]/30",
       PENDING_SETTLEMENT: "bg-[#2e4a62] text-white border border-[#2e4a62]/30",
       ENDED_FAILED: "bg-[#b5533e] text-white border border-[#b5533e]/30",
+      WITHDRAWN: "bg-stone-500 text-white border border-stone-500/30",
       NONE: "bg-stone-300 text-stone-700 border border-stone-400/20",
     }[code] ?? "bg-stone-950 text-white";
 

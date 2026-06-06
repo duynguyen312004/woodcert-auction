@@ -7,6 +7,7 @@ package com.woodcert.auction.feature.auction.entity;
  */
 public enum DepositStatus {
     FROZEN,
+    WITHDRAWN,
     REFUNDED,
     DEDUCTED,
     CONFISCATED

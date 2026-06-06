@@ -16,6 +16,7 @@ import { Link, useNavigate } from "react-router";
 import { useProfile } from "@/features/account";
 import { authApi } from "@/features/auth";
 import { clearAuthSession } from "@/shared/auth/auth-store";
+import { SELLER_PATHS } from "@/shared/constants";
 import { Button } from "@/shared/ui/button";
 import {
   Dialog,
@@ -207,19 +208,21 @@ export function UserMenu({ onMobileClose }: { onMobileClose?: () => void }) {
                 </Link>
               </DropdownMenuItem>
             )}
-            {profile?.roles?.includes("SELLER") ? (
+            {profile?.hasSellerProfile ? (
               <DropdownMenuItem
                 asChild
                 className="focus:bg-primary/10 focus:text-primary transition-all duration-150 rounded-lg group"
               >
-                <Link
-                  to="/seller/dashboard"
+                <a
+                  href={SELLER_PATHS.dashboard}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="flex w-full items-center gap-2.5 py-1 text-primary font-bold"
                   onClick={onMobileClose}
                 >
                   <Store className="h-4 w-4 text-primary group-hover:text-primary transition-colors" />
-                  <span>Khu người bán</span>
-                </Link>
+                  <span>Quản lý cửa hàng</span>
+                </a>
               </DropdownMenuItem>
             ) : (
               !profile?.roles?.includes("ADMIN") &&
@@ -229,12 +232,12 @@ export function UserMenu({ onMobileClose }: { onMobileClose?: () => void }) {
                   className="focus:bg-primary/10 focus:text-primary transition-all duration-150 rounded-lg group"
                 >
                   <Link
-                    to="/seller/register"
+                    to={SELLER_PATHS.register}
                     className="flex w-full items-center gap-2.5 py-1 text-primary font-bold"
                     onClick={onMobileClose}
                   >
                     <Store className="h-4 w-4 text-primary group-hover:text-primary transition-colors" />
-                    <span>Đăng ký người bán</span>
+                    <span>Quản lý cửa hàng</span>
                   </Link>
                 </DropdownMenuItem>
               )
