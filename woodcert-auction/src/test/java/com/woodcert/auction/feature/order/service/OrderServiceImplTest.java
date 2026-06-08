@@ -8,6 +8,10 @@ import com.woodcert.auction.feature.finance.entity.WalletReferenceType;
 import com.woodcert.auction.feature.finance.service.PlatformRevenueService;
 import com.woodcert.auction.feature.finance.service.WalletService;
 import com.woodcert.auction.feature.finance.support.FinanceOperationKeys;
+import com.woodcert.auction.feature.identity.service.BuyerOrderProfileQueryService;
+import com.woodcert.auction.feature.identity.service.BuyerOrderProfileSnapshot;
+import com.woodcert.auction.feature.identity.service.ShippingAddressQueryService;
+import com.woodcert.auction.feature.identity.service.ShippingAddressSnapshot;
 import com.woodcert.auction.feature.order.config.OrderProperties;
 import com.woodcert.auction.feature.order.entity.OrderEntity;
 import com.woodcert.auction.feature.order.entity.OrderSourceType;
@@ -52,6 +56,8 @@ class OrderServiceImplTest {
     @Mock private WalletService walletService;
     @Mock private PlatformRevenueService platformRevenueService;
     @Mock private OrderFulfillmentPort fulfillmentPort;
+    @Mock private ShippingAddressQueryService shippingAddressQueryService;
+    @Mock private BuyerOrderProfileQueryService buyerOrderProfileQueryService;
     @Mock private OrderSourceAdapter sourceAdapter;
 
     private OrderServiceImpl orderService;
@@ -67,6 +73,8 @@ class OrderServiceImplTest {
                 new FinanceProperties(),
                 new OrderFeeCalculator(),
                 fulfillmentPort,
+                shippingAddressQueryService,
+                buyerOrderProfileQueryService,
                 List.of(sourceAdapter)
         );
     }
@@ -107,6 +115,28 @@ class OrderServiceImplTest {
     }
 
     @Test
+    void getOrderDetail_returnsBuyerSummaryForOwnedSellerOrder() {
+        OrderEntity order = baseOrder();
+        when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(order));
+        when(fulfillmentPort.findSnapshotByOrderId(ORDER_ID)).thenReturn(Optional.empty());
+        when(buyerOrderProfileQueryService.findBuyerProfile(BUYER_ID))
+                .thenReturn(Optional.of(new BuyerOrderProfileSnapshot(
+                        BUYER_ID,
+                        "Nguyen Van A",
+                        "0911222333",
+                        "buyer@example.com"
+                )));
+
+        var result = orderService.getOrderDetail(SELLER_ID, ORDER_ID);
+
+        assertThat(result.buyer()).isNotNull();
+        assertThat(result.buyer().id()).isEqualTo(BUYER_ID);
+        assertThat(result.buyer().fullName()).isEqualTo("Nguyen Van A");
+        assertThat(result.buyer().phoneNumber()).isEqualTo("0911222333");
+        assertThat(result.buyer().email()).isEqualTo("buyer@example.com");
+    }
+
+    @Test
     void createFromSource_createsPendingPaymentOrderWhenDepositDoesNotCoverFinalPrice() {
         when(orderRepository.findBySourceTypeAndSourceId(OrderSourceType.AUCTION, SOURCE_ID))
                 .thenReturn(Optional.empty());
@@ -116,6 +146,8 @@ class OrderServiceImplTest {
                 BUYER_ID,
                 SELLER_ID,
                 PRODUCT_ID,
+                "Binh go quy",
+                "https://cdn.example/product.jpg",
                 money("10000000"),
                 money("1000000")
         )));
@@ -128,13 +160,15 @@ class OrderServiceImplTest {
         OrderEntity saved = orderCaptor.getValue();
         assertThat(saved.getStatus()).isEqualTo(OrderStatus.PENDING_PAYMENT);
         assertThat(saved.getRemainingAmount()).isEqualByComparingTo("9000000.00");
+        assertThat(saved.getProductTitle()).isEqualTo("Binh go quy");
+        assertThat(saved.getProductImageUrl()).isEqualTo("https://cdn.example/product.jpg");
         assertThat(saved.getPaymentDeadline()).isNotNull();
         verify(sourceAdapter).onOrderCreated(saved);
         verify(fulfillmentPort, never()).ensurePendingShipment(any(OrderEntity.class));
     }
 
     @Test
-    void createFromSource_createsPaidOrderAndPendingShipmentWhenDepositCoversFinalPrice() {
+    void createFromSource_requiresAddressConfirmationWhenDepositCoversFinalPrice() {
         when(orderRepository.findBySourceTypeAndSourceId(OrderSourceType.AUCTION, SOURCE_ID))
                 .thenReturn(Optional.empty());
         when(sourceAdapter.snapshotForOrderCreation(SOURCE_ID)).thenReturn(Optional.of(new OrderSourceSnapshot(
@@ -143,6 +177,8 @@ class OrderServiceImplTest {
                 BUYER_ID,
                 SELLER_ID,
                 PRODUCT_ID,
+                "Binh go quy",
+                null,
                 money("1000000"),
                 money("1000000")
         )));
@@ -153,9 +189,11 @@ class OrderServiceImplTest {
         ArgumentCaptor<OrderEntity> orderCaptor = ArgumentCaptor.forClass(OrderEntity.class);
         verify(orderRepository).save(orderCaptor.capture());
         OrderEntity saved = orderCaptor.getValue();
-        assertThat(saved.getStatus()).isEqualTo(OrderStatus.PAID);
-        assertThat(saved.getPaidAt()).isNotNull();
-        verify(fulfillmentPort).ensurePendingShipment(saved);
+        assertThat(saved.getStatus()).isEqualTo(OrderStatus.PENDING_PAYMENT);
+        assertThat(saved.getRemainingAmount()).isEqualByComparingTo("0.00");
+        assertThat(saved.getPaidAt()).isNull();
+        assertThat(saved.getPaymentDeadline()).isNotNull();
+        verify(fulfillmentPort, never()).ensurePendingShipment(saved);
     }
 
     @Test
@@ -164,8 +202,10 @@ class OrderServiceImplTest {
         when(orderRepository.findByIdForUpdate(ORDER_ID)).thenReturn(Optional.of(order));
         when(orderRepository.save(any(OrderEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(fulfillmentPort.findSnapshotByOrderId(ORDER_ID)).thenReturn(Optional.empty());
+        when(shippingAddressQueryService.getOwnedAddressSnapshot(BUYER_ID, 11L))
+                .thenReturn(shippingAddress());
 
-        var result = orderService.payRemainder(BUYER_ID, ORDER_ID);
+        var result = orderService.payRemainder(BUYER_ID, ORDER_ID, 11L);
 
         verify(walletService).withdrawFunds(
                 eq(BUYER_ID),
@@ -177,7 +217,46 @@ class OrderServiceImplTest {
         verify(fulfillmentPort).ensurePendingShipment(order);
         assertThat(order.getStatus()).isEqualTo(OrderStatus.PAID);
         assertThat(order.getPaidAt()).isNotNull();
+        assertThat(order.getShippingReceiverName()).isEqualTo("Nguyen Van A");
+        assertThat(result.shippingAddress().provinceName()).isEqualTo("Ha Noi");
         assertThat(result.status()).isEqualTo(OrderStatus.PAID);
+    }
+
+    @Test
+    void payRemainder_whenWalletFailsDoesNotPersistPaidOrder() {
+        OrderEntity order = pendingPaymentOrder(Instant.now().plusSeconds(3600));
+        when(orderRepository.findByIdForUpdate(ORDER_ID)).thenReturn(Optional.of(order));
+        when(shippingAddressQueryService.getOwnedAddressSnapshot(BUYER_ID, 11L))
+                .thenReturn(shippingAddress());
+        org.mockito.Mockito.doThrow(new AppException(ErrorCode.WALLET_INSUFFICIENT_AVAILABLE_BALANCE))
+                .when(walletService)
+                .withdrawFunds(any(), any(), any(), any(), any());
+
+        assertThatThrownBy(() -> orderService.payRemainder(BUYER_ID, ORDER_ID, 11L))
+                .isInstanceOf(AppException.class)
+                .satisfies(throwable -> assertThat(((AppException) throwable).getErrorCode())
+                        .isEqualTo(ErrorCode.WALLET_INSUFFICIENT_AVAILABLE_BALANCE));
+
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.PENDING_PAYMENT);
+        verify(orderRepository, never()).save(any(OrderEntity.class));
+        verify(fulfillmentPort, never()).ensurePendingShipment(any(OrderEntity.class));
+    }
+
+    @Test
+    void payRemainder_withZeroRemainingSkipsWalletAndCreatesFulfillment() {
+        OrderEntity order = pendingPaymentOrder(Instant.now().plusSeconds(3600));
+        order.setRemainingAmount(money("0"));
+        when(orderRepository.findByIdForUpdate(ORDER_ID)).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(OrderEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(shippingAddressQueryService.getOwnedAddressSnapshot(BUYER_ID, 11L))
+                .thenReturn(shippingAddress());
+        when(fulfillmentPort.findSnapshotByOrderId(ORDER_ID)).thenReturn(Optional.empty());
+
+        orderService.payRemainder(BUYER_ID, ORDER_ID, 11L);
+
+        verify(walletService, never()).withdrawFunds(any(), any(), any(), any(), any());
+        verify(fulfillmentPort).ensurePendingShipment(order);
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.PAID);
     }
 
     @Test
@@ -185,7 +264,7 @@ class OrderServiceImplTest {
         OrderEntity order = pendingPaymentOrder(Instant.now().minusSeconds(1));
         when(orderRepository.findByIdForUpdate(ORDER_ID)).thenReturn(Optional.of(order));
 
-        assertThatThrownBy(() -> orderService.payRemainder(BUYER_ID, ORDER_ID))
+        assertThatThrownBy(() -> orderService.payRemainder(BUYER_ID, ORDER_ID, 11L))
                 .isInstanceOf(AppException.class)
                 .satisfies(throwable -> assertThat(((AppException) throwable).getErrorCode())
                         .isEqualTo(ErrorCode.ORDER_PAYMENT_DEADLINE_EXCEEDED));
@@ -270,6 +349,53 @@ class OrderServiceImplTest {
                 eq(FinanceOperationKeys.orderCompletionCommission(ORDER_ID))
         );
         verify(sourceAdapter).onOrderCompleted(order);
+    }
+
+    @Test
+    void getSellerSalesSummary_aggregatesCompletedAndForfeitedIncomeByDay() {
+        Instant completedAt = Instant.parse("2026-06-05T10:00:00Z");
+        OrderEntity completed = baseOrder();
+        completed.setStatus(OrderStatus.COMPLETED);
+        completed.setCompletedAt(completedAt);
+        completed.setPlatformCommissionAmount(money("500000"));
+        completed.setSellerPayoutAmount(money("9500000"));
+
+        OrderEntity forfeited = baseOrder();
+        forfeited.setId(92L);
+        forfeited.setStatus(OrderStatus.CANCELED);
+        forfeited.setCanceledAt(Instant.parse("2026-06-05T12:00:00Z"));
+        forfeited.setForfeitedDepositSellerAmount(money("900000"));
+
+        when(orderRepository.findSellerRealizedOrders(
+                eq(SELLER_ID),
+                eq(OrderStatus.COMPLETED),
+                any(Instant.class)
+        )).thenReturn(List.of(completed, forfeited));
+
+        var result = orderService.getSellerSalesSummary(SELLER_ID, "30D");
+
+        assertThat(result.grossSales()).isEqualByComparingTo("10000000.00");
+        assertThat(result.platformCommission()).isEqualByComparingTo("500000.00");
+        assertThat(result.sellerPayout()).isEqualByComparingTo("9500000.00");
+        assertThat(result.forfeitedDepositIncome()).isEqualByComparingTo("900000.00");
+        assertThat(result.totalRealizedIncome()).isEqualByComparingTo("10400000.00");
+        assertThat(result.completedOrders()).isEqualTo(1);
+        assertThat(result.daily()).hasSize(1);
+    }
+
+    @Test
+    void getSellerSalesSummary_allUsesNonNullableRepositoryQuery() {
+        when(orderRepository.findAllSellerRealizedOrders(SELLER_ID, OrderStatus.COMPLETED))
+                .thenReturn(List.of());
+
+        var result = orderService.getSellerSalesSummary(SELLER_ID, "ALL");
+
+        assertThat(result.range()).isEqualTo("ALL");
+        assertThat(result.totalRealizedIncome()).isEqualByComparingTo("0.00");
+        verify(orderRepository, never()).findSellerRealizedOrders(
+                eq(SELLER_ID),
+                eq(OrderStatus.COMPLETED),
+                any(Instant.class));
     }
 
     @Test
@@ -383,11 +509,35 @@ class OrderServiceImplTest {
         order.setFinalPrice(money("10000000"));
         order.setDepositAmount(money("1000000"));
         order.setRemainingAmount(money("9000000"));
+        order.setProductTitle("Binh go quy");
         return order;
     }
 
+    private ShippingAddressSnapshot shippingAddress() {
+        return new ShippingAddressSnapshot(
+                "Nguyen Van A",
+                "0911222333",
+                "12 Pho Go",
+                "00001",
+                "Phuong Hang Bac",
+                "001",
+                "Quan Hoan Kiem",
+                "01",
+                "Ha Noi"
+        );
+    }
+
     private OrderFulfillmentSnapshot shippedFulfillment() {
-        return new OrderFulfillmentSnapshot(11L, ORDER_ID, "SHIPPED", "TRK-1", Instant.now(), null, Instant.now().plusSeconds(3600));
+        return new OrderFulfillmentSnapshot(
+                11L,
+                ORDER_ID,
+                "SHIPPED",
+                "THIRD_PARTY",
+                "Viettel Post",
+                "TRK-1",
+                Instant.now(),
+                null,
+                Instant.now().plusSeconds(3600));
     }
 
     private BigDecimal money(String value) {

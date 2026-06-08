@@ -1,16 +1,11 @@
-/**
- * Hook lấy dữ liệu cho dashboard seller.
- *
- * Các hook nhỏ gọi API sản phẩm/phiên đấu giá. useSellerDashboard gom dữ liệu
- * thành KPI, sản phẩm gần đây và phiên đang chạy cho trang dashboard.
- */
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
-import { sellerApi } from "../api/seller";
-import type { ProductStatus } from "../types";
+import { useSellerOrders, useSellerSalesSummary } from "@/features/order";
 
-const SELLER_AUCTION_REFRESH_INTERVAL_MS = 5_000;
+import { sellerApi } from "../api/seller";
+
+const SELLER_OPERATIONAL_REFRESH_MS = 10_000;
 
 export function useSellerProducts(params?: {
   page?: number;
@@ -21,6 +16,15 @@ export function useSellerProducts(params?: {
   return useQuery({
     queryKey: ["seller", "products", params] as const,
     queryFn: () => sellerApi.getMyProducts(params),
+    refetchInterval: SELLER_OPERATIONAL_REFRESH_MS,
+  });
+}
+
+export function useSellerProductStats() {
+  return useQuery({
+    queryKey: ["seller", "product-stats"] as const,
+    queryFn: sellerApi.getMyProductStats,
+    refetchInterval: SELLER_OPERATIONAL_REFRESH_MS,
   });
 }
 
@@ -36,19 +40,15 @@ export function useSellerAuctions(params?: { page?: number; size?: number; statu
   return useQuery({
     queryKey: ["seller", "auctions", params] as const,
     queryFn: () => sellerApi.getMyAuctions(params),
-    refetchInterval: SELLER_AUCTION_REFRESH_INTERVAL_MS,
+    refetchInterval: SELLER_OPERATIONAL_REFRESH_MS,
   });
 }
 
-/**
- * Lấy thống kê số phiên theo trạng thái từ endpoint chuyên biệt.
- * Chính xác với mọi số lượng phiên, không bị giới hạn bởi page size.
- */
 export function useSellerAuctionStats() {
   return useQuery({
     queryKey: ["seller", "auction-stats"] as const,
-    queryFn: () => sellerApi.getMyAuctionStats(),
-    refetchInterval: SELLER_AUCTION_REFRESH_INTERVAL_MS,
+    queryFn: sellerApi.getMyAuctionStats,
+    refetchInterval: SELLER_OPERATIONAL_REFRESH_MS,
   });
 }
 
@@ -59,41 +59,67 @@ export function useSellerAuctionDetail(auctionId: number | undefined) {
     enabled: auctionId !== undefined,
     refetchInterval: (query) => {
       const status = query.state.data?.status;
-      return status === "WAITING" || status === "ACTIVE"
-        ? SELLER_AUCTION_REFRESH_INTERVAL_MS
-        : false;
+      return status === "WAITING" || status === "ACTIVE" ? SELLER_OPERATIONAL_REFRESH_MS : false;
     },
   });
 }
 
 export function useSellerDashboard() {
   const recentProductsQuery = useSellerProducts({ size: 5 });
-  // Dashboard cần nhiều sản phẩm hơn để đếm trạng thái ngay trên giao diện.
-  const allProductsQuery = useSellerProducts({ size: 100 });
+  const productStatsQuery = useSellerProductStats();
   const activeAuctionQuery = useSellerAuctions({ status: "ACTIVE", size: 1 });
+  const waitingAuctionQuery = useSellerAuctions({ status: "WAITING", size: 3 });
+  const paidOrdersQuery = useSellerOrders({ status: "PAID", size: 3 });
+  const disputedOrdersQuery = useSellerOrders({ status: "DISPUTED", size: 3 });
+  const salesSummaryQuery = useSellerSalesSummary("30D");
 
-  const stats = useMemo(() => {
-    const all = allProductsQuery.data?.result ?? [];
-    const countByStatus = (s: ProductStatus) => all.filter((p) => p.status === s).length;
-    return {
-      draftCount: countByStatus("DRAFT"),
-      pendingAppraisalCount: countByStatus("PENDING_APPRAISAL"),
-      appraisedCount: countByStatus("APPRAISED"),
+  const stats = useMemo(
+    () => ({
+      draftCount: productStatsQuery.data?.byStatus.DRAFT ?? 0,
+      pendingAppraisalCount: productStatsQuery.data?.byStatus.PENDING_APPRAISAL ?? 0,
+      appraisedCount: productStatsQuery.data?.byStatus.APPRAISED ?? 0,
       activeAuctionCount: activeAuctionQuery.data?.meta.total ?? 0,
-    };
-  }, [allProductsQuery.data, activeAuctionQuery.data]);
+      pendingShipmentCount: paidOrdersQuery.data?.meta.total ?? 0,
+      disputedOrderCount: disputedOrdersQuery.data?.meta.total ?? 0,
+    }),
+    [
+      productStatsQuery.data,
+      activeAuctionQuery.data,
+      paidOrdersQuery.data,
+      disputedOrdersQuery.data,
+    ],
+  );
 
   return {
     stats,
     recentProducts: recentProductsQuery.data?.result ?? [],
     activeAuction: activeAuctionQuery.data?.result[0] ?? null,
+    waitingAuctionCount: waitingAuctionQuery.data?.meta.total ?? 0,
+    realizedIncome30D: salesSummaryQuery.data?.totalRealizedIncome ?? 0,
     isLoading:
-      recentProductsQuery.isPending || allProductsQuery.isPending || activeAuctionQuery.isPending,
-    isError: recentProductsQuery.isError || allProductsQuery.isError || activeAuctionQuery.isError,
+      recentProductsQuery.isPending ||
+      productStatsQuery.isPending ||
+      activeAuctionQuery.isPending ||
+      waitingAuctionQuery.isPending ||
+      paidOrdersQuery.isPending ||
+      disputedOrdersQuery.isPending ||
+      salesSummaryQuery.isPending,
+    isError:
+      recentProductsQuery.isError ||
+      productStatsQuery.isError ||
+      activeAuctionQuery.isError ||
+      waitingAuctionQuery.isError ||
+      paidOrdersQuery.isError ||
+      disputedOrdersQuery.isError ||
+      salesSummaryQuery.isError,
     refetch: () => {
       void recentProductsQuery.refetch();
-      void allProductsQuery.refetch();
+      void productStatsQuery.refetch();
       void activeAuctionQuery.refetch();
+      void waitingAuctionQuery.refetch();
+      void paidOrdersQuery.refetch();
+      void disputedOrdersQuery.refetch();
+      void salesSummaryQuery.refetch();
     },
   };
 }

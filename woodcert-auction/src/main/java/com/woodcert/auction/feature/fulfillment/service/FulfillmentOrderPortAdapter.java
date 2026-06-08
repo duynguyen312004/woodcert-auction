@@ -43,6 +43,8 @@ public class FulfillmentOrderPortAdapter implements OrderFulfillmentPort {
                 fulfillment.getId(),
                 fulfillment.getOrderId(),
                 fulfillment.getStatus().name(),
+                fulfillment.getDeliveryMethod() != null ? fulfillment.getDeliveryMethod().name() : null,
+                fulfillment.getCarrierName(),
                 fulfillment.getTrackingCode(),
                 fulfillment.getShippedAt(),
                 fulfillment.getReceivedAt(),

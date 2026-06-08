@@ -3,6 +3,7 @@ package com.woodcert.auction.feature.fulfillment.service;
 import com.woodcert.auction.core.exception.AppException;
 import com.woodcert.auction.core.exception.ErrorCode;
 import com.woodcert.auction.feature.fulfillment.config.FulfillmentProperties;
+import com.woodcert.auction.feature.fulfillment.entity.DeliveryMethod;
 import com.woodcert.auction.feature.fulfillment.entity.FulfillmentStatus;
 import com.woodcert.auction.feature.fulfillment.entity.OrderFulfillment;
 import com.woodcert.auction.feature.fulfillment.repository.FulfillmentRepository;
@@ -52,10 +53,17 @@ class FulfillmentServiceImplTest {
         when(fulfillmentRepository.findByOrderIdForUpdate(ORDER_ID)).thenReturn(Optional.of(fulfillment));
         when(fulfillmentRepository.save(any(OrderFulfillment.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        fulfillmentService.confirmShipping(SELLER_ID, ORDER_ID, "  TRACK-123  ");
+        fulfillmentService.confirmShipping(
+                SELLER_ID,
+                ORDER_ID,
+                DeliveryMethod.THIRD_PARTY,
+                "  Viettel Post  ",
+                "  TRACK-123  ");
 
         verify(orderService).markFulfilling(SELLER_ID, ORDER_ID);
         assertThat(fulfillment.getStatus()).isEqualTo(FulfillmentStatus.SHIPPED);
+        assertThat(fulfillment.getDeliveryMethod()).isEqualTo(DeliveryMethod.THIRD_PARTY);
+        assertThat(fulfillment.getCarrierName()).isEqualTo("Viettel Post");
         assertThat(fulfillment.getTrackingCode()).isEqualTo("TRACK-123");
         assertThat(fulfillment.getShippedAt()).isNotNull();
         assertThat(fulfillment.getAutoCompleteDeadline()).isNotNull();
@@ -68,13 +76,58 @@ class FulfillmentServiceImplTest {
         OrderFulfillment fulfillment = fulfillment(FulfillmentStatus.PENDING_SHIPMENT);
         when(fulfillmentRepository.findByOrderIdForUpdate(ORDER_ID)).thenReturn(Optional.of(fulfillment));
 
-        assertThatThrownBy(() -> fulfillmentService.confirmShipping("seller-2", ORDER_ID, null))
+        assertThatThrownBy(() -> fulfillmentService.confirmShipping(
+                "seller-2",
+                ORDER_ID,
+                DeliveryMethod.SELF_DELIVERY,
+                null,
+                null))
                 .isInstanceOf(AppException.class)
                 .satisfies(throwable -> assertThat(((AppException) throwable).getErrorCode())
                         .isEqualTo(ErrorCode.ORDER_NOT_OWNED));
 
         verifyNoInteractions(orderService);
         verify(fulfillmentRepository, never()).save(any(OrderFulfillment.class));
+    }
+
+    @Test
+    void confirmShipping_rejectsThirdPartyWithoutTrackingCode() {
+        OrderFulfillment fulfillment = fulfillment(FulfillmentStatus.PENDING_SHIPMENT);
+        when(fulfillmentRepository.findByOrderIdForUpdate(ORDER_ID)).thenReturn(Optional.of(fulfillment));
+
+        assertThatThrownBy(() -> fulfillmentService.confirmShipping(
+                SELLER_ID,
+                ORDER_ID,
+                DeliveryMethod.THIRD_PARTY,
+                "Viettel Post",
+                " "))
+                .isInstanceOf(AppException.class)
+                .satisfies(throwable -> assertThat(((AppException) throwable).getErrorCode())
+                        .isEqualTo(ErrorCode.INVALID_REQUEST));
+
+        verifyNoInteractions(orderService);
+        verify(fulfillmentRepository, never()).save(any(OrderFulfillment.class));
+    }
+
+    @Test
+    void confirmShipping_allowsSelfDeliveryWithoutTrackingCode() {
+        OrderFulfillment fulfillment = fulfillment(FulfillmentStatus.PENDING_SHIPMENT);
+        when(fulfillmentRepository.findByOrderIdForUpdate(ORDER_ID)).thenReturn(Optional.of(fulfillment));
+        when(fulfillmentRepository.save(any(OrderFulfillment.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        fulfillmentService.confirmShipping(
+                SELLER_ID,
+                ORDER_ID,
+                DeliveryMethod.SELF_DELIVERY,
+                null,
+                null);
+
+        verify(orderService).markFulfilling(SELLER_ID, ORDER_ID);
+        assertThat(fulfillment.getStatus()).isEqualTo(FulfillmentStatus.SHIPPED);
+        assertThat(fulfillment.getDeliveryMethod()).isEqualTo(DeliveryMethod.SELF_DELIVERY);
+        assertThat(fulfillment.getCarrierName()).isNull();
+        assertThat(fulfillment.getTrackingCode()).isNull();
+        verify(fulfillmentRepository).save(fulfillment);
     }
 
     @Test

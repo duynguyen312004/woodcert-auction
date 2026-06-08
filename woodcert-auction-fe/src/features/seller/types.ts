@@ -45,6 +45,12 @@ export interface SellerProduct {
   updatedAt?: string;
 }
 
+export interface SellerProductStats {
+  total: number;
+  byStatus: Record<ProductStatus, number>;
+  bySaleStatus: Record<ProductSaleStatus, number>;
+}
+
 export interface SellerAuction {
   id: string;
   title: string;

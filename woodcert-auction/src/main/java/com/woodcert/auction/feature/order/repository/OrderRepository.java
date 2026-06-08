@@ -54,6 +54,39 @@ public interface OrderRepository extends JpaRepository<OrderEntity, Long> {
             """)
     List<Object[]> countBySellerIdGroupedByStatus(@Param("sellerId") String sellerId);
 
+    @Query("""
+            SELECT o
+            FROM OrderEntity o
+            WHERE o.sellerId = :sellerId
+              AND (
+                    (o.status = :completedStatus
+                     AND o.completedAt >= :from)
+                    OR
+                    (o.forfeitedDepositSellerAmount IS NOT NULL
+                     AND o.forfeitedDepositSellerAmount > 0
+                     AND o.canceledAt >= :from)
+              )
+            """)
+    List<OrderEntity> findSellerRealizedOrders(
+            @Param("sellerId") String sellerId,
+            @Param("completedStatus") OrderStatus completedStatus,
+            @Param("from") Instant from);
+
+    @Query("""
+            SELECT o
+            FROM OrderEntity o
+            WHERE o.sellerId = :sellerId
+              AND (
+                    o.status = :completedStatus
+                    OR
+                    (o.forfeitedDepositSellerAmount IS NOT NULL
+                     AND o.forfeitedDepositSellerAmount > 0)
+              )
+            """)
+    List<OrderEntity> findAllSellerRealizedOrders(
+            @Param("sellerId") String sellerId,
+            @Param("completedStatus") OrderStatus completedStatus);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             SELECT o

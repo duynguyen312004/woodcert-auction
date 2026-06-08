@@ -3,7 +3,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fulfillmentApi } from "@/features/fulfillment/api/fulfillmentApi";
 
 import { orderApi } from "../api/orderApi";
-import type { OrderListParams } from "../types";
+import type { ConfirmShippingPayload, OrderListParams, SellerSalesRange } from "../types";
+
+const SELLER_OPERATIONAL_REFRESH_MS = 10_000;
 
 export function useBuyerOrders(params?: OrderListParams) {
   return useQuery({
@@ -23,6 +25,7 @@ export function useSellerOrders(params?: OrderListParams) {
   return useQuery({
     queryKey: ["orders", "seller", params] as const,
     queryFn: () => orderApi.getMySales(params),
+    refetchInterval: SELLER_OPERATIONAL_REFRESH_MS,
   });
 }
 
@@ -30,6 +33,15 @@ export function useSellerOrderStatusCounts() {
   return useQuery({
     queryKey: ["orders", "seller", "status-counts"] as const,
     queryFn: orderApi.getMySaleStatusCounts,
+    refetchInterval: SELLER_OPERATIONAL_REFRESH_MS,
+  });
+}
+
+export function useSellerSalesSummary(range: SellerSalesRange) {
+  return useQuery({
+    queryKey: ["orders", "seller", "summary", range] as const,
+    queryFn: () => orderApi.getSellerSalesSummary(range),
+    refetchInterval: SELLER_OPERATIONAL_REFRESH_MS,
   });
 }
 
@@ -52,16 +64,24 @@ export function useOrderMutations() {
   return {
     payRemainder: useMutation({
       mutationFn: orderApi.payRemainder,
-      onSuccess: invalidateOrders,
+      onSuccess: () => {
+        invalidateOrders();
+        void queryClient.invalidateQueries({ queryKey: ["wallet", "me"] });
+      },
     }),
     confirmReceived: useMutation({
       mutationFn: fulfillmentApi.confirmReceived,
       onSuccess: invalidateOrders,
     }),
     confirmShipping: useMutation({
-      mutationFn: ({ orderId, trackingCode }: { orderId: number; trackingCode?: string }) =>
-        fulfillmentApi.confirmShipping(orderId, trackingCode),
-      onSuccess: invalidateOrders,
+      mutationFn: ({ orderId, payload }: { orderId: number; payload: ConfirmShippingPayload }) =>
+        fulfillmentApi.confirmShipping(orderId, payload),
+      onSuccess: (order) => {
+        invalidateOrders();
+        queryClient.setQueryData(["orders", "detail", order.id], order);
+        void queryClient.invalidateQueries({ queryKey: ["orders", "seller", "summary"] });
+        void queryClient.invalidateQueries({ queryKey: ["seller", "dashboard"] });
+      },
     }),
   };
 }

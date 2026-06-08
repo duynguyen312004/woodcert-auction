@@ -4,16 +4,23 @@
  * Đây là màn đầu tiên sau khi seller vào portal. Trang gom thông tin gian hàng,
  * KPI, thao tác nhanh, phiên đang chạy và sản phẩm gần đây.
  */
-import { AlertTriangle, ArrowRight, Gavel, PackagePlus, RefreshCw, Star } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  Gavel,
+  PackagePlus,
+  RefreshCw,
+  Star,
+  WalletCards,
+} from "lucide-react";
 import { useMemo } from "react";
 import { Link, useNavigate } from "react-router";
 
 import { useProfile, useSellerProfile } from "@/features/account";
+import { formatVND } from "@/shared/lib/format";
 
 import { ActiveAuctionWidget } from "../components/ActiveAuctionWidget";
 import { KpiCard } from "../components/KpiCard";
-import { ProductRow } from "../components/ProductRow";
-import { ProductTableSkeleton } from "../components/ProductTableSkeleton";
 import { useSellerCapability } from "../components/SellerCapabilityProvider";
 import { SELLER_PATHS } from "../constants/routes";
 import { useSellerDashboard } from "../hooks/useSellerDashboard";
@@ -24,7 +31,7 @@ export function SellerDashboardPage() {
   const { data: profile } = useProfile();
   const { data: sellerProfile } = useSellerProfile();
 
-  const { stats, recentProducts, activeAuction, isLoading, isError, refetch } =
+  const { stats, activeAuction, realizedIncome30D, isLoading, isError, refetch } =
     useSellerDashboard();
 
   const storeName = useMemo(
@@ -45,7 +52,7 @@ export function SellerDashboardPage() {
       <div className="flex flex-col items-center justify-center min-h-screen gap-4 text-center">
         <AlertTriangle className="size-10 text-terracotta" />
         <div>
-          <p className="font-serif text-lg font-bold text-ink-blue">Không thể tải dữ liệu</p>
+          <p className="font-sans text-lg font-bold text-ink-blue">Không thể tải dữ liệu</p>
           <p className="text-sm text-muted-warm mt-1">Đã xảy ra lỗi khi tải thông tin dashboard.</p>
         </div>
         <button
@@ -79,7 +86,7 @@ export function SellerDashboardPage() {
               fillRule="evenodd"
             />
           </svg>
-          <h2 className="font-serif text-xl font-bold tracking-tight text-ink-blue">{storeName}</h2>
+          <h2 className="font-sans text-xl font-bold tracking-tight text-ink-blue">{storeName}</h2>
         </div>
 
         <div className="flex items-center gap-4">
@@ -112,7 +119,10 @@ export function SellerDashboardPage() {
       <div className="flex-1 overflow-y-auto">
         <div className="p-8 max-w-[1280px] mx-auto space-y-8">
           {/* Dải chỉ số nhanh */}
-          <section aria-label="Thống kê nhanh" className="grid grid-cols-4 gap-6">
+          <section
+            aria-label="Thống kê nhanh"
+            className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6"
+          >
             <KpiCard
               label="Bản nháp"
               value={stats.draftCount}
@@ -128,7 +138,7 @@ export function SellerDashboardPage() {
               isLoading={isLoading}
             />
             <KpiCard
-              label="Đã kiểm định"
+              label="Sẵn sàng đấu giá"
               value={stats.appraisedCount}
               valueClass="text-verdigris"
               accentClass="group-hover:bg-verdigris"
@@ -141,100 +151,77 @@ export function SellerDashboardPage() {
               accentClass="group-hover:bg-terracotta"
               isLoading={isLoading}
             />
+            <KpiCard
+              label="Đơn chờ giao"
+              value={stats.pendingShipmentCount}
+              valueClass="text-brushed-brass"
+              accentClass="group-hover:bg-brushed-brass"
+              isLoading={isLoading}
+            />
+            <KpiCard
+              label="Đang tranh chấp"
+              value={stats.disputedOrderCount}
+              valueClass="text-terracotta"
+              accentClass="group-hover:bg-terracotta"
+              isLoading={isLoading}
+            />
           </section>
 
-          {/* Quản lý nhanh và phiên đang chạy */}
-          <section
-            aria-label="Quản lý nhanh"
-            className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start"
-          >
-            <div className="lg:col-span-2 flex flex-col gap-5">
-              <h3 className="font-serif text-xl font-bold text-ink-blue">Quản lý nhanh</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <button
-                  type="button"
-                  onClick={() => !isSuspended && navigate(SELLER_PATHS.newProduct)}
-                  disabled={isSuspended}
-                  title={isSuspended ? "Quyền bán đang bị đình chỉ" : undefined}
-                  className="h-32 cursor-pointer bg-brushed-brass text-[#181612] rounded-xl flex flex-col items-center justify-center gap-3 transition-transform active:scale-95 hover:brightness-105 shadow-md disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <PackagePlus className="size-7" />
-                  <span className="font-bold text-sm">Đăng sản phẩm mới</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => !isSuspended && navigate(SELLER_PATHS.newAuction)}
-                  disabled={isSuspended}
-                  title={isSuspended ? "Quyền bán đang bị đình chỉ" : undefined}
-                  className="h-32 cursor-pointer bg-ink-blue text-white rounded-xl flex flex-col items-center justify-center gap-3 transition-transform active:scale-95 hover:brightness-110 shadow-md disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <Gavel className="size-7" />
-                  <span className="font-bold text-sm">Tạo phiên đấu giá</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-3">
-              <h3 className="font-serif text-xl font-bold text-ink-blue">Phiên đang diễn ra</h3>
-              <ActiveAuctionWidget auction={activeAuction} />
-            </div>
-          </section>
-
-          {/* Bảng sản phẩm gần đây */}
-          <section aria-label="Sản phẩm gần đây" className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-serif text-xl font-bold text-ink-blue">Sản phẩm gần đây</h3>
+          {/* Doanh thu đối soát và Phiên đang diễn ra */}
+          <section className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch">
+            <div className="flex flex-col gap-3 lg:col-span-1">
+              <h3 className="font-sans text-xl font-bold text-ink-blue">Doanh thu đối soát</h3>
               <Link
-                to={SELLER_PATHS.products}
-                className="flex cursor-pointer items-center gap-1 text-sm font-bold text-ink-blue/50 transition-colors hover:text-ink-blue"
+                to={SELLER_PATHS.revenue}
+                className="rounded-xl border border-ink-blue bg-ink-blue p-6 text-white shadow-lg transition-transform hover:-translate-y-0.5 flex flex-col justify-between flex-1 min-h-[220px]"
               >
-                Xem tất cả <ArrowRight className="size-4" />
+                <div className="flex-1 flex flex-col justify-center">
+                  <WalletCards className="size-8 text-brushed-brass" />
+                  <p className="mt-5 text-xs font-bold uppercase tracking-[0.16em] text-[#d2c5b2]">
+                    Thu nhập thực tế 30 ngày
+                  </p>
+                  <p className="mt-2 text-3xl font-bold text-white">
+                    {formatVND(realizedIncome30D)}
+                  </p>
+                </div>
+                <span className="mt-6 inline-flex items-center gap-1 text-xs font-bold text-brushed-brass border-t border-white/10 pt-4">
+                  Xem báo cáo doanh thu <ArrowRight className="size-3.5" />
+                </span>
               </Link>
             </div>
 
-            <div className="bg-white border border-[#4e4637]/20 rounded-xl overflow-hidden shadow-sm">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-[#F6F0E6]/60 border-b border-[#4e4637]/15">
-                    <th className="px-6 py-4 text-[11px] font-bold text-muted-warm uppercase tracking-widest">
-                      Sản phẩm
-                    </th>
-                    <th className="px-6 py-4 text-[11px] font-bold text-muted-warm uppercase tracking-widest">
-                      Chất liệu
-                    </th>
-                    <th className="px-6 py-4 text-[11px] font-bold text-muted-warm uppercase tracking-widest">
-                      Trạng thái
-                    </th>
-                    <th className="px-6 py-4 text-[11px] font-bold text-muted-warm uppercase tracking-widest text-right">
-                      Hành động
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#4e4637]/10">
-                  {isLoading ? (
-                    <ProductTableSkeleton />
-                  ) : recentProducts.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="px-6 py-12 text-center">
-                        <div className="flex flex-col items-center gap-3">
-                          <PackagePlus className="size-10 text-[#8D877C]/30" />
-                          <p className="text-sm text-muted-warm">Chưa có sản phẩm nào.</p>
-                          <Link
-                            to={SELLER_PATHS.newProduct}
-                            className="cursor-pointer text-sm font-bold text-brushed-brass hover:underline"
-                          >
-                            Đăng sản phẩm đầu tiên →
-                          </Link>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : (
-                    recentProducts.map((product) => (
-                      <ProductRow key={product.id} product={product} />
-                    ))
-                  )}
-                </tbody>
-              </table>
+            <div className="flex flex-col gap-3 lg:col-span-2">
+              <h3 className="font-sans text-xl font-bold text-ink-blue">Phiên đang diễn ra</h3>
+              <div className="flex-1 flex flex-col justify-stretch">
+                <ActiveAuctionWidget auction={activeAuction} />
+              </div>
+            </div>
+          </section>
+
+          {/* Quản lý nhanh */}
+          <section aria-label="Quản lý nhanh" className="space-y-4">
+            <h3 className="font-sans text-xl font-bold text-ink-blue">Quản lý nhanh</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <button
+                type="button"
+                onClick={() => !isSuspended && navigate(SELLER_PATHS.newProduct)}
+                disabled={isSuspended}
+                title={isSuspended ? "Quyền bán đang bị đình chỉ" : undefined}
+                className="h-32 cursor-pointer bg-brushed-brass text-[#181612] rounded-xl flex flex-col items-center justify-center gap-3 transition-transform active:scale-95 hover:brightness-105 shadow-md disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <PackagePlus className="size-8" />
+                <span className="font-bold text-base">Đăng sản phẩm mới</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => !isSuspended && navigate(SELLER_PATHS.newAuction)}
+                disabled={isSuspended}
+                title={isSuspended ? "Quyền bán đang bị đình chỉ" : undefined}
+                className="h-32 cursor-pointer bg-ink-blue text-white rounded-xl flex flex-col items-center justify-center gap-3 transition-transform active:scale-95 hover:brightness-110 shadow-md disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Gavel className="size-8" />
+                <span className="font-bold text-base">Tạo phiên đấu giá</span>
+              </button>
             </div>
           </section>
         </div>

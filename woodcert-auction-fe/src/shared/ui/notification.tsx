@@ -201,7 +201,7 @@ function NotificationToast({
       description={notification.description}
       action={action}
       onDismiss={() => onDismiss(notification.id)}
-      className="animate-slide-down"
+      className="pointer-events-auto animate-slide-down"
     />
   );
 }
@@ -242,7 +242,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
   const viewport = (
     <div
-      className="fixed right-4 top-4 z-50 flex w-[calc(100vw-2rem)] max-w-sm flex-col gap-3 sm:right-5 sm:top-5"
+      className="pointer-events-none fixed right-4 top-4 z-[300] flex w-[calc(100vw-2rem)] max-w-sm flex-col gap-3 sm:right-5 sm:top-5"
       aria-live="polite"
       aria-relevant="additions text"
     >

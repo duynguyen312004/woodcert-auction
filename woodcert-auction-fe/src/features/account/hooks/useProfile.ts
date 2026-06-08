@@ -1,9 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { accountApi } from "../api/account";
 
 export const PROFILE_QUERY_KEY = ["account", "profile"] as const;
 export const SELLER_PROFILE_QUERY_KEY = ["account", "seller-profile"] as const;
+export const ADDRESSES_QUERY_KEY = ["account", "addresses"] as const;
 
 /**
  * Lấy profile của người dùng đang đăng nhập.
@@ -28,5 +29,23 @@ export function useSellerProfile(options?: { enabled?: boolean }) {
     queryFn: accountApi.getSellerProfile,
     retry: false,
     ...options,
+  });
+}
+
+export function useAddresses() {
+  return useQuery({
+    queryKey: ADDRESSES_QUERY_KEY,
+    queryFn: accountApi.getAddresses,
+  });
+}
+
+export function useUpdateSellerProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: accountApi.updateSellerProfile,
+    onSuccess: (profile) => {
+      queryClient.setQueryData(SELLER_PROFILE_QUERY_KEY, profile);
+      void queryClient.invalidateQueries({ queryKey: ["seller", "dashboard"] });
+    },
   });
 }

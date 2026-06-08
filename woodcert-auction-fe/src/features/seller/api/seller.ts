@@ -22,6 +22,7 @@ import type {
   SellerAuctionStats,
   SellerAuctionStatus,
   SellerProduct,
+  SellerProductStats,
   UpdateProductPayload,
 } from "../types";
 
@@ -160,6 +161,11 @@ export const sellerApi = {
     };
   },
 
+  getMyProductStats: async (): Promise<SellerProductStats> => {
+    const response = await apiClient.get<ApiResponse<SellerProductStats>>("/products/stats");
+    return unwrapApiResponse(response);
+  },
+
   getMyAuctions: async (params?: {
     page?: number;
     size?: number;
@@ -214,6 +220,10 @@ export const sellerApi = {
       payload,
     );
     return unwrapApiResponse(response);
+  },
+
+  deleteProduct: async (productId: number): Promise<void> => {
+    await apiClient.delete(`/products/${productId}`);
   },
 
   submitAppraisal: async (productId: number): Promise<void> => {

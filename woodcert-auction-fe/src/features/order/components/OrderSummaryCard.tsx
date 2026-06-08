@@ -2,12 +2,9 @@ import type { ReactNode } from "react";
 
 import { cn } from "@/shared/lib/utils";
 
+import { getOrderStatusText } from "../lib/order-labels";
 import type { OrderSummary } from "../types";
-import {
-  getOrderStatusText,
-  OrderFeeBreakdown,
-  type OrderBreakdownAudience,
-} from "./OrderFeeBreakdown";
+import { OrderFeeBreakdown, type OrderBreakdownAudience } from "./OrderFeeBreakdown";
 
 export function OrderSummaryCard({
   order,

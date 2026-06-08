@@ -34,6 +34,16 @@ const SellerOrdersPage = lazy(() =>
     default: module.SellerOrdersPage,
   })),
 );
+const SellerOrderDetailPage = lazy(() =>
+  import("@/features/order/pages/SellerOrderDetailPage").then((module) => ({
+    default: module.SellerOrderDetailPage,
+  })),
+);
+const SellerRevenuePage = lazy(() =>
+  import("@/features/order/pages/SellerRevenuePage").then((module) => ({
+    default: module.SellerRevenuePage,
+  })),
+);
 const SellerProductDetailPage = lazy(() =>
   import("./pages/SellerProductDetailPage").then((module) => ({
     default: module.SellerProductDetailPage,
@@ -103,6 +113,14 @@ export const sellerRoutes: RouteObject[] = [
   {
     path: SELLER_ROUTE_PATHS.orders,
     element: <SellerOrdersPage />,
+  },
+  {
+    path: SELLER_ROUTE_PATHS.orderDetail,
+    element: <SellerOrderDetailPage />,
+  },
+  {
+    path: SELLER_ROUTE_PATHS.revenue,
+    element: <SellerRevenuePage />,
   },
   {
     path: SELLER_ROUTE_PATHS.auctionDetail,

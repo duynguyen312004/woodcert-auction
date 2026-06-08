@@ -40,7 +40,12 @@ import {
 } from "@/shared/ui/dialog";
 import { useNotification } from "@/shared/ui/notification";
 
-import { getOrderStatusText, OrderFeeBreakdown } from "@/features/order";
+import {
+  getOrderStatusText,
+  OrderFeeBreakdown,
+  ShippingConfirmationForm,
+  type ConfirmShippingPayload,
+} from "@/features/order";
 
 import { useSellerCapability } from "../components/SellerCapabilityProvider";
 import {
@@ -49,6 +54,7 @@ import {
 } from "../constants/auctionStatus";
 import { SELLER_PATHS } from "../constants/routes";
 import { useCancelAuction, useConfirmShipping } from "../hooks/useProductMutations";
+import { useSellerAuctionRealtime } from "../hooks/useSellerAuctionRealtime";
 import { useSellerAuctionDetail } from "../hooks/useSellerDashboard";
 import type { SellerAuctionDetail, SellerAuctionSettlementStatus } from "../types";
 
@@ -71,10 +77,10 @@ export function SellerAuctionDetailPage() {
   const navigate = useNavigate();
   const notification = useNotification();
   const [cancelOpen, setCancelOpen] = useState(false);
-  const [trackingCode, setTrackingCode] = useState("");
   const detailQuery = useSellerAuctionDetail(auctionId);
   const cancelMutation = useCancelAuction();
   const confirmShippingMutation = useConfirmShipping();
+  useSellerAuctionRealtime(auctionId);
 
   const auction = detailQuery.data;
   const canCancel = !isSuspended && auction?.status === "WAITING";
@@ -94,23 +100,23 @@ export function SellerAuctionDetailPage() {
     }
   };
 
-  const handleConfirmShipping = async () => {
+  const handleConfirmShipping = async (payload: ConfirmShippingPayload) => {
     const orderId = auction?.order?.id;
     if (!orderId) return;
     try {
       await confirmShippingMutation.mutateAsync({
         orderId,
-        trackingCode: trackingCode.trim() || undefined,
+        payload,
       });
       notification.success("Đã xác nhận giao hàng", {
-        description: trackingCode.trim() || auction?.product.title,
+        description: auction?.product.title,
       });
-      setTrackingCode("");
       void detailQuery.refetch();
     } catch (error: unknown) {
       notification.error("Không thể xác nhận giao hàng", {
         description: isApiError(error) ? error.message : "Vui lòng thử lại sau.",
       });
+      throw error;
     }
   };
 
@@ -135,16 +141,16 @@ export function SellerAuctionDetailPage() {
     <PageShell>
       <header className="sticky top-0 z-10 border-b border-[#4e4637]/15 bg-warm-ivory/90 px-8 py-4 backdrop-blur-md">
         <div className="mx-auto flex max-w-[1280px] flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="min-w-0">
+          <div className="flex items-center gap-3 min-w-0">
             <Link
               to={SELLER_PATHS.auctions}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-warm transition-colors hover:text-ink-blue"
+              className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-[#4e4637]/15 bg-white text-muted-warm transition-all duration-300 hover:border-brushed-brass/50 hover:bg-brushed-brass/10 hover:text-brushed-brass active:scale-95"
+              title="Quay lại danh sách phiên đấu giá"
             >
-              <ArrowLeft className="size-3.5" aria-hidden />
-              Phiên đấu giá
+              <ArrowLeft className="size-5" />
             </Link>
-            <div className="mt-2 flex flex-wrap items-center gap-3">
-              <h1 className="font-serif text-2xl font-bold text-ink-blue">
+            <div className="flex flex-wrap items-center gap-3 min-w-0">
+              <h1 className="font-serif text-2xl font-bold text-ink-blue truncate max-w-[300px] sm:max-w-[500px]">
                 {auction?.product.title ?? `Phiên #${auctionId}`}
               </h1>
               {auction && <AuctionStatusBadge status={auction.status} />}
@@ -219,8 +225,6 @@ export function SellerAuctionDetailPage() {
                   <PricePanel auction={auction} />
                   <SellerOrderPanel
                     auction={auction}
-                    trackingCode={trackingCode}
-                    onTrackingCodeChange={setTrackingCode}
                     onConfirmShipping={handleConfirmShipping}
                     isConfirmingShipping={confirmShippingMutation.isPending}
                   />
@@ -443,15 +447,11 @@ function PricePanel({ auction }: { auction: SellerAuctionDetail }) {
 
 function SellerOrderPanel({
   auction,
-  trackingCode,
-  onTrackingCodeChange,
   onConfirmShipping,
   isConfirmingShipping,
 }: {
   auction: SellerAuctionDetail;
-  trackingCode: string;
-  onTrackingCodeChange: (value: string) => void;
-  onConfirmShipping: () => void;
+  onConfirmShipping: (payload: ConfirmShippingPayload) => Promise<void>;
   isConfirmingShipping: boolean;
 }) {
   const order = auction.order;
@@ -487,28 +487,8 @@ function SellerOrderPanel({
       />
 
       {order.status === "PAID" && (
-        <div className="mt-5 space-y-3 border-t border-[#4e4637]/10 pt-4">
-          <input
-            type="text"
-            value={trackingCode}
-            onChange={(event) => onTrackingCodeChange(event.target.value)}
-            maxLength={120}
-            placeholder="Mã vận chuyển (không bắt buộc)"
-            className="h-10 w-full rounded-md border border-[#4e4637]/20 bg-white px-3 text-sm text-ink-blue shadow-sm focus-visible:border-brushed-brass focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brushed-brass/35"
-          />
-          <Button
-            type="button"
-            onClick={onConfirmShipping}
-            disabled={isConfirmingShipping}
-            className="w-full bg-ink-blue text-white hover:bg-ink-blue/90"
-          >
-            {isConfirmingShipping ? (
-              <Loader2 className="size-4 animate-spin" aria-hidden />
-            ) : (
-              <CheckCircle2 className="size-4" aria-hidden />
-            )}
-            Xác nhận giao hàng
-          </Button>
+        <div className="mt-5 border-t border-[#4e4637]/10 pt-4">
+          <ShippingConfirmationForm isPending={isConfirmingShipping} onSubmit={onConfirmShipping} />
         </div>
       )}
     </Panel>

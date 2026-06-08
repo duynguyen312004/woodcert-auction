@@ -15,6 +15,7 @@ import {
   Pencil,
   RefreshCw,
   SendHorizonal,
+  Trash2,
 } from "lucide-react";
 import { useMemo, useState, type KeyboardEvent, type MouseEvent } from "react";
 import { Link, useNavigate } from "react-router";
@@ -22,7 +23,16 @@ import { Link, useNavigate } from "react-router";
 import { formatDate } from "@/shared/lib/format";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
-import { NotificationCard } from "@/shared/ui/notification";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/shared/ui/dialog";
+import { isApiError } from "@/shared/api/errors";
+import { NotificationCard, useNotification } from "@/shared/ui/notification";
 
 import { AppraisalSubmissionDialog } from "../components/AppraisalSubmissionDialog";
 import { ProductSaleStatusBadge, ProductStatusBadge } from "../components/ProductStatusBadge";
@@ -30,8 +40,8 @@ import { ProductTableSkeleton } from "../components/ProductTableSkeleton";
 import { useSellerCapability } from "../components/SellerCapabilityProvider";
 import { PRODUCT_SALE_STATUS_LABEL, PRODUCT_STATUS_LABEL } from "../constants/productStatus";
 import { SELLER_PATHS } from "../constants/routes";
-import { useSubmitAppraisal } from "../hooks/useProductMutations";
-import { useSellerProducts } from "../hooks/useSellerDashboard";
+import { useDeleteProduct, useSubmitAppraisal } from "../hooks/useProductMutations";
+import { useSellerProducts, useSellerProductStats } from "../hooks/useSellerDashboard";
 import type { ProductSaleStatus, ProductStatus, SellerProduct } from "../types";
 
 const PAGE_SIZE = 10;
@@ -70,8 +80,11 @@ export function SellerProductsPage() {
   const [activeFilter, setActiveFilter] = useState<ProductListFilter>(ALL_PRODUCTS_FILTER);
   const [page, setPage] = useState(1);
   const [selectedProduct, setSelectedProduct] = useState<SellerProduct | null>(null);
+  const [deleteProduct, setDeleteProduct] = useState<SellerProduct | null>(null);
   const [submittedProductTitle, setSubmittedProductTitle] = useState<string | null>(null);
   const submitAppraisalMutation = useSubmitAppraisal();
+  const deleteProductMutation = useDeleteProduct();
+  const notification = useNotification();
 
   const listParams = useMemo(
     () => ({
@@ -84,46 +97,26 @@ export function SellerProductsPage() {
   );
 
   const productsQuery = useSellerProducts(listParams);
-  const statsQuery = useSellerProducts({ size: 100 });
+  const statsQuery = useSellerProductStats();
 
   const products = productsQuery.data?.result ?? [];
   const meta = productsQuery.data?.meta;
   const totalPages = meta?.pages ?? 1;
-  const totalProducts = statsQuery.data?.meta.total ?? productsQuery.data?.meta.total ?? 0;
-
-  const statusCounts = useMemo(() => {
-    const items = statsQuery.data?.result ?? [];
-    return items.reduce<Record<ProductStatus, number>>(
-      (acc, product) => {
-        acc[product.status] += 1;
-        return acc;
-      },
-      {
-        DRAFT: 0,
-        PENDING_APPRAISAL: 0,
-        UNDER_APPRAISAL: 0,
-        REJECTED: 0,
-        APPRAISED: 0,
-      },
-    );
-  }, [statsQuery.data]);
-
-  const saleStatusCounts = useMemo(() => {
-    const items = statsQuery.data?.result ?? [];
-    return items.reduce<Record<ProductSaleStatus, number>>(
-      (acc, product) => {
-        acc[product.saleStatus] += 1;
-        return acc;
-      },
-      {
-        AVAILABLE: 0,
-        IN_AUCTION: 0,
-        PENDING_ORDER: 0,
-        SOLD: 0,
-        RETURNED: 0,
-      },
-    );
-  }, [statsQuery.data]);
+  const totalProducts = statsQuery.data?.total ?? productsQuery.data?.meta.total ?? 0;
+  const statusCounts = statsQuery.data?.byStatus ?? {
+    DRAFT: 0,
+    PENDING_APPRAISAL: 0,
+    UNDER_APPRAISAL: 0,
+    REJECTED: 0,
+    APPRAISED: 0,
+  };
+  const saleStatusCounts = statsQuery.data?.bySaleStatus ?? {
+    AVAILABLE: 0,
+    IN_AUCTION: 0,
+    PENDING_ORDER: 0,
+    SOLD: 0,
+    RETURNED: 0,
+  };
 
   const handleFilterChange = (filter: ProductListFilter) => {
     setActiveFilter(filter);
@@ -136,6 +129,19 @@ export function SellerProductsPage() {
   };
 
   const isLoading = productsQuery.isPending;
+
+  const handleDeleteProduct = async () => {
+    if (!deleteProduct) return;
+    try {
+      await deleteProductMutation.mutateAsync(Number(deleteProduct.id));
+      notification.success("Đã xóa bản nháp");
+      setDeleteProduct(null);
+    } catch (error) {
+      notification.error("Không thể xóa sản phẩm", {
+        description: isApiError(error) ? error.message : "Vui lòng thử lại.",
+      });
+    }
+  };
 
   return (
     <div className="flex h-full flex-col">
@@ -278,6 +284,7 @@ export function SellerProductsPage() {
                             product={product}
                             isSuspended={isSuspended}
                             onSubmitAppraisal={setSelectedProduct}
+                            onDelete={setDeleteProduct}
                           />
                         ))
                       )}
@@ -311,6 +318,38 @@ export function SellerProductsPage() {
           setSelectedProduct(null);
         }}
       />
+      <Dialog
+        open={deleteProduct !== null}
+        onOpenChange={(open) => !open && setDeleteProduct(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Xóa bản nháp?</DialogTitle>
+            <DialogDescription>
+              Sản phẩm “{deleteProduct?.title}” sẽ bị xóa vĩnh viễn. Chỉ bản nháp chưa gửi kiểm định
+              mới có thể xóa.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setDeleteProduct(null)}>
+              Giữ lại
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={deleteProductMutation.isPending}
+              onClick={() => void handleDeleteProduct()}
+            >
+              {deleteProductMutation.isPending ? (
+                <RefreshCw className="size-4 animate-spin" />
+              ) : (
+                <Trash2 className="size-4" />
+              )}
+              Xóa bản nháp
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -345,10 +384,12 @@ function ProductManagementRow({
   product,
   isSuspended,
   onSubmitAppraisal,
+  onDelete,
 }: {
   product: SellerProduct;
   isSuspended: boolean;
   onSubmitAppraisal: (product: SellerProduct) => void;
+  onDelete: (product: SellerProduct) => void;
 }) {
   const navigate = useNavigate();
   const [imgFailed, setImgFailed] = useState(false);
@@ -448,6 +489,16 @@ function ProductManagementRow({
                   <Pencil className="size-4" aria-hidden />
                   Chỉnh sửa
                 </Link>
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => onDelete(product)}
+                className="border-terracotta/30 text-terracotta hover:bg-terracotta/10 hover:text-terracotta"
+              >
+                <Trash2 className="size-4" aria-hidden />
+                Xóa
               </Button>
               <Button
                 type="button"

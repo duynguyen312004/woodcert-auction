@@ -5,6 +5,7 @@ import com.woodcert.auction.feature.order.dto.response.OrderListRes;
 import com.woodcert.auction.feature.order.dto.response.OrderRes;
 import com.woodcert.auction.feature.order.dto.response.OrderStatusCountsRes;
 import com.woodcert.auction.feature.order.dto.response.OrderSummaryRes;
+import com.woodcert.auction.feature.order.dto.response.SellerSalesSummaryRes;
 import com.woodcert.auction.feature.order.entity.OrderSourceType;
 import com.woodcert.auction.feature.order.entity.OrderStatus;
 
@@ -12,7 +13,7 @@ public interface OrderService {
 
     void createFromSource(OrderSourceType sourceType, Long sourceId);
 
-    OrderRes payRemainder(String buyerId, Long orderId);
+    OrderRes payRemainder(String buyerId, Long orderId, Long addressId);
 
     OrderRes getOrderDetail(String userId, Long orderId);
 
@@ -23,6 +24,8 @@ public interface OrderService {
     OrderStatusCountsRes getBuyerOrderStatusCounts(String buyerId);
 
     OrderStatusCountsRes getSellerOrderStatusCounts(String sellerId);
+
+    SellerSalesSummaryRes getSellerSalesSummary(String sellerId, String range);
 
     OrderSummaryRes findSummaryBySource(OrderSourceType sourceType, Long sourceId);
 

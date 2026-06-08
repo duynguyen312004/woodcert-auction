@@ -11,6 +11,7 @@ import com.woodcert.auction.feature.auction.repository.AuctionSessionRepository;
 import com.woodcert.auction.feature.catalog.entity.Product;
 import com.woodcert.auction.feature.catalog.entity.ProductSaleStatus;
 import com.woodcert.auction.feature.catalog.repository.ProductRepository;
+import com.woodcert.auction.feature.catalog.service.ProductImageHelper;
 import com.woodcert.auction.feature.order.entity.OrderEntity;
 import com.woodcert.auction.feature.order.entity.OrderSourceType;
 import com.woodcert.auction.feature.order.service.source.OrderSourceAdapter;
@@ -28,6 +29,7 @@ public class AuctionOrderSourceAdapter implements OrderSourceAdapter {
     private final AuctionSessionRepository auctionSessionRepository;
     private final AuctionParticipantRepository auctionParticipantRepository;
     private final ProductRepository productRepository;
+    private final ProductImageHelper productImageHelper;
 
     @Override
     public OrderSourceType sourceType() {
@@ -63,6 +65,8 @@ public class AuctionOrderSourceAdapter implements OrderSourceAdapter {
                 session.getHighestBidderId(),
                 product.getSellerId(),
                 product.getId(),
+                product.getTitle(),
+                productImageHelper.findPrimaryImageUrl(product),
                 session.getCurrentPrice(),
                 winner.getDepositAmount()
         ));

@@ -31,6 +31,7 @@ export function usePayRemainder() {
     onSuccess: (order) => {
       void queryClient.invalidateQueries({ queryKey: ["buyer", "auction", order.sourceId] });
       void queryClient.invalidateQueries({ queryKey: ["buyer", "auctions"] });
+      void queryClient.invalidateQueries({ queryKey: ["wallet", "me"] });
     },
   });
 }

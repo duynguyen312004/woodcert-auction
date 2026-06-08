@@ -567,6 +567,21 @@ Errors:
 - 409: User already has a seller profile, or Identity Card exists
 - 400: Phone number is required before creating seller profile
 
+### PATCH /users/me/seller-profile 🔒
+
+Updates only the seller-facing store name. Identity card number, tax code, and reputation are
+immutable through this endpoint.
+
+Request Body:
+
+```json
+{
+  "storeName": "WoodCert Heritage Studio"
+}
+```
+
+Success Response (200): same shape as `GET /users/me/seller-profile`.
+
 ## 4. Addresses
 
 ### GET /addresses 🔒
@@ -749,6 +764,34 @@ Success Response (200):
 ### GET /products/{id} 🔒
 
 Get internal catalog product detail, including images and appraisal report.
+
+### GET /products/stats 🔒
+
+Returns exact seller product counts without loading a capped product page. Every
+`ProductStatus` and `ProductSaleStatus` key is present, including zero-count values.
+
+```json
+{
+  "statusCode": 200,
+  "data": {
+    "total": 12,
+    "byStatus": {
+      "DRAFT": 2,
+      "PENDING_APPRAISAL": 1,
+      "UNDER_APPRAISAL": 0,
+      "REJECTED": 1,
+      "APPRAISED": 8
+    },
+    "bySaleStatus": {
+      "AVAILABLE": 4,
+      "IN_AUCTION": 2,
+      "PENDING_ORDER": 1,
+      "SOLD": 5,
+      "RETURNED": 0
+    }
+  }
+}
+```
 
 Access rules:
 - Owner: can view any status
@@ -1510,6 +1553,19 @@ List orders where the current user is seller.
 
 Supports the same `status`, `page`, and `size` query parameters as buyer purchases.
 
+Order list/detail responses include:
+
+- `product`: immutable product id, title, and primary image snapshot
+- `shippingAddress`: immutable receiver, phone, street, ward, district, and province snapshot
+
+Legacy orders may return nullable snapshot fields.
+
+### GET /orders/my-sales/summary?range=7D|30D|90D|ALL 🔒
+
+Returns realized seller revenue from order financial snapshots, never reconstructed from wallet
+balance. The response includes `grossSales`, `platformCommission`, `sellerPayout`,
+`forfeitedDepositIncome`, `totalRealizedIncome`, `completedOrders`, and daily values.
+
 ### GET /orders/my-purchases/status-counts 🔒
 
 Returns buyer order counts grouped by every `OrderStatus`, including zero-count statuses.
@@ -1545,7 +1601,21 @@ Fetch one order if the current user is the buyer or seller.
 
 ### POST /orders/{id}/pay 🔒
 
-Buyer pays exactly `remainingAmount` from wallet. No buyer premium is applied in this phase. Order status changes to `PAID` and fulfillment becomes `PENDING_SHIPMENT`.
+Buyer confirms a shipping address and pays exactly `remainingAmount` from wallet. The address
+must belong to the buyer and is snapshotted before payment. New payments require an address even
+when `remainingAmount` is zero. No buyer premium is applied. Order status changes to `PAID` and
+fulfillment becomes `PENDING_SHIPMENT`.
+
+Request Body:
+
+```json
+{
+  "addressId": 42
+}
+```
+
+The wallet mutation and order update remain in one transaction; failed payment does not persist
+the snapshot or status change.
 
 ### PATCH /orders/{orderId}/fulfillment/ship 🔒
 

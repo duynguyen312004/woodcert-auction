@@ -27,6 +27,8 @@ public record OrderListRes(
         Instant completedAt,
         Instant canceledAt,
         String cancelReason,
+        OrderProductSummaryRes product,
+        OrderShippingAddressRes shippingAddress,
         OrderFulfillmentSummaryRes fulfillment,
         Instant createdAt
 ) {
@@ -50,6 +52,8 @@ public record OrderListRes(
                 order.getCompletedAt(),
                 order.getCanceledAt(),
                 order.getCancelReason(),
+                OrderProductSummaryRes.fromEntity(order),
+                OrderShippingAddressRes.fromEntity(order),
                 OrderFulfillmentSummaryRes.fromSnapshot(fulfillment),
                 order.getCreatedAt()
         );

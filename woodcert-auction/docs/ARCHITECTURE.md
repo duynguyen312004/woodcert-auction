@@ -197,6 +197,20 @@ Controller -> AuctionServiceImpl -> AuctionCommandService
 
 Current status: implemented for the DATN/MVP commerce flow. The backend keeps the current finance model with wallet operations and order payout snapshots; a separate escrow ledger is intentionally not added in this iteration.
 
+Seller Portal v1 remains a composition layer in the SPA. It does not introduce a seller aggregate
+or cross-module repository access:
+
+- identity owns seller profile and buyer shipping-address validation
+- catalog owns products and product statistics
+- auction owns session lifecycle and STOMP events
+- order owns product/address/financial snapshots and seller revenue summaries
+- fulfillment owns shipping transitions
+- finance owns wallet mutations
+
+The order module reads buyer addresses through `ShippingAddressQueryService` and auction product
+data through the existing source adapter boundary. Seller auction details use STOMP for immediate
+events and REST polling as reconciliation; operational lists poll every 10 seconds.
+
 ```text
 Spring @Scheduled (Runs every 1 hour)
 → OrderService.processCompletedOrders()

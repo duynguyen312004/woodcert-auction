@@ -5,6 +5,7 @@
  */
 import {
   ArrowUpRight,
+  ChartNoAxesCombined,
   Gavel,
   LayoutDashboard,
   Package,
@@ -27,6 +28,7 @@ const NAV_ITEMS = [
   { label: "Sản phẩm", icon: Package, to: SELLER_PATHS.products },
   { label: "Phiên đấu giá", icon: Gavel, to: SELLER_PATHS.auctions },
   { label: "Đơn bán", icon: ReceiptText, to: SELLER_PATHS.orders },
+  { label: "Doanh thu", icon: ChartNoAxesCombined, to: SELLER_PATHS.revenue },
   { label: "Hồ sơ", icon: UserCircle, to: SELLER_PATHS.profile },
 ] as const;
 

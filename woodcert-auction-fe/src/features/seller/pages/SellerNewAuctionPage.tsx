@@ -9,7 +9,6 @@ import {
   ArrowLeft,
   CalendarClock,
   CheckCircle2,
-  ChevronRight,
   Gavel,
   Loader2,
   PackageCheck,
@@ -195,13 +194,12 @@ export function SellerNewAuctionPage() {
       <header className="sticky top-0 z-10 flex h-[68px] shrink-0 items-center gap-3 border-b border-[#4e4637]/20 bg-warm-ivory/85 px-8 backdrop-blur-md">
         <Link
           to={SELLER_PATHS.auctions}
-          className="flex items-center gap-1.5 text-xs font-semibold text-muted-warm transition-colors hover:text-ink-blue"
+          className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-[#4e4637]/15 bg-white text-muted-warm transition-all duration-300 hover:border-brushed-brass/50 hover:bg-brushed-brass/10 hover:text-brushed-brass active:scale-95"
+          title="Quay lại danh sách phiên đấu giá"
         >
-          <ArrowLeft className="size-3.5" aria-hidden />
-          Phiên đấu giá
+          <ArrowLeft className="size-5" />
         </Link>
-        <ChevronRight className="size-3.5 text-muted-warm/50" aria-hidden />
-        <h1 className="font-serif text-lg font-bold text-ink-blue">Tạo phiên đấu giá</h1>
+        <h1 className="font-serif text-xl font-bold text-ink-blue">Tạo phiên đấu giá</h1>
       </header>
 
       <div className="flex-1 overflow-y-auto">

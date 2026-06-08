@@ -3,6 +3,7 @@ package com.woodcert.auction.feature.identity.controller;
 import com.woodcert.auction.core.auth.CurrentUserId;
 import com.woodcert.auction.core.dto.ApiResponse;
 import com.woodcert.auction.feature.identity.dto.request.CreateSellerProfileReq;
+import com.woodcert.auction.feature.identity.dto.request.UpdateSellerProfileReq;
 import com.woodcert.auction.feature.identity.dto.response.SellerProfileRes;
 import com.woodcert.auction.feature.identity.service.SellerProfileService;
 import jakarta.validation.Valid;
@@ -10,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -36,5 +38,14 @@ public class SellerProfileController {
         SellerProfileRes sellerProfile = sellerProfileService.createSellerProfile(userId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.created(sellerProfile, "Seller profile created successfully."));
+    }
+
+    @PatchMapping
+    public ResponseEntity<ApiResponse<SellerProfileRes>> updateCurrentSellerProfile(
+            @CurrentUserId String userId,
+            @RequestBody @Valid UpdateSellerProfileReq request) {
+        return ResponseEntity.ok(ApiResponse.success(
+                sellerProfileService.updateCurrentSellerProfile(userId, request),
+                "Seller profile updated successfully"));
     }
 }

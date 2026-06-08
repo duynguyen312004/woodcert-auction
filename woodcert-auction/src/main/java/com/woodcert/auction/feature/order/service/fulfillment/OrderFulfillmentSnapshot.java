@@ -6,6 +6,8 @@ public record OrderFulfillmentSnapshot(
         Long id,
         Long orderId,
         String status,
+        String deliveryMethod,
+        String carrierName,
         String trackingCode,
         Instant shippedAt,
         Instant receivedAt,

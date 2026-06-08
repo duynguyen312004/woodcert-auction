@@ -3,6 +3,7 @@ package com.woodcert.auction.feature.identity.service;
 import com.woodcert.auction.core.exception.AppException;
 import com.woodcert.auction.core.exception.ErrorCode;
 import com.woodcert.auction.feature.identity.dto.request.CreateSellerProfileReq;
+import com.woodcert.auction.feature.identity.dto.request.UpdateSellerProfileReq;
 import com.woodcert.auction.feature.identity.dto.response.SellerProfileRes;
 import com.woodcert.auction.feature.identity.entity.Role;
 import com.woodcert.auction.feature.identity.entity.SellerProfile;
@@ -69,6 +70,15 @@ public class SellerProfileServiceImpl implements SellerProfileService {
         // Bước 6: Gắn ROLE_SELLER cho user trong cùng transaction rồi lưu profile.
         assignSellerRole(user);
 
+        return SellerProfileRes.fromEntity(sellerProfileRepository.save(sellerProfile));
+    }
+
+    @Override
+    @Transactional
+    public SellerProfileRes updateCurrentSellerProfile(String userId, UpdateSellerProfileReq request) {
+        SellerProfile sellerProfile = sellerProfileRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Seller profile not found"));
+        sellerProfile.setStoreName(request.storeName().trim());
         return SellerProfileRes.fromEntity(sellerProfileRepository.save(sellerProfile));
     }
 

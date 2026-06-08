@@ -1,9 +1,22 @@
 # Database Schema
 
-Current implementation note (2026-06-03): identity, media, catalog/appraisal, finance/wallet/VNPay, auction/bidding, orders, fulfillment, dispute, admin category/appraiser operations, certificate lookup, Flyway migrations, CSRF refresh protection, and server-time sync are implemented by backend code.
+Current implementation note (2026-06-06): identity, media, catalog/appraisal, finance/wallet/VNPay, auction/bidding, seller order snapshots/revenue, fulfillment, dispute, admin category/appraiser operations, certificate lookup, Flyway migrations, CSRF refresh protection, and server-time sync are implemented by backend code.
 
 > MySQL database design for WoodCert Auction Platform.
 > Update this file whenever schema changes.
+
+## Seller Portal v1 Order Snapshots
+
+Flyway `V6__seller_portal_v1_order_snapshots.sql` adds nullable snapshot columns to `orders` for
+backward compatibility:
+
+- Product: `product_title`, `product_image_url`
+- Recipient: `shipping_receiver_name`, `shipping_phone_number`
+- Address: street plus ward/district/province codes and names
+
+New payments require a buyer-owned address and fill the full shipping snapshot. Existing rows may
+remain null. Product title is backfilled where possible. Order history and seller revenue use these
+order-owned snapshots so later catalog/address edits cannot rewrite historical commerce data.
 
 ---
 

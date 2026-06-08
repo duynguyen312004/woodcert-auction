@@ -8,6 +8,7 @@ import {
   Trophy,
   Coins,
 } from "lucide-react";
+import { useState } from "react";
 import { Link, useParams } from "react-router";
 
 import { isApiError } from "@/shared/api/errors";
@@ -17,7 +18,7 @@ import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
 import { useNotification } from "@/shared/ui/notification";
 
-import { OrderSummaryCard } from "@/features/order";
+import { OrderSummaryCard, PaymentAddressDialog } from "@/features/order";
 
 import {
   useBuyerAuctionDetail,
@@ -35,14 +36,16 @@ export function BuyerAuctionDetailPage() {
   const detailQuery = useBuyerAuctionDetail(auctionId);
   const payMutation = usePayRemainder();
   const completeMutation = useConfirmReceived();
+  const [paymentOpen, setPaymentOpen] = useState(false);
   const notification = useNotification();
   const detail = detailQuery.data;
   const order = detail?.order;
 
-  const pay = async () => {
+  const pay = async (addressId: number) => {
     if (!order) return;
     try {
-      await payMutation.mutateAsync(order.id);
+      await payMutation.mutateAsync({ orderId: order.id, addressId });
+      setPaymentOpen(false);
       notification.success("Đã thanh toán phần còn lại");
       void detailQuery.refetch();
     } catch (error) {
@@ -202,7 +205,7 @@ export function BuyerAuctionDetailPage() {
                   {order?.status === "PENDING_PAYMENT" && (
                     <Button
                       type="button"
-                      onClick={pay}
+                      onClick={() => setPaymentOpen(true)}
                       disabled={payMutation.isPending}
                       className="w-full bg-primary text-primary-foreground font-sans font-semibold py-2.5 transition-all duration-200 cursor-pointer hover:opacity-95 shadow-sm"
                     >
@@ -235,6 +238,12 @@ export function BuyerAuctionDetailPage() {
           </div>
         </section>
       </div>
+      <PaymentAddressDialog
+        order={paymentOpen ? (order ?? null) : null}
+        isPending={payMutation.isPending}
+        onOpenChange={setPaymentOpen}
+        onConfirm={pay}
+      />
     </main>
   );
 }

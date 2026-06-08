@@ -59,6 +59,13 @@ export const accountApi = {
     return unwrapApiResponse(response);
   },
 
+  updateSellerProfile: async (storeName: string): Promise<SellerProfile> => {
+    const response = await apiClient.patch<ApiResponse<SellerProfile>>("/users/me/seller-profile", {
+      storeName,
+    });
+    return unwrapApiResponse(response);
+  },
+
   /**
    * POST /users/me/avatar/upload-intent - Xin URL upload avatar lên Cloudinary.
    */

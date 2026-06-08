@@ -1,22 +1,10 @@
 import { formatDateTime, formatVND } from "@/shared/lib/format";
 import { cn } from "@/shared/lib/utils";
 
-import type { OrderStatus, OrderSummary } from "../types";
+import { getOrderStatusText } from "../lib/order-labels";
+import type { OrderSummary } from "../types";
 
 export type OrderBreakdownAudience = "buyer" | "seller";
-
-const STATUS_TEXT: Record<OrderStatus, string> = {
-  PENDING_PAYMENT: "Chờ buyer thanh toán phần còn lại",
-  PAID: "Buyer đã thanh toán, chờ seller giao hàng",
-  FULFILLING: "Đang giao hàng",
-  COMPLETED: "Đã hoàn tất",
-  CANCELED: "Đã hủy do quá hạn thanh toán",
-  DISPUTED: "Đang có tranh chấp",
-};
-
-export function getOrderStatusText(status: OrderStatus) {
-  return STATUS_TEXT[status];
-}
 
 export function OrderFeeBreakdown({
   order,
@@ -132,7 +120,7 @@ export function OrderFeeBreakdown({
       )}
       {order.fulfillment?.trackingCode && (
         <OrderLine
-          label="Mã vận chuyển"
+          label="Mã vận đơn"
           value={order.fulfillment.trackingCode}
           lineClassName={lineClassName}
           labelClassName={labelClassName}

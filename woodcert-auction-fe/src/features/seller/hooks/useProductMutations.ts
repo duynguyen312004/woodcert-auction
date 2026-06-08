@@ -3,6 +3,7 @@
  */
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
+import type { ConfirmShippingPayload } from "@/features/order";
 import type { PaginationResponse } from "@/shared/api/types";
 
 import { sellerApi } from "../api/seller";
@@ -17,6 +18,7 @@ const SELLER_PRODUCTS_QUERY_KEY = ["seller", "products"] as const;
 const SELLER_AUCTIONS_QUERY_KEY = ["seller", "auctions"] as const;
 const SELLER_AUCTION_STATS_QUERY_KEY = ["seller", "auction-stats"] as const;
 const SELLER_PRODUCT_DETAIL_QUERY_KEY = ["seller", "product"] as const;
+const SELLER_PRODUCT_STATS_QUERY_KEY = ["seller", "product-stats"] as const;
 
 export function useCreateProduct() {
   const queryClient = useQueryClient();
@@ -25,6 +27,7 @@ export function useCreateProduct() {
     mutationFn: sellerApi.createProduct,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: SELLER_PRODUCTS_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: SELLER_PRODUCT_STATS_QUERY_KEY });
     },
   });
 }
@@ -37,6 +40,7 @@ export function useUpdateProduct() {
       sellerApi.updateProduct(productId, payload),
     onSuccess: (_product, variables) => {
       void queryClient.invalidateQueries({ queryKey: SELLER_PRODUCTS_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: SELLER_PRODUCT_STATS_QUERY_KEY });
       void queryClient.invalidateQueries({
         queryKey: [...SELLER_PRODUCT_DETAIL_QUERY_KEY, variables.productId],
       });
@@ -51,7 +55,21 @@ export function useSubmitAppraisal() {
     mutationFn: (productId: number) => sellerApi.submitAppraisal(productId),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: SELLER_PRODUCTS_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: SELLER_PRODUCT_STATS_QUERY_KEY });
       void queryClient.invalidateQueries({ queryKey: ["wallet", "me"] });
+    },
+  });
+}
+
+export function useDeleteProduct() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: sellerApi.deleteProduct,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: SELLER_PRODUCTS_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: SELLER_PRODUCT_STATS_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: ["seller", "dashboard"] });
     },
   });
 }
@@ -63,6 +81,7 @@ export function useCreateAuctionSession() {
     mutationFn: sellerApi.createAuctionSession,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: SELLER_PRODUCTS_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: SELLER_PRODUCT_STATS_QUERY_KEY });
       void queryClient.invalidateQueries({ queryKey: SELLER_AUCTIONS_QUERY_KEY });
       void queryClient.invalidateQueries({ queryKey: SELLER_AUCTION_STATS_QUERY_KEY });
     },
@@ -131,8 +150,8 @@ export function useConfirmShipping() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ orderId, trackingCode }: { orderId: number; trackingCode?: string }) =>
-      sellerApi.confirmShipping(orderId, trackingCode),
+    mutationFn: ({ orderId, payload }: { orderId: number; payload: ConfirmShippingPayload }) =>
+      sellerApi.confirmShipping(orderId, payload),
     onSuccess: (order) => {
       void queryClient.invalidateQueries({ queryKey: ["seller", "auction", order.sourceId] });
       void queryClient.invalidateQueries({ queryKey: SELLER_AUCTIONS_QUERY_KEY });

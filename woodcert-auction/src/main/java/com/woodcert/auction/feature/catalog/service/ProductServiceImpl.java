@@ -282,6 +282,27 @@ public class ProductServiceImpl implements ProductService {
         return PaginationResponse.of(resultPage);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public SellerProductStatsRes getSellerProductStats(String sellerId) {
+        Map<ProductStatus, Long> byStatus = new EnumMap<>(ProductStatus.class);
+        for (ProductStatus status : ProductStatus.values()) {
+            byStatus.put(status, 0L);
+        }
+        productRepository.countBySellerIdGroupedByStatus(sellerId)
+                .forEach(row -> byStatus.put((ProductStatus) row[0], (Long) row[1]));
+
+        Map<ProductSaleStatus, Long> bySaleStatus = new EnumMap<>(ProductSaleStatus.class);
+        for (ProductSaleStatus status : ProductSaleStatus.values()) {
+            bySaleStatus.put(status, 0L);
+        }
+        productRepository.countBySellerIdGroupedBySaleStatus(sellerId)
+                .forEach(row -> bySaleStatus.put((ProductSaleStatus) row[0], (Long) row[1]));
+
+        long total = byStatus.values().stream().mapToLong(Long::longValue).sum();
+        return new SellerProductStatsRes(total, byStatus, bySaleStatus);
+    }
+
     /**
      * Lấy chi tiết sản phẩm nội bộ và áp quyền truy cập theo seller/appraiser.
      */
@@ -416,6 +437,9 @@ public class ProductServiceImpl implements ProductService {
             if (product.getStatus() == ProductStatus.PENDING_APPRAISAL) {
                 return;
             }
+            if (isActivelyClaimedByAnotherAppraiser(product, userId)) {
+                throw new AppException(ErrorCode.APPRAISAL_CLAIM_CONFLICT);
+            }
             if (isClaimVisibleToAppraiser(product, userId)) {
                 return;
             }
@@ -531,6 +555,17 @@ public class ProductServiceImpl implements ProductService {
             return true;
         }
         return appraiserId != null && appraiserId.equals(product.getAppraisalClaimedBy());
+    }
+
+    private boolean isActivelyClaimedByAnotherAppraiser(Product product, String appraiserId) {
+        if (product.getStatus() != ProductStatus.UNDER_APPRAISAL) {
+            return false;
+        }
+        Instant expiresAt = product.getAppraisalClaimExpiresAt();
+        return expiresAt != null
+                && expiresAt.isAfter(Instant.now())
+                && product.getAppraisalClaimedBy() != null
+                && !product.getAppraisalClaimedBy().equals(appraiserId);
     }
 
     private MediaUploadContext buildProductImageContext(String sellerId) {

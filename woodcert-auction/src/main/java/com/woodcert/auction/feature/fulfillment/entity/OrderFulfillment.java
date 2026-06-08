@@ -37,6 +37,13 @@ public class OrderFulfillment extends BaseEntity {
     @Column(name = "status", nullable = false, length = 30)
     private FulfillmentStatus status;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "delivery_method", length = 30)
+    private DeliveryMethod deliveryMethod;
+
+    @Column(name = "carrier_name", length = 120)
+    private String carrierName;
+
     @Column(name = "tracking_code", length = 120)
     private String trackingCode;
 

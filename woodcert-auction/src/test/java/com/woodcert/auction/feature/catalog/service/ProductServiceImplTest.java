@@ -6,11 +6,13 @@ import com.woodcert.auction.feature.catalog.dto.request.CreateProductReq;
 import com.woodcert.auction.feature.catalog.dto.request.ProductImageReq;
 import com.woodcert.auction.feature.catalog.dto.request.UpdateProductReq;
 import com.woodcert.auction.feature.catalog.dto.response.ProductDetailRes;
+import com.woodcert.auction.feature.catalog.dto.response.SellerProductStatsRes;
 import com.woodcert.auction.feature.catalog.entity.AppraisalImage;
 import com.woodcert.auction.feature.catalog.entity.AppraisalReport;
 import com.woodcert.auction.feature.catalog.entity.Category;
 import com.woodcert.auction.feature.catalog.entity.Product;
 import com.woodcert.auction.feature.catalog.entity.ProductImage;
+import com.woodcert.auction.feature.catalog.entity.ProductSaleStatus;
 import com.woodcert.auction.feature.catalog.entity.ProductStatus;
 import com.woodcert.auction.feature.catalog.repository.AppraisalImageRepository;
 import com.woodcert.auction.feature.catalog.repository.CategoryRepository;
@@ -44,6 +46,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -526,6 +529,49 @@ class ProductServiceImplTest {
     // =========================================================================
 
     @Nested
+    @DisplayName("getSellerProductStats")
+    class GetSellerProductStats {
+
+        @Test
+        @DisplayName("should return all statuses including zero counts")
+        void getSellerProductStats_allStatuses() {
+            when(productRepository.countBySellerIdGroupedByStatus(SELLER_ID)).thenReturn(List.of(
+                    new Object[]{ProductStatus.DRAFT, 2L},
+                    new Object[]{ProductStatus.APPRAISED, 3L}
+            ));
+            when(productRepository.countBySellerIdGroupedBySaleStatus(SELLER_ID)).thenReturn(List.of(
+                    new Object[]{ProductSaleStatus.AVAILABLE, 4L},
+                    new Object[]{ProductSaleStatus.SOLD, 1L}
+            ));
+
+            SellerProductStatsRes result = productService.getSellerProductStats(SELLER_ID);
+
+            assertThat(result.total()).isEqualTo(5);
+            assertThat(result.byStatus()).containsEntry(ProductStatus.DRAFT, 2L)
+                    .containsEntry(ProductStatus.PENDING_APPRAISAL, 0L)
+                    .containsEntry(ProductStatus.APPRAISED, 3L);
+            assertThat(result.bySaleStatus()).containsEntry(ProductSaleStatus.AVAILABLE, 4L)
+                    .containsEntry(ProductSaleStatus.IN_AUCTION, 0L)
+                    .containsEntry(ProductSaleStatus.SOLD, 1L);
+        }
+
+        @Test
+        @DisplayName("should return zeroed maps when seller has no products")
+        void getSellerProductStats_empty() {
+            when(productRepository.countBySellerIdGroupedByStatus(SELLER_ID))
+                    .thenReturn(Collections.emptyList());
+            when(productRepository.countBySellerIdGroupedBySaleStatus(SELLER_ID))
+                    .thenReturn(Collections.emptyList());
+
+            SellerProductStatsRes result = productService.getSellerProductStats(SELLER_ID);
+
+            assertThat(result.total()).isZero();
+            assertThat(result.byStatus().values()).containsOnly(0L);
+            assertThat(result.bySaleStatus().values()).containsOnly(0L);
+        }
+    }
+
+    @Nested
     @DisplayName("getCatalogProducts")
     class GetCatalogProducts {
 
@@ -786,6 +832,19 @@ class ProductServiceImplTest {
             assertAppException(
                     () -> productService.getProductDetail(PRODUCT_ID, OTHER_SELLER_ID, false),
                     ErrorCode.PRODUCT_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("UNDER_APPRAISAL - other appraiser gets claim conflict")
+        void getDetail_underAppraisal_otherAppraiserGetsClaimConflict() {
+            Product product = createProductWithStatus(ProductStatus.UNDER_APPRAISAL);
+            product.setAppraisalClaimedBy("reviewer-1");
+            product.setAppraisalClaimExpiresAt(Instant.now().plusSeconds(3600));
+            when(productRepository.findByIdWithCategoryAndAppraisalReport(PRODUCT_ID)).thenReturn(Optional.of(product));
+
+            assertAppException(
+                    () -> productService.getProductDetail(PRODUCT_ID, "appraiser-id", true),
+                    ErrorCode.APPRAISAL_CLAIM_CONFLICT);
         }
 
         @Test

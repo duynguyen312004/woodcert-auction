@@ -1,6 +1,6 @@
 # Project Status
 
-> Last updated: 2026-06-06 | By: Codex | Session: seller-capability-suspension
+> Last updated: 2026-06-06 | By: Codex | Session: seller-portal-v1
 >
 > AI: update this file at the end of every backend session when asked.
 > Follow this exact format. Keep it concise but decision-useful.
@@ -40,10 +40,12 @@
 - [x] Order list APIs support backend `status` filter and buyer/seller status counts
 - [x] `GET /system/time` added for client/server clock sync
 - [x] Dispute history endpoint added for buyer/seller order participants
+- [x] Seller Portal v1 backend: buyer-owned shipping address confirmation, immutable product/address order snapshots, seller product statistics, editable store name, and realized sales summary
+- [x] Seller Portal v1 realtime contract: shared auction STOMP topic with 10-second REST reconciliation for operational views
 
 ## In Progress
 
-- Verification of the full cleanup pass is in progress.
+- Seller Portal v1 frontend verification and end-to-end browser acceptance.
 
 ## Deferred Issues
 

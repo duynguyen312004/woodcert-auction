@@ -24,9 +24,13 @@ public class FulfillmentController {
             @CurrentUserId String sellerId,
             @PathVariable Long orderId,
             @RequestBody(required = false) @Valid ShipFulfillmentReq request) {
-        String trackingCode = request != null ? request.trackingCode() : null;
         return ResponseEntity.ok(ApiResponse.success(
-                fulfillmentService.confirmShipping(sellerId, orderId, trackingCode),
+                fulfillmentService.confirmShipping(
+                        sellerId,
+                        orderId,
+                        request != null ? request.deliveryMethod() : null,
+                        request != null ? request.carrierName() : null,
+                        request != null ? request.trackingCode() : null),
                 "Order shipping confirmed"));
     }
 

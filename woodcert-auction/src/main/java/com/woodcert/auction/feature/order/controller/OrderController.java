@@ -6,9 +6,12 @@ import com.woodcert.auction.core.dto.PaginationResponse;
 import com.woodcert.auction.feature.order.dto.response.OrderListRes;
 import com.woodcert.auction.feature.order.dto.response.OrderRes;
 import com.woodcert.auction.feature.order.dto.response.OrderStatusCountsRes;
+import com.woodcert.auction.feature.order.dto.request.PayOrderReq;
+import com.woodcert.auction.feature.order.dto.response.SellerSalesSummaryRes;
 import com.woodcert.auction.feature.order.entity.OrderStatus;
 import com.woodcert.auction.feature.order.service.OrderService;
 import lombok.RequiredArgsConstructor;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -24,9 +27,10 @@ public class OrderController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<OrderRes>> payRemainder(
             @CurrentUserId String buyerId,
-            @PathVariable Long id) {
+            @PathVariable Long id,
+            @RequestBody @Valid PayOrderReq request) {
         return ResponseEntity.ok(ApiResponse.success(
-                orderService.payRemainder(buyerId, id),
+                orderService.payRemainder(buyerId, id, request.addressId()),
                 "Order payment successful"));
     }
 
@@ -80,5 +84,15 @@ public class OrderController {
         return ResponseEntity.ok(ApiResponse.success(
                 orderService.getSellerOrderStatusCounts(sellerId),
                 "Fetch seller order status counts successful"));
+    }
+
+    @GetMapping("/my-sales/summary")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<SellerSalesSummaryRes>> getSellerSalesSummary(
+            @CurrentUserId String sellerId,
+            @RequestParam(defaultValue = "30D") String range) {
+        return ResponseEntity.ok(ApiResponse.success(
+                orderService.getSellerSalesSummary(sellerId, range),
+                "Fetch seller sales summary successful"));
     }
 }

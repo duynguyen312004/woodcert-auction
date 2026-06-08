@@ -1,15 +1,16 @@
 import { useState } from "react";
-import { Loader2, PackageCheck, RefreshCw } from "lucide-react";
+import { Eye, Loader2, RefreshCw, Truck } from "lucide-react";
+import { Link, useSearchParams } from "react-router";
 
-import { isApiError } from "@/shared/api/errors";
+import { SELLER_PATHS } from "@/shared/constants/routes";
+import { formatDateTime, formatVND } from "@/shared/lib/format";
+import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
-import { Input } from "@/shared/ui/input";
-import { useNotification } from "@/shared/ui/notification";
 import { Pagination } from "@/shared/ui/pagination";
 
-import { useOrderMutations, useSellerOrderStatusCounts, useSellerOrders } from "../hooks/useOrders";
+import { useSellerOrderStatusCounts, useSellerOrders } from "../hooks/useOrders";
+import { getFulfillmentStatusText, getOrderStatusText } from "../lib/order-labels";
 import type { OrderStatus, OrderSummary } from "../types";
-import { OrderRow } from "./BuyerOrdersPage";
 
 const STATUS_TABS: Array<{ label: string; status: OrderStatus | "ALL" }> = [
   { label: "Tất cả", status: "ALL" },
@@ -21,14 +22,17 @@ const STATUS_TABS: Array<{ label: string; status: OrderStatus | "ALL" }> = [
 ];
 
 export function SellerOrdersPage() {
-  const [status, setStatus] = useState<OrderStatus | "ALL">("ALL");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedStatus = searchParams.get("status");
+  const [status, setStatus] = useState<OrderStatus | "ALL">(
+    STATUS_TABS.some((tab) => tab.status === requestedStatus)
+      ? (requestedStatus as OrderStatus)
+      : "ALL",
+  );
   const [page, setPage] = useState(1);
-  const [trackingByOrder, setTrackingByOrder] = useState<Record<number, string>>({});
   const statusParam = status === "ALL" ? undefined : status;
   const ordersQuery = useSellerOrders({ page, size: 10, status: statusParam });
   const countsQuery = useSellerOrderStatusCounts();
-  const mutations = useOrderMutations();
-  const notification = useNotification();
   const orders = ordersQuery.data?.result ?? [];
 
   const countFor = (tabStatus: OrderStatus | "ALL") => {
@@ -38,20 +42,6 @@ export function SellerOrdersPage() {
       : (countsQuery.data.byStatus[tabStatus] ?? 0);
   };
 
-  const ship = async (order: OrderSummary) => {
-    try {
-      await mutations.confirmShipping.mutateAsync({
-        orderId: order.id,
-        trackingCode: trackingByOrder[order.id],
-      });
-      notification.success("Đã xác nhận giao hàng");
-    } catch (error) {
-      notification.error("Không thể xác nhận giao hàng", {
-        description: isApiError(error) ? error.message : "Vui lòng thử lại.",
-      });
-    }
-  };
-
   return (
     <div className="flex h-full flex-col bg-warm-ivory text-[#181612]">
       <header className="sticky top-0 z-10 flex min-h-[68px] shrink-0 items-center justify-between gap-4 border-b border-[#4e4637]/20 bg-warm-ivory/85 px-8 py-3 backdrop-blur-md">
@@ -59,7 +49,7 @@ export function SellerOrdersPage() {
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brushed-brass">
             Seller Portal
           </p>
-          <h1 className="font-serif text-xl font-bold text-ink-blue">Đơn bán</h1>
+          <h1 className="font-sans text-xl font-bold text-ink-blue">Đơn bán</h1>
         </div>
         <Button type="button" variant="outline" onClick={() => void ordersQuery.refetch()}>
           <RefreshCw className={ordersQuery.isFetching ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
@@ -77,13 +67,15 @@ export function SellerOrdersPage() {
                 type="button"
                 onClick={() => {
                   setStatus(tab.status);
+                  setSearchParams(tab.status === "ALL" ? {} : { status: tab.status });
                   setPage(1);
                 }}
-                className={
+                className={cn(
+                  "shrink-0 rounded-full border px-4 py-2 text-xs font-bold transition-colors",
                   status === tab.status
-                    ? "shrink-0 rounded-full border border-ink-blue bg-ink-blue px-4 py-2 text-xs font-bold text-white"
-                    : "shrink-0 rounded-full border border-[#4e4637]/15 bg-white px-4 py-2 text-xs font-bold text-muted-warm"
-                }
+                    ? "border-ink-blue bg-ink-blue text-white"
+                    : "border-[#4e4637]/15 bg-white text-muted-warm hover:border-brushed-brass/40 hover:text-ink-blue",
+                )}
               >
                 {tab.label}
                 {count !== null ? ` (${count})` : ""}
@@ -101,43 +93,9 @@ export function SellerOrdersPage() {
             Chưa có đơn bán phù hợp.
           </div>
         ) : (
-          <section className="grid gap-4">
+          <section className="grid gap-3">
             {orders.map((order) => (
-              <OrderRow
-                key={order.id}
-                order={order}
-                audience="seller"
-                actions={
-                  order.status === "PAID" ? (
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Input
-                        value={trackingByOrder[order.id] ?? ""}
-                        placeholder="Mã vận chuyển"
-                        className="w-48 bg-white"
-                        onChange={(event) =>
-                          setTrackingByOrder((current) => ({
-                            ...current,
-                            [order.id]: event.target.value,
-                          }))
-                        }
-                      />
-                      <Button
-                        type="button"
-                        size="sm"
-                        disabled={mutations.confirmShipping.isPending}
-                        onClick={() => void ship(order)}
-                      >
-                        <PackageCheck className="h-4 w-4" />
-                        Xác nhận giao
-                      </Button>
-                    </div>
-                  ) : order.status === "DISPUTED" ? (
-                    <span className="rounded-full border border-red-300 bg-red-50 px-3 py-2 text-xs font-bold text-red-700">
-                      Admin đang xử lý tranh chấp
-                    </span>
-                  ) : null
-                }
-              />
+              <SellerOrderListItem key={order.id} order={order} />
             ))}
           </section>
         )}
@@ -149,5 +107,69 @@ export function SellerOrdersPage() {
         />
       </main>
     </div>
+  );
+}
+
+function SellerOrderListItem({ order }: { order: OrderSummary }) {
+  return (
+    <article className="rounded-lg border border-[#4e4637]/15 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex min-w-0 gap-4">
+          <div className="size-16 shrink-0 overflow-hidden rounded-md border border-[#4e4637]/15 bg-[#eae1d6]">
+            {order.product?.imageUrl ? (
+              <img
+                src={order.product.imageUrl}
+                alt={order.product.title ?? `Đơn #${order.id}`}
+                className="size-full object-cover"
+              />
+            ) : (
+              <div className="flex size-full items-center justify-center text-muted-warm">
+                <Truck className="size-6" />
+              </div>
+            )}
+          </div>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="font-sans text-lg font-bold text-ink-blue">Đơn #{order.id}</h2>
+              <span className="rounded-full border border-brushed-brass/25 bg-brushed-brass/10 px-2.5 py-1 text-xs font-bold text-brushed-brass">
+                {getOrderStatusText(order.status)}
+              </span>
+              {order.status === "DISPUTED" && (
+                <span className="rounded-full border border-red-300 bg-red-50 px-2.5 py-1 text-xs font-bold text-red-700">
+                  Admin đang xử lý
+                </span>
+              )}
+            </div>
+            <p className="mt-1 truncate text-sm font-semibold text-[#4e4637]">
+              {order.product?.title ?? `Sản phẩm #${order.id}`}
+            </p>
+            <p className="mt-1 text-xs text-muted-warm">
+              Phiên #{order.sourceId} · tạo lúc {formatDateTime(order.createdAt)}
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-3 text-sm md:min-w-[360px] md:grid-cols-[1fr_1fr_auto] md:items-center">
+          <div>
+            <p className="text-xs font-semibold text-muted-warm">Giá chốt</p>
+            <p className="mt-1 font-bold tabular-nums text-ink-blue">
+              {formatVND(order.finalPrice)}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-muted-warm">Vận chuyển</p>
+            <p className="mt-1 font-bold text-ink-blue">
+              {getFulfillmentStatusText(order.fulfillment?.status)}
+            </p>
+          </div>
+          <Button asChild type="button" size="sm" variant="outline">
+            <Link to={SELLER_PATHS.orderDetail(order.id)}>
+              <Eye className="h-4 w-4" />
+              Chi tiết
+            </Link>
+          </Button>
+        </div>
+      </div>
+    </article>
   );
 }

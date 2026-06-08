@@ -10,7 +10,6 @@ import {
   AlertTriangle,
   ArrowLeft,
   CheckCircle2,
-  ChevronRight,
   ImageIcon,
   Layers,
   Loader2,
@@ -322,14 +321,12 @@ export function SellerNewProductPage() {
       <header className="h-[68px] sticky top-0 z-10 bg-warm-ivory/80 backdrop-blur-md border-b border-[#4e4637]/20 flex items-center gap-3 px-8 shrink-0">
         <Link
           to={SELLER_PATHS.products}
-          className="flex items-center gap-1.5 text-xs font-semibold text-muted-warm hover:text-ink-blue transition-colors"
-          aria-label="Quay lại danh sách sản phẩm"
+          className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-[#4e4637]/15 bg-white text-muted-warm transition-all duration-300 hover:border-brushed-brass/50 hover:bg-brushed-brass/10 hover:text-brushed-brass active:scale-95"
+          title="Quay lại danh sách sản phẩm"
         >
-          <ArrowLeft className="size-3.5" aria-hidden />
-          Sản phẩm
+          <ArrowLeft className="size-5" />
         </Link>
-        <ChevronRight className="size-3.5 text-muted-warm/50" aria-hidden />
-        <h1 className="font-serif text-lg font-bold text-ink-blue leading-tight">{pageTitle}</h1>
+        <h1 className="font-serif text-xl font-bold text-ink-blue leading-tight">{pageTitle}</h1>
       </header>
 
       {/* Nội dung */}

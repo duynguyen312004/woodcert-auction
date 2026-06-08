@@ -284,3 +284,26 @@
 .animate-outbid-flash {
   animation: outbid-flash 0.8s ease-out both;
 }
+
+/* Custom styles for Seller Portal (Clean Typography & Button visibility fix) */
+.seller-portal h1,
+.seller-portal h2,
+.seller-portal h3,
+.seller-portal h4,
+.seller-portal h5,
+.seller-portal h6 {
+  font-family: var(--font-sans) !important;
+}
+
+/* Custom outline button styling in Seller Portal to resolve hover state invisibility in system dark mode */
+.seller-portal [data-variant="outline"] {
+  background-color: #ffffff !important;
+  border-color: rgba(78, 70, 55, 0.2) !important;
+  color: #2e4a62 !important;
+}
+
+.seller-portal [data-variant="outline"]:hover {
+  background-color: #2e4a62 !important;
+  border-color: #2e4a62 !important;
+  color: #ffffff !important;
+}

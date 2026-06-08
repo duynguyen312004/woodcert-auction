@@ -8,11 +8,14 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface AddressRepository extends JpaRepository<Address, Long> {
 
     List<Address> findByUser_IdOrderByIsDefaultDescIdAsc(String userId);
+
+    Optional<Address> findByIdAndUser_Id(Long id, String userId);
 
     boolean existsByUser_Id(String userId);
 

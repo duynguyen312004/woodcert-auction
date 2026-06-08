@@ -75,16 +75,18 @@ export function SellerProductDetailPage() {
   return (
     <div className="min-h-full bg-warm-ivory text-[#181612]">
       <header className="sticky top-0 z-10 flex min-h-[68px] flex-wrap items-center justify-between gap-3 border-b border-[#4e4637]/20 bg-warm-ivory/90 px-5 py-3 backdrop-blur-md md:px-8">
-        <Button
-          asChild
-          variant="outline"
-          className="border-[#4e4637]/20 bg-white text-ink-blue hover:bg-[#eae1d6]/50 hover:text-ink-blue hover:border-brushed-brass/40 active:scale-97 transition-all cursor-pointer"
-        >
-          <Link to={SELLER_PATHS.products}>
-            <ArrowLeft className="size-4" />
-            Sản phẩm
+        <div className="flex items-center gap-3 min-w-0">
+          <Link
+            to={SELLER_PATHS.products}
+            className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-[#4e4637]/15 bg-white text-muted-warm transition-all duration-300 hover:border-brushed-brass/50 hover:bg-brushed-brass/10 hover:text-brushed-brass active:scale-95"
+            title="Quay lại danh sách sản phẩm"
+          >
+            <ArrowLeft className="size-5" />
           </Link>
-        </Button>
+          <h1 className="font-sans text-xl font-bold text-ink-blue truncate max-w-[200px] sm:max-w-[400px]">
+            {product?.title || "Chi tiết sản phẩm"}
+          </h1>
+        </div>
 
         <div className="flex flex-wrap justify-end gap-2">
           {product.status === "DRAFT" && !isSuspended && (

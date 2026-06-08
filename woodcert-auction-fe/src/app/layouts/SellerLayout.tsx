@@ -13,7 +13,7 @@ export function SellerLayout() {
     <SellerCapabilityProvider>
       <div className="flex h-screen overflow-hidden">
         <SellerSidebar />
-        <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-warm-ivory text-[#181612]">
+        <main className="seller-portal flex min-w-0 flex-1 flex-col overflow-hidden bg-warm-ivory text-[#181612]">
           <SellerCapabilityBanner />
           <div className="min-h-0 flex-1 overflow-y-auto">
             <Outlet />

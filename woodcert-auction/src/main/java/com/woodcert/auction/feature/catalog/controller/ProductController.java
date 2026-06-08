@@ -7,6 +7,7 @@ import com.woodcert.auction.feature.catalog.dto.request.CreateProductReq;
 import com.woodcert.auction.feature.catalog.dto.request.UpdateProductReq;
 import com.woodcert.auction.feature.catalog.dto.response.ProductDetailRes;
 import com.woodcert.auction.feature.catalog.dto.response.ProductListRes;
+import com.woodcert.auction.feature.catalog.dto.response.SellerProductStatsRes;
 import com.woodcert.auction.feature.catalog.service.ProductService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -45,6 +46,15 @@ public class ProductController {
         PaginationResponse<ProductListRes> result = productService.getCatalogProducts(
                 userId, isAppraiser, page, size, categoryId, status, saleStatus);
         return ResponseEntity.ok(ApiResponse.success(result, "Fetch products successful"));
+    }
+
+    @GetMapping("/stats")
+    @PreAuthorize("hasAuthority('CREATE_PRODUCT')")
+    public ResponseEntity<ApiResponse<SellerProductStatsRes>> getSellerProductStats(
+            @CurrentUserId String sellerId) {
+        return ResponseEntity.ok(ApiResponse.success(
+                productService.getSellerProductStats(sellerId),
+                "Fetch seller product stats successful"));
     }
 
     /**

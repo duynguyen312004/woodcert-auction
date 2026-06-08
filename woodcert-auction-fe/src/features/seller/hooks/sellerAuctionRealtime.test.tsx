@@ -99,7 +99,7 @@ describe("seller auction realtime cache", () => {
     });
   });
 
-  it("polls seller auction list, stats and live detail every five seconds", () => {
+  it("polls seller auction list, stats and live detail every ten seconds", () => {
     const queryClient = createQueryClient();
     vi.spyOn(sellerApi, "getMyAuctions").mockResolvedValue(page([]));
     vi.spyOn(sellerApi, "getMyAuctionStats").mockResolvedValue({
@@ -123,19 +123,20 @@ describe("seller auction realtime cache", () => {
       { wrapper: createWrapper(queryClient) },
     );
 
-    expect(
-      queryClient.getQueryCache().find({
-        queryKey: ["seller", "auctions", { page: 1, size: 10 }],
-      })?.options.refetchInterval,
-    ).toBe(5_000);
-    expect(
-      queryClient.getQueryCache().find({ queryKey: ["seller", "auction-stats"] })?.options
-        .refetchInterval,
-    ).toBe(5_000);
+    const listOptions = queryClient.getQueryCache().find({
+      queryKey: ["seller", "auctions", { page: 1, size: 10 }],
+    })?.options as { refetchInterval?: unknown } | undefined;
+    const statsOptions = queryClient.getQueryCache().find({
+      queryKey: ["seller", "auction-stats"],
+    })?.options as { refetchInterval?: unknown } | undefined;
+    expect(listOptions?.refetchInterval).toBe(10_000);
+    expect(statsOptions?.refetchInterval).toBe(10_000);
 
-    const detailInterval = queryClient.getQueryCache().find({
-      queryKey: ["seller", "auction", 501],
-    })?.options.refetchInterval;
+    const detailInterval = (
+      queryClient.getQueryCache().find({
+        queryKey: ["seller", "auction", 501],
+      })?.options as { refetchInterval?: unknown } | undefined
+    )?.refetchInterval;
     expect(typeof detailInterval).toBe("function");
   });
 });

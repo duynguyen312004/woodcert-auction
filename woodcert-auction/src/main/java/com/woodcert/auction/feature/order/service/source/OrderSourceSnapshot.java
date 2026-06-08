@@ -10,6 +10,8 @@ public record OrderSourceSnapshot(
         String buyerId,
         String sellerId,
         Long productId,
+        String productTitle,
+        String productImageUrl,
         BigDecimal finalPrice,
         BigDecimal depositAmount
 ) {

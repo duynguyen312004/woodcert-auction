@@ -12,14 +12,27 @@ import {
   EyeOff,
   FileText,
   Loader2,
+  Pencil,
   ShieldCheck,
   Star,
 } from "lucide-react";
 
-import { useProfile, useSellerProfile } from "@/features/account";
+import { useProfile, useSellerProfile, useUpdateSellerProfile } from "@/features/account";
+import { isApiError } from "@/shared/api/errors";
 import { formatDate } from "@/shared/lib/format";
 import { useState } from "react";
 import { cn } from "@/shared/lib/utils";
+import { Button } from "@/shared/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/shared/ui/dialog";
+import { Input } from "@/shared/ui/input";
+import { useNotification } from "@/shared/ui/notification";
 
 // Hàm hỗ trợ.
 
@@ -91,8 +104,34 @@ export function SellerProfilePage() {
   const { data: profile, isPending: profileLoading } = useProfile();
   const { data: sellerProfile, isPending: sellerLoading } = useSellerProfile();
   const [isIdentityVisible, setIsIdentityVisible] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [storeName, setStoreName] = useState("");
+  const updateSellerProfile = useUpdateSellerProfile();
+  const notification = useNotification();
 
   const isLoading = profileLoading || sellerLoading;
+
+  const openEdit = () => {
+    setStoreName(sellerProfile?.storeName ?? "");
+    setEditOpen(true);
+  };
+
+  const saveStoreName = async () => {
+    const value = storeName.trim();
+    if (value.length < 2 || value.length > 100) {
+      notification.error("Tên gian hàng phải có từ 2 đến 100 ký tự.");
+      return;
+    }
+    try {
+      await updateSellerProfile.mutateAsync(value);
+      notification.success("Đã cập nhật tên gian hàng");
+      setEditOpen(false);
+    } catch (error) {
+      notification.error("Không thể cập nhật hồ sơ", {
+        description: isApiError(error) ? error.message : "Vui lòng thử lại.",
+      });
+    }
+  };
 
   const reputationLabel =
     sellerProfile?.reputationScore != null
@@ -194,6 +233,16 @@ export function SellerProfilePage() {
                     label="Tên gian hàng"
                     value={sellerProfile?.storeName ?? "—"}
                     highlight
+                    action={
+                      <button
+                        type="button"
+                        onClick={openEdit}
+                        className="inline-flex cursor-pointer items-center gap-1 text-xs font-bold text-ink-blue hover:text-brushed-brass"
+                      >
+                        <Pencil className="size-3.5" />
+                        Sửa
+                      </button>
+                    }
                   />
                   <InfoRow
                     icon={CreditCard}
@@ -270,6 +319,38 @@ export function SellerProfilePage() {
           )}
         </div>
       </div>
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Đổi tên gian hàng</DialogTitle>
+            <DialogDescription>
+              Chỉ tên hiển thị được phép chỉnh sửa. CCCD, mã số thuế và điểm uy tín không thay đổi.
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            autoFocus
+            maxLength={100}
+            value={storeName}
+            onChange={(event) => setStoreName(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") void saveStoreName();
+            }}
+          />
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>
+              Hủy
+            </Button>
+            <Button
+              type="button"
+              disabled={updateSellerProfile.isPending}
+              onClick={() => void saveStoreName()}
+            >
+              {updateSellerProfile.isPending && <Loader2 className="size-4 animate-spin" />}
+              Lưu thay đổi
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

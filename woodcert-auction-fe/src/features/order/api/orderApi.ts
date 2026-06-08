@@ -2,7 +2,14 @@ import { apiClient } from "@/shared/api/client";
 import type { ApiResponse, PaginationResponse } from "@/shared/api/types";
 import { unwrapApiResponse } from "@/shared/api/unwrap";
 
-import type { OrderDetail, OrderListParams, OrderStatusCounts, OrderSummary } from "../types";
+import type {
+  OrderDetail,
+  OrderListParams,
+  OrderStatusCounts,
+  OrderSummary,
+  SellerSalesRange,
+  SellerSalesSummary,
+} from "../types";
 
 function toNumber(value: number | string | null | undefined, fallback = 0) {
   if (value === null || value === undefined || value === "") return fallback;
@@ -32,6 +39,25 @@ export function mapOrder<T extends OrderSummary | OrderDetail | null>(order: T):
         ? null
         : toNumber(order.forfeitedDepositSellerAmount),
   } as T;
+}
+
+function mapSalesSummary(summary: SellerSalesSummary): SellerSalesSummary {
+  return {
+    ...summary,
+    grossSales: toNumber(summary.grossSales),
+    platformCommission: toNumber(summary.platformCommission),
+    sellerPayout: toNumber(summary.sellerPayout),
+    forfeitedDepositIncome: toNumber(summary.forfeitedDepositIncome),
+    totalRealizedIncome: toNumber(summary.totalRealizedIncome),
+    daily: summary.daily.map((item) => ({
+      ...item,
+      grossSales: toNumber(item.grossSales),
+      platformCommission: toNumber(item.platformCommission),
+      sellerPayout: toNumber(item.sellerPayout),
+      forfeitedDepositIncome: toNumber(item.forfeitedDepositIncome),
+      totalRealizedIncome: toNumber(item.totalRealizedIncome),
+    })),
+  };
 }
 
 export const orderApi = {
@@ -67,13 +93,29 @@ export const orderApi = {
     return unwrapApiResponse(response);
   },
 
-  payRemainder: async (orderId: number): Promise<OrderDetail> => {
-    const response = await apiClient.post<ApiResponse<OrderDetail>>(`/orders/${orderId}/pay`);
+  payRemainder: async ({
+    orderId,
+    addressId,
+  }: {
+    orderId: number;
+    addressId: number;
+  }): Promise<OrderDetail> => {
+    const response = await apiClient.post<ApiResponse<OrderDetail>>(`/orders/${orderId}/pay`, {
+      addressId,
+    });
     return mapOrder(unwrapApiResponse(response));
   },
 
   getDetail: async (orderId: number): Promise<OrderDetail> => {
     const response = await apiClient.get<ApiResponse<OrderDetail>>(`/orders/${orderId}`);
     return mapOrder(unwrapApiResponse(response));
+  },
+
+  getSellerSalesSummary: async (range: SellerSalesRange): Promise<SellerSalesSummary> => {
+    const response = await apiClient.get<ApiResponse<SellerSalesSummary>>(
+      "/orders/my-sales/summary",
+      { params: { range } },
+    );
+    return mapSalesSummary(unwrapApiResponse(response));
   },
 };

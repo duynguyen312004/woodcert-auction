@@ -254,6 +254,7 @@ class DisputeServiceImplTest {
                 801L,
                 BUYER_ID,
                 "seller-1",
+                null,
                 status,
                 money("10000000"),
                 money("1000000"),
@@ -268,7 +269,17 @@ class DisputeServiceImplTest {
                 null,
                 null,
                 null,
-                new OrderFulfillmentSummaryRes(FULFILLMENT_ID, "SHIPPED", "TRK-1", Instant.now(), null, Instant.now().plusSeconds(3600)),
+                null,
+                null,
+                new OrderFulfillmentSummaryRes(
+                        FULFILLMENT_ID,
+                        "SHIPPED",
+                        "THIRD_PARTY",
+                        "Viettel Post",
+                        "TRK-1",
+                        Instant.now(),
+                        null,
+                        Instant.now().plusSeconds(3600)),
                 Instant.now(),
                 Instant.now()
         );

@@ -20,8 +20,10 @@ import { Label } from "@/shared/ui/label";
 import { useNotification } from "@/shared/ui/notification";
 import { Pagination } from "@/shared/ui/pagination";
 
-import { getOrderStatusText, OrderFeeBreakdown } from "../components/OrderFeeBreakdown";
+import { OrderFeeBreakdown } from "../components/OrderFeeBreakdown";
+import { PaymentAddressDialog } from "../components/PaymentAddressDialog";
 import { useBuyerOrderStatusCounts, useBuyerOrders, useOrderMutations } from "../hooks/useOrders";
+import { getFulfillmentStatusText, getOrderStatusText } from "../lib/order-labels";
 import type { OrderStatus, OrderSummary } from "../types";
 
 const STATUS_TABS: Array<{ label: string; status: OrderStatus | "ALL" }> = [
@@ -37,6 +39,7 @@ export function BuyerOrdersPage() {
   const [status, setStatus] = useState<OrderStatus | "ALL">("ALL");
   const [page, setPage] = useState(1);
   const [disputeOrder, setDisputeOrder] = useState<OrderSummary | null>(null);
+  const [paymentOrder, setPaymentOrder] = useState<OrderSummary | null>(null);
   const statusParam = status === "ALL" ? undefined : status;
   const ordersQuery = useBuyerOrders({ page, size: 10, status: statusParam });
   const countsQuery = useBuyerOrderStatusCounts();
@@ -122,12 +125,7 @@ export function BuyerOrdersPage() {
                         type="button"
                         size="sm"
                         disabled={mutations.payRemainder.isPending}
-                        onClick={() =>
-                          void runAction(
-                            () => mutations.payRemainder.mutateAsync(order.id),
-                            "Đã thanh toán phần còn lại.",
-                          )
-                        }
+                        onClick={() => setPaymentOrder(order)}
                       >
                         <CreditCard className="h-4 w-4" />
                         Thanh toán {formatVND(order.remainingAmount)}
@@ -178,6 +176,23 @@ export function BuyerOrdersPage() {
         order={disputeOrder}
         onOpenChange={(open) => !open && setDisputeOrder(null)}
       />
+      <PaymentAddressDialog
+        order={paymentOrder}
+        isPending={mutations.payRemainder.isPending}
+        onOpenChange={(open) => !open && setPaymentOrder(null)}
+        onConfirm={async (addressId) => {
+          if (!paymentOrder) return;
+          await runAction(
+            () =>
+              mutations.payRemainder.mutateAsync({
+                orderId: paymentOrder.id,
+                addressId,
+              }),
+            "Đã xác nhận thanh toán và địa chỉ nhận hàng.",
+          );
+          setPaymentOrder(null);
+        }}
+      />
     </main>
   );
 }
@@ -194,17 +209,31 @@ export function OrderRow({
   return (
     <article className="rounded-lg border border-white/10 bg-[#f2eee5] p-5 text-stone-950 shadow-sm">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-lg font-bold">Đơn #{order.id}</h2>
-            <span className="rounded-full border border-stone-300 px-2.5 py-1 text-xs font-bold text-stone-600">
-              {getOrderStatusText(order.status)}
-            </span>
+        <div className="flex min-w-0 gap-4">
+          {order.product?.imageUrl && (
+            <img
+              src={order.product.imageUrl}
+              alt={order.product.title ?? ""}
+              className="size-14 shrink-0 rounded-md border border-stone-300 object-cover"
+            />
+          )}
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-lg font-bold">Đơn #{order.id}</h2>
+              <span className="rounded-full border border-stone-300 px-2.5 py-1 text-xs font-bold text-stone-600">
+                {getOrderStatusText(order.status)}
+              </span>
+            </div>
+            <p className="mt-1 text-sm text-stone-500">
+              Phiên #{order.sourceId} · tạo lúc{" "}
+              {order.createdAt ? formatDateTime(order.createdAt) : "—"}
+            </p>
+            {order.product?.title && (
+              <p className="mt-1 truncate text-sm font-semibold text-stone-700">
+                {order.product.title}
+              </p>
+            )}
           </div>
-          <p className="mt-1 text-sm text-stone-500">
-            Phiên #{order.sourceId} · tạo lúc{" "}
-            {order.createdAt ? formatDateTime(order.createdAt) : "—"}
-          </p>
         </div>
         {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
       </div>
@@ -218,11 +247,23 @@ export function OrderRow({
         <div className="rounded-md border border-stone-300 bg-[#e9e2d6] p-4 text-sm">
           <p className="font-bold">Vận chuyển</p>
           <p className="mt-2 text-stone-600">
-            Trạng thái: {order.fulfillment?.status ?? "Chưa tạo"}
+            Trạng thái: {getFulfillmentStatusText(order.fulfillment?.status)}
           </p>
           <p className="mt-1 text-stone-600">
-            Mã vận chuyển: {order.fulfillment?.trackingCode ?? "—"}
+            Mã vận đơn: {order.fulfillment?.trackingCode ?? "—"}
           </p>
+          {order.shippingAddress && (
+            <p className="mt-2 border-t border-stone-300 pt-2 text-xs leading-relaxed text-stone-600">
+              {[
+                order.shippingAddress.streetAddress,
+                order.shippingAddress.wardName,
+                order.shippingAddress.districtName,
+                order.shippingAddress.provinceName,
+              ]
+                .filter(Boolean)
+                .join(", ")}
+            </p>
+          )}
         </div>
       </div>
     </article>

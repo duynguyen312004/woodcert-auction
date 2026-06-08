@@ -41,6 +41,12 @@ public class OrderEntity extends BaseEntity {
     @Column(name = "product_id", nullable = false)
     private Long productId;
 
+    @Column(name = "product_title", length = 255)
+    private String productTitle;
+
+    @Column(name = "product_image_url", length = 1000)
+    private String productImageUrl;
+
     @Column(name = "final_price", nullable = false, precision = 19, scale = 2)
     private BigDecimal finalPrice;
 
@@ -83,6 +89,33 @@ public class OrderEntity extends BaseEntity {
 
     @Column(name = "forfeited_deposit_seller_amount", precision = 19, scale = 2)
     private BigDecimal forfeitedDepositSellerAmount;
+
+    @Column(name = "shipping_receiver_name", length = 100)
+    private String shippingReceiverName;
+
+    @Column(name = "shipping_phone_number", length = 20)
+    private String shippingPhoneNumber;
+
+    @Column(name = "shipping_street_address", length = 255)
+    private String shippingStreetAddress;
+
+    @Column(name = "shipping_ward_code", length = 20)
+    private String shippingWardCode;
+
+    @Column(name = "shipping_ward_name", length = 100)
+    private String shippingWardName;
+
+    @Column(name = "shipping_district_code", length = 20)
+    private String shippingDistrictCode;
+
+    @Column(name = "shipping_district_name", length = 100)
+    private String shippingDistrictName;
+
+    @Column(name = "shipping_province_code", length = 20)
+    private String shippingProvinceCode;
+
+    @Column(name = "shipping_province_name", length = 100)
+    private String shippingProvinceName;
 
     @Version
     @Column(name = "version", nullable = false)

@@ -15,6 +15,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -32,6 +33,22 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     Page<Product> findBySellerIdAndStatusAndCategoryId(
             String sellerId, ProductStatus status, Integer categoryId, Pageable pageable);
+
+    @Query("""
+            SELECT p.status, COUNT(p)
+            FROM Product p
+            WHERE p.sellerId = :sellerId
+            GROUP BY p.status
+            """)
+    List<Object[]> countBySellerIdGroupedByStatus(@Param("sellerId") String sellerId);
+
+    @Query("""
+            SELECT p.saleStatus, COUNT(p)
+            FROM Product p
+            WHERE p.sellerId = :sellerId
+            GROUP BY p.saleStatus
+            """)
+    List<Object[]> countBySellerIdGroupedBySaleStatus(@Param("sellerId") String sellerId);
 
     boolean existsByCategoryId(Integer categoryId);
 

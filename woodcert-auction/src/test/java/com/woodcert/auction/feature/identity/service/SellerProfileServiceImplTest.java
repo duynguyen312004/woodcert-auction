@@ -2,6 +2,7 @@ package com.woodcert.auction.feature.identity.service;
 
 import com.woodcert.auction.core.exception.AppException;
 import com.woodcert.auction.feature.identity.dto.request.CreateSellerProfileReq;
+import com.woodcert.auction.feature.identity.dto.request.UpdateSellerProfileReq;
 import com.woodcert.auction.feature.identity.dto.response.SellerProfileRes;
 import com.woodcert.auction.feature.identity.entity.Role;
 import com.woodcert.auction.feature.identity.entity.SellerProfile;
@@ -100,6 +101,32 @@ class SellerProfileServiceImplTest {
         );
 
         assertEquals("Identity card number already exists", exception.getMessage());
+    }
+
+    @Test
+    @DisplayName("updateCurrentSellerProfile changes store name only")
+    void updateCurrentSellerProfile_changesStoreNameOnly() {
+        SellerProfile profile = new SellerProfile();
+        profile.setUser(createUser());
+        profile.setStoreName("Old store");
+        profile.setIdentityCardNumber("001099012345");
+        profile.setTaxCode("0101234567");
+        profile.setReputationScore(new java.math.BigDecimal("4.75"));
+        profile.setCreatedAt(Instant.parse("2026-03-28T10:00:00Z"));
+        profile.setUpdatedAt(Instant.parse("2026-03-28T10:00:00Z"));
+
+        when(sellerProfileRepository.findById("user-1")).thenReturn(Optional.of(profile));
+        when(sellerProfileRepository.save(profile)).thenReturn(profile);
+
+        SellerProfileRes result = sellerProfileService.updateCurrentSellerProfile(
+                "user-1",
+                new UpdateSellerProfileReq("New store")
+        );
+
+        assertEquals("New store", result.storeName());
+        assertEquals("001099012345", result.identityCardNumber());
+        assertEquals("0101234567", result.taxCode());
+        assertEquals(new java.math.BigDecimal("4.75"), result.reputationScore());
     }
 
     private User createUser() {

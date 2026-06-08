@@ -5,6 +5,7 @@ import com.woodcert.auction.feature.catalog.dto.request.CreateProductReq;
 import com.woodcert.auction.feature.catalog.dto.request.UpdateProductReq;
 import com.woodcert.auction.feature.catalog.dto.response.ProductDetailRes;
 import com.woodcert.auction.feature.catalog.dto.response.ProductListRes;
+import com.woodcert.auction.feature.catalog.dto.response.SellerProductStatsRes;
 import com.woodcert.auction.feature.media.dto.request.ConfirmMediaUploadReq;
 import com.woodcert.auction.feature.media.dto.request.CreateMediaUploadIntentReq;
 import com.woodcert.auction.feature.media.dto.response.MediaUploadIntentRes;
@@ -55,6 +56,8 @@ public interface ProductService {
             Integer categoryId,
             String status,
             String saleStatus);
+
+    SellerProductStatsRes getSellerProductStats(String sellerId);
 
     /**
      * Get internal catalog product details including images and appraisal report.

@@ -5,19 +5,30 @@ import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { SellerProductsPage } from "./SellerProductsPage";
 
 const useSellerProducts = vi.fn();
+const useSellerProductStats = vi.fn();
 const useSubmitAppraisal = vi.fn();
+const useDeleteProduct = vi.fn();
 
 vi.mock("../hooks/useSellerDashboard", () => ({
   useSellerProducts: (...args: unknown[]) => useSellerProducts(...args),
+  useSellerProductStats: () => useSellerProductStats(),
 }));
 
 vi.mock("../hooks/useProductMutations", () => ({
   useSubmitAppraisal: () => useSubmitAppraisal(),
+  useDeleteProduct: () => useDeleteProduct(),
 }));
 
 vi.mock("../components/AppraisalSubmissionDialog", () => ({
   AppraisalSubmissionDialog: () => null,
 }));
+
+vi.mock("@/shared/ui/notification", () => {
+  return {
+    NotificationCard: () => null,
+    useNotification: () => ({ success: vi.fn(), error: vi.fn() }),
+  };
+});
 
 function CurrentLocation() {
   return <span data-testid="location">{useLocation().pathname}</span>;
@@ -45,6 +56,26 @@ function renderPage() {
     refetch: vi.fn(),
   });
   useSubmitAppraisal.mockReturnValue({ mutateAsync: vi.fn(), isPending: false });
+  useDeleteProduct.mockReturnValue({ mutateAsync: vi.fn(), isPending: false });
+  useSellerProductStats.mockReturnValue({
+    data: {
+      total: 1,
+      byStatus: {
+        DRAFT: 0,
+        PENDING_APPRAISAL: 0,
+        UNDER_APPRAISAL: 0,
+        REJECTED: 0,
+        APPRAISED: 1,
+      },
+      bySaleStatus: {
+        AVAILABLE: 1,
+        IN_AUCTION: 0,
+        PENDING_ORDER: 0,
+        SOLD: 0,
+        RETURNED: 0,
+      },
+    },
+  });
 
   return render(
     <MemoryRouter initialEntries={["/seller/products"]}>

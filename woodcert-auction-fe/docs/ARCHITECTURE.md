@@ -46,6 +46,14 @@ Browser
 -> auction broadcast topics
 ```
 
+Auction topic transport lives in `shared/realtime`. Buyer bidding and seller monitoring wrap the
+same subscription hook with feature-specific cache updates. Seller lists use 10-second polling as
+the reconciliation path for events not covered by the auction topic.
+
+The seller portal is a frontend composition surface, not a separate backend domain. Its pages
+combine identity, catalog, auction, order, fulfillment, and finance APIs through their public
+service contracts.
+
 ## Source Structure
 
 ```text

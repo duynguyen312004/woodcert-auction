@@ -22,6 +22,10 @@ vi.mock("../hooks/useSellerDashboard", () => ({
   useSellerAuctionDetail: vi.fn(),
 }));
 
+vi.mock("../hooks/useSellerAuctionRealtime", () => ({
+  useSellerAuctionRealtime: () => ({ status: "connected" }),
+}));
+
 import { useSellerAuctionDetail } from "../hooks/useSellerDashboard";
 
 function makeAuction(overrides: Partial<SellerAuctionDetail> = {}): SellerAuctionDetail {

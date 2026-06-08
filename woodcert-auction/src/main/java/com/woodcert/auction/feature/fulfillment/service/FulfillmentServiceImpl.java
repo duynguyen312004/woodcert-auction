@@ -3,6 +3,7 @@ package com.woodcert.auction.feature.fulfillment.service;
 import com.woodcert.auction.core.exception.AppException;
 import com.woodcert.auction.core.exception.ErrorCode;
 import com.woodcert.auction.feature.fulfillment.config.FulfillmentProperties;
+import com.woodcert.auction.feature.fulfillment.entity.DeliveryMethod;
 import com.woodcert.auction.feature.fulfillment.entity.FulfillmentStatus;
 import com.woodcert.auction.feature.fulfillment.entity.OrderFulfillment;
 import com.woodcert.auction.feature.fulfillment.repository.FulfillmentRepository;
@@ -25,7 +26,12 @@ public class FulfillmentServiceImpl implements FulfillmentService {
 
     @Override
     @Transactional
-    public OrderRes confirmShipping(String sellerId, Long orderId, String trackingCode) {
+    public OrderRes confirmShipping(
+            String sellerId,
+            Long orderId,
+            DeliveryMethod deliveryMethod,
+            String carrierName,
+            String trackingCode) {
         OrderFulfillment fulfillment = fulfillmentRepository.findByOrderIdForUpdate(orderId)
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
         if (!sellerId.equals(fulfillment.getSellerId())) {
@@ -35,10 +41,16 @@ public class FulfillmentServiceImpl implements FulfillmentService {
             throw new AppException(ErrorCode.ORDER_INVALID_STATUS);
         }
 
+        String normalizedCarrierName = trimToNull(carrierName);
+        String normalizedTrackingCode = trimToNull(trackingCode);
+        validateShippingRequest(deliveryMethod, normalizedCarrierName, normalizedTrackingCode);
+
         orderService.markFulfilling(sellerId, orderId);
         Instant now = Instant.now();
         fulfillment.setStatus(FulfillmentStatus.SHIPPED);
-        fulfillment.setTrackingCode(trimToNull(trackingCode));
+        fulfillment.setDeliveryMethod(deliveryMethod);
+        fulfillment.setCarrierName(deliveryMethod == DeliveryMethod.THIRD_PARTY ? normalizedCarrierName : null);
+        fulfillment.setTrackingCode(normalizedTrackingCode);
         fulfillment.setShippedAt(now);
         fulfillment.setAutoCompleteDeadline(now.plus(fulfillmentProperties.getAutoCompleteAfter()));
         fulfillmentRepository.save(fulfillment);
@@ -87,5 +99,20 @@ public class FulfillmentServiceImpl implements FulfillmentService {
             return null;
         }
         return value.trim();
+    }
+
+    private void validateShippingRequest(
+            DeliveryMethod deliveryMethod,
+            String carrierName,
+            String trackingCode) {
+        if (deliveryMethod == null) {
+            throw new AppException(ErrorCode.INVALID_REQUEST, "Delivery method is required");
+        }
+        if (deliveryMethod == DeliveryMethod.THIRD_PARTY
+                && (carrierName == null || trackingCode == null)) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST,
+                    "Carrier name and tracking code are required for third-party delivery");
+        }
     }
 }

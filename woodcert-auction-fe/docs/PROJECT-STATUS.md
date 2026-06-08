@@ -1,6 +1,6 @@
 # Project Status
 
-> Last updated: 2026-06-06 | By: Codex | Session: seller-capability-suspension
+> Last updated: 2026-06-06 | By: Codex | Session: seller-portal-v1
 >
 > Update this file at the end of FE planning or implementation sessions.
 > Keep it concise and decision-useful.
@@ -38,7 +38,7 @@
 - [x] Seller product detail page and `RETURNED` sale status display
 - [x] Fulfillment API client and seller shipping confirmation UI on seller auction detail
 - [x] Admin revenue page wired to backend revenue APIs
-- [x] Automated FE unit test suite passes with 96 tests and 2 Playwright smoke tests
+- [x] Automated FE unit test suite passes with 140 tests and 2 Playwright smoke tests
 - [x] Order tabs use backend `status` filter and buyer/seller status counts
 - [x] Bidding room refetches detail, participation, and bid history after socket connect/reconnect
 - [x] Buyer can withdraw once from a `WAITING` auction, receive the full deposit refund, and cannot register again
@@ -48,10 +48,13 @@
 - [x] Seller appraisal route/menu removed; `/seller/appraisals` is no longer valid
 - [x] Home category image mapping updated for the new flat seeded category slugs
 - [x] Blog remains static/mock content, not a CMS/API-backed feature
+- [x] Seller Portal v1: exact product KPIs, draft deletion, editable store name, action center, order detail, shipping address snapshots, revenue page, and seller auction realtime
+- [x] Shared auction STOMP subscription used by buyer bidding and seller monitoring, with 10-second seller polling fallback
+- [x] Frontend verification passes: typecheck, lint, 140 unit tests, and production build
 
 ## In Progress
 
-- Responsive polish and deploy hardening.
+- Seller Portal v1 browser-level E2E acceptance and responsive polish.
 
 ## Deferred
 
@@ -65,7 +68,7 @@
 - Backend auction runtime and buyer realtime contracts are integrated through public detail and bidding room.
 - FE should consume the backend contracts directly; do not add local workarounds for participation context, bid history, or live bid payloads.
 - Wallet funding must use VNPay Sandbox. Do not add local wallet funding shortcuts.
-- Seller auction detail and shipping confirmation are implemented (polling is used for operational safety); realtime monitoring remains deferred until the buyer bidding cockpit is stable.
+- Seller auction detail consumes shared STOMP events immediately and retains 10-second polling for operational reconciliation.
 - Order status tabs must keep using backend `status` filters and status-count endpoints; do not reintroduce page-local filtering.
 - Cookie refresh/logout uses backend double-submit CSRF via `GET /auth/csrf` and `X-XSRF-TOKEN`.
 

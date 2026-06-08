@@ -84,7 +84,13 @@ describe("orderApi", () => {
               completedAt: null,
               canceledAt: null,
               cancelReason: null,
-              fulfillment: { id: 17, status: "SHIPPED" },
+              fulfillment: {
+                id: 17,
+                status: "SHIPPED",
+                deliveryMethod: "THIRD_PARTY",
+                carrierName: "Viettel Post",
+                trackingCode: "VT123",
+              },
               createdAt: "2026-06-02T00:00:00Z",
               updatedAt: "2026-06-02T00:00:00Z",
             },
@@ -173,10 +179,76 @@ describe("orderApi", () => {
     };
     apiClient.defaults.adapter = adapter;
 
-    await expect(orderApi.payRemainder(91)).resolves.toMatchObject({
+    await expect(orderApi.payRemainder({ orderId: 91, addressId: 3 })).resolves.toMatchObject({
       id: 91,
       status: "PAID",
       finalPrice: 10000000,
+    });
+  });
+
+  it("fetches order detail with buyer and fulfillment shipping metadata", async () => {
+    const adapter: AxiosAdapter = async (config) => {
+      expect(config.method).toBe("get");
+      expect(config.url).toBe("/orders/91");
+
+      return createResponse(
+        config,
+        200,
+        createApiResponse({
+          id: 91,
+          sourceType: "AUCTION",
+          sourceId: 501,
+          productId: 801,
+          buyerId: "buyer-1",
+          sellerId: "seller-1",
+          buyer: {
+            id: "buyer-1",
+            fullName: "Nguyen Van A",
+            phoneNumber: "0911222333",
+            email: "buyer@example.com",
+          },
+          status: "FULFILLING",
+          finalPrice: "10000000",
+          depositAmount: "1000000",
+          remainingAmount: "9000000",
+          platformCommissionRate: null,
+          platformCommissionAmount: null,
+          sellerPayoutAmount: null,
+          forfeitedDepositPlatformFeeAmount: null,
+          forfeitedDepositSellerAmount: null,
+          paymentDeadline: null,
+          paidAt: "2026-06-02T01:00:00Z",
+          completedAt: null,
+          canceledAt: null,
+          cancelReason: null,
+          fulfillment: {
+            id: 17,
+            status: "SHIPPED",
+            deliveryMethod: "THIRD_PARTY",
+            carrierName: "Viettel Post",
+            trackingCode: "VT123",
+            shippedAt: "2026-06-02T02:00:00Z",
+            receivedAt: null,
+            autoCompleteDeadline: "2026-06-09T02:00:00Z",
+          },
+          createdAt: "2026-06-02T00:00:00Z",
+          updatedAt: "2026-06-02T02:00:00Z",
+        }),
+      );
+    };
+    apiClient.defaults.adapter = adapter;
+
+    await expect(orderApi.getDetail(91)).resolves.toMatchObject({
+      id: 91,
+      buyer: {
+        id: "buyer-1",
+        phoneNumber: "0911222333",
+      },
+      fulfillment: {
+        deliveryMethod: "THIRD_PARTY",
+        carrierName: "Viettel Post",
+        trackingCode: "VT123",
+      },
     });
   });
 });
