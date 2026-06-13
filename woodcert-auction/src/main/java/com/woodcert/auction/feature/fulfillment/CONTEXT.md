@@ -1,29 +1,31 @@
-# Fulfillment Feature Context
+# Fulfillment Module
 
 ## Responsibility
-`feature.fulfillment` owns shipment, tracking, buyer receive confirmation, and auto-completion.
 
-Fulfillment references orders by `orderId`; it does not know auction internals.
+`fulfillment` owns shipment records, tracking, buyer receipt confirmation, and automatic completion.
 
-## Lifecycle
-- `PENDING_SHIPMENT`: order is paid and seller can ship.
-- `SHIPPED`: seller provided tracking and auto-complete deadline is active.
-- `DELIVERED`: buyer confirmed receipt.
-- `AUTO_COMPLETED`: scheduler completed after deadline.
-- `CANCELED`: dispute buyer-wins outcome canceled fulfillment.
+## Key Components
 
-## Order Interaction
-Fulfillment creates pending shipment records through the `OrderFulfillmentPort` implemented for the order module.
+- Pending shipment creation after order payment.
+- Seller shipping confirmation and tracking details.
+- Buyer receipt confirmation and overdue scheduler completion.
+- Order and dispute port adapters.
 
-Seller ship calls `OrderService.markFulfilling`.
+## Boundary Rules
 
-Buyer receive or scheduler auto-complete calls `OrderService.completeFromFulfillment`, which handles seller payout, platform commission, and source completion callback.
+- Fulfillment references orders by ID and does not know auction internals.
+- Commercial payout/refund effects stay in order.
+- Order reads fulfillment through single and bulk snapshot methods.
+- Dispute outcomes are applied through `DisputeFulfillmentPort`.
 
-Dispute outcomes are applied through `DisputeFulfillmentPort`:
-- seller wins: fulfillment becomes `AUTO_COMPLETED`;
-- buyer wins: fulfillment becomes `CANCELED`.
+## Lifecycle And Contracts
 
-## Shipping Rules
-- `THIRD_PARTY` requires both `carrierName` and `trackingCode`.
-- `SELF_DELIVERY` does not require carrier or tracking.
-- `autoCompleteDeadline` is set when the fulfillment becomes `SHIPPED`.
+- `PENDING_SHIPMENT` -> `SHIPPED` -> `DELIVERED` or `AUTO_COMPLETED`.
+- Buyer-wins resolution moves fulfillment to `CANCELED`.
+- Third-party delivery requires carrier and tracking code.
+- Self delivery does not require tracking information.
+
+## Known Limitations
+
+- Shipment packing media is not implemented.
+- The order/dispute adapters create accepted package-level coupling that is tracked as modular technical debt.

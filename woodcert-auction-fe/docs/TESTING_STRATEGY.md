@@ -1,6 +1,6 @@
 # Testing Strategy
 
-Last updated: 2026-05-25
+Last updated: 2026-06-13
 
 ## Official FE Test Stack
 
@@ -63,7 +63,7 @@ Use for:
 - seller auction creation form rules
 - media uploader state machine
 
-Current automated status: `pnpm test` passed on 2026-05-28 with 24 test files and 69 tests. WebSocket, countdown offset, auction registration, and bidding room tests are future coverage.
+Current automated status: `pnpm test` passes with 51 test files and 175 tests. WebSocket reconnect, countdown offset, auction registration, and bidding-room behavior have targeted unit coverage; full backend-connected realtime concurrency remains manual acceptance scope.
 
 ## Critical E2E Scenarios
 

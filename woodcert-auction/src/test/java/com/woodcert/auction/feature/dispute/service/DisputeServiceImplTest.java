@@ -5,6 +5,7 @@ import com.woodcert.auction.core.exception.ErrorCode;
 import com.woodcert.auction.feature.dispute.dto.request.CreateDisputeReq;
 import com.woodcert.auction.feature.dispute.dto.request.ResolveDisputeReq;
 import com.woodcert.auction.feature.dispute.entity.DisputeCase;
+import com.woodcert.auction.feature.dispute.entity.DisputeEvidence;
 import com.woodcert.auction.feature.dispute.entity.DisputeResolutionOutcome;
 import com.woodcert.auction.feature.dispute.entity.DisputeStatus;
 import com.woodcert.auction.feature.dispute.repository.DisputeCaseRepository;
@@ -27,6 +28,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -84,15 +87,44 @@ class DisputeServiceImplTest {
         when(orderService.getOrderDetail(BUYER_ID, ORDER_ID)).thenReturn(orderRes(OrderStatus.DISPUTED));
         when(disputeCaseRepository.findByOrderIdOrderByOpenedAtDescIdDesc(ORDER_ID))
                 .thenReturn(List.of(open, resolved));
-        when(disputeEvidenceRepository.findByDisputeCaseIdOrderBySortOrderAscIdAsc(DISPUTE_ID))
-                .thenReturn(List.of());
-        when(disputeEvidenceRepository.findByDisputeCaseIdOrderBySortOrderAscIdAsc(DISPUTE_ID + 1))
+        when(disputeEvidenceRepository.findByDisputeCaseIdIn(List.of(DISPUTE_ID, DISPUTE_ID + 1)))
                 .thenReturn(List.of());
 
         var result = disputeService.getDisputeHistory(BUYER_ID, ORDER_ID);
 
         assertThat(result).extracting("id").containsExactly(DISPUTE_ID, DISPUTE_ID + 1);
         verify(orderService).getOrderDetail(BUYER_ID, ORDER_ID);
+        verify(disputeEvidenceRepository).findByDisputeCaseIdIn(List.of(DISPUTE_ID, DISPUTE_ID + 1));
+        verify(disputeEvidenceRepository, never()).findByDisputeCaseIdOrderBySortOrderAscIdAsc(any());
+    }
+
+    @Test
+    void getAdminDisputes_groupsBulkEvidenceByDisputeAndKeepsSortOrder() {
+        DisputeCase first = openDispute();
+        DisputeCase second = openDispute();
+        second.setId(DISPUTE_ID + 1);
+        DisputeEvidence secondEvidence = evidence(202L, second.getId(), 1);
+        DisputeEvidence firstEvidenceLater = evidence(102L, first.getId(), 2);
+        DisputeEvidence firstEvidenceEarlier = evidence(101L, first.getId(), 0);
+
+        var pageable = PageRequest.of(0, 20);
+        when(disputeCaseRepository.findAllByOrderByOpenedAtDescIdDesc(any()))
+                .thenReturn(new PageImpl<>(List.of(first, second), pageable, 2));
+        when(disputeEvidenceRepository.findByDisputeCaseIdIn(List.of(DISPUTE_ID, DISPUTE_ID + 1)))
+                .thenReturn(List.of(secondEvidence, firstEvidenceLater, firstEvidenceEarlier));
+        when(mediaUrlBuilder.buildDeliveryUrl(any(), any())).thenReturn("https://example.test/evidence");
+
+        var result = disputeService.getAdminDisputes(null, 1, 20);
+
+        assertThat(result.result()).hasSize(2);
+        assertThat(result.result().get(0).evidence())
+                .extracting("mediaId")
+                .containsExactly(101L, 102L);
+        assertThat(result.result().get(1).evidence())
+                .extracting("mediaId")
+                .containsExactly(202L);
+        verify(disputeEvidenceRepository).findByDisputeCaseIdIn(List.of(DISPUTE_ID, DISPUTE_ID + 1));
+        verify(disputeEvidenceRepository, never()).findByDisputeCaseIdOrderBySortOrderAscIdAsc(any());
     }
 
     @Test
@@ -222,6 +254,16 @@ class DisputeServiceImplTest {
         asset.setResourceType(MediaResourceType.IMAGE);
         asset.setStatus(MediaStatus.ACTIVE);
         return asset;
+    }
+
+    private DisputeEvidence evidence(Long mediaId, Long disputeId, int sortOrder) {
+        DisputeEvidence evidence = new DisputeEvidence();
+        evidence.setId(mediaId);
+        evidence.setDisputeCaseId(disputeId);
+        evidence.setMediaId(mediaId);
+        evidence.setSortOrder(sortOrder);
+        evidence.setMediaAsset(activeEvidenceAsset(mediaId));
+        return evidence;
     }
 
     private OrderRes orderRes(OrderStatus status) {

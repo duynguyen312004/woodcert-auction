@@ -10,6 +10,9 @@ import com.woodcert.auction.feature.order.service.fulfillment.OrderFulfillmentPo
 import com.woodcert.auction.feature.order.service.fulfillment.OrderFulfillmentSnapshot;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
+import java.util.Map;
+
 @Component
 public class OrderResponseAssembler {
 
@@ -29,6 +32,17 @@ public class OrderResponseAssembler {
 
     public OrderListRes toListRes(OrderEntity order) {
         return OrderListRes.fromEntity(order, fulfillmentSnapshot(order.getId()));
+    }
+
+    public List<OrderListRes> toListRes(List<OrderEntity> orders) {
+        if (orders.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, OrderFulfillmentSnapshot> fulfillmentByOrderId = fulfillmentPort.findSnapshotsByOrderIds(
+                orders.stream().map(OrderEntity::getId).toList());
+        return orders.stream()
+                .map(order -> OrderListRes.fromEntity(order, fulfillmentByOrderId.get(order.getId())))
+                .toList();
     }
 
     public OrderSummaryRes toSummaryRes(OrderEntity order) {

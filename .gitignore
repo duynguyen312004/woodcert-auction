@@ -24,9 +24,18 @@ nbdist/
 ### Common logs ###
 *.log
 
+# Local deployment secrets
+.env
+.env.prod
+!.env.prod.example
 
-#cursor 
+# Local agent metadata
 .cursor/
+.claude/
+AGENTS.md
+CLAUDE.md
+run-logs/
 
-#
+# Local design notes
 design.md
+DEPLOY_EXPLAINED.md

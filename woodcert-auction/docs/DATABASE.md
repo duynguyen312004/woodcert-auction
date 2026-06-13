@@ -11,7 +11,7 @@ The project intentionally targets a clean database reset before final testing:
 
 - `V1__baseline_schema.sql` creates the complete current schema, including order snapshots, refund audit fields, capability status, and admin audit logs.
 - `V2__seed_reference_data.sql` seeds roles, permissions, role mappings, and categories.
-- `V3__seed_demo_users.sql` seeds separate admin and appraiser accounts.
+- `V3__seed_demo_users.sql` seeds separate admin and appraiser accounts. Their BCrypt hashes come from the required Flyway placeholders `adminPasswordHash` and `appraiserPasswordHash`.
 
 Order snapshots include:
 

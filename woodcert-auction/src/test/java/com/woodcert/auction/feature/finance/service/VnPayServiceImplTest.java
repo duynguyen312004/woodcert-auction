@@ -53,8 +53,8 @@ class VnPayServiceImplTest {
     private static final String USER_ID = "user-123";
     private static final String HASH_SECRET = "MY_SECRET_KEY_1234567890";
     private static final String PAY_URL = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
-    private static final String RETURN_URL = "http://localhost:8080/api/v1/wallets/vnpay/return";
-    private static final String FE_RETURN_URL = "http://localhost:5173/wallet/deposit/result";
+    private static final String RETURN_URL = "https://woodauction.id.vn/api/v1/wallets/vnpay/return";
+    private static final String FE_RETURN_URL = "https://woodauction.id.vn/wallet/deposit/result";
     private static final String TMN_CODE = "MN123456";
 
     @BeforeEach
@@ -174,8 +174,8 @@ class VnPayServiceImplTest {
     }
 
     @Test
-    @DisplayName("should confirm and deposit funds on processReturn when local confirmation is enabled")
-    void processReturn_localConfirmationEnabled_successDepositsFunds() {
+    @DisplayName("should confirm and deposit funds on processReturn when sandbox confirmation is enabled")
+    void processReturn_sandboxConfirmationEnabled_successDepositsFunds() {
         lenient().when(properties.isConfirmOnReturnEnabled()).thenReturn(true);
         String txnRef = "DEP20260526000009";
         VnPayDeposit deposit = pendingDeposit(9L, txnRef);
@@ -200,7 +200,7 @@ class VnPayServiceImplTest {
 
     @Test
     @DisplayName("should not double deposit on processReturn when deposit is already successful")
-    void processReturn_localConfirmationEnabled_alreadySuccessDoesNotDepositAgain() {
+    void processReturn_sandboxConfirmationEnabled_alreadySuccessDoesNotDepositAgain() {
         lenient().when(properties.isConfirmOnReturnEnabled()).thenReturn(true);
         String txnRef = "DEP20260526000010";
         VnPayDeposit deposit = pendingDeposit(10L, txnRef);
@@ -219,29 +219,8 @@ class VnPayServiceImplTest {
     }
 
     @Test
-    @DisplayName("should not confirm on processReturn when return URL is not local")
-    void processReturn_localConfirmationEnabled_publicReturnUrlDoesNotDepositFunds() {
-        lenient().when(properties.isConfirmOnReturnEnabled()).thenReturn(true);
-        lenient().when(properties.getReturnUrl())
-                .thenReturn("https://api.woodcert.example/api/v1/wallets/vnpay/return");
-        String txnRef = "DEP20260526000012";
-        VnPayDeposit deposit = pendingDeposit(12L, txnRef);
-        when(depositRepository.findByTxnRef(txnRef)).thenReturn(Optional.of(deposit));
-
-        Map<String, String> params = successfulParams(txnRef, BigDecimal.valueOf(100000));
-        params.put("vnp_SecureHash", calculateTestChecksum(params));
-
-        String redirectUrl = vnPayService.processReturn(params);
-
-        assertThat(redirectUrl).isEqualTo(FE_RETURN_URL + "?txnRef=" + txnRef + "&status=PENDING");
-        verify(depositRepository, never()).findByTxnRefForUpdate(txnRef);
-        verify(walletService, never()).topUpFromVnPay(any(), any(), any(), any());
-        verify(depositRepository, never()).saveAndFlush(any());
-    }
-
-    @Test
-    @DisplayName("should mark failed on processReturn when local confirmation is enabled and VNPay failed")
-    void processReturn_localConfirmationEnabled_failedMarksDepositFailed() {
+    @DisplayName("should mark failed on processReturn when sandbox confirmation is enabled and VNPay failed")
+    void processReturn_sandboxConfirmationEnabled_failedMarksDepositFailed() {
         lenient().when(properties.isConfirmOnReturnEnabled()).thenReturn(true);
         String txnRef = "DEP20260526000011";
         VnPayDeposit deposit = pendingDeposit(11L, txnRef);
@@ -258,6 +237,45 @@ class VnPayServiceImplTest {
         assertThat(deposit.getVnpResponseCode()).isEqualTo("24");
         verify(depositRepository).saveAndFlush(deposit);
         verify(walletService, never()).topUpFromVnPay(any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("should reject sandbox return confirmation when amount mismatches deposit")
+    void processReturn_sandboxConfirmationEnabled_amountMismatchDoesNotDepositFunds() {
+        lenient().when(properties.isConfirmOnReturnEnabled()).thenReturn(true);
+        String txnRef = "DEP20260526000013";
+        VnPayDeposit deposit = pendingDeposit(13L, txnRef);
+        when(depositRepository.findByTxnRefForUpdate(txnRef)).thenReturn(Optional.of(deposit));
+        when(depositRepository.findByTxnRef(txnRef)).thenReturn(Optional.of(deposit));
+
+        Map<String, String> params = successfulParams(txnRef, BigDecimal.valueOf(99999));
+        params.put("vnp_SecureHash", calculateTestChecksum(params));
+
+        String redirectUrl = vnPayService.processReturn(params);
+
+        assertThat(redirectUrl).isEqualTo(FE_RETURN_URL + "?txnRef=" + txnRef + "&status=PENDING");
+        verify(walletService, never()).topUpFromVnPay(any(), any(), any(), any());
+        verify(depositRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    @DisplayName("should reject sandbox return confirmation when TmnCode mismatches")
+    void processReturn_sandboxConfirmationEnabled_tmnCodeMismatchDoesNotDepositFunds() {
+        lenient().when(properties.isConfirmOnReturnEnabled()).thenReturn(true);
+        String txnRef = "DEP20260526000014";
+        VnPayDeposit deposit = pendingDeposit(14L, txnRef);
+        when(depositRepository.findByTxnRefForUpdate(txnRef)).thenReturn(Optional.of(deposit));
+        when(depositRepository.findByTxnRef(txnRef)).thenReturn(Optional.of(deposit));
+
+        Map<String, String> params = successfulParams(txnRef, BigDecimal.valueOf(100000));
+        params.put("vnp_TmnCode", "OTHER");
+        params.put("vnp_SecureHash", calculateTestChecksum(params));
+
+        String redirectUrl = vnPayService.processReturn(params);
+
+        assertThat(redirectUrl).isEqualTo(FE_RETURN_URL + "?txnRef=" + txnRef + "&status=PENDING");
+        verify(walletService, never()).topUpFromVnPay(any(), any(), any(), any());
+        verify(depositRepository, never()).saveAndFlush(any());
     }
 
     @Test

@@ -26,6 +26,7 @@ import com.woodcert.auction.feature.order.service.fulfillment.OrderFulfillmentSn
 import com.woodcert.auction.feature.order.service.source.OrderSourceAdapter;
 import com.woodcert.auction.feature.order.service.source.OrderSourceSnapshot;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -118,10 +119,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrderRes payRemainder(String buyerId, Long orderId, Long addressId) {
-        OrderEntity order = getOwnedOrderForUpdate(orderId, buyerId);
-        if (!buyerId.equals(order.getBuyerId())) {
-            throw new AppException(ErrorCode.ORDER_NOT_OWNED);
-        }
+        OrderEntity order = getBuyerOrderForUpdate(orderId, buyerId);
         if (order.getStatus() != OrderStatus.PENDING_PAYMENT) {
             throw new AppException(ErrorCode.ORDER_INVALID_STATUS);
         }
@@ -165,7 +163,8 @@ public class OrderServiceImpl implements OrderService {
         var orders = status == null
                 ? orderRepository.findByBuyerIdOrderByCreatedAtDescIdDesc(buyerId, pageable)
                 : orderRepository.findByBuyerIdAndStatusOrderByCreatedAtDescIdDesc(buyerId, status, pageable);
-        return PaginationResponse.of(orders.map(responseAssembler::toListRes));
+        var mapped = responseAssembler.toListRes(orders.getContent());
+        return PaginationResponse.of(new PageImpl<>(mapped, pageable, orders.getTotalElements()));
     }
 
     @Override
@@ -175,7 +174,8 @@ public class OrderServiceImpl implements OrderService {
         var orders = status == null
                 ? orderRepository.findBySellerIdOrderByCreatedAtDescIdDesc(sellerId, pageable)
                 : orderRepository.findBySellerIdAndStatusOrderByCreatedAtDescIdDesc(sellerId, status, pageable);
-        return PaginationResponse.of(orders.map(responseAssembler::toListRes));
+        var mapped = responseAssembler.toListRes(orders.getContent());
+        return PaginationResponse.of(new PageImpl<>(mapped, pageable, orders.getTotalElements()));
     }
 
     @Override
@@ -250,10 +250,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public void markFulfilling(String sellerId, Long orderId) {
-        OrderEntity order = getOwnedOrderForUpdate(orderId, sellerId);
-        if (!sellerId.equals(order.getSellerId())) {
-            throw new AppException(ErrorCode.ORDER_NOT_OWNED);
-        }
+        OrderEntity order = getSellerOrderForUpdate(orderId, sellerId);
         if (order.getStatus() != OrderStatus.PAID) {
             throw new AppException(ErrorCode.ORDER_INVALID_STATUS);
         }
@@ -276,10 +273,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrderRes openDispute(String buyerId, Long orderId) {
-        OrderEntity order = getOwnedOrderForUpdate(orderId, buyerId);
-        if (!buyerId.equals(order.getBuyerId())) {
-            throw new AppException(ErrorCode.ORDER_NOT_OWNED);
-        }
+        OrderEntity order = getBuyerOrderForUpdate(orderId, buyerId);
         if (order.getStatus() != OrderStatus.FULFILLING) {
             throw new AppException(ErrorCode.ORDER_INVALID_STATUS);
         }
@@ -376,10 +370,19 @@ public class OrderServiceImpl implements OrderService {
         return saved;
     }
 
-    private OrderEntity getOwnedOrderForUpdate(Long orderId, String userId) {
+    private OrderEntity getBuyerOrderForUpdate(Long orderId, String buyerId) {
         OrderEntity order = orderRepository.findByIdForUpdate(orderId)
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
-        if (!userId.equals(order.getBuyerId()) && !userId.equals(order.getSellerId())) {
+        if (!buyerId.equals(order.getBuyerId())) {
+            throw new AppException(ErrorCode.ORDER_NOT_OWNED);
+        }
+        return order;
+    }
+
+    private OrderEntity getSellerOrderForUpdate(Long orderId, String sellerId) {
+        OrderEntity order = orderRepository.findByIdForUpdate(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+        if (!sellerId.equals(order.getSellerId())) {
             throw new AppException(ErrorCode.ORDER_NOT_OWNED);
         }
         return order;

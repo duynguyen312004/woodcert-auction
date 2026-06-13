@@ -87,6 +87,8 @@ public abstract class AuctionIntegrationTestBase {
         registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
         registry.add("spring.jpa.show-sql", () -> "false");
         registry.add("spring.flyway.enabled", () -> "false");
+        registry.add("spring.flyway.placeholders.adminPasswordHash", () -> "test-admin-hash");
+        registry.add("spring.flyway.placeholders.appraiserPasswordHash", () -> "test-appraiser-hash");
         registry.add("spring.sql.init.mode", () -> "never");
         registry.add("jwt.secret-key", () -> "test-secret-key-that-is-long-enough-for-hs512-runtime-tests");
         registry.add("identity.location-seed.enabled", () -> "false");

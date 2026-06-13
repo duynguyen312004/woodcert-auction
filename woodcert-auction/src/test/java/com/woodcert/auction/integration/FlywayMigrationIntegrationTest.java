@@ -5,10 +5,16 @@ import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.MySQLContainer;
 
 import java.sql.DriverManager;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class FlywayMigrationIntegrationTest {
+
+    private static final String ADMIN_HASH =
+            "$2a$10$2b2YJQW1UVEQBDaXxzN6XuVEZNMqyPQHhA/JU5UhdWkNAU9gUkJXq";
+    private static final String APPRAISER_HASH =
+            "$2a$10$7EqJtq98hPqEX7fNZaFWoO5S.Cn6QHdfD4xR7XqxM8aM5.tS2IY6K";
 
     @Test
     @SuppressWarnings("resource")
@@ -23,6 +29,9 @@ class FlywayMigrationIntegrationTest {
             Flyway flyway = Flyway.configure()
                     .dataSource(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword())
                     .locations("classpath:db/migration")
+                    .placeholders(Map.of(
+                            "adminPasswordHash", ADMIN_HASH,
+                            "appraiserPasswordHash", APPRAISER_HASH))
                     .load();
 
             flyway.migrate();
@@ -82,6 +91,12 @@ class FlywayMigrationIntegrationTest {
                           AND u.status = 'ACTIVE'
                           AND r.name = 'ROLE_APPRAISER'
                         """)).isEqualTo(1L);
+                assertThat(queryString(connection,
+                        "SELECT password_hash FROM users WHERE email = 'admin@woodcert.local'"))
+                        .isEqualTo(ADMIN_HASH);
+                assertThat(queryString(connection,
+                        "SELECT password_hash FROM users WHERE email = 'appraiser@woodcert.local'"))
+                        .isEqualTo(APPRAISER_HASH);
             }
         }
     }
@@ -91,6 +106,14 @@ class FlywayMigrationIntegrationTest {
              var resultSet = statement.executeQuery(sql)) {
             resultSet.next();
             return resultSet.getLong(1);
+        }
+    }
+
+    private String queryString(java.sql.Connection connection, String sql) throws Exception {
+        try (var statement = connection.createStatement();
+             var resultSet = statement.executeQuery(sql)) {
+            resultSet.next();
+            return resultSet.getString(1);
         }
     }
 }

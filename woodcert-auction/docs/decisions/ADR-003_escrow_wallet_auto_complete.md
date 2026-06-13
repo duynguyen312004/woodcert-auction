@@ -7,7 +7,7 @@ Accepted. Partially implemented as of 2026-05-28.
 Implemented today:
 
 - Wallet balances and transaction audit logs.
-- VNPay deposit requests, IPN confirmation, and deposit history.
+- VNPay deposit requests, IPN confirmation, signed Sandbox Return confirmation, and deposit history.
 - Idempotent wallet operations.
 - Auction registration deposit freeze.
 - Auction close refund/deduct settlement for frozen deposits.
@@ -49,7 +49,7 @@ Current backend scope implements the wallet and auction-deposit foundation. The 
 
 ## Target Lifecycle
 
-- Deposit: user pays through VNPay and IPN credits the wallet.
+- Deposit: user pays through VNPay. Real-money deployment uses IPN; the thesis Sandbox deployment may use the signed Return callback when merchant IPN registration is unavailable.
 - Auction join: backend moves `depositAmount` from available to frozen.
 - Auction close: losers are refunded; winner deposit is deducted.
 - Order payment: winner pays remaining amount into system escrow.

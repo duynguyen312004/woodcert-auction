@@ -241,25 +241,16 @@ feature/
 
 ### Feature Dependency Rules
 
-- identity is the core foundation. Other features can reference User IDs.
+- Prefer stable service, query-snapshot, or port interfaces for synchronous cross-feature calls.
+- Use application events when the interaction is asynchronous and eventual consistency is acceptable.
+- Auction composes catalog, identity, finance, and order behavior for the auction lifecycle.
+- Order owns commercial settlement and uses source and fulfillment ports.
+- Fulfillment owns shipment state and calls order for commercial completion.
+- Dispute coordinates order and fulfillment outcomes without mutating finance directly.
 
-- catalog depends on identity (Seller/Appraiser references).
-
-- finance depends on identity (Wallet belongs to User).
-
-- auction depends on:
-  - catalog (APPRAISED product as auction input)
-  - catalog repositories/helpers for product, category, appraisal, and product-image read enrichment
-  - identity `SellerSummaryQueryService` for seller display/reputation read enrichment
-  - finance (Freeze deposit)
-  - Redis for ACTIVE runtime state
-
-- fulfillment depends on:
-  - auction (Winning bid → Order)
-  - finance (Release funds)
-
-> STRICT RULE: No circular dependencies allowed.  
-> Use Application Events (@EventListener) for cross-domain communication.
+New code must not introduce additional package cycles. The current identity/catalog and
+dispute/fulfillment relationships contain accepted legacy coupling; they are documented
+technical debt and are not part of the deployment refactor.
 
 ### Cross-Cutting Concerns
 

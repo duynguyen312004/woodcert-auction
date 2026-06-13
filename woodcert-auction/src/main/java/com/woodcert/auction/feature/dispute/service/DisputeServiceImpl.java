@@ -38,10 +38,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -142,10 +145,8 @@ public class DisputeServiceImpl implements DisputeService {
     @Transactional(readOnly = true)
     public List<DisputeRes> getDisputeHistory(String userId, Long orderId) {
         orderService.getOrderDetail(userId, orderId);
-        return disputeCaseRepository.findByOrderIdOrderByOpenedAtDescIdDesc(orderId)
-                .stream()
-                .map(this::toRes)
-                .toList();
+        List<DisputeCase> disputes = disputeCaseRepository.findByOrderIdOrderByOpenedAtDescIdDesc(orderId);
+        return toRes(disputes);
     }
 
     @Override
@@ -179,7 +180,7 @@ public class DisputeServiceImpl implements DisputeService {
                     pageable
             );
         }
-        List<DisputeRes> mapped = disputes.getContent().stream().map(this::toRes).toList();
+        List<DisputeRes> mapped = toRes(disputes.getContent());
         return PaginationResponse.of(new PageImpl<>(mapped, pageable, disputes.getTotalElements()));
     }
 
@@ -286,6 +287,32 @@ public class DisputeServiceImpl implements DisputeService {
                 .map(item -> DisputeEvidenceRes.fromEntity(item, mediaUrlBuilder))
                 .toList();
         return DisputeRes.fromEntity(dispute, evidence);
+    }
+
+    private List<DisputeRes> toRes(List<DisputeCase> disputes) {
+        if (disputes.isEmpty()) {
+            return List.of();
+        }
+        List<Long> disputeIds = disputes.stream().map(DisputeCase::getId).toList();
+        Comparator<DisputeEvidence> evidenceOrder = Comparator
+                .comparing(DisputeEvidence::getDisputeCaseId)
+                .thenComparingInt(DisputeEvidence::getSortOrder)
+                .thenComparing(DisputeEvidence::getId, Comparator.nullsLast(Comparator.naturalOrder()));
+        Map<Long, List<DisputeEvidenceRes>> evidenceByDisputeId = disputeEvidenceRepository
+                .findByDisputeCaseIdIn(disputeIds)
+                .stream()
+                .sorted(evidenceOrder)
+                .collect(Collectors.groupingBy(
+                        DisputeEvidence::getDisputeCaseId,
+                        LinkedHashMap::new,
+                        Collectors.mapping(
+                                item -> DisputeEvidenceRes.fromEntity(item, mediaUrlBuilder),
+                                Collectors.toList())));
+        return disputes.stream()
+                .map(dispute -> DisputeRes.fromEntity(
+                        dispute,
+                        evidenceByDisputeId.getOrDefault(dispute.getId(), List.of())))
+                .toList();
     }
 
     private String trimToNull(String value) {

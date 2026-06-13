@@ -42,6 +42,8 @@
 - [x] Dispute history endpoint added for buyer/seller order participants
 - [x] Seller Portal v1 backend: buyer-owned shipping address confirmation, immutable product/address order snapshots, seller product statistics, editable store name, and realized sales summary
 - [x] Seller Portal v1 realtime contract: shared auction STOMP topic with 10-second REST reconciliation for operational views
+- [x] Order and dispute list mapping bulk-loads fulfillment/evidence data to avoid per-row N+1 queries
+- [x] VPS deploy artifacts: production Compose, backend/frontend images, health endpoint, Nginx proxy template, and deploy runbook
 
 ## In Progress
 
@@ -55,12 +57,12 @@
 
 ## Warnings
 
-- Final backend verification on 2026-06-12: `mvn test` passed 305 tests across 59 report files, including Docker-backed Flyway/MySQL and Redis/Lua integration tests.
-- Final frontend verification on 2026-06-13: typecheck, lint, 156 unit tests, 6 Playwright tests, and production build passed.
+- Final backend verification on 2026-06-13: `mvn test` passed 382 tests across 60 report files, including Docker-backed production wiring, Flyway/MySQL, and Redis/Lua integration tests.
+- Final frontend verification on 2026-06-13: typecheck, lint, 175 unit tests, 6 Playwright tests, and production build passed.
 - Frontend custom 404 now preserves public, seller, appraiser, and admin layouts. Production build has no JavaScript chunk over 500 KB; main entry is 410.76 KB (127.91 KB gzip), down from about 889 KB.
 - Dispute v1 has no partial refund; admin resolution is `SELLER_WINS` or `BUYER_WINS`.
 - Wallet balance for demo must come from VNPay Sandbox. Do not add local wallet funding shortcuts.
-- Local VNPay demo may use `vnpay.confirm-on-return-enabled=true` when IPN cannot reach localhost; this still goes through VNPay Return and is not a wallet shortcut.
+- The thesis deployment uses VNPay Sandbox with `vnpay.confirm-on-return-enabled=true` because merchant IPN registration is unavailable. The signed Return callback still validates merchant code, amount and transaction status and is not a wallet shortcut. Real-money deployment must use IPN.
 
 ## Next Tasks
 

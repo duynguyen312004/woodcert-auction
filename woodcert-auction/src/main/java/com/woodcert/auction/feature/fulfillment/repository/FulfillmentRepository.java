@@ -11,12 +11,15 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
 public interface FulfillmentRepository extends JpaRepository<OrderFulfillment, Long> {
 
     Optional<OrderFulfillment> findByOrderId(Long orderId);
+
+    List<OrderFulfillment> findByOrderIdIn(Collection<Long> orderIds);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""

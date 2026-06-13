@@ -54,8 +54,10 @@ com.woodcert.auction/
 ### Package Rules
 
 - Each feature is self-contained
-- NO circular dependency between features
-- Cross-feature communication → use Event (@EventListener)
+- Do not introduce new circular dependencies between features
+- Prefer public services, query snapshots, or ports for synchronous cross-feature communication
+- Use events when asynchronous communication is appropriate
+- Existing identity/catalog and dispute/fulfillment coupling is accepted technical debt; do not expand it
 - core/ chỉ chứa reusable components (KHÔNG business logic)
 
 ## 2. Naming Convention

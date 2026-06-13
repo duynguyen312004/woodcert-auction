@@ -1,0 +1,11 @@
+target/
+build/
+.git/
+.github/
+.idea/
+.vscode/
+.mvn/
+docs/
+src/test/
+src/main/resources/application-local.yml
+*.log

@@ -273,7 +273,7 @@
         {
             "name": "vnpay.confirm-on-return-enabled",
             "type": "java.lang.Boolean",
-            "description": "Allows localhost VNPay ReturnUrl callbacks to confirm deposits when IPN is unavailable. Keep disabled in production."
+            "description": "Allows signed VNPay Return callbacks to confirm deposits for Sandbox/demo deployments when merchant IPN registration is unavailable. Disable for real-money deployments that use IPN."
         },
         {
             "name": "auction.scheduler.repair-cron",

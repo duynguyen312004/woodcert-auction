@@ -1,24 +1,31 @@
-# Dispute Feature Context
+# Dispute Module
 
 ## Responsibility
-`feature.dispute` owns buyer-raised post-sale dispute cases, evidence upload confirmation, admin review, and final resolution.
 
-Disputes reference `orderId` and optionally `fulfillmentId`. They do not mutate fulfillment repositories directly.
+`dispute` owns buyer-raised cases, evidence, admin review, audit information, and final resolution.
+
+## Key Components
+
+- Evidence upload intent and confirmation.
+- Current dispute, history, cancel, admin queue, review, and resolution APIs.
+- Bulk evidence loading for list/history responses.
+- Ports to order and fulfillment for business outcomes.
 
 ## Boundary Rules
-- Dispute calls `OrderService` to mark an order disputed and to apply the final commercial outcome.
-- Dispute calls `DisputeFulfillmentPort` to mark fulfillment according to the outcome.
-- Fulfillment implements the port; dispute must not inject `FulfillmentRepository`.
-- Finance effects are applied through order resolution, not directly from dispute.
 
-## Lifecycle
-- Buyer opens a dispute with reason and at least one confirmed evidence asset.
-- Active dispute moves the order to `DISPUTED`.
-- Buyer can cancel their active dispute before admin resolution.
-- Admin can move a case to review and then resolve it.
+- Dispute does not mutate finance or fulfillment repositories directly.
+- Order applies refund, payout, commission, and source completion effects.
+- Fulfillment implements `DisputeFulfillmentPort`.
+- Evidence media must be active, owned by the buyer, and typed as dispute evidence.
 
-## Resolution Outcomes
-- `BUYER_WINS`: order is canceled, buyer receives `depositAmount + remainingAmount` as a wallet refund, fulfillment is marked `CANCELED`, seller payout and commission are skipped.
-- `SELLER_WINS`: order follows normal completion, seller payout and platform commission are recorded, fulfillment is marked `AUTO_COMPLETED`.
+## Lifecycle And Contracts
 
-The dispute module stores resolution note, outcome, admin id, and timestamps for audit.
+- `OPEN` and `UNDER_REVIEW` are active states.
+- Buyer may cancel before resolution.
+- `BUYER_WINS` refunds the buyer and cancels fulfillment.
+- `SELLER_WINS` completes payout and marks fulfillment auto-completed.
+
+## Known Limitations
+
+- Resolution supports full buyer or seller outcomes only; partial refunds are not implemented.
+- Legacy entity associations to order/fulfillment remain as modular technical debt.

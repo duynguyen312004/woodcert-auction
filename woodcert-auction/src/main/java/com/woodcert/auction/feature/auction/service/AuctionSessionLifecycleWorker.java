@@ -173,7 +173,7 @@ public class AuctionSessionLifecycleWorker {
         }
 
         Optional<Product> productOptional = productRepository.findByIdForUpdate(productId);
-        if (productOptional == null || productOptional.isEmpty()) {
+        if (productOptional.isEmpty()) {
             log.warn("Product {} missing while closing auction session", productId);
             return;
         }

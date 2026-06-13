@@ -110,7 +110,9 @@ src/
 - `features/seller` owns implemented seller profile, product, auction, order, and shipping workflows.
 - `/seller/appraisals` is intentionally not a route; appraisal submission stays inside product workflow.
 - `features/wallet` owns wallet balance, transaction history, VNPay deposit pages, and deposit status polling.
-- Cross-feature imports flow inward only: `home → auction`, `home → catalog`. Feature-to-feature dependencies in the other direction are not allowed.
+- Prefer feature public exports and shared primitives for cross-feature calls. `home → auction/catalog`
+  remains the intended composition direction. The current order/fulfillment API mapping import is
+  accepted technical debt for this deployment and must not be expanded into additional cycles.
 
 ### Ownership Rules
 

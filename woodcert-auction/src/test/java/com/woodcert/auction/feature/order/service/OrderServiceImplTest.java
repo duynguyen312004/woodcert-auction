@@ -33,6 +33,7 @@ import org.springframework.data.domain.PageRequest;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -88,20 +89,45 @@ class OrderServiceImplTest {
         }
 
         @Test
-        void getBuyerOrders_withStatusUsesStatusFilterRepository() {
+        void getBuyerOrders_withStatusLoadsFulfillmentSnapshotsInOneBulkCall() {
                 OrderEntity order = baseOrder();
                 order.setStatus(OrderStatus.PAID);
+                OrderEntity secondOrder = baseOrder();
+                secondOrder.setId(ORDER_ID + 1);
+                secondOrder.setStatus(OrderStatus.PAID);
                 when(orderRepository.findByBuyerIdAndStatusOrderByCreatedAtDescIdDesc(
                                 eq(BUYER_ID),
                                 eq(OrderStatus.PAID),
-                                any())).thenReturn(new PageImpl<>(List.of(order), PageRequest.of(0, 10), 1));
-                when(fulfillmentPort.findSnapshotByOrderId(ORDER_ID)).thenReturn(Optional.empty());
+                                any())).thenReturn(new PageImpl<>(
+                                        List.of(order, secondOrder),
+                                        PageRequest.of(0, 10),
+                                        2));
+                when(fulfillmentPort.findSnapshotsByOrderIds(List.of(ORDER_ID, ORDER_ID + 1)))
+                                .thenReturn(Map.of(ORDER_ID, shippedFulfillment()));
 
                 var result = orderService.getBuyerOrders(BUYER_ID, OrderStatus.PAID, 1, 10);
 
-                assertThat(result.result()).hasSize(1);
+                assertThat(result.result()).hasSize(2);
                 assertThat(result.result().get(0).status()).isEqualTo(OrderStatus.PAID);
+                assertThat(result.result().get(0).fulfillment().status()).isEqualTo("SHIPPED");
+                assertThat(result.result().get(1).fulfillment()).isNull();
                 verify(orderRepository, never()).findByBuyerIdOrderByCreatedAtDescIdDesc(any(), any());
+                verify(fulfillmentPort).findSnapshotsByOrderIds(List.of(ORDER_ID, ORDER_ID + 1));
+                verify(fulfillmentPort, never()).findSnapshotByOrderId(any());
+        }
+
+        @Test
+        void payRemainder_rejectsSellerEvenThoughSellerParticipatesInOrder() {
+                OrderEntity order = pendingPaymentOrder(Instant.now().plusSeconds(3600));
+                when(orderRepository.findByIdForUpdate(ORDER_ID)).thenReturn(Optional.of(order));
+
+                assertThatThrownBy(() -> orderService.payRemainder(SELLER_ID, ORDER_ID, 11L))
+                                .isInstanceOf(AppException.class)
+                                .satisfies(throwable -> assertThat(((AppException) throwable).getErrorCode())
+                                                .isEqualTo(ErrorCode.ORDER_NOT_OWNED));
+
+                verify(walletService, never()).payOrder(any(), any(), any(), any());
+                verify(orderRepository, never()).save(any(OrderEntity.class));
         }
 
         @Test

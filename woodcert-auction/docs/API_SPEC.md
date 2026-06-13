@@ -11,7 +11,7 @@
 
 ```text
 Development: http://localhost:8080/api/v1
-Production:  https://api.woodcert.com/api/v1
+Production:  https://woodauction.id.vn/api/v1
 ```
 
 ## Authentication
@@ -1209,7 +1209,7 @@ Success Response (200):
 
 ### GET /wallets/vnpay/return 🔓
 
-VNPay browser redirect callback. The backend verifies checksum and redirects to `vnpay.fe-return-url` with `txnRef` and current deposit status. Balance mutation is handled by IPN in production. For local development only, `vnpay.confirm-on-return-enabled=true` allows this callback to confirm the deposit when `vnpay.return-url` is localhost and IPN is unavailable.
+VNPay browser redirect callback. The backend verifies checksum and redirects to `vnpay.fe-return-url` with `txnRef` and current deposit status. The thesis deployment uses VNPay Sandbox and enables `vnpay.confirm-on-return-enabled=true` because merchant IPN registration is unavailable. In that mode, the signed Return callback also verifies `TmnCode`, amount and transaction status, then confirms the locked deposit idempotently. A real-money deployment must disable this option and use the IPN callback.
 
 ### GET /wallets/vnpay/ipn 🔓
 

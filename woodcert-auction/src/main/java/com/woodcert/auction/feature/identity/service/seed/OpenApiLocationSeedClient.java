@@ -1,6 +1,7 @@
 package com.woodcert.auction.feature.identity.service.seed;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -15,7 +16,14 @@ public class OpenApiLocationSeedClient implements LocationSeedClient {
 
     @Override
     public List<LocationSeedProvince> fetchLocations() {
-        RestClient restClient = RestClient.create();
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(5000);
+        requestFactory.setReadTimeout(5000);
+
+        RestClient restClient = RestClient.builder()
+                .requestFactory(requestFactory)
+                .build();
+
         OpenApiProvince[] response = restClient.get()
                 .uri(properties.apiUrl())
                 .retrieve()

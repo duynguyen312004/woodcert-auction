@@ -1,5 +1,5 @@
--- Demo operator accounts for local reset/demo environments.
--- Password for both accounts: Demo@123456
+-- Operator accounts for fresh environments.
+-- Password hashes are supplied through Flyway placeholders.
 
 INSERT INTO users (
     id,
@@ -15,7 +15,7 @@ INSERT INTO users (
     (
         '00000000-0000-0000-0000-000000000401',
         'admin@woodcert.local',
-        '$2a$10$MNMXWLbkwtd08FJDQZDH7eu6xy0x.ecuL47Llg4li/EVtAlMOe3dC',
+        '${adminPasswordHash}',
         'WoodCert Admin',
         '0900000401',
         'ACTIVE',
@@ -26,7 +26,7 @@ INSERT INTO users (
     (
         '00000000-0000-0000-0000-000000000301',
         'appraiser@woodcert.local',
-        '$2a$10$MNMXWLbkwtd08FJDQZDH7eu6xy0x.ecuL47Llg4li/EVtAlMOe3dC',
+        '${appraiserPasswordHash}',
         'WoodCert Appraiser',
         '0900000301',
         'ACTIVE',

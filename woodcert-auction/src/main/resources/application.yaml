@@ -1,5 +1,6 @@
 server:
   port: 8080
+  forward-headers-strategy: native
 
 spring:
   config:
@@ -34,6 +35,9 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE:false}
     validate-on-migrate: true
+    placeholders:
+      adminPasswordHash: ${ADMIN_PASSWORD_HASH:}
+      appraiserPasswordHash: ${APPRAISER_PASSWORD_HASH:}
 
   sql:
     init:
@@ -49,6 +53,7 @@ spring:
     redis:
       host: ${REDIS_HOST:}
       port: ${REDIS_PORT:0}
+      password: ${REDIS_PASSWORD:}
 
   devtools:
     restart:
@@ -154,3 +159,16 @@ vnpay:
   api-url: ${VNPAY_API_URL:}
   fe-return-url: ${VNPAY_FE_RETURN_URL:}
   confirm-on-return-enabled: ${VNPAY_CONFIRM_ON_RETURN_ENABLED:false}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState,db,redis

@@ -8,6 +8,12 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+
+  flyway:
+    placeholders:
+      adminPasswordHash: ${ADMIN_PASSWORD_HASH:$2a$10$MNMXWLbkwtd08FJDQZDH7eu6xy0x.ecuL47Llg4li/EVtAlMOe3dC}
+      appraiserPasswordHash: ${APPRAISER_PASSWORD_HASH:$2a$10$MNMXWLbkwtd08FJDQZDH7eu6xy0x.ecuL47Llg4li/EVtAlMOe3dC}
 
   devtools:
     restart:

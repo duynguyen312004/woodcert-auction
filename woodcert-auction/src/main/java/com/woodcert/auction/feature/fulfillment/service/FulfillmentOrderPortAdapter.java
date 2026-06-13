@@ -10,6 +10,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Optional;
 
 @Component
@@ -36,6 +39,19 @@ public class FulfillmentOrderPortAdapter implements OrderFulfillmentPort {
     @Transactional(readOnly = true)
     public Optional<OrderFulfillmentSnapshot> findSnapshotByOrderId(Long orderId) {
         return fulfillmentRepository.findByOrderId(orderId).map(this::toSnapshot);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<Long, OrderFulfillmentSnapshot> findSnapshotsByOrderIds(Collection<Long> orderIds) {
+        if (orderIds == null || orderIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, OrderFulfillmentSnapshot> snapshots = new LinkedHashMap<>();
+        for (OrderFulfillment fulfillment : fulfillmentRepository.findByOrderIdIn(orderIds)) {
+            snapshots.put(fulfillment.getOrderId(), toSnapshot(fulfillment));
+        }
+        return snapshots;
     }
 
     private OrderFulfillmentSnapshot toSnapshot(OrderFulfillment fulfillment) {

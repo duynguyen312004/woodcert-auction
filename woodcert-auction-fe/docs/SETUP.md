@@ -1,10 +1,10 @@
 # Setup
 
-Last updated: 2026-05-25
+Last updated: 2026-06-13
 
 ## Prerequisites
 
-- Node.js 20+
+- Node.js 22.13+
 - pnpm 11.x (`packageManager` currently pins `pnpm@11.0.9`)
 - Docker Desktop if running backend dependencies through Docker
 
@@ -52,8 +52,9 @@ Required backend capabilities:
 
 - The app is a Vite static SPA.
 - Production target remains static files served by nginx.
-- Docker/nginx production files are not fully finalized in the current FE tree.
-- Backend auction runtime exists, but FE bidding/detail websocket integration is still pending.
+- Production Docker and SPA nginx files are available in the FE tree.
+- Buyer bidding and seller auction monitoring use the shared SockJS/STOMP integration.
+- Production Vite URLs are built as same-origin `/api/v1` and `/ws-auction`.
 
 ## Source Docs
 

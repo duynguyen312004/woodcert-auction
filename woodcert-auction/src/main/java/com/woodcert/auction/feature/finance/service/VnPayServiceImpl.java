@@ -24,7 +24,6 @@ import org.springframework.transaction.support.TransactionTemplate;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.math.BigDecimal;
-import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -292,16 +291,7 @@ public class VnPayServiceImpl implements VnPayService {
     }
 
     private boolean isConfirmOnReturnAllowed() {
-        if (!properties.isConfirmOnReturnEnabled()) {
-            return false;
-        }
-        try {
-            String host = URI.create(properties.getReturnUrl()).getHost();
-            return "localhost".equalsIgnoreCase(host) || "127.0.0.1".equals(host);
-        } catch (Exception ex) {
-            log.warn("VNPay confirm-on-return disabled because return-url is invalid");
-            return false;
-        }
+        return properties.isConfirmOnReturnEnabled();
     }
 
     private boolean hasText(String value) {

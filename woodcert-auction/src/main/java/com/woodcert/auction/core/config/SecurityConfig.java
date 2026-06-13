@@ -62,6 +62,8 @@ public class SecurityConfig {
     };
 
     private static final String[] PUBLIC_GET_ENDPOINTS = {
+            "/actuator/health",
+            "/actuator/health/**",
             "/api/v1/locations/**",
             "/api/v1/auth/verify-email",
             "/api/v1/auth/csrf",

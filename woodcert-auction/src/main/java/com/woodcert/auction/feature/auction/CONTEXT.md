@@ -1,43 +1,31 @@
-# Auction Feature Context
+# Auction Module
 
 ## Responsibility
-`feature.auction` owns auction sessions, bids, participants, Redis runtime state, scheduler activation/closure, and deposit settlement.
 
-It does not own post-sale order, shipping, payout, or dispute lifecycle. A successful auction becomes an order through the order-source adapter boundary.
+`auction` owns sessions, participants, bids, Redis runtime state, activation/closure scheduling, deposit settlement, and buyer/seller auction read models.
 
-## Internal Layout
-- `command.AuctionCommandService`: create, cancel, register.
-- `query.AuctionQueryService`: public and seller auction reads.
-- `query.BuyerAuctionQueryService`: buyer participation dashboard reads.
-- `assembler.AuctionResponseAssembler`: DTO mapping only; no repositories.
-- `runtime.AuctionRuntimeSnapshotService`: Redis runtime snapshot overlay.
-- `policy.AuctionPolicy`: auction validation rules.
-- `order.AuctionOrderSourceAdapter`: adapter from auction source data into `feature.order`.
+## Key Components
 
-## Order Boundary
-After an `ENDED_SUCCESS` session has no remaining `FROZEN` participants, `AuctionSettlementService` calls:
+- Command, query, assembler, policy, runtime snapshot, scheduler, and settlement services.
+- Redis Lua validation for bidding and anti-sniper extension.
+- STOMP/SockJS broadcasts for live auction updates.
+- `AuctionOrderSourceAdapter` bridges successful auctions into source-agnostic orders.
 
-```java
-orderService.createFromSource(OrderSourceType.AUCTION, auctionSessionId)
-```
+## Boundary Rules
 
-`OrderService` must not query auction repositories directly. Auction-specific behavior is isolated in `AuctionOrderSourceAdapter`:
-- source snapshot: buyer, seller, product, final price, applied deposit.
-- order created callback: product sale status -> `PENDING_ORDER`.
-- non-payment canceled callback: winner participant -> `CONFISCATED`, product -> `AVAILABLE`.
-- order completed callback: product -> `SOLD`.
+- Auction does not own post-sale payment, shipping, payout, or dispute state.
+- Order does not query auction repositories; source behavior stays in the adapter.
+- Public responses never expose reserve price.
+- Only registered participants with frozen deposits may bid.
 
-## Runtime Rules
-- `WAITING`, `ENDED_SUCCESS`, `ENDED_FAILED`, and `CANCELED` are MySQL-owned states.
-- `ACTIVE` live price/end time are Redis-owned with MySQL fallback snapshots.
-- Public default statuses are `WAITING` and `ACTIVE`.
-- Public explicit status filters may include only `WAITING`, `ACTIVE`, `ENDED_SUCCESS`.
-- Seller of the product cannot register or bid.
-- Only participants with `DepositStatus.FROZEN` can bid.
-- Auction close settlement only moves deposits to `REFUNDED` or `DEDUCTED`; `CONFISCATED` is applied later by order non-payment callback.
+## Lifecycle And Contracts
 
-## Finance Contract
-Auction wallet operation keys are deterministic and idempotent:
-- Register freeze: `auction:register:freeze:{auctionId}:{userId}`
-- Close refund: `auction:close:refund:{auctionId}:{userId}`
-- Close deduct: `auction:close:deduct:{auctionId}:{winnerUserId}`
+- MySQL owns terminal and waiting states; Redis owns active price and end-time state.
+- Scheduler activates due sessions and closes sessions using Redis with DB fallback.
+- Settlement refunds losers and captures the winner deposit before creating an order.
+- Wallet operation keys are deterministic and idempotent.
+
+## Known Limitations
+
+- Accepted bid persistence and DB snapshot synchronization are best-effort after Redis acceptance by product design.
+- A repair path exists for settlement, but rare close-time partial failures still require operational review.
