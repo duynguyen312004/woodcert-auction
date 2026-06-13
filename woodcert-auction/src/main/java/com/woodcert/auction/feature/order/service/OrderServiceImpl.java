@@ -9,8 +9,6 @@ import com.woodcert.auction.feature.finance.entity.WalletReferenceType;
 import com.woodcert.auction.feature.finance.service.PlatformRevenueService;
 import com.woodcert.auction.feature.finance.service.WalletService;
 import com.woodcert.auction.feature.finance.support.FinanceOperationKeys;
-import com.woodcert.auction.feature.identity.service.BuyerOrderProfileQueryService;
-import com.woodcert.auction.feature.identity.service.BuyerOrderProfileSnapshot;
 import com.woodcert.auction.feature.identity.service.ShippingAddressQueryService;
 import com.woodcert.auction.feature.identity.service.ShippingAddressSnapshot;
 import com.woodcert.auction.feature.order.config.OrderProperties;
@@ -34,11 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.EnumMap;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -53,7 +47,9 @@ public class OrderServiceImpl implements OrderService {
     private final OrderFeeCalculator feeCalculator;
     private final OrderFulfillmentPort fulfillmentPort;
     private final ShippingAddressQueryService shippingAddressQueryService;
-    private final BuyerOrderProfileQueryService buyerOrderProfileQueryService;
+    private final OrderRefundCalculator refundCalculator;
+    private final OrderResponseAssembler responseAssembler;
+    private final SellerSalesSummaryService sellerSalesSummaryService;
     private final Map<OrderSourceType, OrderSourceAdapter> sourceAdaptersByType;
 
     public OrderServiceImpl(
@@ -65,7 +61,9 @@ public class OrderServiceImpl implements OrderService {
             OrderFeeCalculator feeCalculator,
             OrderFulfillmentPort fulfillmentPort,
             ShippingAddressQueryService shippingAddressQueryService,
-            BuyerOrderProfileQueryService buyerOrderProfileQueryService,
+            OrderRefundCalculator refundCalculator,
+            OrderResponseAssembler responseAssembler,
+            SellerSalesSummaryService sellerSalesSummaryService,
             List<OrderSourceAdapter> sourceAdapters) {
         this.orderRepository = orderRepository;
         this.walletService = walletService;
@@ -75,7 +73,9 @@ public class OrderServiceImpl implements OrderService {
         this.feeCalculator = feeCalculator;
         this.fulfillmentPort = fulfillmentPort;
         this.shippingAddressQueryService = shippingAddressQueryService;
-        this.buyerOrderProfileQueryService = buyerOrderProfileQueryService;
+        this.refundCalculator = refundCalculator;
+        this.responseAssembler = responseAssembler;
+        this.sellerSalesSummaryService = sellerSalesSummaryService;
         this.sourceAdaptersByType = indexSourceAdapters(sourceAdapters);
     }
 
@@ -129,24 +129,22 @@ public class OrderServiceImpl implements OrderService {
             throw new AppException(ErrorCode.ORDER_PAYMENT_DEADLINE_EXCEEDED);
         }
 
-        ShippingAddressSnapshot shippingAddress =
-                shippingAddressQueryService.getOwnedAddressSnapshot(buyerId, addressId);
+        ShippingAddressSnapshot shippingAddress = shippingAddressQueryService.getOwnedAddressSnapshot(buyerId,
+                addressId);
         applyShippingAddress(order, shippingAddress);
 
         if (order.getRemainingAmount().compareTo(BigDecimal.ZERO) > 0) {
-            walletService.withdrawFunds(
+            walletService.payOrder(
                     buyerId,
                     FinanceOperationKeys.orderPayment(order.getId(), buyerId),
                     order.getRemainingAmount(),
-                    order.getId(),
-                    WalletReferenceType.ORDER
-            );
+                    order.getId());
         }
         order.setStatus(OrderStatus.PAID);
         order.setPaidAt(Instant.now());
         OrderEntity saved = orderRepository.save(order);
         fulfillmentPort.ensurePendingShipment(saved);
-        return toRes(saved);
+        return responseAssembler.toRes(saved);
     }
 
     @Override
@@ -157,7 +155,7 @@ public class OrderServiceImpl implements OrderService {
         if (!userId.equals(order.getBuyerId()) && !userId.equals(order.getSellerId())) {
             throw new AppException(ErrorCode.ORDER_NOT_OWNED);
         }
-        return toRes(order);
+        return responseAssembler.toRes(order);
     }
 
     @Override
@@ -167,7 +165,7 @@ public class OrderServiceImpl implements OrderService {
         var orders = status == null
                 ? orderRepository.findByBuyerIdOrderByCreatedAtDescIdDesc(buyerId, pageable)
                 : orderRepository.findByBuyerIdAndStatusOrderByCreatedAtDescIdDesc(buyerId, status, pageable);
-        return PaginationResponse.of(orders.map(this::toListRes));
+        return PaginationResponse.of(orders.map(responseAssembler::toListRes));
     }
 
     @Override
@@ -177,7 +175,7 @@ public class OrderServiceImpl implements OrderService {
         var orders = status == null
                 ? orderRepository.findBySellerIdOrderByCreatedAtDescIdDesc(sellerId, pageable)
                 : orderRepository.findBySellerIdAndStatusOrderByCreatedAtDescIdDesc(sellerId, status, pageable);
-        return PaginationResponse.of(orders.map(this::toListRes));
+        return PaginationResponse.of(orders.map(responseAssembler::toListRes));
     }
 
     @Override
@@ -195,72 +193,14 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional(readOnly = true)
     public SellerSalesSummaryRes getSellerSalesSummary(String sellerId, String rangeValue) {
-        SellerSalesRange range = SellerSalesRange.fromApiValue(rangeValue);
-        Instant now = Instant.now();
-        List<OrderEntity> orders = new ArrayList<>(range == SellerSalesRange.ALL
-                ? orderRepository.findAllSellerRealizedOrders(sellerId, OrderStatus.COMPLETED)
-                : orderRepository.findSellerRealizedOrders(
-                        sellerId,
-                        OrderStatus.COMPLETED,
-                        range.from(now)));
-
-        BigDecimal grossSales = moneyZero();
-        BigDecimal platformCommission = moneyZero();
-        BigDecimal sellerPayout = moneyZero();
-        BigDecimal forfeitedIncome = moneyZero();
-        long completedOrders = 0L;
-        Map<LocalDate, DailyAccumulator> daily = new LinkedHashMap<>();
-        ZoneId businessZone = ZoneId.of("Asia/Ho_Chi_Minh");
-
-        orders.sort((left, right) -> realizedAt(left).compareTo(realizedAt(right)));
-        for (OrderEntity order : orders) {
-            LocalDate date = realizedAt(order).atZone(businessZone).toLocalDate();
-            DailyAccumulator accumulator = daily.computeIfAbsent(date, ignored -> new DailyAccumulator());
-            if (order.getStatus() == OrderStatus.COMPLETED) {
-                completedOrders++;
-                grossSales = grossSales.add(money(order.getFinalPrice()));
-                platformCommission = platformCommission.add(money(order.getPlatformCommissionAmount()));
-                sellerPayout = sellerPayout.add(money(order.getSellerPayoutAmount()));
-                accumulator.grossSales = accumulator.grossSales.add(money(order.getFinalPrice()));
-                accumulator.platformCommission =
-                        accumulator.platformCommission.add(money(order.getPlatformCommissionAmount()));
-                accumulator.sellerPayout = accumulator.sellerPayout.add(money(order.getSellerPayoutAmount()));
-            }
-            BigDecimal forfeited = money(order.getForfeitedDepositSellerAmount());
-            forfeitedIncome = forfeitedIncome.add(forfeited);
-            accumulator.forfeitedIncome = accumulator.forfeitedIncome.add(forfeited);
-        }
-
-        List<SellerSalesSummaryRes.DailySales> dailySales = daily.entrySet().stream()
-                .map(entry -> {
-                    DailyAccumulator value = entry.getValue();
-                    return new SellerSalesSummaryRes.DailySales(
-                            entry.getKey(),
-                            value.grossSales,
-                            value.platformCommission,
-                            value.sellerPayout,
-                            value.forfeitedIncome,
-                            value.sellerPayout.add(value.forfeitedIncome));
-                })
-                .toList();
-
-        return new SellerSalesSummaryRes(
-                range.apiValue(),
-                grossSales,
-                platformCommission,
-                sellerPayout,
-                forfeitedIncome,
-                sellerPayout.add(forfeitedIncome),
-                completedOrders,
-                dailySales
-        );
+        return sellerSalesSummaryService.getSellerSalesSummary(sellerId, rangeValue);
     }
 
     @Override
     @Transactional(readOnly = true)
     public OrderSummaryRes findSummaryBySource(OrderSourceType sourceType, Long sourceId) {
         return orderRepository.findBySourceTypeAndSourceId(sourceType, sourceId)
-                .map(this::toSummaryRes)
+                .map(responseAssembler::toSummaryRes)
                 .orElse(null);
     }
 
@@ -281,13 +221,11 @@ public class OrderServiceImpl implements OrderService {
         BigDecimal sellerAmount = feeCalculator.money(order.getDepositAmount().subtract(platformFee));
 
         if (sellerAmount.compareTo(BigDecimal.ZERO) > 0) {
-            walletService.depositFunds(
+            walletService.creditSellerForfeitCompensation(
                     order.getSellerId(),
                     FinanceOperationKeys.orderForfeitSeller(order.getId()),
                     sellerAmount,
-                    order.getId(),
-                    WalletReferenceType.ORDER
-            );
+                    order.getId());
         }
         if (platformFee.compareTo(BigDecimal.ZERO) > 0) {
             platformRevenueService.recordRevenue(
@@ -296,8 +234,7 @@ public class OrderServiceImpl implements OrderService {
                     order.getBuyerId(),
                     WalletReferenceType.ORDER,
                     order.getId(),
-                    FinanceOperationKeys.orderForfeitPlatform(order.getId())
-            );
+                    FinanceOperationKeys.orderForfeitPlatform(order.getId()));
         }
 
         order.setStatus(OrderStatus.CANCELED);
@@ -347,13 +284,13 @@ public class OrderServiceImpl implements OrderService {
             throw new AppException(ErrorCode.ORDER_INVALID_STATUS);
         }
 
-        OrderFulfillmentSnapshot fulfillment = fulfillmentSnapshot(order.getId());
+        OrderFulfillmentSnapshot fulfillment = fulfillmentPort.findSnapshotByOrderId(order.getId()).orElse(null);
         if (fulfillment == null || !"SHIPPED".equals(fulfillment.status())) {
             throw new AppException(ErrorCode.ORDER_INVALID_STATUS);
         }
 
         order.setStatus(OrderStatus.DISPUTED);
-        return toRes(orderRepository.save(order));
+        return responseAssembler.toRes(orderRepository.save(order));
     }
 
     @Override
@@ -366,7 +303,7 @@ public class OrderServiceImpl implements OrderService {
         }
 
         order.setStatus(OrderStatus.FULFILLING);
-        return toRes(orderRepository.save(order));
+        return responseAssembler.toRes(orderRepository.save(order));
     }
 
     @Override
@@ -377,7 +314,7 @@ public class OrderServiceImpl implements OrderService {
         if (order.getStatus() != OrderStatus.DISPUTED) {
             throw new AppException(ErrorCode.ORDER_INVALID_STATUS);
         }
-        return toRes(completeOrder(order));
+        return responseAssembler.toRes(completeOrder(order));
     }
 
     @Override
@@ -389,21 +326,22 @@ public class OrderServiceImpl implements OrderService {
             throw new AppException(ErrorCode.ORDER_INVALID_STATUS);
         }
 
-        walletService.depositFunds(
+        BigDecimal refundAmount = refundCalculator.disputeBuyerRefundAmount(order);
+        walletService.refundOrder(
                 order.getBuyerId(),
                 FinanceOperationKeys.orderDisputeRefund(order.getId()),
-                order.getFinalPrice(),
-                order.getId(),
-                WalletReferenceType.ORDER
-        );
+                refundAmount,
+                order.getId());
 
         Instant now = Instant.now();
         order.setStatus(OrderStatus.CANCELED);
         order.setCanceledAt(now);
         order.setCancelReason("DISPUTE_BUYER_WINS");
+        order.setBuyerRefundAmount(refundAmount);
+        order.setRefundedAt(now);
         OrderEntity saved = orderRepository.save(order);
         adapterFor(saved.getSourceType()).onDisputeBuyerWon(saved);
-        return toRes(saved);
+        return responseAssembler.toRes(saved);
     }
 
     private OrderEntity completeOrder(OrderEntity order) {
@@ -412,13 +350,11 @@ public class OrderServiceImpl implements OrderService {
         BigDecimal payout = feeCalculator.money(order.getFinalPrice().subtract(commission));
 
         if (payout.compareTo(BigDecimal.ZERO) > 0) {
-            walletService.depositFunds(
+            walletService.creditSellerPayout(
                     order.getSellerId(),
                     FinanceOperationKeys.orderCompletionPayout(order.getId()),
                     payout,
-                    order.getId(),
-                    WalletReferenceType.ORDER
-            );
+                    order.getId());
         }
         if (commission.compareTo(BigDecimal.ZERO) > 0) {
             platformRevenueService.recordRevenue(
@@ -427,8 +363,7 @@ public class OrderServiceImpl implements OrderService {
                     order.getSellerId(),
                     WalletReferenceType.ORDER,
                     order.getId(),
-                    FinanceOperationKeys.orderCompletionCommission(order.getId())
-            );
+                    FinanceOperationKeys.orderCompletionCommission(order.getId()));
         }
 
         order.setPlatformCommissionRate(rate);
@@ -454,33 +389,13 @@ public class OrderServiceImpl implements OrderService {
         return sourceAdaptersByType.get(sourceType);
     }
 
-    private static Map<OrderSourceType, OrderSourceAdapter> indexSourceAdapters(List<OrderSourceAdapter> sourceAdapters) {
+    private static Map<OrderSourceType, OrderSourceAdapter> indexSourceAdapters(
+            List<OrderSourceAdapter> sourceAdapters) {
         Map<OrderSourceType, OrderSourceAdapter> adapters = new EnumMap<>(OrderSourceType.class);
         for (OrderSourceAdapter adapter : sourceAdapters) {
             adapters.put(adapter.sourceType(), adapter);
         }
         return adapters;
-    }
-
-    private OrderRes toRes(OrderEntity order) {
-        return OrderRes.fromEntity(order, fulfillmentSnapshot(order.getId()), buyerSnapshot(order.getBuyerId()));
-    }
-
-    private OrderListRes toListRes(OrderEntity order) {
-        return OrderListRes.fromEntity(order, fulfillmentSnapshot(order.getId()));
-    }
-
-    private OrderSummaryRes toSummaryRes(OrderEntity order) {
-        return OrderSummaryRes.fromEntity(order, fulfillmentSnapshot(order.getId()));
-    }
-
-    private OrderFulfillmentSnapshot fulfillmentSnapshot(Long orderId) {
-        return fulfillmentPort.findSnapshotByOrderId(orderId).orElse(null);
-    }
-
-    private BuyerOrderProfileSnapshot buyerSnapshot(String buyerId) {
-        var buyer = buyerOrderProfileQueryService.findBuyerProfile(buyerId);
-        return buyer != null ? buyer.orElse(null) : null;
     }
 
     private void applyShippingAddress(OrderEntity order, ShippingAddressSnapshot address) {
@@ -493,31 +408,6 @@ public class OrderServiceImpl implements OrderService {
         order.setShippingDistrictName(address.districtName());
         order.setShippingProvinceCode(address.provinceCode());
         order.setShippingProvinceName(address.provinceName());
-    }
-
-    private Instant realizedAt(OrderEntity order) {
-        if (order.getStatus() == OrderStatus.COMPLETED && order.getCompletedAt() != null) {
-            return order.getCompletedAt();
-        }
-        if (order.getCanceledAt() != null) {
-            return order.getCanceledAt();
-        }
-        return order.getUpdatedAt() != null ? order.getUpdatedAt() : order.getCreatedAt();
-    }
-
-    private BigDecimal money(BigDecimal value) {
-        return feeCalculator.money(value);
-    }
-
-    private BigDecimal moneyZero() {
-        return feeCalculator.money(BigDecimal.ZERO);
-    }
-
-    private static class DailyAccumulator {
-        private BigDecimal grossSales = BigDecimal.ZERO.setScale(2);
-        private BigDecimal platformCommission = BigDecimal.ZERO.setScale(2);
-        private BigDecimal sellerPayout = BigDecimal.ZERO.setScale(2);
-        private BigDecimal forfeitedIncome = BigDecimal.ZERO.setScale(2);
     }
 
     private OrderStatusCountsRes statusCounts(List<Object[]> rows) {

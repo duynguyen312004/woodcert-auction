@@ -1,14 +1,19 @@
 # Database Schema
 
-Current implementation note (2026-06-06): identity, media, catalog/appraisal, finance/wallet/VNPay, auction/bidding, seller order snapshots/revenue, fulfillment, dispute, admin category/appraiser operations, certificate lookup, Flyway migrations, CSRF refresh protection, and server-time sync are implemented by backend code.
+Current implementation note (2026-06-11): the compact V1-V3 reset baseline is verified on MySQL 8 through the Docker-backed Flyway integration test.
 
 > MySQL database design for WoodCert Auction Platform.
 > Update this file whenever schema changes.
 
-## Seller Portal v1 Order Snapshots
+## Fresh Database Baseline
 
-Flyway `V6__seller_portal_v1_order_snapshots.sql` adds nullable snapshot columns to `orders` for
-backward compatibility:
+The project intentionally targets a clean database reset before final testing:
+
+- `V1__baseline_schema.sql` creates the complete current schema, including order snapshots, refund audit fields, capability status, and admin audit logs.
+- `V2__seed_reference_data.sql` seeds roles, permissions, role mappings, and categories.
+- `V3__seed_demo_users.sql` seeds separate admin and appraiser accounts.
+
+Order snapshots include:
 
 - Product: `product_title`, `product_image_url`
 - Recipient: `shipping_receiver_name`, `shipping_phone_number`
@@ -495,7 +500,7 @@ Composite PK: (role_id, permission_id)
 | is_authentic | BOOLEAN | NOT NULL | Hàng thật / không đạt |
 | appraiser_notes | TEXT | NULLABLE | Ghi chú kiểm định |
 | seller_accuracy | DECIMAL(3,2) | NOT NULL | Điểm trung thực seller (1-5), dùng dấu chấm thập phân như 4.5 |
-| digital_signature | VARCHAR(255) | NOT NULL | Hash xác thực |
+| integrity_hash | VARCHAR(255) | NOT NULL | Hash xác thực |
 | appraised_at | TIMESTAMP | NOT NULL | Thời điểm duyệt |
 
 **Indexes:**
@@ -547,7 +552,7 @@ Composite PK: (role_id, permission_id)
 | id | BIGINT | PK, AUTO_INCREMENT | |
 | wallet_id | BIGINT | NOT NULL, FK → wallets(id) | |
 | amount | DECIMAL(19,2) | NOT NULL | Số tiền +/- |
-| type | VARCHAR(20) | NOT NULL | Enum: DEPOSIT, WITHDRAW, FREEZE, UNFREEZE, PAYMENT |
+| type | VARCHAR(40) | NOT NULL | Business transaction type; see `WalletTransactionType` |
 | reference_id | BIGINT | NULLABLE | ID phiên đấu giá / đơn hàng / hệ thống |
 | reference_type | VARCHAR(20) | NULLABLE | Enum: AUCTION, ORDER, SYSTEM, VNPAY_DEPOSIT |
 | status | VARCHAR(20) | NOT NULL | Enum: SUCCESS, FAILED, PENDING |
@@ -572,7 +577,7 @@ Composite PK: (role_id, permission_id)
 | operation_key | VARCHAR(200) | NOT NULL, UNIQUE | Idempotency key cho business wallet mutation |
 | wallet_id | BIGINT | NOT NULL, FK → wallets(id) | |
 | amount | DECIMAL(19,2) | NOT NULL | Số tiền business đã normalize |
-| type | VARCHAR(20) | NOT NULL | Enum: DEPOSIT, WITHDRAW, FREEZE, UNFREEZE, PAYMENT |
+| type | VARCHAR(40) | NOT NULL | Business transaction type; see `WalletTransactionType` |
 | reference_id | BIGINT | NULLABLE | ID auction/order/system reference |
 | reference_type | VARCHAR(20) | NOT NULL | Enum: AUCTION, ORDER, SYSTEM, VNPAY_DEPOSIT |
 | status | VARCHAR(20) | NOT NULL | Enum: SUCCESS, FAILED, PENDING |
@@ -621,7 +626,7 @@ Composite PK: (role_id, permission_id)
 **Notes:**
 
 - `txn_ref` được lock pessimistic khi xử lý IPN để tránh xử lý trùng.
-- IPN cập nhật trạng thái deposit và tạo wallet transaction `DEPOSIT` với `reference_type = VNPAY_DEPOSIT`.
+- IPN cập nhật trạng thái deposit và tạo wallet transaction `WALLET_TOP_UP` với `reference_type = VNPAY_DEPOSIT`.
 
 ### AUCTION & COMMERCE LAYER
 
@@ -730,7 +735,7 @@ roles
 ### Example Permissions
 
 - CREATE_BID
-- JOIN_AUCTION
+- REGISTER_AUCTION
 - CREATE_PRODUCT
 - SUBMIT_APPRAISAL_REQUEST
 - APPROVE_PRODUCT
@@ -759,9 +764,9 @@ Flyway `V2__seed_reference_data.sql` seeds a flat category set:
 - Khác (`khac`)
 ### Table List
 
-Total tables: 31
+Total tables: 33
 
-**Infrastructure & Location (14 tables):**
+**Infrastructure & Location (16 tables):**
 - users
 - media_assets
 - addresses
@@ -776,6 +781,8 @@ Total tables: 31
 - refresh_tokens
 - email_verification_tokens
 - password_reset_tokens
+- user_capability_statuses
+- admin_audit_logs
 
 **Catalog & Appraisal (5 tables):**
 - categories
@@ -804,13 +811,14 @@ Total tables: 31
 **Dispute Evidence (1 table):**
 - dispute_evidence
 
-**Note:** Total 31 tables including all join tables, master data, and operational tables. Updated count reflects `email_verification_tokens`, `password_reset_tokens`, `media_assets`, `platform_revenue_transactions`, the location hierarchy, token/session management tables, and dispute evidence.
+**Note:** Total 33 tables including join tables, master data, operational tables, capability status, admin audit, and dispute evidence.
 
 ### Recommended Schema Strategy
 
 - **base/prod:** Flyway enabled, Hibernate `ddl-auto=validate`, SQL init disabled
 - **local:** use an ignored `application-local.yml` copied from `application-local.example.yml`
 - **Production migration:** Flyway only; do not use `data.sql` bootstrap
+- **Final-project reset:** start with an empty schema and run V1-V3. This compact baseline is not an upgrade path for an older deployed database.
 
 ### Recommended Cleanup Jobs
 

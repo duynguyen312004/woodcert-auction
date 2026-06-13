@@ -1,6 +1,11 @@
+import { lazy } from "react";
 import type { RouteObject } from "react-router";
 
-import { CertificatePage } from "./pages/CertificatePage";
+const CertificatePage = lazy(() =>
+  import("./pages/CertificatePage").then((module) => ({
+    default: module.CertificatePage,
+  })),
+);
 
 export const certificateRoutes: RouteObject[] = [
   { path: "certificates", element: <CertificatePage /> },

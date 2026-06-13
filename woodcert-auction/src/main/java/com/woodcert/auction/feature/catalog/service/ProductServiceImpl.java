@@ -188,12 +188,11 @@ public class ProductServiceImpl implements ProductService {
 
         // Bước 2: Chuyển trạng thái sang hàng chờ thẩm định và ghi thời điểm nộp.
         FinanceOperationKey operationKey = FinanceOperationKeys.appraisalSubmissionFee(productId, sellerId);
-        walletService.withdrawFunds(
+        walletService.chargeAppraisalFee(
                 sellerId,
                 operationKey,
                 financeProperties.getAppraisalFee(),
-                productId,
-                WalletReferenceType.APPRAISAL
+                productId
         );
         platformRevenueService.recordRevenue(
                 PlatformRevenueType.APPRAISAL_FEE,

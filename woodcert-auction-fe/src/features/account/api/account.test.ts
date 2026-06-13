@@ -181,4 +181,54 @@ describe("accountApi avatar endpoints", () => {
       }),
     ).resolves.toMatchObject({ storeName: "WoodCert Studio" });
   });
+
+  it("calls the address update, default and delete endpoints", async () => {
+    const calls: string[] = [];
+    const updatedAddress = {
+      id: 42,
+      receiverName: "Nguyễn Văn A",
+      phoneNumber: "0911222333",
+      streetAddress: "Số 20 phố Gỗ",
+      provinceCode: "01",
+      districtCode: "001",
+      wardCode: "00001",
+      isDefault: true,
+    };
+    const adapter: AxiosAdapter = async (config) => {
+      calls.push(`${config.method}:${config.url}`);
+      if (config.method === "put") {
+        expect(parseRequestBody(config)).toEqual({
+          receiverName: "Nguyễn Văn A",
+          phoneNumber: "0911222333",
+          streetAddress: "Số 20 phố Gỗ",
+          provinceCode: "01",
+          districtCode: "001",
+          wardCode: "00001",
+        });
+      }
+      return createResponse(
+        config,
+        200,
+        createApiResponse(config.method === "delete" ? null : updatedAddress),
+      );
+    };
+    apiClient.defaults.adapter = adapter;
+
+    await accountApi.updateAddress(42, {
+      receiverName: "Nguyễn Văn A",
+      phoneNumber: "0911222333",
+      streetAddress: "Số 20 phố Gỗ",
+      provinceCode: "01",
+      districtCode: "001",
+      wardCode: "00001",
+    });
+    await accountApi.setDefaultAddress(42);
+    await accountApi.deleteAddress(42);
+
+    expect(calls).toEqual([
+      "put:/addresses/42",
+      "patch:/addresses/42/default",
+      "delete:/addresses/42",
+    ]);
+  });
 });

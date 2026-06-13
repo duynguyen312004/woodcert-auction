@@ -2,8 +2,6 @@ package com.woodcert.auction.feature.identity.service;
 
 import com.woodcert.auction.feature.identity.dto.request.LoginReq;
 import com.woodcert.auction.feature.identity.dto.request.RegisterReq;
-import com.woodcert.auction.feature.identity.dto.response.AuthRes;
-import com.woodcert.auction.feature.identity.dto.response.RefreshRes;
 import com.woodcert.auction.feature.identity.dto.response.RegisterRes;
 
 /**
@@ -15,7 +13,7 @@ public interface AuthService {
     /**
      * Authenticate user by email + password, return tokens.
      */
-    AuthRes login(LoginReq request);
+    IssuedAuthTokens login(LoginReq request);
 
     /**
      * Register a new user account (default role: ROLE_BIDDER, status: UNVERIFIED).
@@ -39,7 +37,7 @@ public interface AuthService {
      * @param rawRefreshToken the raw (unhashed) refresh token
      * @return new token pair
      */
-    RefreshRes refresh(String rawRefreshToken);
+    RotatedAuthTokens refresh(String rawRefreshToken);
 
     /**
      * Logout — revoke the refresh token.

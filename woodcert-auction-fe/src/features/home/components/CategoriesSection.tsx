@@ -1,40 +1,36 @@
 import { ArrowRight } from "lucide-react";
 import { Link } from "react-router";
 
+import categoryRelief from "@/assets/images/mock/category-relief.webp";
+import categorySculpture from "@/assets/images/mock/category-sculpture.webp";
+import categorySpiritual from "@/assets/images/mock/category-spiritual.webp";
+import categoryVases from "@/assets/images/mock/category-vases.webp";
 import { useCategories } from "@/features/catalog";
 
-const defaultImage =
-  "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=600&h=450&q=80";
+const featuredCategorySlugs = [
+  "tuong-dieu-khac-go",
+  "tranh-phu-dieu-go",
+  "do-tho-tam-linh",
+  "binh-loc-binh-go",
+] as const;
 
 const categoryImages: Record<string, string> = {
-  "tuong-dieu-khac-go":
-    "https://images.unsplash.com/photo-1606744824163-985d376605aa?auto=format&fit=crop&w=600&h=450&q=80",
-  "tranh-phu-dieu-go":
-    "https://images.unsplash.com/photo-1610701596007-11502861dcfa?auto=format&fit=crop&w=600&h=450&q=80",
-  "do-tho-tam-linh":
-    "https://images.unsplash.com/photo-1596462502278-27bfdc403348?auto=format&fit=crop&w=600&h=450&q=80",
-  "binh-loc-binh-go":
-    "https://images.unsplash.com/photo-1612196808214-b8e1d6145a8c?auto=format&fit=crop&w=600&h=450&q=80",
-  "noi-that-nghe-thuat":
-    "https://images.unsplash.com/photo-1538688525198-9b88f6f53126?auto=format&fit=crop&w=600&h=450&q=80",
-  "go-canh-nu-lua":
-    "https://images.unsplash.com/photo-1615873968403-89e068629265?auto=format&fit=crop&w=600&h=450&q=80",
-  "hop-khay-vat-pham-trang-tri":
-    "https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=600&h=450&q=80",
-  "trang-suc-phu-kien-go":
-    "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=600&h=450&q=80",
-  "tac-pham-suu-tam":
-    "https://images.unsplash.com/photo-1579783901586-d88db74b4fe4?auto=format&fit=crop&w=600&h=450&q=80",
-  khac: defaultImage,
+  "tuong-dieu-khac-go": categorySculpture,
+  "tranh-phu-dieu-go": categoryRelief,
+  "do-tho-tam-linh": categorySpiritual,
+  "binh-loc-binh-go": categoryVases,
 };
 
 export function getCategoryImage(slug: string): string {
-  return categoryImages[slug.toLowerCase()] ?? defaultImage;
+  return categoryImages[slug.toLowerCase()] ?? categorySculpture;
 }
 
 export function CategoriesSection() {
   const { data: categories, isLoading } = useCategories();
-  const displayItems = categories?.slice(0, 4) ?? [];
+  const displayItems =
+    featuredCategorySlugs
+      .map((slug) => categories?.find((category) => category.slug === slug))
+      .filter((category) => category !== undefined) ?? [];
 
   return (
     <section className="py-24 relative overflow-hidden bg-background select-none">

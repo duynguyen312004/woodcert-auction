@@ -44,10 +44,12 @@ const order = {
   sellerPayoutAmount: null,
   forfeitedDepositPlatformFeeAmount: null,
   forfeitedDepositSellerAmount: null,
+  buyerRefundAmount: null,
   paymentDeadline: "2026-06-11T10:13:00Z",
   paidAt: "2026-06-08T10:13:00Z",
   completedAt: null,
   canceledAt: null,
+  refundedAt: null,
   cancelReason: null,
   product: {
     id: 801,

@@ -8,9 +8,11 @@ export function useServerNow(intervalMs = 1000) {
 
   useEffect(() => {
     let mounted = true;
-    void syncServerTime().finally(() => {
-      if (mounted) setNow(getServerNow());
-    });
+    void syncServerTime()
+      .catch(() => undefined)
+      .finally(() => {
+        if (mounted) setNow(getServerNow());
+      });
 
     const id = window.setInterval(() => setNow(getServerNow()), intervalMs);
     return () => {

@@ -1,5 +1,8 @@
 import { Award } from "lucide-react";
 
+import contemporaryCarvingImage from "@/assets/images/mock/artisan-contemporary-carving.webp";
+import heritageSculptureImage from "@/assets/images/mock/artisan-heritage-sculpture.webp";
+
 const artisans = [
   {
     name: "Nguyễn Văn Trúc",
@@ -9,8 +12,7 @@ const artisans = [
     philosophy:
       "Đục một pho tượng Phật không chỉ là chạm khắc vào thớ gỗ, mà là đánh thức lòng từ bi ẩn sâu trong từng vân gỗ.",
     specialties: ["Tượng Phật Quy Mô Lớn", "Phục Dựng Di Sản", "Chất liệu Sưa, Trắc"],
-    image:
-      "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=600&h=800&q=80",
+    image: heritageSculptureImage,
     badgeColor: "bg-amber-500/10 text-amber-400 border-amber-500/20",
   },
   {
@@ -21,8 +23,7 @@ const artisans = [
     philosophy:
       "Gỗ mỹ nghệ đương đại đòi hỏi kỹ thuật chạm lọng tinh xảo của cha ông kết hợp với tư duy hình khối và hơi thở của thời đại.",
     specialties: ["Điêu Khắc Đương Đại", "Chạm Lọng Tinh Xảo", "Gỗ Lũa Nghệ Thuật"],
-    image:
-      "https://images.unsplash.com/photo-1606744824163-985d376605aa?auto=format&fit=crop&w=600&h=800&q=80",
+    image: contemporaryCarvingImage,
     badgeColor: "bg-primary/10 text-primary border-primary/20",
   },
 ];
@@ -94,7 +95,7 @@ export function ArtisanShowcase() {
               <div className="relative my-6 h-40 w-full overflow-hidden rounded-lg border border-white/5 bg-[#1a1a17]">
                 <img
                   src={artisan.image}
-                  alt={artisan.name}
+                  alt={`Minh họa chuyên môn chế tác của ${artisan.name}`}
                   className="h-full w-full object-cover object-center transition-transform duration-700 ease-out will-change-transform group-hover:scale-105 opacity-60 group-hover:opacity-85"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#141412] via-transparent to-transparent" />

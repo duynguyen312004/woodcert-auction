@@ -72,7 +72,7 @@ describe("resolveAuthenticatedRedirect", () => {
   it("does not send non-admin users back to admin routes", () => {
     expect(
       resolveAuthenticatedRedirect({
-        accessToken: createToken({ roles: ["ROLE_BIDDER"], permissions: ["JOIN_AUCTION"] }),
+        accessToken: createToken({ roles: ["ROLE_BIDDER"], permissions: ["REGISTER_AUCTION"] }),
         from: "/admin/revenue",
         roles: ["ROLE_BIDDER"],
       }),

@@ -1,7 +1,14 @@
+import { lazy } from "react";
 import type { RouteObject } from "react-router";
 
-import { AddressBookPage } from "./pages/AddressBookPage";
-import { AccountPage } from "./pages/AccountPage";
+const AccountPage = lazy(() =>
+  import("./pages/AccountPage").then((module) => ({ default: module.AccountPage })),
+);
+const AddressBookPage = lazy(() =>
+  import("./pages/AddressBookPage").then((module) => ({
+    default: module.AddressBookPage,
+  })),
+);
 
 export const accountRoutes: RouteObject[] = [
   { path: "account", element: <AccountPage /> },

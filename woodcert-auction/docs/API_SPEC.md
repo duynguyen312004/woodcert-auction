@@ -1,9 +1,9 @@
-﻿# API Specification
+# API Specification
 
 > All endpoints return `ApiResponse<T>` wrapper. Error responses created from `AppException` include nullable `errorCode` for machine-readable handling.
 > Update this file whenever endpoints change.
 >
-> Current implementation note (2026-06-03): auth, identity, media, catalog/appraisal, finance, auction, orders, fulfillment, disputes, admin category/appraiser operations, public certificate lookup, Flyway-seeded reference data, CSRF refresh protection, and server-time sync are implemented backend contracts.
+> Current implementation note (2026-06-11): auth, identity, media, catalog/appraisal, finance, auction, orders, fulfillment, disputes, admin operations, public certificate lookup, compact Flyway reset baseline, cookie-only refresh, CSRF protection, and server-time sync are implemented backend contracts.
 
 ---
 
@@ -24,7 +24,7 @@ Cookie-based refresh/logout uses double-submit CSRF. Browser clients should call
 
 ### POST /auth/login 🔓
 
-Login and receive tokens.
+Login and receive an access token. The refresh token is delivered only through an HttpOnly cookie.
 
 Request Body:
 
@@ -42,7 +42,6 @@ Success Response (200):
   "statusCode": 200,
   "data": {
     "accessToken": "eyJ...",
-    "refreshToken": "eyJ...",
     "roles": ["ROLE_BIDDER"]
   },
   "message": "Login successful",
@@ -241,12 +240,7 @@ Set-Cookie: XSRF-TOKEN=base64url-random-token; SameSite=Lax; Path=/api/v1/auth; 
 
 ### POST /auth/refresh 🔓
 
-Get a new access token using the refresh token.
-
-Sources (backend checks in order):
-
-- Request body refreshToken (mobile/non-browser explicit fallback)
-- Cookie refresh_token (Web/SPA; requires matching `X-XSRF-TOKEN`)
+Get a new access token using the `refresh_token` HttpOnly cookie. The request has no body and requires a matching `X-XSRF-TOKEN` header.
 
 Success Response (200):
 
@@ -254,8 +248,7 @@ Success Response (200):
 {
   "statusCode": 200,
   "data": {
-    "accessToken": "eyJ...(new)",
-    "refreshToken": "eyJ...(new)"
+    "accessToken": "eyJ...(new)"
   },
   "message": "Token refreshed",
   "timestamp": "2026-03-28T10:15:00"
@@ -266,8 +259,8 @@ Success Response (200):
 
 Errors:
 
-- 401: No refresh token provided, expired, or revoked
-- 403: Missing or mismatched CSRF token when using cookie refresh
+- 401: Refresh cookie missing, expired, or revoked
+- 403: Missing or mismatched CSRF token
 
 ### POST /auth/logout 🔒
 
@@ -286,7 +279,7 @@ Success Response (200):
 
 (Also clears cookie)
 
-Cookie-based logout requires matching `X-XSRF-TOKEN`; body refresh-token logout does not.
+Logout always requires a matching `X-XSRF-TOKEN`. The request body is empty.
 
 ## 1.1 System
 
@@ -628,7 +621,8 @@ Request Body:
 }
 ```
 
-(Note: If isDefault is true, backend will automatically set all other addresses of this user to false).
+The first address is always created as default. For later addresses, `isDefault=true` clears the
+previous default.
 
 Success Response (201):
 
@@ -653,6 +647,61 @@ Success Response (201):
 Errors:
 
 - 400: Invalid location hierarchy
+
+### PUT /addresses/{addressId} 🔒
+
+Update an address owned by the current user. Default selection is intentionally managed through the
+dedicated endpoint below.
+
+Request Body:
+
+```json
+{
+  "receiverName": "Người nhận mới",
+  "phoneNumber": "0988777666",
+  "streetAddress": "Số 20 phố Gỗ",
+  "provinceCode": "01",
+  "districtCode": "001",
+  "wardCode": "00001"
+}
+```
+
+Success Response (200): the updated address in the same shape as `GET /addresses`.
+
+Errors:
+
+- 400: Invalid request or location hierarchy
+- 404: Address does not exist or is not owned by the current user
+
+### PATCH /addresses/{addressId}/default 🔒
+
+Make an owned address the sole default address.
+
+Success Response (200): the selected address with `isDefault=true`.
+
+Errors:
+
+- 404: Address does not exist or is not owned by the current user
+
+### DELETE /addresses/{addressId} 🔒
+
+Delete an owned address. If the deleted address was default, the remaining address with the smallest
+ID becomes default. Existing order shipping snapshots are not changed.
+
+Success Response (200):
+
+```json
+{
+  "statusCode": 200,
+  "data": null,
+  "message": "Address deleted successfully",
+  "timestamp": "2026-06-11T10:00:00"
+}
+```
+
+Errors:
+
+- 404: Address does not exist or is not owned by the current user
 
 ## 5. Location Master Data
 
@@ -837,7 +886,7 @@ Success Response (200):
       "isAuthentic": true,
       "appraiserNotes": "Bề mặt và vân gỗ đồng nhất.",
       "sellerAccuracy": 5.0,
-      "digitalSignature": "abc123xyz...",
+      "integrityHash": "abc123xyz...",
       "appraisedAt": "2026-04-18T11:00:00",
       "proofImages": [
         {
@@ -995,8 +1044,8 @@ Notes:
 - `appraiserNotes` is required when rejecting
 - `sellerAccuracy` is required, uses dot decimal notation such as `4.5`, and is included in the seller reputation average
 - Seller `reputationScore` is recalculated from all appraisal `sellerAccuracy` values and rounded to 1 decimal place
-- `digitalSignature` is generated internally by the backend
-- `digitalSignature` hashes the final `certificateCode` and fixed `appraisedAt`
+- `integrityHash` is generated internally by the backend
+- `integrityHash` hashes the final `certificateCode` and fixed `appraisedAt`
 - Appraisers can fetch their queue, active claims, and reviewed workflow through `GET /products`
 
 ### POST /appraisals/images/upload-intent 🔒
@@ -1043,11 +1092,10 @@ Success Response (200):
 
 List wallet transaction history.
 If the wallet does not exist yet, the backend lazily creates it and returns an empty result.
-`amount` is a signed delta against the wallet's available balance:
-- `DEPOSIT` positive
-- `FREEZE` negative
-- `UNFREEZE` positive
-- `PAYMENT` negative
+`amount` is a signed delta against the wallet's available balance. Transaction types express business meaning:
+
+- Positive: `WALLET_TOP_UP`, `AUCTION_DEPOSIT_RELEASE`, `ORDER_REFUND`, `SELLER_PAYOUT`, `SELLER_FORFEIT_COMPENSATION`
+- Negative: `APPRAISAL_FEE`, `AUCTION_DEPOSIT_FREEZE`, `AUCTION_DEPOSIT_CAPTURE`, `ORDER_PAYMENT`
 
 Success Response (200):
 
@@ -1060,7 +1108,7 @@ Success Response (200):
       {
         "id": 1001,
         "amount": -5000000.00,
-        "type": "FREEZE",
+        "type": "AUCTION_DEPOSIT_FREEZE",
         "referenceId": 205,
         "referenceType": "AUCTION",
         "status": "SUCCESS",
@@ -1069,7 +1117,7 @@ Success Response (200):
       {
         "id": 1000,
         "amount": 20000000.00,
-        "type": "DEPOSIT",
+        "type": "WALLET_TOP_UP",
         "referenceId": 801,
         "referenceType": "VNPAY_DEPOSIT",
         "status": "SUCCESS",
@@ -1745,14 +1793,15 @@ This is the single source for listing users; appraiser and other admin pages lis
 
 Permission: `MANAGE_APPRAISERS`. Admin appraiser provisioning endpoints:
 
-- `POST /admin/appraisers` — create a new appraiser account (email, password, fullName, phoneNumber).
-- `PATCH /admin/appraisers/{userId}/demote` — revoke the `ROLE_APPRAISER` role.
+- `POST /admin/appraisers` - create a new appraiser-only account (email, password, fullName, phoneNumber). Existing emails are rejected; this endpoint never promotes an existing bidder/seller.
+- `PATCH /admin/appraisers/{userId}/ban` - suspend appraisal capability and release active claims.
+- `PATCH /admin/appraisers/{userId}/unban` - restore appraisal capability.
 
-Rules: demote is blocked while the user has an unexpired open appraisal claim. Listing appraisers uses `GET /admin/users?role=ROLE_APPRAISER` (the previous `GET /admin/appraisers` was removed).
+Account ban/unban remains under `/admin/users`. Listing appraisers uses `GET /admin/users?role=ROLE_APPRAISER`.
 
 ### GET /certificates/{certificateCode} 🔓
 
-Public certificate lookup. Response intentionally excludes internal appraiser notes and proof media.
+Public certificate lookup. A found record returns the stored `integrityHash` and certificate data; a missing code returns 404. The MVP hash is a SHA-256 integrity fingerprint, not a digital signature or blockchain proof. The response intentionally excludes internal appraiser notes and proof media.
 
 ## 13. WebSocket Channels (Real-time)
 

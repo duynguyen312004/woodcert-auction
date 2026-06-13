@@ -90,6 +90,12 @@ public class OrderEntity extends BaseEntity {
     @Column(name = "forfeited_deposit_seller_amount", precision = 19, scale = 2)
     private BigDecimal forfeitedDepositSellerAmount;
 
+    @Column(name = "buyer_refund_amount", precision = 19, scale = 2)
+    private BigDecimal buyerRefundAmount;
+
+    @Column(name = "refunded_at")
+    private Instant refundedAt;
+
     @Column(name = "shipping_receiver_name", length = 100)
     private String shippingReceiverName;
 

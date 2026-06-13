@@ -1,6 +1,6 @@
 # Identity - Implementation Context
 
-> Updated: 2026-05-25 | Session: docs-current-state-sync
+> Updated: 2026-06-11 | Session: final-project-hardening
 
 ## Module Responsibility
 
@@ -9,11 +9,11 @@
 ## Completed Scope
 
 - Auth APIs: login, register, verify email, resend verification, forgot password, reset password, refresh, logout.
-- Refresh-token rotation, refresh-token cleanup, cookie/body refresh support, and password-reset revocation.
+- Cookie-only HttpOnly refresh-token rotation, CSRF-protected refresh/logout, cleanup, and password-reset revocation.
 - Current-user profile APIs: `GET/PUT/PATCH /api/v1/users/me`.
 - Avatar APIs under identity with shared media upload/confirm/delete services.
 - Seller profile APIs: `GET/POST /api/v1/users/me/seller-profile`.
-- Address APIs and public location lookup APIs.
+- Full address-book CRUD/default APIs and public location lookup APIs.
 - `SellerSummaryQueryService` for auction read-model enrichment.
 - Seller reputation recalculation from catalog appraisal `sellerAccuracy`.
 
@@ -24,15 +24,18 @@
 - Refresh tokens are stored as hashes and rotated.
 - Users need a valid phone number before creating a seller profile.
 - A user can have at most one seller profile.
+- Only a bidder can create a seller profile; appraiser and admin accounts cannot become sellers.
+- Admin appraiser provisioning creates a new appraiser-only account and rejects existing emails.
 - Creating a seller profile requires re-login before the access token contains the new seller role.
 - Avatar business ownership stays in identity; `feature/media` only provides generic media services.
 - Addresses store province/district/ward codes and validate hierarchy in the service layer.
+- The first address is automatically default; deleting the default promotes the oldest remaining address.
+- Order shipping snapshots are immutable and do not change when an address-book entry is edited or deleted.
 
 ## Current Limits
 
-- No admin user-management/provisioning UI/API is implemented yet.
-- No brute-force protection exists for login.
-- `.\mvnw.cmd -Dtest=!WoodcertAuctionApplicationTests test` passed on 2026-05-25; `clean test` still requires MySQL for the Spring context test.
+- Native/mobile refresh-token transport is outside the current browser-only scope.
+- Full integration verification requires Docker-backed MySQL and Redis.
 
 ## Refactor Log
 

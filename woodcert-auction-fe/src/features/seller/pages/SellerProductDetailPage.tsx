@@ -460,9 +460,11 @@ function AppraisalReportSection({
         )}
 
         <div className="rounded-lg border border-[#4e4637]/15 bg-white p-4">
-          <p className="text-xs font-bold uppercase tracking-wider text-muted-warm">Chữ ký số</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-muted-warm">
+            Dấu vân tay SHA-256
+          </p>
           <p className="mt-2 break-all font-mono text-xs leading-5 text-[#4e4637]">
-            {report.digitalSignature}
+            {report.integrityHash}
           </p>
         </div>
 

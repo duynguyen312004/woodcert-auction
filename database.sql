@@ -50,6 +50,7 @@ Cac cot:
 3) Bang roles (Tu dien vai tro)
 Mo ta:
 - Dinh nghia cac nhom vai tro lon trong he thong.
+- To hop role hop le do he thong tao: BIDDER; BIDDER + SELLER; APPRAISER; ADMIN.
 
 Cac cot:
 - id                INT           PK, auto increment.
@@ -65,7 +66,8 @@ Mo ta:
 Cac cot:
 - id                INT            PK, auto increment.
 - name              VARCHAR(100)   UNIQUE, NOT NULL.
-                                     Vi du: CREATE_BID, APPROVE_PRODUCT, BAN_USER.
+                                     Vi du: CREATE_BID, REGISTER_AUCTION,
+                                     APPROVE_PRODUCT, BAN_USER.
 - description       VARCHAR(255)   Mo ta chi tiet muc dich su dung quyen.
 
 5) Bang role_permissions (Phan quyen cho vai tro)
@@ -174,7 +176,7 @@ Cac cot:
 - is_authentic              BOOLEAN       True = Hang that / False = Hang gia, kem chat luong.
 - appraiser_notes           TEXT          Ghi chu cac loi, vet nut, lich su phuc che...
 - seller_accuracy           DECIMAL(3,2) NOT NULL. Diem trung thuc cua Seller (1-5), nhap dang 4.5.
-- digital_signature         VARCHAR(255)  NOT NULL. Chu ky so chong sua doi Database.
+- integrity_hash            VARCHAR(255)  NOT NULL. Dau van tay SHA-256 cua cac truong cot loi.
 - appraised_at              TIMESTAMP     Thoi diem ky duyet.
 
 5) Bang appraisal_images (Bang chung Phap ly)
@@ -212,9 +214,12 @@ Cac cot:
 - id                BIGINT        PK, auto increment.
 - wallet_id         BIGINT        FK -> wallets.id.
 - amount            DECIMAL(19,2) So tien (+ hoac -).
-- type              ENUM          DEPOSIT, WITHDRAW, FREEZE, UNFREEZE, PAYMENT.
+- type              ENUM          WALLET_TOP_UP, APPRAISAL_FEE, AUCTION_DEPOSIT_FREEZE,
+                                   AUCTION_DEPOSIT_RELEASE, AUCTION_DEPOSIT_CAPTURE,
+                                   ORDER_PAYMENT, ORDER_REFUND, SELLER_PAYOUT,
+                                   SELLER_FORFEIT_COMPENSATION.
 - reference_id      BIGINT        ID phien dau gia hoac ID don hang.
-- reference_type    ENUM          AUCTION, ORDER, SYSTEM.
+- reference_type    ENUM          AUCTION, APPRAISAL, ORDER, SYSTEM, VNPAY_DEPOSIT.
 - status            ENUM          SUCCESS, FAILED, PENDING.
 - created_at        TIMESTAMP     Thoi diem bien dong.
 
@@ -248,6 +253,7 @@ Cac cot:
 - user_id            VARCHAR(36)   FK -> users.id.
 - deposit_amount     DECIMAL(19,2) So tien da khoa.
 - deposit_status     ENUM          FROZEN, REFUNDED, DEDUCTED, CONFISCATED.
+- withdrawn_at       TIMESTAMP     Thoi diem bidder rut khoi phien WAITING.
 
 Rang buoc quan trong:
 - UNIQUE(user_id, auction_session_id) de chong dup coc.
@@ -283,6 +289,8 @@ Cac cot:
 - buyer_id            VARCHAR(36)   FK. Nguoi mua (nguoi thang).
 - seller_id           VARCHAR(36)   FK. Nguoi ban (chu san pham).
 - product_id          BIGINT        FK -> products.id.
+- product_title       VARCHAR(255)  Snapshot ten san pham tai luc tao order.
+- product_image_url   VARCHAR(1000) Snapshot anh dai dien tai luc tao order.
 - final_price         DECIMAL(19,2) Gia chot (chua tru coc).
 - deposit_amount      DECIMAL(19,2) Coc cua winner da ap dung vao order.
 - remaining_amount    DECIMAL(19,2) So tien buyer tra them = final_price - deposit_amount.
@@ -291,6 +299,11 @@ Cac cot:
 - seller_payout_amount                  DECIMAL(19,2) Seller nhan sau khi tru hoa hong.
 - forfeited_deposit_platform_fee_amount DECIMAL(19,2) San giu khi buyer qua han thanh toan.
 - forfeited_deposit_seller_amount       DECIMAL(19,2) Seller nhan tu coc phat.
+- buyer_refund_amount                   DECIMAL(19,2) Buyer nhan lai khi thang dispute = deposit_amount + remaining_amount.
+- refunded_at                           TIMESTAMP     Thoi diem hoan tien buyer.
+- shipping_receiver_name               VARCHAR(100)  Snapshot nguoi nhan.
+- shipping_phone_number                VARCHAR(20)   Snapshot so dien thoai nhan hang.
+- shipping_street/district/ward/province             Snapshot dia chi giao hang.
 - status              ENUM          PENDING_PAYMENT, PAID, FULFILLING, COMPLETED, CANCELED, DISPUTED.
 - payment_deadline    TIMESTAMP     Han chot thanh toan not tien.
 - paid_at             TIMESTAMP     Thoi diem buyer thanh toan phan con lai.
@@ -309,6 +322,8 @@ Cac cot:
 - order_id          BIGINT        UNIQUE, FK -> orders.id.
 - buyer_id          VARCHAR(36)   Buyer snapshot.
 - seller_id         VARCHAR(36)   Seller snapshot.
+- delivery_method   ENUM          THIRD_PARTY, SELF_DELIVERY.
+- carrier_name      VARCHAR(120)  Don vi van chuyen, bat buoc voi THIRD_PARTY.
 - tracking_code     VARCHAR(120)  Ma tra cuu.
 - status            ENUM          PENDING_SHIPMENT, SHIPPED, DELIVERED, AUTO_COMPLETED, CANCELED.
 - shipped_at        TIMESTAMP     Thoi diem seller xac nhan giao hang.

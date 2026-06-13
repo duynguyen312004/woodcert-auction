@@ -33,7 +33,7 @@ public class WalletTransaction {
     private BigDecimal amount;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "type", nullable = false, length = 20)
+    @Column(name = "type", nullable = false, length = 40)
     private WalletTransactionType type;
 
     @Column(name = "reference_id")

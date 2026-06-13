@@ -1,12 +1,32 @@
+import { lazy } from "react";
 import type { RouteObject } from "react-router";
 import { AuthLayout } from "@/app/layouts/AuthLayout";
 import { AnonymousOnlyRoute } from "@/app/router/AnonymousOnlyRoute";
-import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
-import { LoginPage } from "./pages/LoginPage";
-import { PendingVerificationPage } from "./pages/PendingVerificationPage";
-import { RegisterPage } from "./pages/RegisterPage";
-import { ResetPasswordPage } from "./pages/ResetPasswordPage";
-import { VerifyEmailPage } from "./pages/VerifyEmailPage";
+
+const ForgotPasswordPage = lazy(() =>
+  import("./pages/ForgotPasswordPage").then((module) => ({
+    default: module.ForgotPasswordPage,
+  })),
+);
+const LoginPage = lazy(() =>
+  import("./pages/LoginPage").then((module) => ({ default: module.LoginPage })),
+);
+const PendingVerificationPage = lazy(() =>
+  import("./pages/PendingVerificationPage").then((module) => ({
+    default: module.PendingVerificationPage,
+  })),
+);
+const RegisterPage = lazy(() =>
+  import("./pages/RegisterPage").then((module) => ({ default: module.RegisterPage })),
+);
+const ResetPasswordPage = lazy(() =>
+  import("./pages/ResetPasswordPage").then((module) => ({
+    default: module.ResetPasswordPage,
+  })),
+);
+const VerifyEmailPage = lazy(() =>
+  import("./pages/VerifyEmailPage").then((module) => ({ default: module.VerifyEmailPage })),
+);
 
 export const authRoutes: RouteObject[] = [
   {

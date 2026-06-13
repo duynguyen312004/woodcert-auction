@@ -126,10 +126,10 @@ export function AboutPage() {
                 <Fingerprint className="h-4 w-4" />
               </div>
               <div>
-                <h5 className="text-sm font-semibold text-white">Chữ ký số mật mã học</h5>
+                <h5 className="text-sm font-semibold text-white">Dấu vân tay SHA-256</h5>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Mỗi chứng thư được bảo chứng bằng mã hóa độc bản, ngăn chặn hoàn toàn việc làm giả
-                  hoặc tẩy xóa hồ sơ.
+                  Mỗi chứng thư có mã băm để hỗ trợ đối chiếu và truy vết tính toàn vẹn của các
+                  trường dữ liệu thẩm định cốt lõi.
                 </p>
               </div>
             </li>
@@ -189,7 +189,7 @@ export function AboutPage() {
           <ProcessStep
             number="1"
             title="Kiểm định & Giám định"
-            description="Tác phẩm gỗ được gửi tới trung tâm giám định WoodCert. Giám định viên xác thực loại gỗ, độ tuổi ước tính, chất lượng gia công và cấp chữ ký số."
+            description="Tác phẩm gỗ được gửi tới trung tâm giám định WoodCert. Giám định viên xác thực loại gỗ, độ tuổi ước tính, chất lượng gia công và hệ thống cấp mã chứng thư cùng dấu vân tay SHA-256."
           />
           <ProcessStep
             number="2"

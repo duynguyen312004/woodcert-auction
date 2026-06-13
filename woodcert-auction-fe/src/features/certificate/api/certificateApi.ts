@@ -4,7 +4,6 @@ import { unwrapApiResponse } from "@/shared/api/unwrap";
 
 export interface CertificateVerification {
   certificateCode: string;
-  valid: boolean;
   productId: number | null;
   productTitle: string | null;
   description: string | null;
@@ -23,7 +22,7 @@ export interface CertificateVerification {
   conditionGrade: string | null;
   estimatedValue: number | string;
   authentic: boolean;
-  digitalSignature: string;
+  integrityHash: string;
   appraisedAt: string;
   dimensions: string | null;
   weight: number | null;

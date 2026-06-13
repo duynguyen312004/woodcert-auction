@@ -205,10 +205,10 @@ function AppraisalReportCard({ product }: { product: AppraisalProductDetail }) {
           </p>
         </div>
       )}
-      {report?.digitalSignature && (
+      {report?.integrityHash && (
         <div className="mt-4 rounded-lg border border-[#4e4637]/15 bg-white/70 p-3">
-          <p className="mb-1 text-sm font-semibold text-ink-blue">Chữ ký số</p>
-          <p className="break-all font-mono text-xs text-[#4e4637]">{report.digitalSignature}</p>
+          <p className="mb-1 text-sm font-semibold text-ink-blue">Dấu vân tay SHA-256</p>
+          <p className="break-all font-mono text-xs text-[#4e4637]">{report.integrityHash}</p>
         </div>
       )}
       {proofImages.length > 0 && (

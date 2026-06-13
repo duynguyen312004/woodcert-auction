@@ -1,6 +1,14 @@
+import { lazy } from "react";
 import type { RouteObject } from "react-router";
-import { AuctionDetailPage } from "./pages/AuctionDetailPage";
-import { AuctionListPage } from "./pages/AuctionListPage";
+
+const AuctionDetailPage = lazy(() =>
+  import("./pages/AuctionDetailPage").then((module) => ({
+    default: module.AuctionDetailPage,
+  })),
+);
+const AuctionListPage = lazy(() =>
+  import("./pages/AuctionListPage").then((module) => ({ default: module.AuctionListPage })),
+);
 
 export const auctionRoutes: RouteObject[] = [
   {

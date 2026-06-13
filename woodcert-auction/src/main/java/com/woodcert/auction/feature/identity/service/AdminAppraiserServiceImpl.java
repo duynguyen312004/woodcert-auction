@@ -50,13 +50,14 @@ public class AdminAppraiserServiceImpl implements AdminAppraiserService {
         String normalizedPhoneNumber = IdentityNormalizationUtils
                 .normalizeVietnamesePhoneNullable(request.phoneNumber());
 
-        User user = userRepository.findByEmail(normalizedEmail)
-                .map(existing -> promoteExistingUser(existing, normalizedFullName, normalizedPhoneNumber, request.password()))
-                .orElseGet(() -> createNewAppraiser(
-                        normalizedEmail,
-                        normalizedFullName,
-                        normalizedPhoneNumber,
-                        request.password()));
+        if (userRepository.existsByEmail(normalizedEmail)) {
+            throw new AppException(ErrorCode.DUPLICATE_RESOURCE, "Email already exists");
+        }
+        User user = createNewAppraiser(
+                normalizedEmail,
+                normalizedFullName,
+                normalizedPhoneNumber,
+                request.password());
 
         adminAuditLogService.log(
                 adminId,
@@ -129,29 +130,6 @@ public class AdminAppraiserServiceImpl implements AdminAppraiserService {
                 status.getReason(),
                 Map.of("email", user.getEmail()));
         return toRes(user);
-    }
-
-    private User promoteExistingUser(
-            User user,
-            String normalizedFullName,
-            String normalizedPhoneNumber,
-            String rawPassword) {
-        if (hasRole(user, APPRAISER_ROLE)) {
-            throw new AppException(ErrorCode.DUPLICATE_RESOURCE, "Email already exists");
-        }
-        if (user.getStatus() != UserStatus.ACTIVE) {
-            throw new AppException(ErrorCode.INVALID_REQUEST, "Only active users can be promoted to appraiser");
-        }
-        user.getRoles().add(findAppraiserRole());
-        user.setFullName(normalizedFullName);
-        if (normalizedPhoneNumber != null) {
-            if (userRepository.existsByPhoneNumberAndIdNot(normalizedPhoneNumber, user.getId())) {
-                throw new AppException(ErrorCode.DUPLICATE_RESOURCE, "Phone number already exists");
-            }
-            user.setPhoneNumber(normalizedPhoneNumber);
-        }
-        user.setPasswordHash(passwordEncoder.encode(rawPassword));
-        return userRepository.save(user);
     }
 
     private User createNewAppraiser(

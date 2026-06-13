@@ -1,7 +1,19 @@
+import { lazy } from "react";
 import type { RouteObject } from "react-router";
-import { WalletPage } from "./pages/WalletPage";
-import { WalletDepositPage } from "./pages/WalletDepositPage";
-import { WalletDepositResultPage } from "./pages/WalletDepositResultPage";
+
+const WalletPage = lazy(() =>
+  import("./pages/WalletPage").then((module) => ({ default: module.WalletPage })),
+);
+const WalletDepositPage = lazy(() =>
+  import("./pages/WalletDepositPage").then((module) => ({
+    default: module.WalletDepositPage,
+  })),
+);
+const WalletDepositResultPage = lazy(() =>
+  import("./pages/WalletDepositResultPage").then((module) => ({
+    default: module.WalletDepositResultPage,
+  })),
+);
 
 export const walletRoutes: RouteObject[] = [
   { path: "wallet", element: <WalletPage /> },

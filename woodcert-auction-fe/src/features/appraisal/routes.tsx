@@ -1,6 +1,7 @@
 import { lazy } from "react";
 import type { RouteObject } from "react-router";
 
+import { NotFoundPage } from "@/app/router/NotFoundPage";
 import { APPRAISER_ROUTE_PATHS } from "@/shared/constants/routes";
 
 const AppraiserProductDetailPage = lazy(() =>
@@ -31,5 +32,15 @@ export const appraisalRoutes: RouteObject[] = [
   {
     path: APPRAISER_ROUTE_PATHS.reviewed,
     element: <AppraiserReviewedPage />,
+  },
+  {
+    path: "appraiser/*",
+    element: (
+      <NotFoundPage
+        homePath="/appraiser/products"
+        homeLabel="Về hàng chờ kiểm định"
+        appearance="light"
+      />
+    ),
   },
 ];

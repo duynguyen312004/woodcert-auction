@@ -70,8 +70,8 @@ public class AppraisalReport {
     @Column(name = "seller_accuracy", nullable = false, precision = 3, scale = 2)
     private BigDecimal sellerAccuracy;
 
-    @Column(name = "digital_signature", nullable = false, length = 255)
-    private String digitalSignature;
+    @Column(name = "integrity_hash", nullable = false, length = 255)
+    private String integrityHash;
 
     @Column(name = "appraised_at", nullable = false)
     private Instant appraisedAt;

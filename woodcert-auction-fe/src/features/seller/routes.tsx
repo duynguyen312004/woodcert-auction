@@ -1,6 +1,7 @@
 import { lazy } from "react";
 import type { RouteObject } from "react-router";
 
+import { NotFoundPage } from "@/app/router/NotFoundPage";
 import { SellerWriteAccessGuard } from "./components/SellerWriteAccessGuard";
 import { SELLER_ROUTE_PATHS } from "./constants/routes";
 
@@ -125,6 +126,16 @@ export const sellerRoutes: RouteObject[] = [
   {
     path: SELLER_ROUTE_PATHS.auctionDetail,
     element: <SellerAuctionDetailPage />,
+  },
+  {
+    path: "seller/*",
+    element: (
+      <NotFoundPage
+        homePath="/seller/dashboard"
+        homeLabel="Về bảng điều khiển"
+        appearance="light"
+      />
+    ),
   },
 ];
 

@@ -3,6 +3,7 @@ package com.woodcert.auction.feature.identity.service;
 import com.woodcert.auction.core.exception.AppException;
 import com.woodcert.auction.core.exception.ErrorCode;
 import com.woodcert.auction.feature.identity.dto.request.CreateAddressReq;
+import com.woodcert.auction.feature.identity.dto.request.UpdateAddressReq;
 import com.woodcert.auction.feature.identity.dto.response.AddressRes;
 import com.woodcert.auction.feature.identity.entity.Address;
 import com.woodcert.auction.feature.identity.entity.User;
@@ -54,24 +55,94 @@ public class AddressServiceImpl implements AddressService {
         // Bước 3: Kiểm tra huyện thuộc tỉnh và xã thuộc huyện để tránh địa chỉ sai dữ liệu master.
         validateLocationHierarchy(normalizedProvinceCode, normalizedDistrictCode, normalizedWardCode);
 
-        // Bước 4: Nếu địa chỉ mới là mặc định thì bỏ cờ mặc định ở các địa chỉ cũ của user.
-        if (request.isDefault()) {
+        // Địa chỉ đầu tiên luôn là mặc định để checkout luôn có một lựa chọn hợp lệ.
+        boolean isDefault = request.isDefault() || !addressRepository.existsByUser_Id(userId);
+        if (isDefault) {
             addressRepository.clearDefaultByUserId(userId);
         }
 
-        // Bước 5: Tạo địa chỉ mới với dữ liệu đã trim/chuẩn hóa rồi lưu DB.
         Address address = new Address();
         address.setUser(user);
-        address.setReceiverName(request.receiverName().trim());
-        address.setPhoneNumber(IdentityNormalizationUtils.normalizeVietnamesePhoneNullable(request.phoneNumber()));
-        address.setStreetAddress(request.streetAddress().trim());
-        address.setProvinceCode(normalizedProvinceCode);
-        address.setDistrictCode(normalizedDistrictCode);
-        address.setWardCode(normalizedWardCode);
-        address.setDefault(request.isDefault());
+        applyAddressFields(
+                address,
+                request.receiverName(),
+                request.phoneNumber(),
+                request.streetAddress(),
+                normalizedProvinceCode,
+                normalizedDistrictCode,
+                normalizedWardCode);
+        address.setDefault(isDefault);
 
         Address savedAddress = addressRepository.save(address);
         return mapToAddressRes(savedAddress);
+    }
+
+    @Override
+    @Transactional
+    public AddressRes updateAddress(String userId, Long addressId, UpdateAddressReq request) {
+        Address address = getOwnedAddress(userId, addressId);
+        String provinceCode = IdentityNormalizationUtils.normalizeProvinceCode(request.provinceCode());
+        String districtCode = IdentityNormalizationUtils.normalizeDistrictCode(request.districtCode());
+        String wardCode = IdentityNormalizationUtils.normalizeWardCode(request.wardCode());
+        validateLocationHierarchy(provinceCode, districtCode, wardCode);
+
+        applyAddressFields(
+                address,
+                request.receiverName(),
+                request.phoneNumber(),
+                request.streetAddress(),
+                provinceCode,
+                districtCode,
+                wardCode);
+        return mapToAddressRes(addressRepository.save(address));
+    }
+
+    @Override
+    @Transactional
+    public AddressRes setDefaultAddress(String userId, Long addressId) {
+        Address address = getOwnedAddress(userId, addressId);
+        if (!address.isDefault()) {
+            addressRepository.clearDefaultByUserId(userId);
+            address.setDefault(true);
+            address = addressRepository.save(address);
+        }
+        return mapToAddressRes(address);
+    }
+
+    @Override
+    @Transactional
+    public void deleteAddress(String userId, Long addressId) {
+        Address address = getOwnedAddress(userId, addressId);
+        Address replacement = address.isDefault()
+                ? addressRepository.findFirstByUser_IdAndIdNotOrderByIdAsc(userId, addressId).orElse(null)
+                : null;
+
+        addressRepository.delete(address);
+        if (replacement != null) {
+            replacement.setDefault(true);
+            addressRepository.save(replacement);
+        }
+    }
+
+    private Address getOwnedAddress(String userId, Long addressId) {
+        return addressRepository.findByIdAndUser_Id(addressId, userId)
+                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Address not found"));
+    }
+
+    private void applyAddressFields(
+            Address address,
+            String receiverName,
+            String phoneNumber,
+            String streetAddress,
+            String provinceCode,
+            String districtCode,
+            String wardCode) {
+        address.setReceiverName(receiverName.trim());
+        address.setPhoneNumber(IdentityNormalizationUtils.normalizeVietnamesePhoneNullable(phoneNumber));
+        address.setStreetAddress(streetAddress.trim());
+        address.setProvinceCode(provinceCode);
+        address.setDistrictCode(districtCode);
+        address.setWardCode(wardCode);
     }
 
     private AddressRes mapToAddressRes(Address address) {

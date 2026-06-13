@@ -66,10 +66,12 @@ export interface OrderSummary {
   sellerPayoutAmount: number | null;
   forfeitedDepositPlatformFeeAmount: number | null;
   forfeitedDepositSellerAmount: number | null;
+  buyerRefundAmount: number | null;
   paymentDeadline: string | null;
   paidAt: string | null;
   completedAt: string | null;
   canceledAt: string | null;
+  refundedAt: string | null;
   cancelReason: string | null;
   product?: OrderProductSummary | null;
   shippingAddress?: OrderShippingAddress | null;

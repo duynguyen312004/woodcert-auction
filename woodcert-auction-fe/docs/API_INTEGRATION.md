@@ -112,9 +112,9 @@ session behavior.
 | ----------------------- | ------------------------------------- | ----------------------------------- |
 | Revenue dashboard       | `GET /admin/revenue/**`               | Implemented                         |
 | Admin categories        | `/admin/categories` CRUD              | Implemented                         |
-| Admin appraisers        | `/admin/appraisers` promote/demote    | Implemented                         |
+| Admin appraisers        | `POST/PATCH /admin/appraisers/**`     | Create and capability ban/unban     |
 | Public certificate page | `GET /certificates/{certificateCode}` | Implemented on `/certificates`      |
-| Address book            | `GET/POST /users/me/addresses`        | Implemented on `/account/addresses` |
+| Address book            | `GET/POST /addresses`                 | Implemented on `/account/addresses` |
 
 ### Appraiser Workflow
 

@@ -1,28 +1,29 @@
-# ADR-001: Refresh Token Strategy — Cookie (SPA) + Body (Mobile)
+# ADR-001: Refresh Token Strategy - HttpOnly Cookie for Web SPA
 
 ## Status
 
-Accepted, implemented, updated on 2026-05-25
+Accepted, implemented, updated on 2026-06-11
 
 ## Context
 
-The system serves browser SPA clients and may later serve native mobile clients. Browser clients should not store refresh tokens in JavaScript-readable storage, while mobile clients still need a body-based token option.
+The current product is a browser SPA. Refresh tokens must not be exposed to JavaScript-readable storage or API response bodies.
 
 ## Decision
 
-Use dual-source refresh tokens:
+Use a cookie-only refresh-token contract:
 
-- SPA: backend sets `refresh_token` as an `HttpOnly` cookie.
-- Mobile/fallback: backend also accepts `refreshToken` in the request body.
-- Backend checks cookie first, then body.
+- Login and refresh set `refresh_token` as an `HttpOnly` cookie.
+- Refresh and logout read the token only from that cookie.
+- Login and refresh response bodies never contain a refresh token.
+- Cookie refresh/logout require double-submit CSRF.
 - Refresh tokens are rotated and persisted so logout, reset-password revocation, expiration, and cleanup are enforceable.
 
 Current token lifetime:
 
 | Token | Expiration | Storage |
 |-------|------------|---------|
-| Access token | 15 minutes | SPA memory / mobile secure storage |
-| Refresh token | 7 days | SPA HttpOnly cookie / mobile secure storage |
+| Access token | 15 minutes | SPA memory |
+| Refresh token | 7 days | SPA HttpOnly cookie |
 
 ## Implementation Notes
 
@@ -39,12 +40,11 @@ Current token lifetime:
 Positive:
 
 - SPA refresh token is not accessible to JavaScript.
-- Mobile clients can still use body-based refresh.
 - Rotation and persistence support logout, account recovery, and cleanup.
 
 Negative:
 
-- Backend and FE tests must cover cookie and body paths.
+- A future native client needs a separate reviewed token transport contract instead of reusing this browser endpoint.
 - Cookie behavior differs between local HTTP and production HTTPS, so `Secure` must stay environment-aware.
 
 ## Files Affected

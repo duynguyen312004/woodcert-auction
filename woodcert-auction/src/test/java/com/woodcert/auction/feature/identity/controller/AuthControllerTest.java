@@ -1,9 +1,8 @@
 package com.woodcert.auction.feature.identity.controller;
 
 import com.woodcert.auction.core.config.RefreshCookieProperties;
-import com.woodcert.auction.feature.identity.dto.request.RefreshReq;
-import com.woodcert.auction.feature.identity.dto.response.RefreshRes;
 import com.woodcert.auction.feature.identity.service.AuthService;
+import com.woodcert.auction.feature.identity.service.RotatedAuthTokens;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,7 +34,7 @@ class AuthControllerTest {
     void refresh_withCookieRefreshRequiresMatchingCsrfToken() {
         MockHttpServletResponse response = new MockHttpServletResponse();
 
-        var result = controller.refresh(null, "refresh-token", "csrf-cookie", null, response);
+        var result = controller.refresh("refresh-token", "csrf-cookie", null, response);
 
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
         verify(authService, never()).refresh("refresh-token");
@@ -45,9 +44,9 @@ class AuthControllerTest {
     void refresh_withCookieRefreshAndMatchingCsrfRotatesToken() {
         MockHttpServletResponse response = new MockHttpServletResponse();
         when(authService.refresh("refresh-token"))
-                .thenReturn(new RefreshRes("access-token", "new-refresh-token"));
+                .thenReturn(new RotatedAuthTokens("access-token", "new-refresh-token"));
 
-        var result = controller.refresh(null, "refresh-token", "csrf-token", "csrf-token", response);
+        var result = controller.refresh("refresh-token", "csrf-token", "csrf-token", response);
 
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getHeaders("Set-Cookie"))
@@ -56,14 +55,11 @@ class AuthControllerTest {
     }
 
     @Test
-    void refresh_withBodyRefreshBypassesCookieCsrf() {
+    void refresh_withoutCookieReturnsUnauthorized() {
         MockHttpServletResponse response = new MockHttpServletResponse();
-        when(authService.refresh("body-refresh"))
-                .thenReturn(new RefreshRes("access-token", "new-refresh-token"));
 
-        var result = controller.refresh(new RefreshReq("body-refresh"), "cookie-refresh", null, null, response);
+        var result = controller.refresh(null, "csrf-token", "csrf-token", response);
 
-        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-        verify(authService).refresh("body-refresh");
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 }

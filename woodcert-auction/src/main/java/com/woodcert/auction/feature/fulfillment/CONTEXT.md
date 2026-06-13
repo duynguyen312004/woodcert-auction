@@ -10,7 +10,7 @@ Fulfillment references orders by `orderId`; it does not know auction internals.
 - `SHIPPED`: seller provided tracking and auto-complete deadline is active.
 - `DELIVERED`: buyer confirmed receipt.
 - `AUTO_COMPLETED`: scheduler completed after deadline.
-- `CANCELED`: reserved for future cancellation/dispute flows.
+- `CANCELED`: dispute buyer-wins outcome canceled fulfillment.
 
 ## Order Interaction
 Fulfillment creates pending shipment records through the `OrderFulfillmentPort` implemented for the order module.
@@ -18,3 +18,12 @@ Fulfillment creates pending shipment records through the `OrderFulfillmentPort` 
 Seller ship calls `OrderService.markFulfilling`.
 
 Buyer receive or scheduler auto-complete calls `OrderService.completeFromFulfillment`, which handles seller payout, platform commission, and source completion callback.
+
+Dispute outcomes are applied through `DisputeFulfillmentPort`:
+- seller wins: fulfillment becomes `AUTO_COMPLETED`;
+- buyer wins: fulfillment becomes `CANCELED`.
+
+## Shipping Rules
+- `THIRD_PARTY` requires both `carrierName` and `trackingCode`.
+- `SELF_DELIVERY` does not require carrier or tracking.
+- `autoCompleteDeadline` is set when the fulfillment becomes `SHIPPED`.

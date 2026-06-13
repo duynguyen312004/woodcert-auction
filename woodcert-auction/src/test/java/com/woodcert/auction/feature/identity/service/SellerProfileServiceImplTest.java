@@ -104,6 +104,25 @@ class SellerProfileServiceImplTest {
     }
 
     @Test
+    @DisplayName("createSellerProfile rejects appraiser accounts")
+    void createSellerProfile_appraiser_throwsAppException() {
+        User user = createUser();
+        Role appraiserRole = new Role();
+        appraiserRole.setName("ROLE_APPRAISER");
+        user.getRoles().add(appraiserRole);
+        when(userRepository.findById("user-1")).thenReturn(Optional.of(user));
+
+        AppException exception = assertThrows(
+                AppException.class,
+                () -> sellerProfileService.createSellerProfile(
+                        "user-1",
+                        new CreateSellerProfileReq("Xuong go ABC", "001099012345", null))
+        );
+
+        assertEquals("Only bidder accounts can create a seller profile", exception.getMessage());
+    }
+
+    @Test
     @DisplayName("updateCurrentSellerProfile changes store name only")
     void updateCurrentSellerProfile_changesStoreNameOnly() {
         SellerProfile profile = new SellerProfile();

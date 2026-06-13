@@ -1,7 +1,13 @@
+import { lazy } from "react";
 import type { RouteObject } from "react-router";
 import { HomePage } from "./HomePage";
-import { GuidePage } from "./GuidePage";
-import { AboutPage } from "./AboutPage";
+
+const AboutPage = lazy(() =>
+  import("./AboutPage").then((module) => ({ default: module.AboutPage })),
+);
+const GuidePage = lazy(() =>
+  import("./GuidePage").then((module) => ({ default: module.GuidePage })),
+);
 
 export const homeRoutes: RouteObject[] = [
   {

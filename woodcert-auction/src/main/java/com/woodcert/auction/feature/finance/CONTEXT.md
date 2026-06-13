@@ -30,17 +30,21 @@ The same key may be used in `wallet_operations` and
 `platform_revenue_transactions` when both rows represent the same business action.
 
 Service methods:
-- `depositFunds`
-- `freezeFunds`
-- `unfreezeFunds`
-- `deductFrozenFunds`
-- `withdrawFunds`
+- `topUpFromVnPay`
+- `chargeAppraisalFee`
+- `freezeAuctionDeposit`
+- `releaseAuctionDeposit`
+- `captureAuctionDeposit`
+- `payOrder`
+- `refundOrder`
+- `creditSellerPayout`
+- `creditSellerForfeitCompensation`
 
 Money is normalized to scale 2 with `HALF_UP`.
 
 ## Reference Types
 - Auction deposit freeze/refund/deduct uses `WalletReferenceType.AUCTION` and auction session IDs.
-- Order payment, seller payout, sale commission references, and forfeited deposit split use `WalletReferenceType.ORDER` and canonical `orders.id`.
+- Order payment, buyer refund, seller payout, sale commission references, and forfeited deposit split use `WalletReferenceType.ORDER` and canonical `orders.id`.
 - Appraisal submission fee uses `WalletReferenceType.APPRAISAL` and product IDs.
 
 ## Platform Revenue
@@ -55,8 +59,9 @@ Admin revenue endpoints expose transaction list and totals by type.
 
 ## Current Money Flows
 - Auction registration: freeze buyer deposit.
-- Auction failed/loser settlement: unfreeze deposit.
-- Auction winner settlement: deduct frozen deposit, then order applies it to final price.
-- Buyer order payment: withdraw remaining amount.
+- Auction failed/loser settlement: release frozen deposit.
+- Auction winner settlement: capture frozen deposit, then order applies it to final price.
+- Buyer order payment: charge the remaining amount.
 - Fulfillment completion: seller receives `finalPrice - commission`; platform records commission.
 - Payment deadline cancellation: seller receives 90% of deposit; platform records 10%.
+- Buyer-wins dispute: buyer receives `depositAmount + remainingAmount` as `ORDER_REFUND`; `buyerRefundAmount` and `refundedAt` are recorded, while seller payout and commission are skipped.

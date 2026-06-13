@@ -15,9 +15,18 @@ export interface WalletBalance {
 export interface WalletTransaction {
   id: number;
   amount: number;
-  type: "DEPOSIT" | "WITHDRAW" | "FREEZE" | "UNFREEZE" | "PAYMENT";
+  type:
+    | "WALLET_TOP_UP"
+    | "APPRAISAL_FEE"
+    | "AUCTION_DEPOSIT_FREEZE"
+    | "AUCTION_DEPOSIT_RELEASE"
+    | "AUCTION_DEPOSIT_CAPTURE"
+    | "ORDER_PAYMENT"
+    | "ORDER_REFUND"
+    | "SELLER_PAYOUT"
+    | "SELLER_FORFEIT_COMPENSATION";
   referenceId: number | null;
-  referenceType: "AUCTION" | "ORDER" | "SYSTEM" | "VNPAY_DEPOSIT";
+  referenceType: "AUCTION" | "APPRAISAL" | "ORDER" | "SYSTEM" | "VNPAY_DEPOSIT";
   status: "SUCCESS" | "FAILED" | "PENDING";
   createdAt: string;
   description: string;

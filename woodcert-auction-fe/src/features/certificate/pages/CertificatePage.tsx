@@ -57,8 +57,8 @@ export function CertificatePage() {
               Cổng Tra Cứu Chứng Thư Thẩm Định
             </h1>
             <p className="text-sm text-[#8D877C] leading-relaxed max-w-xl">
-              Nhập mã chứng thư được cấp kèm theo tác phẩm để xác minh tính chính danh, kết quả thẩm
-              định chất lượng gỗ và chữ ký số bảo mật vĩnh viễn từ WoodCert.
+              Nhập mã chứng thư được cấp kèm theo tác phẩm để tra cứu kết quả thẩm định chất lượng
+              gỗ và dấu vân tay SHA-256 của hồ sơ WoodCert.
             </p>
             <form
               className="mt-6 flex max-w-lg gap-2 mx-auto sm:mx-0"
@@ -88,8 +88,8 @@ export function CertificatePage() {
             <div className="space-y-3">
               <HeaderFeatureItem
                 icon={<Fingerprint className="h-4 w-4 text-primary" />}
-                title="Chữ ký số mật mã"
-                desc="Chữ ký số mã hóa bảo chứng vĩnh viễn, chống giả mạo hồ sơ sản phẩm."
+                title="Dấu vân tay SHA-256"
+                desc="Mã băm giúp đối chiếu và truy vết tính toàn vẹn của hồ sơ thẩm định."
               />
               <HeaderFeatureItem
                 icon={<FileCheck className="h-4 w-4 text-primary" />}
@@ -306,22 +306,22 @@ export function CertificatePage() {
                         </div>
                       </div>
 
-                      {/* Chân chứng thư: Bảo mật chữ ký số */}
+                      {/* Chân chứng thư: dấu vân tay toàn vẹn */}
                       <div className="border-t border-stone-800/20 pt-5 mt-4 text-center sm:text-left">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#dfcfab] p-4 rounded-xl border border-stone-800/10">
                           <div className="space-y-1">
                             <span className="text-[10px] font-bold uppercase tracking-wider text-[#785b24] flex items-center justify-center sm:justify-start gap-1">
                               <Award className="h-3 w-3 text-[#785b24]" />
-                              Chữ ký số mật mã học
+                              Dấu vân tay SHA-256
                             </span>
                             <p className="font-mono text-xs text-stone-800 break-all select-all leading-normal max-w-[420px]">
-                              {data.digitalSignature}
+                              {data.integrityHash}
                             </p>
                           </div>
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleCopySign(data.digitalSignature)}
+                            onClick={() => handleCopySign(data.integrityHash)}
                             className="self-center sm:self-auto border-stone-800/20 hover:bg-stone-800/10 text-stone-800 hover:text-stone-900 h-9 font-semibold"
                           >
                             {copiedSign ? (
@@ -338,8 +338,8 @@ export function CertificatePage() {
                           </Button>
                         </div>
                         <p className="mt-3 text-[10px] text-stone-600 italic">
-                          * Chứng thư số này được mã hóa bảo mật chuỗi khối và có hiệu lực vĩnh viễn
-                          đối với tác phẩm gỗ mỹ nghệ tương ứng.
+                          * Đây là mã băm SHA-256 do hệ thống tạo từ các trường cốt lõi của hồ sơ
+                          thẩm định. Phiên bản MVP chưa sử dụng chữ ký số hoặc blockchain.
                         </p>
                       </div>
                     </div>

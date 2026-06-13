@@ -163,8 +163,14 @@ public class BidServiceImpl implements BidService {
                 log.debug("Skipped stale DB snapshot sync for session {} at price {}", auctionSessionId, newPrice);
             }
         } catch (Exception e) {
-            log.warn("Non-critical: failed to sync DB snapshot for session {}: {}",
-                    auctionSessionId, e.getMessage());
+            log.error(
+                    "event=accepted_bid_snapshot_not_synced auctionSessionId={} bidderId={} price={} endTime={} error={}",
+                    auctionSessionId,
+                    highestBidderId,
+                    newPrice,
+                    newEndTime,
+                    e.getMessage(),
+                    e);
         }
     }
 
@@ -173,8 +179,16 @@ public class BidServiceImpl implements BidService {
         try {
             bidPersistenceService.saveBid(bidTraceId, auctionSessionId, bidderId, bidAmount, status, bidTime);
         } catch (Exception e) {
-            log.warn("Non-critical: failed to persist bid {} for session {}: {}",
-                    bidTraceId, auctionSessionId, e.getMessage());
+            log.error(
+                    "event=accepted_bid_not_persisted bidTraceId={} auctionSessionId={} bidderId={} amount={} status={} bidTime={} error={}",
+                    bidTraceId,
+                    auctionSessionId,
+                    bidderId,
+                    bidAmount,
+                    status,
+                    bidTime,
+                    e.getMessage(),
+                    e);
         }
     }
 }

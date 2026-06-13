@@ -51,7 +51,7 @@ class WalletOperationLifecycleServiceTest {
                 10L,
                 "freeze-1",
                 new BigDecimal("1000000.00"),
-                WalletTransactionType.FREEZE,
+                WalletTransactionType.AUCTION_DEPOSIT_FREEZE,
                 205L,
                 WalletReferenceType.AUCTION
         );
@@ -71,7 +71,7 @@ class WalletOperationLifecycleServiceTest {
                 10L,
                 "freeze-1",
                 new BigDecimal("1000000.00"),
-                WalletTransactionType.FREEZE,
+                WalletTransactionType.AUCTION_DEPOSIT_FREEZE,
                 205L,
                 WalletReferenceType.AUCTION
         );
@@ -89,7 +89,7 @@ class WalletOperationLifecycleServiceTest {
                 10L,
                 "freeze-1",
                 new BigDecimal("1500000.00"),
-                WalletTransactionType.FREEZE,
+                WalletTransactionType.AUCTION_DEPOSIT_FREEZE,
                 205L,
                 WalletReferenceType.AUCTION
         )).isInstanceOf(AppException.class)
@@ -109,7 +109,7 @@ class WalletOperationLifecycleServiceTest {
                 10L,
                 "freeze-1",
                 new BigDecimal("1000000.00"),
-                WalletTransactionType.FREEZE,
+                WalletTransactionType.AUCTION_DEPOSIT_FREEZE,
                 205L,
                 WalletReferenceType.AUCTION
         )).isInstanceOf(AppException.class)
@@ -132,7 +132,7 @@ class WalletOperationLifecycleServiceTest {
                 10L,
                 "freeze-1",
                 new BigDecimal("1000000.00"),
-                WalletTransactionType.FREEZE,
+                WalletTransactionType.AUCTION_DEPOSIT_FREEZE,
                 205L,
                 WalletReferenceType.AUCTION
         );
@@ -156,7 +156,7 @@ class WalletOperationLifecycleServiceTest {
                 10L,
                 "freeze-1",
                 new BigDecimal("1000000.00"),
-                WalletTransactionType.FREEZE,
+                WalletTransactionType.AUCTION_DEPOSIT_FREEZE,
                 205L,
                 WalletReferenceType.AUCTION
         )).isInstanceOf(AppException.class)
@@ -181,7 +181,7 @@ class WalletOperationLifecycleServiceTest {
                 10L,
                 "freeze-1",
                 new BigDecimal("1000000.00"),
-                WalletTransactionType.FREEZE,
+                WalletTransactionType.AUCTION_DEPOSIT_FREEZE,
                 205L,
                 WalletReferenceType.AUCTION
         )).isInstanceOf(AppException.class)
@@ -233,7 +233,7 @@ class WalletOperationLifecycleServiceTest {
         operation.setId(200L);
         operation.setOperationKey("freeze-1");
         operation.setWalletId(10L);
-        operation.setType(WalletTransactionType.FREEZE);
+        operation.setType(WalletTransactionType.AUCTION_DEPOSIT_FREEZE);
         operation.setAmount(new BigDecimal("1000000.00"));
         operation.setReferenceId(205L);
         operation.setReferenceType(WalletReferenceType.AUCTION);

@@ -140,7 +140,7 @@ class AppraisalServiceImplTest {
         when(productRepository.save(any(Product.class))).thenAnswer(inv -> inv.getArgument(0));
     }
 
-    private static String expectedDigitalSignature(AppraisalReport report) {
+    private static String expectedIntegrityHash(AppraisalReport report) {
         try {
             String payload = String.join("|",
                     String.valueOf(report.getProductId()),
@@ -279,8 +279,8 @@ class AppraisalServiceImplTest {
                     .get(reportCaptor.getAllValues().size() - 1);
 
             assertThat(finalReport.getCertificateCode()).matches("CERT-\\d{4}-00042");
-            assertThat(finalReport.getDigitalSignature()).isEqualTo(expectedDigitalSignature(finalReport));
-            assertThat(finalReport.getDigitalSignature()).doesNotStartWith("PENDING-");
+            assertThat(finalReport.getIntegrityHash()).isEqualTo(expectedIntegrityHash(finalReport));
+            assertThat(finalReport.getIntegrityHash()).doesNotStartWith("PENDING-");
         }
 
         @Test

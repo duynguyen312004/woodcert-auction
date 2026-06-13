@@ -3,7 +3,6 @@ package com.woodcert.auction.feature.finance.service;
 import com.woodcert.auction.core.dto.PaginationResponse;
 import com.woodcert.auction.feature.finance.dto.response.WalletRes;
 import com.woodcert.auction.feature.finance.dto.response.WalletTransactionRes;
-import com.woodcert.auction.feature.finance.entity.WalletReferenceType;
 import com.woodcert.auction.feature.finance.support.FinanceOperationKey;
 
 import java.math.BigDecimal;
@@ -14,38 +13,22 @@ public interface WalletService {
 
     PaginationResponse<WalletTransactionRes> getMyTransactions(String userId, int page, int size);
 
-    void depositFunds(
-            String userId,
-            FinanceOperationKey operationKey,
-            BigDecimal amount,
-            Long referenceId,
-            WalletReferenceType referenceType);
+    void topUpFromVnPay(String userId, FinanceOperationKey operationKey, BigDecimal amount, Long depositId);
 
-    void freezeFunds(
-            String userId,
-            FinanceOperationKey operationKey,
-            BigDecimal amount,
-            Long referenceId,
-            WalletReferenceType referenceType);
+    void chargeAppraisalFee(String userId, FinanceOperationKey operationKey, BigDecimal amount, Long productId);
 
-    void unfreezeFunds(
-            String userId,
-            FinanceOperationKey operationKey,
-            BigDecimal amount,
-            Long referenceId,
-            WalletReferenceType referenceType);
+    void freezeAuctionDeposit(String userId, FinanceOperationKey operationKey, BigDecimal amount, Long auctionId);
 
-    void deductFrozenFunds(
-            String userId,
-            FinanceOperationKey operationKey,
-            BigDecimal amount,
-            Long referenceId,
-            WalletReferenceType referenceType);
+    void releaseAuctionDeposit(String userId, FinanceOperationKey operationKey, BigDecimal amount, Long auctionId);
 
-    void withdrawFunds(
-            String userId,
-            FinanceOperationKey operationKey,
-            BigDecimal amount,
-            Long referenceId,
-            WalletReferenceType referenceType);
+    void captureAuctionDeposit(String userId, FinanceOperationKey operationKey, BigDecimal amount, Long auctionId);
+
+    void payOrder(String userId, FinanceOperationKey operationKey, BigDecimal amount, Long orderId);
+
+    void refundOrder(String userId, FinanceOperationKey operationKey, BigDecimal amount, Long orderId);
+
+    void creditSellerPayout(String userId, FinanceOperationKey operationKey, BigDecimal amount, Long orderId);
+
+    void creditSellerForfeitCompensation(
+            String userId, FinanceOperationKey operationKey, BigDecimal amount, Long orderId);
 }

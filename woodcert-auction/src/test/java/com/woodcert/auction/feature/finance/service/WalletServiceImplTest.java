@@ -103,23 +103,25 @@ class WalletServiceImplTest {
 
 
     @Nested
-    @DisplayName("depositFunds")
+    @DisplayName("topUpFromVnPay")
     class DepositFunds {
 
         @Test
         @DisplayName("should normalize amount once and use the canonical value everywhere")
-        void depositFunds_normalizesCanonicalAmountOnce() {
+        void topUpFromVnPay_normalizesCanonicalAmountOnce() {
             Wallet wallet = createWallet(new BigDecimal("1000000"), BigDecimal.ZERO);
-            WalletOperation reserved = createReservedOperation(201L, "deposit-scale", WalletTransactionType.DEPOSIT);
+            WalletOperation reserved = createReservedOperation(201L, "deposit-scale", WalletTransactionType.WALLET_TOP_UP);
 
             when(userRepository.existsById(USER_ID)).thenReturn(true);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
             when(walletOperationLifecycleService.reserveOrReuseOperation(
-                    eq(10L), eq("deposit-scale"), eq(new BigDecimal("100.24")), eq(WalletTransactionType.DEPOSIT), eq(null), eq(WalletReferenceType.SYSTEM)
+                    eq(10L), eq("deposit-scale"), eq(new BigDecimal("100.24")),
+                    eq(WalletTransactionType.WALLET_TOP_UP), eq(901L), eq(WalletReferenceType.VNPAY_DEPOSIT)
             )).thenReturn(reserved);
             when(walletRepository.saveAndFlush(any(Wallet.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-            walletService.depositFunds(USER_ID, operationKey("deposit-scale"), new BigDecimal("100.235"), null, WalletReferenceType.SYSTEM);
+            walletService.topUpFromVnPay(
+                    USER_ID, operationKey("deposit-scale"), new BigDecimal("100.235"), 901L);
 
             assertThat(wallet.getAvailableBalance()).isEqualByComparingTo("1000100.24");
             ArgumentCaptor<WalletTransaction> transactionCaptor = ArgumentCaptor.forClass(WalletTransaction.class);
@@ -130,16 +132,18 @@ class WalletServiceImplTest {
 
         @Test
         @DisplayName("should be idempotent for the same operation key and payload")
-        void depositFunds_sameOperationKey_noop() {
+        void topUpFromVnPay_sameOperationKey_noop() {
             Wallet wallet = createWallet(new BigDecimal("1000000"), BigDecimal.ZERO);
 
             when(userRepository.existsById(USER_ID)).thenReturn(true);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
             when(walletOperationLifecycleService.reserveOrReuseOperation(
-                    eq(10L), eq("deposit-ok"), eq(new BigDecimal("500000.00")), eq(WalletTransactionType.DEPOSIT), eq(null), eq(WalletReferenceType.SYSTEM)
+                    eq(10L), eq("deposit-ok"), eq(new BigDecimal("500000.00")),
+                    eq(WalletTransactionType.WALLET_TOP_UP), eq(902L), eq(WalletReferenceType.VNPAY_DEPOSIT)
             )).thenReturn(null);
 
-            walletService.depositFunds(USER_ID, operationKey("deposit-ok"), new BigDecimal("500000"), null, WalletReferenceType.SYSTEM);
+            walletService.topUpFromVnPay(
+                    USER_ID, operationKey("deposit-ok"), new BigDecimal("500000"), 902L);
 
             assertThat(wallet.getAvailableBalance()).isEqualByComparingTo("1000000");
             verify(walletRepository, never()).saveAndFlush(any(Wallet.class));
@@ -148,47 +152,49 @@ class WalletServiceImplTest {
     }
 
     @Nested
-    @DisplayName("freezeFunds")
+    @DisplayName("freezeAuctionDeposit")
     class FreezeFunds {
 
         @Test
         @DisplayName("should move amount from available to frozen")
-        void freezeFunds_success() {
+        void freezeAuctionDeposit_success() {
             Wallet wallet = createWallet(new BigDecimal("5000000"), new BigDecimal("500000"));
-            WalletOperation reserved = createReservedOperation(301L, "freeze-1", WalletTransactionType.FREEZE);
+            WalletOperation reserved = createReservedOperation(301L, "freeze-1", WalletTransactionType.AUCTION_DEPOSIT_FREEZE);
 
             when(userRepository.existsById(USER_ID)).thenReturn(true);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
             when(walletOperationLifecycleService.reserveOrReuseOperation(
-                    eq(10L), eq("freeze-1"), eq(new BigDecimal("1000000.00")), eq(WalletTransactionType.FREEZE), eq(205L), eq(WalletReferenceType.AUCTION)
+                    eq(10L), eq("freeze-1"), eq(new BigDecimal("1000000.00")),
+                    eq(WalletTransactionType.AUCTION_DEPOSIT_FREEZE), eq(205L), eq(WalletReferenceType.AUCTION)
             )).thenReturn(reserved);
             when(walletRepository.saveAndFlush(any(Wallet.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-            walletService.freezeFunds(USER_ID, operationKey("freeze-1"), new BigDecimal("1000000"), 205L, WalletReferenceType.AUCTION);
+            walletService.freezeAuctionDeposit(USER_ID, operationKey("freeze-1"), new BigDecimal("1000000"), 205L);
 
             assertThat(wallet.getAvailableBalance()).isEqualByComparingTo("4000000.00");
             assertThat(wallet.getFrozenBalance()).isEqualByComparingTo("1500000.00");
             ArgumentCaptor<WalletTransaction> transactionCaptor = ArgumentCaptor.forClass(WalletTransaction.class);
             verify(walletTransactionRepository).save(transactionCaptor.capture());
-            assertThat(transactionCaptor.getValue().getType()).isEqualTo(WalletTransactionType.FREEZE);
+            assertThat(transactionCaptor.getValue().getType()).isEqualTo(WalletTransactionType.AUCTION_DEPOSIT_FREEZE);
             assertThat(transactionCaptor.getValue().getAmount()).isEqualByComparingTo("-1000000.00");
             verify(walletOperationLifecycleService).markSuccess(301L);
         }
 
         @Test
         @DisplayName("should reject when available balance is insufficient and finalize operation as FAILED")
-        void freezeFunds_insufficientAvailable_throws() {
+        void freezeAuctionDeposit_insufficientAvailable_throws() {
             Wallet wallet = createWallet(new BigDecimal("500000"), BigDecimal.ZERO);
-            WalletOperation reserved = createReservedOperation(302L, "freeze-2", WalletTransactionType.FREEZE);
+            WalletOperation reserved = createReservedOperation(302L, "freeze-2", WalletTransactionType.AUCTION_DEPOSIT_FREEZE);
 
             when(userRepository.existsById(USER_ID)).thenReturn(true);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
             when(walletOperationLifecycleService.reserveOrReuseOperation(
-                    eq(10L), eq("freeze-2"), eq(new BigDecimal("1000000.00")), eq(WalletTransactionType.FREEZE), eq(205L), eq(WalletReferenceType.AUCTION)
+                    eq(10L), eq("freeze-2"), eq(new BigDecimal("1000000.00")),
+                    eq(WalletTransactionType.AUCTION_DEPOSIT_FREEZE), eq(205L), eq(WalletReferenceType.AUCTION)
             )).thenReturn(reserved);
 
-            assertThatThrownBy(() -> walletService.freezeFunds(
-                    USER_ID, operationKey("freeze-2"), new BigDecimal("1000000"), 205L, WalletReferenceType.AUCTION))
+            assertThatThrownBy(() -> walletService.freezeAuctionDeposit(
+                    USER_ID, operationKey("freeze-2"), new BigDecimal("1000000"), 205L))
                     .isInstanceOf(AppException.class)
                     .satisfies(throwable -> {
                         AppException exception = (AppException) throwable;
@@ -205,9 +211,9 @@ class WalletServiceImplTest {
 
         @Test
         @DisplayName("should reject missing reference id for auction mutation before reserving operation")
-        void freezeFunds_missingAuctionReference_throws() {
-            assertThatThrownBy(() -> walletService.freezeFunds(
-                    USER_ID, operationKey("freeze-ref"), new BigDecimal("1000000"), null, WalletReferenceType.AUCTION))
+        void freezeAuctionDeposit_missingAuctionReference_throws() {
+            assertThatThrownBy(() -> walletService.freezeAuctionDeposit(
+                    USER_ID, operationKey("freeze-ref"), new BigDecimal("1000000"), null))
                     .isInstanceOf(AppException.class)
                     .satisfies(throwable -> {
                         AppException exception = (AppException) throwable;
@@ -219,18 +225,19 @@ class WalletServiceImplTest {
 
         @Test
         @DisplayName("should normalize amount before applying mutation")
-        void freezeFunds_normalizesAmount() {
+        void freezeAuctionDeposit_normalizesAmount() {
             Wallet wallet = createWallet(new BigDecimal("5000000"), BigDecimal.ZERO);
-            WalletOperation reserved = createReservedOperation(303L, "freeze-scale", WalletTransactionType.FREEZE);
+            WalletOperation reserved = createReservedOperation(303L, "freeze-scale", WalletTransactionType.AUCTION_DEPOSIT_FREEZE);
 
             when(userRepository.existsById(USER_ID)).thenReturn(true);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
             when(walletOperationLifecycleService.reserveOrReuseOperation(
-                    eq(10L), eq("freeze-scale"), eq(new BigDecimal("100.24")), eq(WalletTransactionType.FREEZE), eq(205L), eq(WalletReferenceType.AUCTION)
+                    eq(10L), eq("freeze-scale"), eq(new BigDecimal("100.24")),
+                    eq(WalletTransactionType.AUCTION_DEPOSIT_FREEZE), eq(205L), eq(WalletReferenceType.AUCTION)
             )).thenReturn(reserved);
             when(walletRepository.saveAndFlush(any(Wallet.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-            walletService.freezeFunds(USER_ID, operationKey("freeze-scale"), new BigDecimal("100.235"), 205L, WalletReferenceType.AUCTION);
+            walletService.freezeAuctionDeposit(USER_ID, operationKey("freeze-scale"), new BigDecimal("100.235"), 205L);
 
             assertThat(wallet.getAvailableBalance()).isEqualByComparingTo("4999899.76");
             assertThat(wallet.getFrozenBalance()).isEqualByComparingTo("100.24");
@@ -238,20 +245,21 @@ class WalletServiceImplTest {
 
         @Test
         @DisplayName("should map optimistic lock failure to retryable business error and finalize FAILED")
-        void freezeFunds_concurrentModification_throwsRetryableError() {
+        void freezeAuctionDeposit_concurrentModification_throwsRetryableError() {
             Wallet wallet = createWallet(new BigDecimal("5000000"), BigDecimal.ZERO);
-            WalletOperation reserved = createReservedOperation(304L, "freeze-conflict", WalletTransactionType.FREEZE);
+            WalletOperation reserved = createReservedOperation(304L, "freeze-conflict", WalletTransactionType.AUCTION_DEPOSIT_FREEZE);
 
             when(userRepository.existsById(USER_ID)).thenReturn(true);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
             when(walletOperationLifecycleService.reserveOrReuseOperation(
-                    eq(10L), eq("freeze-conflict"), eq(new BigDecimal("1000000.00")), eq(WalletTransactionType.FREEZE), eq(205L), eq(WalletReferenceType.AUCTION)
+                    eq(10L), eq("freeze-conflict"), eq(new BigDecimal("1000000.00")),
+                    eq(WalletTransactionType.AUCTION_DEPOSIT_FREEZE), eq(205L), eq(WalletReferenceType.AUCTION)
             )).thenReturn(reserved);
             when(walletRepository.saveAndFlush(any(Wallet.class)))
                     .thenThrow(new ObjectOptimisticLockingFailureException(Wallet.class, 10L));
 
-            assertThatThrownBy(() -> walletService.freezeFunds(
-                    USER_ID, operationKey("freeze-conflict"), new BigDecimal("1000000"), 205L, WalletReferenceType.AUCTION))
+            assertThatThrownBy(() -> walletService.freezeAuctionDeposit(
+                    USER_ID, operationKey("freeze-conflict"), new BigDecimal("1000000"), 205L))
                     .isInstanceOf(AppException.class)
                     .satisfies(throwable -> {
                         AppException exception = (AppException) throwable;
@@ -268,21 +276,22 @@ class WalletServiceImplTest {
 
         @Test
         @DisplayName("should finalize FAILED when transaction logging throws an unexpected runtime error")
-        void freezeFunds_transactionLogFailure_marksFailed() {
+        void freezeAuctionDeposit_transactionLogFailure_marksFailed() {
             Wallet wallet = createWallet(new BigDecimal("5000000"), BigDecimal.ZERO);
-            WalletOperation reserved = createReservedOperation(305L, "freeze-log-fail", WalletTransactionType.FREEZE);
+            WalletOperation reserved = createReservedOperation(305L, "freeze-log-fail", WalletTransactionType.AUCTION_DEPOSIT_FREEZE);
 
             when(userRepository.existsById(USER_ID)).thenReturn(true);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
             when(walletOperationLifecycleService.reserveOrReuseOperation(
-                    eq(10L), eq("freeze-log-fail"), eq(new BigDecimal("1000000.00")), eq(WalletTransactionType.FREEZE), eq(205L), eq(WalletReferenceType.AUCTION)
+                    eq(10L), eq("freeze-log-fail"), eq(new BigDecimal("1000000.00")),
+                    eq(WalletTransactionType.AUCTION_DEPOSIT_FREEZE), eq(205L), eq(WalletReferenceType.AUCTION)
             )).thenReturn(reserved);
             when(walletRepository.saveAndFlush(any(Wallet.class))).thenAnswer(invocation -> invocation.getArgument(0));
             when(walletTransactionRepository.save(any(WalletTransaction.class)))
                     .thenThrow(new IllegalStateException("transaction-log failure"));
 
-            assertThatThrownBy(() -> walletService.freezeFunds(
-                    USER_ID, operationKey("freeze-log-fail"), new BigDecimal("1000000"), 205L, WalletReferenceType.AUCTION))
+            assertThatThrownBy(() -> walletService.freezeAuctionDeposit(
+                    USER_ID, operationKey("freeze-log-fail"), new BigDecimal("1000000"), 205L))
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessage("transaction-log failure");
 
@@ -295,23 +304,25 @@ class WalletServiceImplTest {
     }
 
     @Nested
-    @DisplayName("unfreezeFunds")
-    class UnfreezeFunds {
+    @DisplayName("releaseAuctionDeposit")
+    class UnfreezeAuctionDeposit {
 
         @Test
         @DisplayName("should move amount from frozen back to available")
-        void unfreezeFunds_success() {
+        void releaseAuctionDeposit_success() {
             Wallet wallet = createWallet(new BigDecimal("1000000"), new BigDecimal("3000000"));
-            WalletOperation reserved = createReservedOperation(401L, "unfreeze-1", WalletTransactionType.UNFREEZE);
+            WalletOperation reserved = createReservedOperation(401L, "unfreeze-1", WalletTransactionType.AUCTION_DEPOSIT_RELEASE);
 
             when(userRepository.existsById(USER_ID)).thenReturn(true);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
             when(walletOperationLifecycleService.reserveOrReuseOperation(
-                    eq(10L), eq("unfreeze-1"), eq(new BigDecimal("500000.00")), eq(WalletTransactionType.UNFREEZE), eq(205L), eq(WalletReferenceType.AUCTION)
+                    eq(10L), eq("unfreeze-1"), eq(new BigDecimal("500000.00")),
+                    eq(WalletTransactionType.AUCTION_DEPOSIT_RELEASE), eq(205L), eq(WalletReferenceType.AUCTION)
             )).thenReturn(reserved);
             when(walletRepository.saveAndFlush(any(Wallet.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-            walletService.unfreezeFunds(USER_ID, operationKey("unfreeze-1"), new BigDecimal("500000"), 205L, WalletReferenceType.AUCTION);
+            walletService.releaseAuctionDeposit(
+                    USER_ID, operationKey("unfreeze-1"), new BigDecimal("500000"), 205L);
 
             assertThat(wallet.getAvailableBalance()).isEqualByComparingTo("1500000.00");
             assertThat(wallet.getFrozenBalance()).isEqualByComparingTo("2500000.00");
@@ -320,31 +331,100 @@ class WalletServiceImplTest {
     }
 
     @Nested
-    @DisplayName("deductFrozenFunds")
+    @DisplayName("captureAuctionDeposit")
     class DeductFrozenFunds {
 
         @Test
         @DisplayName("should deduct amount from frozen balance and log PAYMENT")
-        void deductFrozenFunds_success() {
+        void captureAuctionDeposit_success() {
             Wallet wallet = createWallet(new BigDecimal("2000000"), new BigDecimal("4000000"));
-            WalletOperation reserved = createReservedOperation(501L, "deduct-1", WalletTransactionType.PAYMENT);
+            WalletOperation reserved = createReservedOperation(
+                    501L, "deduct-1", WalletTransactionType.AUCTION_DEPOSIT_CAPTURE);
 
             when(userRepository.existsById(USER_ID)).thenReturn(true);
             when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
             when(walletOperationLifecycleService.reserveOrReuseOperation(
-                    eq(10L), eq("deduct-1"), eq(new BigDecimal("1500000.00")), eq(WalletTransactionType.PAYMENT), eq(205L), eq(WalletReferenceType.AUCTION)
+                    eq(10L), eq("deduct-1"), eq(new BigDecimal("1500000.00")),
+                    eq(WalletTransactionType.AUCTION_DEPOSIT_CAPTURE), eq(205L), eq(WalletReferenceType.AUCTION)
             )).thenReturn(reserved);
             when(walletRepository.saveAndFlush(any(Wallet.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-            walletService.deductFrozenFunds(USER_ID, operationKey("deduct-1"), new BigDecimal("1500000"), 205L, WalletReferenceType.AUCTION);
+            walletService.captureAuctionDeposit(USER_ID, operationKey("deduct-1"), new BigDecimal("1500000"), 205L);
 
             assertThat(wallet.getAvailableBalance()).isEqualByComparingTo("2000000");
             assertThat(wallet.getFrozenBalance()).isEqualByComparingTo("2500000.00");
             ArgumentCaptor<WalletTransaction> transactionCaptor = ArgumentCaptor.forClass(WalletTransaction.class);
             verify(walletTransactionRepository).save(transactionCaptor.capture());
-            assertThat(transactionCaptor.getValue().getType()).isEqualTo(WalletTransactionType.PAYMENT);
+            assertThat(transactionCaptor.getValue().getType())
+                    .isEqualTo(WalletTransactionType.AUCTION_DEPOSIT_CAPTURE);
             assertThat(transactionCaptor.getValue().getAmount()).isEqualByComparingTo("-1500000.00");
             verify(walletOperationLifecycleService).markSuccess(501L);
+        }
+    }
+
+    @Nested
+    @DisplayName("refundOrder")
+    class RefundFunds {
+
+        @Test
+        @DisplayName("should add amount to available balance and log REFUND")
+        void refundOrder_success() {
+            Wallet wallet = createWallet(new BigDecimal("2000000"), BigDecimal.ZERO);
+            WalletOperation reserved = createReservedOperation(601L, "refund-1", WalletTransactionType.ORDER_REFUND);
+
+            when(userRepository.existsById(USER_ID)).thenReturn(true);
+            when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
+            when(walletOperationLifecycleService.reserveOrReuseOperation(
+                    eq(10L), eq("refund-1"), eq(new BigDecimal("3000000.00")),
+                    eq(WalletTransactionType.ORDER_REFUND), eq(91L), eq(WalletReferenceType.ORDER)
+            )).thenReturn(reserved);
+            when(walletRepository.saveAndFlush(any(Wallet.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+            walletService.refundOrder(
+                    USER_ID,
+                    operationKey("refund-1"),
+                    new BigDecimal("3000000"),
+                    91L);
+
+            assertThat(wallet.getAvailableBalance()).isEqualByComparingTo("5000000.00");
+            ArgumentCaptor<WalletTransaction> transactionCaptor = ArgumentCaptor.forClass(WalletTransaction.class);
+            verify(walletTransactionRepository).save(transactionCaptor.capture());
+            assertThat(transactionCaptor.getValue().getType()).isEqualTo(WalletTransactionType.ORDER_REFUND);
+            assertThat(transactionCaptor.getValue().getAmount()).isEqualByComparingTo("3000000.00");
+            verify(walletOperationLifecycleService).markSuccess(601L);
+        }
+    }
+
+    @Nested
+    @DisplayName("payOrder")
+    class PayFunds {
+
+        @Test
+        @DisplayName("should deduct amount from available balance and log PAYMENT")
+        void payOrder_success() {
+            Wallet wallet = createWallet(new BigDecimal("5000000"), BigDecimal.ZERO);
+            WalletOperation reserved = createReservedOperation(701L, "pay-1", WalletTransactionType.ORDER_PAYMENT);
+
+            when(userRepository.existsById(USER_ID)).thenReturn(true);
+            when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
+            when(walletOperationLifecycleService.reserveOrReuseOperation(
+                    eq(10L), eq("pay-1"), eq(new BigDecimal("1500000.00")),
+                    eq(WalletTransactionType.ORDER_PAYMENT), eq(91L), eq(WalletReferenceType.ORDER)
+            )).thenReturn(reserved);
+            when(walletRepository.saveAndFlush(any(Wallet.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+            walletService.payOrder(
+                    USER_ID,
+                    operationKey("pay-1"),
+                    new BigDecimal("1500000"),
+                    91L);
+
+            assertThat(wallet.getAvailableBalance()).isEqualByComparingTo("3500000.00");
+            ArgumentCaptor<WalletTransaction> transactionCaptor = ArgumentCaptor.forClass(WalletTransaction.class);
+            verify(walletTransactionRepository).save(transactionCaptor.capture());
+            assertThat(transactionCaptor.getValue().getType()).isEqualTo(WalletTransactionType.ORDER_PAYMENT);
+            assertThat(transactionCaptor.getValue().getAmount()).isEqualByComparingTo("-1500000.00");
+            verify(walletOperationLifecycleService).markSuccess(701L);
         }
     }
 
@@ -360,8 +440,8 @@ class WalletServiceImplTest {
             tx.setId(99L);
             tx.setWalletId(10L);
             tx.setAmount(new BigDecimal("2000000"));
-            tx.setType(WalletTransactionType.DEPOSIT);
-            tx.setReferenceType(WalletReferenceType.SYSTEM);
+            tx.setType(WalletTransactionType.WALLET_TOP_UP);
+            tx.setReferenceType(WalletReferenceType.VNPAY_DEPOSIT);
             tx.setStatus(WalletTransactionStatus.SUCCESS);
             tx.setCreatedAt(Instant.parse("2026-04-19T03:00:00Z"));
 
@@ -374,7 +454,7 @@ class WalletServiceImplTest {
 
             assertThat(result.result()).hasSize(1);
             assertThat(result.result().get(0).id()).isEqualTo(99L);
-            assertThat(result.result().get(0).type()).isEqualTo(WalletTransactionType.DEPOSIT);
+            assertThat(result.result().get(0).type()).isEqualTo(WalletTransactionType.WALLET_TOP_UP);
         }
     }
 }

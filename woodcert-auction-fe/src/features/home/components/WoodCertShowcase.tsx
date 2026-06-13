@@ -1,4 +1,4 @@
-import { Award, CheckCircle, FileText, QrCode, Shield } from "lucide-react";
+import { Award, CheckCircle, FileText, Shield } from "lucide-react";
 
 export function WoodCertShowcase() {
   return (
@@ -50,8 +50,8 @@ export function WoodCertShowcase() {
                     Xác nhận nghệ nhân chế tác
                   </h4>
                   <p className="mt-1 text-xs text-muted-foreground font-light leading-relaxed">
-                    Ký số điện tử và dấu mộc vật lý từ chính các nghệ nhân bậc thầy để khẳng định
-                    nguồn gốc tác phẩm.
+                    Hồ sơ tác phẩm ghi nhận thông tin người chế tác và nguồn gốc do seller cung cấp
+                    để appraiser đối chiếu trong quá trình thẩm định.
                   </p>
                 </div>
               </div>
@@ -65,8 +65,8 @@ export function WoodCertShowcase() {
                     Định danh số hóa độc bản
                   </h4>
                   <p className="mt-1 text-xs text-muted-foreground font-light leading-relaxed">
-                    Tích hợp chip thông minh NFC hoặc định danh mã hóa (Digital Twin) chống sao chép
-                    và làm giả.
+                    Phiên bản hiện tại hỗ trợ mã chứng thư tra cứu trực tuyến. QR, NFC và Digital
+                    Twin được định hướng cho giai đoạn phát triển sau.
                   </p>
                 </div>
               </div>
@@ -149,16 +149,16 @@ export function WoodCertShowcase() {
                   </div>
                 </div>
 
-                {/* Footer of Certificate: Stamps & QR */}
+                {/* Footer of certificate preview */}
                 <div className="pt-6 border-t border-white/5 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="bg-white/5 p-2 rounded-lg border border-white/10">
-                      <QrCode className="h-10 w-10 text-white/80" />
+                      <FileText className="h-10 w-10 text-white/80" />
                     </div>
                     <div className="text-[9px] font-mono text-white/40 leading-normal">
-                      Quét mã QR để
+                      Mã chứng thư
                       <br />
-                      truy xuất Blockchain
+                      WC-9883-2026
                     </div>
                   </div>
 

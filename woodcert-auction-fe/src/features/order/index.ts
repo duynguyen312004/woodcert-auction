@@ -4,5 +4,8 @@ export * from "./hooks/useOrders";
 export * from "./lib/order-labels";
 export { OrderFeeBreakdown } from "./components/OrderFeeBreakdown";
 export { OrderSummaryCard } from "./components/OrderSummaryCard";
+export { OrderRow } from "./components/OrderRow";
+export { OpenDisputeDialog } from "./components/OpenDisputeDialog";
+export { DisputeHistoryPanel } from "./components/DisputeHistoryPanel";
 export { PaymentAddressDialog } from "./components/PaymentAddressDialog";
 export { ShippingConfirmationForm } from "./components/ShippingConfirmationForm";

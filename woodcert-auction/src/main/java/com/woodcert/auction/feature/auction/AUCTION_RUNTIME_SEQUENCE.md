@@ -31,11 +31,13 @@
 1. Validate DB session is `ACTIVE` and bidder is not seller.
 2. Execute Redis Lua script against state + bidder set.
 3. Lua success drives API response and WebSocket broadcast.
-4. Persist bid and DB snapshot asynchronously; failures are logged but do not change accepted runtime result.
+4. Persist the bid audit row and DB snapshot as best-effort secondary writes.
+5. A failure emits `accepted_bid_not_persisted` or `accepted_bid_snapshot_not_synced`; it does not reverse the Redis-accepted result.
+6. Operational requirement: Redis AOF must be enabled for demo/deployment because Redis is authoritative while a session is active.
 
 ## Close And Settle
 1. Scheduler locks due `ACTIVE` sessions.
-2. Read Redis state, or fallback to DB snapshot and top valid bid.
+2. Read Redis state, or fallback to DB snapshot and top valid bid. The fallback may be stale if both secondary DB writes failed.
 3. Commit terminal session status:
    - `ENDED_SUCCESS` when final price meets reserve.
    - `ENDED_FAILED` otherwise.

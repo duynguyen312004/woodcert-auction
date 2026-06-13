@@ -150,7 +150,7 @@ export interface SellerAppraisalReport {
   conditionGrade: ConditionGrade | null;
   estimatedValue: number | string;
   isAuthentic: boolean;
-  digitalSignature: string;
+  integrityHash: string;
   appraisedAt: string;
   appraiserNotes: string | null;
   sellerAccuracy: number | string | null;

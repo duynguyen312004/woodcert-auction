@@ -61,4 +61,10 @@ describe("seller routes", () => {
     );
     expect([...paths]).not.toContain("admin/appraisers");
   });
+
+  it("declares a not-found route for every portal", () => {
+    const paths = collectPaths(routes);
+
+    expect([...paths]).toEqual(expect.arrayContaining(["*", "seller/*", "appraiser/*", "admin/*"]));
+  });
 });

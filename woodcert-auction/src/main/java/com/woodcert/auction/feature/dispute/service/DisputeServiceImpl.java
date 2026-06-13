@@ -13,9 +13,6 @@ import com.woodcert.auction.feature.dispute.entity.DisputeResolutionOutcome;
 import com.woodcert.auction.feature.dispute.entity.DisputeStatus;
 import com.woodcert.auction.feature.dispute.repository.DisputeCaseRepository;
 import com.woodcert.auction.feature.dispute.repository.DisputeEvidenceRepository;
-import com.woodcert.auction.feature.fulfillment.entity.FulfillmentStatus;
-import com.woodcert.auction.feature.fulfillment.entity.OrderFulfillment;
-import com.woodcert.auction.feature.fulfillment.repository.FulfillmentRepository;
 import com.woodcert.auction.feature.identity.entity.AdminAction;
 import com.woodcert.auction.feature.identity.entity.AdminTargetType;
 import com.woodcert.auction.feature.identity.service.AdminAuditLogService;
@@ -57,7 +54,7 @@ public class DisputeServiceImpl implements DisputeService {
 
     private final DisputeCaseRepository disputeCaseRepository;
     private final DisputeEvidenceRepository disputeEvidenceRepository;
-    private final FulfillmentRepository fulfillmentRepository;
+    private final DisputeFulfillmentPort disputeFulfillmentPort;
     private final OrderService orderService;
     private final MediaAssetService mediaAssetService;
     private final CloudinaryProperties cloudinaryProperties;
@@ -230,10 +227,10 @@ public class DisputeServiceImpl implements DisputeService {
 
         if (request.outcome() == DisputeResolutionOutcome.SELLER_WINS) {
             orderService.resolveDisputeSellerWins(dispute.getOrderId());
-            markFulfillment(dispute.getOrderId(), FulfillmentStatus.AUTO_COMPLETED);
+            disputeFulfillmentPort.markDisputeSellerWins(dispute.getOrderId());
         } else {
             orderService.resolveDisputeBuyerWins(dispute.getOrderId());
-            markFulfillment(dispute.getOrderId(), FulfillmentStatus.CANCELED);
+            disputeFulfillmentPort.markDisputeBuyerWins(dispute.getOrderId());
         }
 
         dispute.setStatus(DisputeStatus.RESOLVED);
@@ -266,16 +263,6 @@ public class DisputeServiceImpl implements DisputeService {
                 throw new AppException(ErrorCode.INVALID_REQUEST, "Dispute evidence media is not ready");
             }
         }
-    }
-
-    private void markFulfillment(Long orderId, FulfillmentStatus status) {
-        OrderFulfillment fulfillment = fulfillmentRepository.findByOrderIdForUpdate(orderId)
-                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
-        fulfillment.setStatus(status);
-        if (status == FulfillmentStatus.AUTO_COMPLETED) {
-            fulfillment.setReceivedAt(Instant.now());
-        }
-        fulfillmentRepository.save(fulfillment);
     }
 
     private void ensureActive(DisputeCase dispute) {

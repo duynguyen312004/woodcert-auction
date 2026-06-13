@@ -1,5 +1,10 @@
 import type { BlogPost } from "../types";
 
+import fscForestryThumbnail from "@/assets/images/mock/blog-fsc-forestry.webp";
+import maitreyaFengShuiThumbnail from "@/assets/images/mock/blog-maitreya-feng-shui.webp";
+import redwoodMarketThumbnail from "@/assets/images/mock/blog-redwood-market.webp";
+import suaComparisonThumbnail from "@/assets/images/mock/blog-sua-comparison.webp";
+
 export const mockPosts: BlogPost[] = [
   {
     id: "1",
@@ -7,8 +12,7 @@ export const mockPosts: BlogPost[] = [
     summary:
       "Chứng chỉ FSC đóng vai trò như 'hộ chiếu xanh' cho các sản phẩm gỗ Việt Nam bước vào thị trường quốc tế như EU, Mỹ, Nhật Bản.",
     category: "Tiêu chuẩn kiểm định",
-    thumbnail:
-      "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?q=80&w=600&auto=format&fit=crop",
+    thumbnail: fscForestryThumbnail,
     source: "Tạp chí Gỗ Việt",
     publishedAt: "2026-05-28T09:30:00Z",
     readTime: "5 phút đọc",
@@ -19,7 +23,7 @@ export const mockPosts: BlogPost[] = [
       <p>Trong bối cảnh biến đổi khí hậu toàn cầu và xu hướng tiêu dùng xanh tăng cao, thị trường quốc tế đòi hỏi khắt khe về nguồn gốc gỗ hợp pháp. FSC được coi là bảo chứng cao nhất cho tính minh bạch này. Những sản phẩm có gắn nhãn FSC luôn được người tiêu dùng ưu ái và sẵn sàng trả giá cao hơn 15% - 20% so với gỗ thông thường.</p>
       
       <h3>2. WoodCert hỗ trợ tích hợp FSC như thế nào?</h3>
-      <p>Hệ thống WoodCert kiểm định nghiêm ngặt nguồn gốc lâm sản đầu vào của các nghệ nhân. Khi đấu giá sản phẩm trên WoodCert, nếu lô gỗ đạt chứng nhận FSC, chứng thư WoodCert đi kèm sẽ tự động liên kết dữ liệu chuỗi hành trình sản phẩm (CoC) lên blockchain, đảm bảo tính không thể làm giả và nâng cao gấp bội giá trị tác phẩm.</p>
+      <p>Hệ thống WoodCert lưu hồ sơ thẩm định và thông tin nguồn gốc do seller cung cấp để người mua tra cứu trước khi đấu giá. Các chứng nhận bên thứ ba như FSC cần được đối chiếu theo tài liệu chứng minh tương ứng; phiên bản MVP chưa tích hợp blockchain.</p>
       
       <h3>3. Xu hướng phát triển lâm nghiệp bền vững tại Việt Nam</h3>
       <p>Việt Nam đang hướng tới mục tiêu phủ xanh rừng trồng có chứng chỉ FSC đạt hơn 1 triệu hecta vào năm 2030. Điều này mở ra cơ hội lớn cho các làng nghề nghệ thuật gỗ chuyển mình từ khai thác tự do sang mô hình chuỗi cung ứng bền vững, nâng tầm thương hiệu gỗ mỹ nghệ Việt trên bản đồ thế giới.</p>
@@ -31,8 +35,7 @@ export const mockPosts: BlogPost[] = [
     summary:
       "Gỗ Sưa đỏ có giá trị kinh tế gấp hàng chục lần gỗ Sưa trắng. Làm sao để nghệ nhân và người chơi gỗ không bị nhầm lẫn?",
     category: "Kiến thức gỗ",
-    thumbnail:
-      "https://images.unsplash.com/photo-1533090161767-e6ffed986c88?q=80&w=600&auto=format&fit=crop",
+    thumbnail: suaComparisonThumbnail,
     source: "Hiệp hội Gỗ & Lâm sản",
     publishedAt: "2026-05-25T14:15:00Z",
     readTime: "4 phút đọc",
@@ -56,8 +59,7 @@ export const mockPosts: BlogPost[] = [
     summary:
       "Đặt tượng Phật Di Lặc bằng gỗ gì và ở hướng nào để thu hút tài lộc, mang lại bình an cho gia chủ?",
     category: "Phong thủy",
-    thumbnail:
-      "https://images.unsplash.com/photo-1606744824163-985d376605aa?q=80&w=600&auto=format&fit=crop",
+    thumbnail: maitreyaFengShuiThumbnail,
     source: "Tạp chí Kiến trúc & Đời sống",
     publishedAt: "2026-05-20T08:00:00Z",
     readTime: "6 phút đọc",
@@ -80,8 +82,7 @@ export const mockPosts: BlogPost[] = [
     summary:
       "Giá nhập khẩu gỗ tròn hương đỏ Nam Phi ghi nhận mức tăng kỷ lục do thắt chặt hạn ngạch khai thác lâm sản quốc tế.",
     category: "Thị trường",
-    thumbnail:
-      "https://images.unsplash.com/photo-1541123437800-1bb1317badc2?q=80&w=600&auto=format&fit=crop",
+    thumbnail: redwoodMarketThumbnail,
     source: "Thông tin Lâm sản Quốc tế",
     publishedAt: "2026-05-15T16:45:00Z",
     readTime: "3 phút đọc",

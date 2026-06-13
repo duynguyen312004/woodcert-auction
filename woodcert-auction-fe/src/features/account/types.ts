@@ -95,6 +95,8 @@ export type CreateAddressPayload = Omit<
   "id" | "provinceName" | "districtName" | "wardName"
 >;
 
+export type UpdateAddressPayload = Omit<CreateAddressPayload, "isDefault">;
+
 // Schema Zod và type suy ra từ schema.
 
 const humanNameRegex = /^[\p{L}\s'.-]+$/u;

@@ -1,6 +1,6 @@
 # Project Status
 
-> Last updated: 2026-06-06 | By: Codex | Session: seller-portal-v1
+> Last updated: 2026-06-13 | By: Codex | Session: 404-and-bundle-optimization
 >
 > Update this file at the end of FE planning or implementation sessions.
 > Keep it concise and decision-useful.
@@ -29,32 +29,35 @@
 - [x] Order UI primitives: summary card and fee breakdown for buyer/seller views
 - [x] Buyer `/orders` and seller `/seller/orders` pages with status tabs, pagination, payment, shipping, receive, and dispute actions
 - [x] Dispute FE integration: evidence upload, buyer open/cancel/current state, seller read-only banner/state, and admin review/resolve flow
-- [x] Dedicated admin layout with overview dashboard, revenue, dispute queue/detail, categories, users, and appraisers pages
-- [x] Admin user management page wired to `/admin/users` (role/status filters, pagination, ban/unban actions); appraisers page lists via `/admin/users?role=ROLE_APPRAISER`
+- [x] Dedicated admin layout with overview dashboard, revenue, dispute queue/detail, categories, users, and audit-log pages
+- [x] Admin user management page wired to `/admin/users` (role/status filters, pagination, account/capability ban actions, and appraiser creation); appraisers are filtered through `/admin/users?role=ROLE_APPRAISER`
 - [x] Seller capability suspension UI keeps historical data readable, shows the admin reason/time, disables commercial write actions, and preserves paid-order shipping
 - [x] Admin overview dashboard aggregates total users, open disputes, and total revenue from existing endpoints
-- [x] Shared `Pagination` component extracted to `shared/ui` and applied to admin revenue/disputes/users/appraisers tables
+- [x] Shared `Pagination` component extracted to `shared/ui` and applied to admin revenue/disputes/users tables
 - [x] Public certificate verification page and address book UI
 - [x] Seller product detail page and `RETURNED` sale status display
 - [x] Fulfillment API client and seller shipping confirmation UI on seller auction detail
 - [x] Admin revenue page wired to backend revenue APIs
-- [x] Automated FE unit test suite passes with 140 tests and 2 Playwright smoke tests
+- [x] Automated FE unit test suite passes with 156 tests and 6 Playwright tests
 - [x] Order tabs use backend `status` filter and buyer/seller status counts
 - [x] Bidding room refetches detail, participation, and bid history after socket connect/reconnect
 - [x] Buyer can withdraw once from a `WAITING` auction, receive the full deposit refund, and cannot register again
 - [x] Auction countdown and seller auction validation use shared server clock offset from `/system/time`
 - [x] Product fallback image centralized through `FALLBACK_PRODUCT_IMAGE`
-- [x] Admin/seller/appraiser/blog/bidding route pages lazy-load in route chunks
+- [x] Route pages lazy-load across auth, public secondary pages, auction, account, buyer, wallet, certificate, admin, seller, appraiser, blog, and bidding
+- [x] Shared custom 404 page preserves the public, seller, appraiser, and admin layouts with role-appropriate return actions
+- [x] Vite vendor chunks split React/router, data, forms, and realtime dependencies without raising `chunkSizeWarningLimit`
 - [x] Seller appraisal route/menu removed; `/seller/appraisals` is no longer valid
 - [x] Home category image mapping updated for the new flat seeded category slugs
 - [x] Blog remains static/mock content, not a CMS/API-backed feature
 - [x] Seller Portal v1: exact product KPIs, draft deletion, editable store name, action center, order detail, shipping address snapshots, revenue page, and seller auction realtime
 - [x] Shared auction STOMP subscription used by buyer bidding and seller monitoring, with 10-second seller polling fallback
-- [x] Frontend verification passes: typecheck, lint, 140 unit tests, and production build
+- [x] Frontend verification passes: typecheck, lint, 156 unit tests, 6 Playwright tests, and production build
 
 ## In Progress
 
-- Seller Portal v1 browser-level E2E acceptance and responsive polish.
+- Full browser acceptance from a clean database with real SMTP, Cloudinary, and VNPay Sandbox credentials.
+- Responsive acceptance for public, buyer, seller, appraiser, and admin screens.
 
 ## Deferred
 
@@ -71,12 +74,13 @@
 - Seller auction detail consumes shared STOMP events immediately and retains 10-second polling for operational reconciliation.
 - Order status tabs must keep using backend `status` filters and status-count endpoints; do not reintroduce page-local filtering.
 - Cookie refresh/logout uses backend double-submit CSRF via `GET /auth/csrf` and `X-XSRF-TOKEN`.
+- Production build has no JavaScript chunk over 500 KB. Main entry is 410.76 KB (127.91 KB gzip), down from about 889 KB; the largest forced vendor chunk is 101.72 KB.
 
 ## Next Tasks
 
-1. Continue deploy/runtime env hardening for production hosting.
-2. Add advanced Playwright coverage for realtime bidding, websocket reconnect recovery, and dispute resolution happy paths.
-3. Add responsive polish pass for order/admin/certificate/address pages.
+1. Run the clean-database browser checklist with real SMTP, Cloudinary, and VNPay Sandbox.
+2. Verify realtime bidding, reconnect recovery, settlement, payment, shipping, and both dispute outcomes.
+3. Complete the responsive acceptance pass.
 
 ## Milestones
 
@@ -128,7 +132,7 @@
 
 ### Phase 5 - Hardening
 
-- [x] Automated tests: 96 unit tests and 2 Playwright smoke tests
+- [x] Automated tests: 156 unit tests and 6 Playwright tests
 - [ ] Responsive polish
 - [x] Unit tests for server clock, reconnect callback, category slug mapping, order status API params/counts, fallback image, and seller appraisal route removal
 - [ ] Further unit tests for bid-history dedupe, countdown thresholds, bid form validation, and participation-driven action states

@@ -74,7 +74,7 @@ Client → POST /api/v1/auth/login (email + password)
 → CustomUserDetailsService.loadUserByUsername() → query DB
 → Password verified (BCrypt)
 → JwtService creates access token (15min) + refresh token (7d)
-→ Return tokens to client (Refresh token in HttpOnly Cookie)
+→ Return access token in JSON and refresh token only in HttpOnly cookie
 2. Authenticated Request:
 Client → [Authorization: Bearer <access_token>]
 → SecurityFilterChain → OAuth2 Resource Server
@@ -82,10 +82,10 @@ Client → [Authorization: Bearer <access_token>]
 → JwtAuthenticationConverter extracts 'permissions' to SecurityContext
 → Controller (@PreAuthorize) → Service → Repository → Response
 3. Token Refresh:
-Client → GET /api/v1/auth/csrf when using the cookie refresh flow
-Client → POST /api/v1/auth/refresh (refresh token + matching X-XSRF-TOKEN for cookie flow)
-→ Validate refresh token → Issue new access token
-→ Return new tokens
+Client → GET /api/v1/auth/csrf
+Client → POST /api/v1/auth/refresh (empty body + matching X-XSRF-TOKEN)
+→ Read and rotate refresh token from HttpOnly cookie
+→ Return new access token and set the rotated refresh cookie
 ```
 
 ---
@@ -114,7 +114,7 @@ Client -> POST /api/v1/auth/reset-password
 -> Return success
 ```
 
-Refresh tokens are returned in cookies built with `ResponseCookie`, including `HttpOnly`, configured `Secure`, configured `SameSite`, `Path`, and `Max-Age`.
+Refresh tokens are returned only in cookies built with `ResponseCookie`, including `HttpOnly`, configured `Secure`, configured `SameSite`, `Path`, and `Max-Age`.
 
 Raw password-reset tokens, reset links, and email-verification links must not be written to application logs, including local fallback paths when SMTP is not configured.
 

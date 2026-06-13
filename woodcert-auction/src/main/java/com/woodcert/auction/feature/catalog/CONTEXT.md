@@ -13,7 +13,7 @@
 - Product image upload intent and confirm flow.
 - Appraiser queue visibility, claim/release, expired-claim handling, approve/reject report submission.
 - Appraisal proof image upload intent and confirm flow.
-- Immutable appraisal report with certificate code, digital signature, seller accuracy, proof images, and seller reputation update.
+- Immutable appraisal report with certificate code, SHA-256 integrity hash, seller accuracy, proof images, and seller reputation update.
 - Internal product list/detail access rules for seller/appraiser.
 - `ProductImageHelper` for auction read-model image selection.
 

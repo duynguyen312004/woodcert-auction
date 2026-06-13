@@ -6,8 +6,6 @@ import com.woodcert.auction.core.exception.ErrorCode;
 import com.woodcert.auction.core.security.JwtService;
 import com.woodcert.auction.feature.identity.dto.request.LoginReq;
 import com.woodcert.auction.feature.identity.dto.request.RegisterReq;
-import com.woodcert.auction.feature.identity.dto.response.AuthRes;
-import com.woodcert.auction.feature.identity.dto.response.RefreshRes;
 import com.woodcert.auction.feature.identity.dto.response.RegisterRes;
 import com.woodcert.auction.feature.identity.entity.EmailVerificationToken;
 import com.woodcert.auction.feature.identity.entity.RefreshToken;
@@ -57,7 +55,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public AuthRes login(LoginReq request) {
+    public IssuedAuthTokens login(LoginReq request) {
         // Bước 1: Chuẩn hóa email để authentication và truy vấn DB dùng cùng một định dạng.
         String normalizedEmail = IdentityNormalizationUtils.normalizeEmail(request.email());
 
@@ -101,7 +99,7 @@ public class AuthServiceImpl implements AuthService {
                 .map(Role::getName)
                 .collect(Collectors.toList());
 
-        return new AuthRes(accessToken, rawRefreshToken, roles);
+        return new IssuedAuthTokens(accessToken, rawRefreshToken, roles);
     }
 
     @Override
@@ -218,7 +216,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public RefreshRes refresh(String rawRefreshToken) {
+    public RotatedAuthTokens refresh(String rawRefreshToken) {
         // Bước 1: Hash refresh token thô để tìm token đã lưu.
         String tokenHash = identityTokenService.hash(rawRefreshToken);
 
@@ -255,7 +253,7 @@ public class AuthServiceImpl implements AuthService {
         saveRefreshToken(user, newRawRefreshToken);
 
         log.info("Token refreshed for user {}", user.getEmail());
-        return new RefreshRes(newAccessToken, newRawRefreshToken);
+        return new RotatedAuthTokens(newAccessToken, newRawRefreshToken);
     }
 
     @Override

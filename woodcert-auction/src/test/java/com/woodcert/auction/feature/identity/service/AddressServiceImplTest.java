@@ -2,6 +2,7 @@ package com.woodcert.auction.feature.identity.service;
 
 import com.woodcert.auction.core.exception.AppException;
 import com.woodcert.auction.feature.identity.dto.request.CreateAddressReq;
+import com.woodcert.auction.feature.identity.dto.request.UpdateAddressReq;
 import com.woodcert.auction.feature.identity.dto.response.AddressRes;
 import com.woodcert.auction.feature.identity.entity.Address;
 import com.woodcert.auction.feature.identity.entity.User;
@@ -27,6 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -169,5 +171,164 @@ class AddressServiceImplTest {
         );
 
         assertEquals("District does not belong to the provided province", exception.getMessage());
+    }
+
+    @Test
+    @DisplayName("createAddress makes the first address default")
+    void createAddress_firstAddress_becomesDefault() {
+        User user = new User();
+        user.setId("user-1");
+        CreateAddressReq request = new CreateAddressReq(
+                "Receiver",
+                "0911222333",
+                "Street 1",
+                "01",
+                "001",
+                "00001",
+                false
+        );
+
+        when(userRepository.findById("user-1")).thenReturn(Optional.of(user));
+        when(provinceRepository.existsById("01")).thenReturn(true);
+        when(districtRepository.existsByCodeAndProvinceCode("001", "01")).thenReturn(true);
+        when(wardRepository.existsByCodeAndDistrictCode("00001", "001")).thenReturn(true);
+        when(addressRepository.existsByUser_Id("user-1")).thenReturn(false);
+        stubLocationNames();
+        when(addressRepository.save(any(Address.class))).thenAnswer(invocation -> {
+            Address address = invocation.getArgument(0);
+            address.setId(1L);
+            return address;
+        });
+
+        AddressRes result = addressService.createAddress("user-1", request);
+
+        assertEquals(true, result.isDefault());
+        verify(addressRepository).clearDefaultByUserId("user-1");
+    }
+
+    @Test
+    @DisplayName("updateAddress keeps default state while updating owned address fields")
+    void updateAddress_ownedAddress_updatesFields() {
+        Address address = address("user-1", 7L, true);
+        UpdateAddressReq request = new UpdateAddressReq(
+                "New Receiver",
+                "0988777666",
+                "New Street 20",
+                "01",
+                "001",
+                "00001"
+        );
+
+        when(addressRepository.findByIdAndUser_Id(7L, "user-1")).thenReturn(Optional.of(address));
+        when(provinceRepository.existsById("01")).thenReturn(true);
+        when(districtRepository.existsByCodeAndProvinceCode("001", "01")).thenReturn(true);
+        when(wardRepository.existsByCodeAndDistrictCode("00001", "001")).thenReturn(true);
+        when(addressRepository.save(address)).thenReturn(address);
+        stubLocationNames();
+
+        AddressRes result = addressService.updateAddress("user-1", 7L, request);
+
+        assertEquals("New Receiver", result.receiverName());
+        assertEquals("0988777666", result.phoneNumber());
+        assertEquals(true, result.isDefault());
+        verify(addressRepository, never()).clearDefaultByUserId("user-1");
+    }
+
+    @Test
+    @DisplayName("updateAddress rejects an address owned by another user")
+    void updateAddress_notOwned_throwsNotFound() {
+        when(addressRepository.findByIdAndUser_Id(7L, "user-1")).thenReturn(Optional.empty());
+
+        UpdateAddressReq request = new UpdateAddressReq(
+                "New Receiver",
+                "0988777666",
+                "New Street 20",
+                "01",
+                "001",
+                "00001"
+        );
+
+        AppException exception = assertThrows(
+                AppException.class,
+                () -> addressService.updateAddress("user-1", 7L, request)
+        );
+
+        assertEquals("Address not found", exception.getMessage());
+    }
+
+    @Test
+    @DisplayName("setDefaultAddress clears the old default and activates the selected address")
+    void setDefaultAddress_nonDefaultAddress_switchesDefault() {
+        Address address = address("user-1", 7L, false);
+        when(addressRepository.findByIdAndUser_Id(7L, "user-1")).thenReturn(Optional.of(address));
+        when(addressRepository.save(address)).thenReturn(address);
+        stubLocationNames();
+
+        AddressRes result = addressService.setDefaultAddress("user-1", 7L);
+
+        assertEquals(true, result.isDefault());
+        verify(addressRepository).clearDefaultByUserId("user-1");
+        verify(addressRepository).save(address);
+    }
+
+    @Test
+    @DisplayName("deleteAddress promotes the oldest remaining address when deleting the default")
+    void deleteAddress_defaultAddress_promotesOldestRemaining() {
+        Address currentDefault = address("user-1", 7L, true);
+        Address replacement = address("user-1", 9L, false);
+        when(addressRepository.findByIdAndUser_Id(7L, "user-1"))
+                .thenReturn(Optional.of(currentDefault));
+        when(addressRepository.findFirstByUser_IdAndIdNotOrderByIdAsc("user-1", 7L))
+                .thenReturn(Optional.of(replacement));
+
+        addressService.deleteAddress("user-1", 7L);
+
+        assertEquals(true, replacement.isDefault());
+        verify(addressRepository).delete(currentDefault);
+        verify(addressRepository).save(replacement);
+    }
+
+    @Test
+    @DisplayName("deleteAddress does not promote another address when deleting a non-default")
+    void deleteAddress_nonDefaultAddress_onlyDeletes() {
+        Address address = address("user-1", 7L, false);
+        when(addressRepository.findByIdAndUser_Id(7L, "user-1")).thenReturn(Optional.of(address));
+
+        addressService.deleteAddress("user-1", 7L);
+
+        verify(addressRepository).delete(address);
+        verify(addressRepository, never())
+                .findFirstByUser_IdAndIdNotOrderByIdAsc("user-1", 7L);
+    }
+
+    private Address address(String userId, Long id, boolean isDefault) {
+        User user = new User();
+        user.setId(userId);
+        Address address = new Address();
+        address.setId(id);
+        address.setUser(user);
+        address.setReceiverName("Receiver");
+        address.setPhoneNumber("0911222333");
+        address.setStreetAddress("Street 1");
+        address.setProvinceCode("01");
+        address.setDistrictCode("001");
+        address.setWardCode("00001");
+        address.setDefault(isDefault);
+        return address;
+    }
+
+    private void stubLocationNames() {
+        Province province = new Province();
+        province.setCode("01");
+        province.setName("Hà Nội");
+        District district = new District();
+        district.setCode("001");
+        district.setName("Ba Đình");
+        Ward ward = new Ward();
+        ward.setCode("00001");
+        ward.setName("Phúc Xá");
+        when(provinceRepository.findById("01")).thenReturn(Optional.of(province));
+        when(districtRepository.findById("001")).thenReturn(Optional.of(district));
+        when(wardRepository.findById("00001")).thenReturn(Optional.of(ward));
     }
 }

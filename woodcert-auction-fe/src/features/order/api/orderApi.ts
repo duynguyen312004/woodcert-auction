@@ -38,6 +38,7 @@ export function mapOrder<T extends OrderSummary | OrderDetail | null>(order: T):
       order.forfeitedDepositSellerAmount == null
         ? null
         : toNumber(order.forfeitedDepositSellerAmount),
+    buyerRefundAmount: order.buyerRefundAmount == null ? null : toNumber(order.buyerRefundAmount),
   } as T;
 }
 

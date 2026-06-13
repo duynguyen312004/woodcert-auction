@@ -5,7 +5,6 @@ import com.woodcert.auction.feature.finance.config.VnPayProperties;
 import com.woodcert.auction.feature.finance.dto.response.CreateDepositRes;
 import com.woodcert.auction.feature.finance.entity.VnPayDeposit;
 import com.woodcert.auction.feature.finance.entity.VnPayDepositStatus;
-import com.woodcert.auction.feature.finance.entity.WalletReferenceType;
 import com.woodcert.auction.feature.finance.repository.VnPayDepositRepository;
 import com.woodcert.auction.feature.finance.support.FinanceOperationKeys;
 import org.junit.jupiter.api.BeforeEach;
@@ -73,8 +72,7 @@ class VnPayServiceImplTest {
                 properties,
                 depositRepository,
                 walletService,
-                new TransactionTemplate(transactionManager)
-        );
+                new TransactionTemplate(transactionManager));
     }
 
     @Test
@@ -154,7 +152,7 @@ class VnPayServiceImplTest {
 
         assertThat(redirectUrl).isEqualTo(FE_RETURN_URL + "?txnRef=" + txnRef + "&status=PENDING");
         assertThat(deposit.getStatus()).isEqualTo(VnPayDepositStatus.PENDING);
-        verify(walletService, never()).depositFunds(any(), any(), any(), any(), any());
+        verify(walletService, never()).topUpFromVnPay(any(), any(), any(), any());
         verify(depositRepository, never()).saveAndFlush(any());
     }
 
@@ -172,7 +170,7 @@ class VnPayServiceImplTest {
         String redirectUrl = vnPayService.processReturn(params);
 
         assertThat(redirectUrl).isEqualTo(FE_RETURN_URL + "?txnRef=" + txnRef + "&status=SUCCESS");
-        verify(walletService, never()).depositFunds(any(), any(), any(), any(), any());
+        verify(walletService, never()).topUpFromVnPay(any(), any(), any(), any());
     }
 
     @Test
@@ -193,13 +191,11 @@ class VnPayServiceImplTest {
         assertThat(deposit.getStatus()).isEqualTo(VnPayDepositStatus.SUCCESS);
         assertThat(deposit.getVnpTransactionNo()).isEqualTo("123456");
         verify(depositRepository).saveAndFlush(deposit);
-        verify(walletService).depositFunds(
+        verify(walletService).topUpFromVnPay(
                 eq(USER_ID),
                 eq(FinanceOperationKeys.vnpayDeposit(txnRef)),
                 eq(BigDecimal.valueOf(100000)),
-                eq(9L),
-                eq(WalletReferenceType.VNPAY_DEPOSIT)
-        );
+                eq(9L));
     }
 
     @Test
@@ -218,7 +214,7 @@ class VnPayServiceImplTest {
         String redirectUrl = vnPayService.processReturn(params);
 
         assertThat(redirectUrl).isEqualTo(FE_RETURN_URL + "?txnRef=" + txnRef + "&status=SUCCESS");
-        verify(walletService, never()).depositFunds(any(), any(), any(), any(), any());
+        verify(walletService, never()).topUpFromVnPay(any(), any(), any(), any());
         verify(depositRepository, never()).saveAndFlush(any());
     }
 
@@ -226,7 +222,8 @@ class VnPayServiceImplTest {
     @DisplayName("should not confirm on processReturn when return URL is not local")
     void processReturn_localConfirmationEnabled_publicReturnUrlDoesNotDepositFunds() {
         lenient().when(properties.isConfirmOnReturnEnabled()).thenReturn(true);
-        lenient().when(properties.getReturnUrl()).thenReturn("https://api.woodcert.example/api/v1/wallets/vnpay/return");
+        lenient().when(properties.getReturnUrl())
+                .thenReturn("https://api.woodcert.example/api/v1/wallets/vnpay/return");
         String txnRef = "DEP20260526000012";
         VnPayDeposit deposit = pendingDeposit(12L, txnRef);
         when(depositRepository.findByTxnRef(txnRef)).thenReturn(Optional.of(deposit));
@@ -238,7 +235,7 @@ class VnPayServiceImplTest {
 
         assertThat(redirectUrl).isEqualTo(FE_RETURN_URL + "?txnRef=" + txnRef + "&status=PENDING");
         verify(depositRepository, never()).findByTxnRefForUpdate(txnRef);
-        verify(walletService, never()).depositFunds(any(), any(), any(), any(), any());
+        verify(walletService, never()).topUpFromVnPay(any(), any(), any(), any());
         verify(depositRepository, never()).saveAndFlush(any());
     }
 
@@ -260,7 +257,7 @@ class VnPayServiceImplTest {
         assertThat(deposit.getStatus()).isEqualTo(VnPayDepositStatus.FAILED);
         assertThat(deposit.getVnpResponseCode()).isEqualTo("24");
         verify(depositRepository).saveAndFlush(deposit);
-        verify(walletService, never()).depositFunds(any(), any(), any(), any(), any());
+        verify(walletService, never()).topUpFromVnPay(any(), any(), any(), any());
     }
 
     @Test
@@ -282,13 +279,11 @@ class VnPayServiceImplTest {
         assertThat(deposit.getVnpBankCode()).isEqualTo("NCB");
 
         verify(depositRepository).findByTxnRefForUpdate(txnRef);
-        verify(walletService).depositFunds(
+        verify(walletService).topUpFromVnPay(
                 eq(USER_ID),
                 eq(FinanceOperationKeys.vnpayDeposit(txnRef)),
                 eq(BigDecimal.valueOf(100000)),
-                eq(3L),
-                eq(WalletReferenceType.VNPAY_DEPOSIT)
-        );
+                eq(3L));
     }
 
     @Test
@@ -306,7 +301,7 @@ class VnPayServiceImplTest {
 
         assertThat(ipnResponse.get("RspCode")).isEqualTo("02");
         assertThat(ipnResponse.get("Message")).isEqualTo("Order already confirmed");
-        verify(walletService, never()).depositFunds(any(), any(), any(), any(), any());
+        verify(walletService, never()).topUpFromVnPay(any(), any(), any(), any());
     }
 
     @Test
@@ -324,7 +319,7 @@ class VnPayServiceImplTest {
 
         assertThat(ipnResponse.get("RspCode")).isEqualTo("02");
         assertThat(ipnResponse.get("Message")).isEqualTo("Order already confirmed");
-        verify(walletService, never()).depositFunds(any(), any(), any(), any(), any());
+        verify(walletService, never()).topUpFromVnPay(any(), any(), any(), any());
     }
 
     @Test
@@ -340,7 +335,7 @@ class VnPayServiceImplTest {
         Map<String, String> ipnResponse = vnPayService.processIpn(params);
 
         assertThat(ipnResponse.get("RspCode")).isEqualTo("04");
-        verify(walletService, never()).depositFunds(any(), any(), any(), any(), any());
+        verify(walletService, never()).topUpFromVnPay(any(), any(), any(), any());
         verify(depositRepository, never()).saveAndFlush(any());
     }
 
@@ -358,7 +353,7 @@ class VnPayServiceImplTest {
         Map<String, String> ipnResponse = vnPayService.processIpn(params);
 
         assertThat(ipnResponse.get("RspCode")).isEqualTo("99");
-        verify(walletService, never()).depositFunds(any(), any(), any(), any(), any());
+        verify(walletService, never()).topUpFromVnPay(any(), any(), any(), any());
         verify(depositRepository, never()).saveAndFlush(any());
     }
 
@@ -370,7 +365,7 @@ class VnPayServiceImplTest {
         when(depositRepository.findByTxnRefForUpdate(txnRef)).thenReturn(Optional.of(deposit));
         org.mockito.Mockito.doThrow(new RuntimeException("wallet error"))
                 .when(walletService)
-                .depositFunds(any(), any(), any(), any(), any());
+                .topUpFromVnPay(any(), any(), any(), any());
 
         Map<String, String> params = successfulParams(txnRef, BigDecimal.valueOf(100000));
         params.put("vnp_SecureHash", calculateTestChecksum(params));
@@ -455,8 +450,7 @@ class VnPayServiceImplTest {
             String value = separator >= 0 ? pair.substring(separator + 1) : "";
             params.put(
                     java.net.URLDecoder.decode(key, java.nio.charset.StandardCharsets.US_ASCII),
-                    java.net.URLDecoder.decode(value, java.nio.charset.StandardCharsets.US_ASCII)
-            );
+                    java.net.URLDecoder.decode(value, java.nio.charset.StandardCharsets.US_ASCII));
         }
         return params;
     }

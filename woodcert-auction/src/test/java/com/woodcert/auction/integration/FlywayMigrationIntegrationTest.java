@@ -40,6 +40,10 @@ class FlywayMigrationIntegrationTest {
                         .isEqualTo(1L);
                 assertThat(queryLong(connection, "SELECT COUNT(*) FROM permissions WHERE name = 'MANAGE_CATEGORIES'"))
                         .isEqualTo(1L);
+                assertThat(queryLong(connection, "SELECT COUNT(*) FROM permissions WHERE name = 'REGISTER_AUCTION'"))
+                        .isEqualTo(1L);
+                assertThat(queryLong(connection, "SELECT COUNT(*) FROM permissions WHERE name = 'JOIN_AUCTION'"))
+                        .isZero();
                 assertThat(queryLong(connection, """
                         SELECT COUNT(*)
                         FROM information_schema.columns
@@ -47,6 +51,19 @@ class FlywayMigrationIntegrationTest {
                           AND table_name = 'orders'
                           AND column_name = 'version'
                         """)).isEqualTo(1L);
+                assertThat(queryLong(connection, """
+                        SELECT COUNT(*)
+                        FROM information_schema.columns
+                        WHERE table_schema = DATABASE()
+                          AND table_name = 'orders'
+                          AND column_name IN ('product_title', 'buyer_refund_amount', 'refunded_at')
+                        """)).isEqualTo(3L);
+                assertThat(queryLong(connection, """
+                        SELECT COUNT(*)
+                        FROM information_schema.tables
+                        WHERE table_schema = DATABASE()
+                          AND table_name IN ('user_capability_statuses', 'admin_audit_logs')
+                        """)).isEqualTo(2L);
                 assertThat(queryLong(connection, """
                         SELECT COUNT(*)
                         FROM users u

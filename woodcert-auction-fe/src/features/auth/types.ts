@@ -54,8 +54,6 @@ export type RegisterCredentials = z.infer<typeof registerSchema>;
 
 export interface LoginResponse {
   accessToken: string;
-  /** Raw refresh token — also set as HttpOnly cookie by the backend. */
-  refreshToken?: string;
   roles?: string[];
 }
 

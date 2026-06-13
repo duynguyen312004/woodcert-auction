@@ -202,8 +202,8 @@ Admin permissions must be semantic. Use `ADMIN_ACCESS`, `MANAGE_CATEGORIES`, `MA
 Cookie refresh flow must use double-submit CSRF:
 
 - `GET /api/v1/auth/csrf` issues the non-HttpOnly `XSRF-TOKEN` cookie.
-- `POST /api/v1/auth/refresh` and `POST /api/v1/auth/logout` require matching `X-XSRF-TOKEN` when the refresh token is read from the cookie.
-- Body refresh-token fallback remains available for non-browser/mobile clients.
+- `POST /api/v1/auth/refresh` and `POST /api/v1/auth/logout` read refresh tokens only from the HttpOnly cookie and require matching `X-XSRF-TOKEN`.
+- Refresh tokens must not be returned in JSON or accepted from request bodies.
 
 JWT Payload MUST include:
 

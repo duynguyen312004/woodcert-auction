@@ -55,7 +55,7 @@ class AdminAppraiserServiceImplTest {
     @Test
     void createAppraiser_newEmail_success() {
         CreateAdminAppraiserReq req = new CreateAdminAppraiserReq(EMAIL, "pass1234", "Test User", PHONE);
-        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.empty());
+        when(userRepository.existsByEmail(EMAIL)).thenReturn(false);
         when(userRepository.existsByPhoneNumber(PHONE)).thenReturn(false);
         when(roleRepository.findByName(APPRAISER_ROLE)).thenReturn(Optional.of(role(APPRAISER_ROLE)));
         when(passwordEncoder.encode("pass1234")).thenReturn("hashedPass");
@@ -73,40 +73,9 @@ class AdminAppraiserServiceImplTest {
     }
 
     @Test
-    void createAppraiser_existingActiveUserWithoutRole_promotesToAppraiser() {
+    void createAppraiser_existingEmail_throwsDuplicateException() {
         CreateAdminAppraiserReq req = new CreateAdminAppraiserReq(EMAIL, "pass1234", "New Name", PHONE);
-        User existingUser = testUser(USER_ID, EMAIL, UserStatus.ACTIVE, "ROLE_BIDDER");
-        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(existingUser));
-        when(userRepository.existsByPhoneNumberAndIdNot(PHONE, USER_ID)).thenReturn(false);
-        when(roleRepository.findByName(APPRAISER_ROLE)).thenReturn(Optional.of(role(APPRAISER_ROLE)));
-        when(passwordEncoder.encode("pass1234")).thenReturn("hashedPass");
-        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-        AdminUserRes result = adminAppraiserService.createAppraiser(ADMIN_ID, req);
-
-        assertThat(result.email()).isEqualTo(EMAIL);
-        assertThat(result.fullName()).isEqualTo("New Name");
-        assertThat(existingUser.getRoles().stream().anyMatch(r -> r.getName().equals(APPRAISER_ROLE))).isTrue();
-    }
-
-    @Test
-    void createAppraiser_existingBannedNonAppraiser_throwsInvalidRequest() {
-        CreateAdminAppraiserReq req = new CreateAdminAppraiserReq(EMAIL, "pass1234", "New Name", PHONE);
-        User existingUser = testUser(USER_ID, EMAIL, UserStatus.BANNED, "ROLE_BIDDER");
-        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(existingUser));
-
-        assertThatThrownBy(() -> adminAppraiserService.createAppraiser(ADMIN_ID, req))
-                .isInstanceOf(AppException.class)
-                .extracting(ex -> ((AppException) ex).getErrorCode())
-                .isEqualTo(ErrorCode.INVALID_REQUEST);
-        verify(userRepository, never()).save(any());
-    }
-
-    @Test
-    void createAppraiser_existingUserWithRoleAppraiser_throwsDuplicateException() {
-        CreateAdminAppraiserReq req = new CreateAdminAppraiserReq(EMAIL, "pass1234", "Test User", PHONE);
-        User existingUser = testUser(USER_ID, EMAIL, UserStatus.BANNED, APPRAISER_ROLE);
-        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(existingUser));
+        when(userRepository.existsByEmail(EMAIL)).thenReturn(true);
 
         assertThatThrownBy(() -> adminAppraiserService.createAppraiser(ADMIN_ID, req))
                 .isInstanceOf(AppException.class)

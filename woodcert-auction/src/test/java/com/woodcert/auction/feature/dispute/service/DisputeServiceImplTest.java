@@ -9,9 +9,6 @@ import com.woodcert.auction.feature.dispute.entity.DisputeResolutionOutcome;
 import com.woodcert.auction.feature.dispute.entity.DisputeStatus;
 import com.woodcert.auction.feature.dispute.repository.DisputeCaseRepository;
 import com.woodcert.auction.feature.dispute.repository.DisputeEvidenceRepository;
-import com.woodcert.auction.feature.fulfillment.entity.FulfillmentStatus;
-import com.woodcert.auction.feature.fulfillment.entity.OrderFulfillment;
-import com.woodcert.auction.feature.fulfillment.repository.FulfillmentRepository;
 import com.woodcert.auction.feature.media.config.CloudinaryProperties;
 import com.woodcert.auction.feature.media.entity.MediaAsset;
 import com.woodcert.auction.feature.media.entity.MediaResourceType;
@@ -54,7 +51,7 @@ class DisputeServiceImplTest {
 
     @Mock private DisputeCaseRepository disputeCaseRepository;
     @Mock private DisputeEvidenceRepository disputeEvidenceRepository;
-    @Mock private FulfillmentRepository fulfillmentRepository;
+    @Mock private DisputeFulfillmentPort disputeFulfillmentPort;
     @Mock private OrderService orderService;
     @Mock private MediaAssetService mediaAssetService;
     @Mock private MediaUrlBuilder mediaUrlBuilder;
@@ -67,7 +64,7 @@ class DisputeServiceImplTest {
         disputeService = new DisputeServiceImpl(
                 disputeCaseRepository,
                 disputeEvidenceRepository,
-                fulfillmentRepository,
+                disputeFulfillmentPort,
                 orderService,
                 mediaAssetService,
                 new CloudinaryProperties(),
@@ -164,9 +161,7 @@ class DisputeServiceImplTest {
     @Test
     void resolveDispute_sellerWinsCompletesOrderAndAutoCompletesFulfillment() {
         DisputeCase dispute = openDispute();
-        OrderFulfillment fulfillment = shippedFulfillment();
         when(disputeCaseRepository.findByIdForUpdate(DISPUTE_ID)).thenReturn(Optional.of(dispute));
-        when(fulfillmentRepository.findByOrderIdForUpdate(ORDER_ID)).thenReturn(Optional.of(fulfillment));
         when(disputeCaseRepository.save(any(DisputeCase.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(disputeEvidenceRepository.findByDisputeCaseIdOrderBySortOrderAscIdAsc(DISPUTE_ID))
                 .thenReturn(List.of());
@@ -180,10 +175,8 @@ class DisputeServiceImplTest {
         assertThat(result.status()).isEqualTo(DisputeStatus.RESOLVED);
         assertThat(result.resolutionOutcome()).isEqualTo(DisputeResolutionOutcome.SELLER_WINS);
         assertThat(result.resolvedByAdminId()).isEqualTo(ADMIN_ID);
-        assertThat(fulfillment.getStatus()).isEqualTo(FulfillmentStatus.AUTO_COMPLETED);
-        assertThat(fulfillment.getReceivedAt()).isNotNull();
         verify(orderService).resolveDisputeSellerWins(ORDER_ID);
-        verify(fulfillmentRepository).save(fulfillment);
+        verify(disputeFulfillmentPort).markDisputeSellerWins(ORDER_ID);
         verify(adminAuditLogService).log(any(), any(), any(), any(), any(), any());
     }
 
@@ -191,9 +184,7 @@ class DisputeServiceImplTest {
     void resolveDispute_buyerWinsRefundsOrderAndCancelsFulfillment() {
         DisputeCase dispute = openDispute();
         dispute.setStatus(DisputeStatus.UNDER_REVIEW);
-        OrderFulfillment fulfillment = shippedFulfillment();
         when(disputeCaseRepository.findByIdForUpdate(DISPUTE_ID)).thenReturn(Optional.of(dispute));
-        when(fulfillmentRepository.findByOrderIdForUpdate(ORDER_ID)).thenReturn(Optional.of(fulfillment));
         when(disputeCaseRepository.save(any(DisputeCase.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(disputeEvidenceRepository.findByDisputeCaseIdOrderBySortOrderAscIdAsc(DISPUTE_ID))
                 .thenReturn(List.of());
@@ -206,10 +197,8 @@ class DisputeServiceImplTest {
 
         assertThat(result.status()).isEqualTo(DisputeStatus.RESOLVED);
         assertThat(result.resolutionOutcome()).isEqualTo(DisputeResolutionOutcome.BUYER_WINS);
-        assertThat(fulfillment.getStatus()).isEqualTo(FulfillmentStatus.CANCELED);
-        assertThat(fulfillment.getReceivedAt()).isNull();
         verify(orderService).resolveDisputeBuyerWins(ORDER_ID);
-        verify(fulfillmentRepository).save(fulfillment);
+        verify(disputeFulfillmentPort).markDisputeBuyerWins(ORDER_ID);
         verify(adminAuditLogService).log(any(), any(), any(), any(), any(), any());
     }
 
@@ -223,17 +212,6 @@ class DisputeServiceImplTest {
         dispute.setReason("Sai hang");
         dispute.setOpenedAt(Instant.now());
         return dispute;
-    }
-
-    private OrderFulfillment shippedFulfillment() {
-        OrderFulfillment fulfillment = new OrderFulfillment();
-        fulfillment.setId(FULFILLMENT_ID);
-        fulfillment.setOrderId(ORDER_ID);
-        fulfillment.setBuyerId(BUYER_ID);
-        fulfillment.setSellerId("seller-1");
-        fulfillment.setStatus(FulfillmentStatus.SHIPPED);
-        fulfillment.setShippedAt(Instant.now());
-        return fulfillment;
     }
 
     private MediaAsset activeEvidenceAsset(Long mediaId) {
@@ -259,6 +237,8 @@ class DisputeServiceImplTest {
                 money("10000000"),
                 money("1000000"),
                 money("9000000"),
+                null,
+                null,
                 null,
                 null,
                 null,

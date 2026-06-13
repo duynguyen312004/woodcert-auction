@@ -207,7 +207,7 @@ public abstract class AuctionIntegrationTestBase {
         report.setAuthentic(true);
         report.setAppraiserNotes("Verified");
         report.setSellerAccuracy(new BigDecimal("5.00"));
-        report.setDigitalSignature("signature-" + saved.getId());
+        report.setIntegrityHash("signature-" + saved.getId());
         report.setAppraisedAt(Instant.now());
         appraisalReportRepository.saveAndFlush(report);
 

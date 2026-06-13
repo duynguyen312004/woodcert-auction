@@ -27,20 +27,28 @@ public record WalletTransactionRes(
                 transaction.getReferenceType(),
                 transaction.getStatus(),
                 transaction.getCreatedAt(),
-                resolveDescription(transaction.getType(), transaction.getReferenceType())
+                resolveDescription(transaction.getType(), transaction.getReferenceId())
         );
     }
 
-    private static String resolveDescription(WalletTransactionType type, WalletReferenceType ref) {
-        if (type == null) return "";
+    private static String resolveDescription(WalletTransactionType type, Long referenceId) {
+        if (type == null) {
+            return "";
+        }
         return switch (type) {
-            case DEPOSIT -> ref == WalletReferenceType.VNPAY_DEPOSIT
-                    ? "Nạp tiền qua VNPay"
-                    : "Nạp tiền vào ví";
-            case FREEZE -> "Đóng cọc phiên đấu giá";
-            case UNFREEZE -> "Hoàn cọc phiên đấu giá";
-            case PAYMENT -> "Thanh toán đấu giá";
-            case WITHDRAW -> "Rút tiền";
+            case WALLET_TOP_UP -> "Nạp tiền qua VNPay";
+            case APPRAISAL_FEE -> "Phí thẩm định sản phẩm" + suffix(referenceId);
+            case AUCTION_DEPOSIT_FREEZE -> "Đóng cọc phiên đấu giá" + suffix(referenceId);
+            case AUCTION_DEPOSIT_RELEASE -> "Hoàn cọc phiên đấu giá" + suffix(referenceId);
+            case AUCTION_DEPOSIT_CAPTURE -> "Khấu trừ cọc phiên đấu giá thắng" + suffix(referenceId);
+            case ORDER_PAYMENT -> "Thanh toán đơn hàng" + suffix(referenceId);
+            case ORDER_REFUND -> "Hoàn tiền đơn hàng" + suffix(referenceId);
+            case SELLER_PAYOUT -> "Nhận tiền bán hàng" + suffix(referenceId);
+            case SELLER_FORFEIT_COMPENSATION -> "Nhận bồi thường cọc quá hạn" + suffix(referenceId);
         };
+    }
+
+    private static String suffix(Long referenceId) {
+        return referenceId != null ? " #" + referenceId : "";
     }
 }

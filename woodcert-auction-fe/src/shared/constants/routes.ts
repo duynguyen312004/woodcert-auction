@@ -10,6 +10,7 @@ export const BUYER_PATHS = {
   auctions: "/my-auctions",
   auctionDetail: (id: string | number) => `/my-auctions/${id}`,
   orders: "/orders",
+  orderDetail: (id: string | number) => `/orders/${id}`,
 } as const;
 
 export const SELLER_PATHS = {

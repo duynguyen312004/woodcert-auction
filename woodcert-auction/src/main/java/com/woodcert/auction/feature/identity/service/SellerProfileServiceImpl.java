@@ -23,6 +23,9 @@ import java.math.BigDecimal;
 public class SellerProfileServiceImpl implements SellerProfileService {
 
     private static final String SELLER_ROLE = "ROLE_SELLER";
+    private static final String BIDDER_ROLE = "ROLE_BIDDER";
+    private static final String APPRAISER_ROLE = "ROLE_APPRAISER";
+    private static final String ADMIN_ROLE = "ROLE_ADMIN";
 
     private final SellerProfileRepository sellerProfileRepository;
     private final UserRepository userRepository;
@@ -42,6 +45,7 @@ public class SellerProfileServiceImpl implements SellerProfileService {
         // Bước 1: Đọc user đang đăng ký hồ sơ seller.
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "User not found"));
+        ensureEligibleBidder(user);
 
         // Bước 2: Chặn tạo trùng seller profile cho cùng user.
         if (sellerProfileRepository.existsById(userId)) {
@@ -97,5 +101,21 @@ public class SellerProfileServiceImpl implements SellerProfileService {
                 .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND, "Role ROLE_SELLER not found"));
 
         user.getRoles().add(sellerRole);
+    }
+
+    private void ensureEligibleBidder(User user) {
+        boolean bidder = hasRole(user, BIDDER_ROLE);
+        boolean privilegedAccount = hasRole(user, APPRAISER_ROLE) || hasRole(user, ADMIN_ROLE);
+        if (!bidder || privilegedAccount) {
+            throw new AppException(
+                    ErrorCode.INVALID_REQUEST,
+                    "Only bidder accounts can create a seller profile");
+        }
+    }
+
+    private boolean hasRole(User user, String roleName) {
+        return user.getRoles().stream()
+                .map(Role::getName)
+                .anyMatch(roleName::equals);
     }
 }

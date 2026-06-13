@@ -43,6 +43,7 @@ The script executes the following steps atomically in Redis (single-threaded exe
 3. If Lua script returns SUCCESS:
    - Spring Boot broadcasts the `NEW_BID` event via WebSocket to all subscribed clients.
    - Spring Boot performs best-effort `REQUIRES_NEW` persistence of the `Bid` record to MySQL for audit logging.
+   - Failed secondary writes emit structured error markers for alerting and investigation.
 4. Auction read APIs use Redis `currentPrice` and `endTime` for `ACTIVE` sessions, with MySQL snapshot fallback when Redis data is missing.
 
 ## Consequences
@@ -54,5 +55,5 @@ The script executes the following steps atomically in Redis (single-threaded exe
 
 ### Negative
 - **Complexity:** Requires maintaining Lua script code as strings inside the Java project.
-- **Data Synchronization:** Redis and MySQL might temporarily be out of sync. If Redis crashes before best-effort DB persistence completes, a bid might be lost. 
-  *Mitigation:* Enable Redis AOF (Append Only File) persistence and ensure graceful degradation.
+- **Data Synchronization:** Redis and MySQL might temporarily be out of sync. If bid-row persistence and snapshot sync both fail, then Redis is lost before close, the DB fallback can select an older bid.
+  *Mitigation:* Enable Redis AOF, monitor `accepted_bid_not_persisted` and `accepted_bid_snapshot_not_synced`, and do not treat MySQL audit persistence as the acceptance boundary.

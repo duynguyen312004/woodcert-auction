@@ -4,7 +4,6 @@ import com.woodcert.auction.feature.auction.entity.AuctionParticipant;
 import com.woodcert.auction.feature.auction.entity.AuctionSessionStatus;
 import com.woodcert.auction.feature.auction.entity.DepositStatus;
 import com.woodcert.auction.feature.auction.repository.AuctionParticipantRepository;
-import com.woodcert.auction.feature.finance.entity.WalletReferenceType;
 import com.woodcert.auction.feature.finance.service.WalletService;
 import com.woodcert.auction.feature.finance.support.FinanceOperationKeys;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,8 +25,10 @@ class AuctionParticipantSettlementServiceTest {
 
     private static final Long SESSION_ID = 10L;
 
-    @Mock private AuctionParticipantRepository auctionParticipantRepository;
-    @Mock private WalletService walletService;
+    @Mock
+    private AuctionParticipantRepository auctionParticipantRepository;
+    @Mock
+    private WalletService walletService;
 
     private AuctionParticipantSettlementService service;
 
@@ -46,13 +47,11 @@ class AuctionParticipantSettlementServiceTest {
 
         assertThat(settled).isTrue();
         assertThat(participant.getDepositStatus()).isEqualTo(DepositStatus.DEDUCTED);
-        verify(walletService).deductFrozenFunds(
+        verify(walletService).captureAuctionDeposit(
                 "winner-1",
                 FinanceOperationKeys.auctionCloseDeduct(10L, "winner-1"),
                 new BigDecimal("1000.00"),
-                SESSION_ID,
-                WalletReferenceType.AUCTION
-        );
+                SESSION_ID);
         verify(auctionParticipantRepository).save(participant);
     }
 
@@ -66,13 +65,11 @@ class AuctionParticipantSettlementServiceTest {
 
         assertThat(settled).isTrue();
         assertThat(participant.getDepositStatus()).isEqualTo(DepositStatus.REFUNDED);
-        verify(walletService).unfreezeFunds(
+        verify(walletService).releaseAuctionDeposit(
                 "loser-1",
                 FinanceOperationKeys.auctionCloseRefund(10L, "loser-1"),
                 new BigDecimal("1000.00"),
-                SESSION_ID,
-                WalletReferenceType.AUCTION
-        );
+                SESSION_ID);
         verify(auctionParticipantRepository).save(participant);
     }
 
@@ -86,13 +83,11 @@ class AuctionParticipantSettlementServiceTest {
 
         assertThat(refunded).isTrue();
         assertThat(participant.getDepositStatus()).isEqualTo(DepositStatus.REFUNDED);
-        verify(walletService).unfreezeFunds(
+        verify(walletService).releaseAuctionDeposit(
                 "bidder-1",
                 FinanceOperationKeys.auctionCancelRefund(10L, "bidder-1"),
                 new BigDecimal("1000.00"),
-                SESSION_ID,
-                WalletReferenceType.AUCTION
-        );
+                SESSION_ID);
         verify(auctionParticipantRepository).save(participant);
     }
 
@@ -102,8 +97,7 @@ class AuctionParticipantSettlementServiceTest {
                 status,
                 new BigDecimal("250.00"),
                 Instant.parse("2026-05-01T10:00:00Z"),
-                highestBidderId
-        );
+                highestBidderId);
     }
 
     private AuctionParticipant participant(Long id, String userId) {

@@ -1,7 +1,16 @@
+import { lazy } from "react";
 import type { RouteObject } from "react-router";
 
-import { BuyerAuctionDetailPage } from "./pages/BuyerAuctionDetailPage";
-import { BuyerAuctionsPage } from "./pages/BuyerAuctionsPage";
+const BuyerAuctionDetailPage = lazy(() =>
+  import("./pages/BuyerAuctionDetailPage").then((module) => ({
+    default: module.BuyerAuctionDetailPage,
+  })),
+);
+const BuyerAuctionsPage = lazy(() =>
+  import("./pages/BuyerAuctionsPage").then((module) => ({
+    default: module.BuyerAuctionsPage,
+  })),
+);
 
 export const buyerRoutes: RouteObject[] = [
   { path: "my-auctions", element: <BuyerAuctionsPage /> },

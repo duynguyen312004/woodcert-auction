@@ -3,6 +3,7 @@ package com.woodcert.auction.feature.identity.controller;
 import com.woodcert.auction.core.auth.CurrentUserId;
 import com.woodcert.auction.core.dto.ApiResponse;
 import com.woodcert.auction.feature.identity.dto.request.CreateAddressReq;
+import com.woodcert.auction.feature.identity.dto.request.UpdateAddressReq;
 import com.woodcert.auction.feature.identity.dto.response.AddressRes;
 import com.woodcert.auction.feature.identity.service.AddressService;
 import jakarta.validation.Valid;
@@ -10,7 +11,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -38,5 +43,30 @@ public class AddressController {
         AddressRes address = addressService.createAddress(userId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.created(address, "Address created successfully"));
+    }
+
+    @PutMapping("/{addressId}")
+    public ResponseEntity<ApiResponse<AddressRes>> updateAddress(
+            @CurrentUserId String userId,
+            @PathVariable Long addressId,
+            @RequestBody @Valid UpdateAddressReq request) {
+        AddressRes address = addressService.updateAddress(userId, addressId, request);
+        return ResponseEntity.ok(ApiResponse.success(address, "Address updated successfully"));
+    }
+
+    @PatchMapping("/{addressId}/default")
+    public ResponseEntity<ApiResponse<AddressRes>> setDefaultAddress(
+            @CurrentUserId String userId,
+            @PathVariable Long addressId) {
+        AddressRes address = addressService.setDefaultAddress(userId, addressId);
+        return ResponseEntity.ok(ApiResponse.success(address, "Default address updated successfully"));
+    }
+
+    @DeleteMapping("/{addressId}")
+    public ResponseEntity<ApiResponse<Void>> deleteAddress(
+            @CurrentUserId String userId,
+            @PathVariable Long addressId) {
+        addressService.deleteAddress(userId, addressId);
+        return ResponseEntity.ok(ApiResponse.success(null, "Address deleted successfully"));
     }
 }

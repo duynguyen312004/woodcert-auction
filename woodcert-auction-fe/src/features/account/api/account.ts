@@ -13,6 +13,7 @@ import type {
   AvatarUploadIntent,
   Address,
   CreateAddressPayload,
+  UpdateAddressPayload,
   CreateSellerProfilePayload,
   SellerProfile,
   UpdateProfilePayload,
@@ -106,6 +107,20 @@ export const accountApi = {
   createAddress: async (payload: CreateAddressPayload): Promise<Address> => {
     const response = await apiClient.post<ApiResponse<Address>>("/addresses", payload);
     return unwrapApiResponse(response);
+  },
+
+  updateAddress: async (addressId: number, payload: UpdateAddressPayload): Promise<Address> => {
+    const response = await apiClient.put<ApiResponse<Address>>(`/addresses/${addressId}`, payload);
+    return unwrapApiResponse(response);
+  },
+
+  setDefaultAddress: async (addressId: number): Promise<Address> => {
+    const response = await apiClient.patch<ApiResponse<Address>>(`/addresses/${addressId}/default`);
+    return unwrapApiResponse(response);
+  },
+
+  deleteAddress: async (addressId: number): Promise<void> => {
+    await apiClient.delete<ApiResponse<null>>(`/addresses/${addressId}`);
   },
 
   getProvinces: async (): Promise<Province[]> => {

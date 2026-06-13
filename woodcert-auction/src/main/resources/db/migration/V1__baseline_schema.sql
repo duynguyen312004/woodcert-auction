@@ -74,6 +74,9 @@ CREATE TABLE IF NOT EXISTS users (
     CONSTRAINT fk_users_avatar_media FOREIGN KEY (avatar_media_id) REFERENCES media_assets (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+ALTER TABLE media_assets
+    ADD CONSTRAINT fk_media_assets_owner FOREIGN KEY (owner_user_id) REFERENCES users (id);
+
 CREATE TABLE IF NOT EXISTS user_roles (
     user_id VARCHAR(36) NOT NULL,
     role_id INT NOT NULL,
@@ -93,7 +96,8 @@ CREATE TABLE IF NOT EXISTS districts (
     province_code VARCHAR(20) NOT NULL,
     name VARCHAR(100) NOT NULL,
     PRIMARY KEY (code),
-    KEY idx_districts_province_code (province_code)
+    KEY idx_districts_province_code (province_code),
+    CONSTRAINT fk_districts_province FOREIGN KEY (province_code) REFERENCES provinces (code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS wards (
@@ -101,7 +105,8 @@ CREATE TABLE IF NOT EXISTS wards (
     district_code VARCHAR(20) NOT NULL,
     name VARCHAR(100) NOT NULL,
     PRIMARY KEY (code),
-    KEY idx_wards_district_code (district_code)
+    KEY idx_wards_district_code (district_code),
+    CONSTRAINT fk_wards_district FOREIGN KEY (district_code) REFERENCES districts (code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS addresses (
@@ -119,7 +124,10 @@ CREATE TABLE IF NOT EXISTS addresses (
     KEY idx_addresses_province_code (province_code),
     KEY idx_addresses_district_code (district_code),
     KEY idx_addresses_ward_code (ward_code),
-    CONSTRAINT fk_addresses_user FOREIGN KEY (user_id) REFERENCES users (id)
+    CONSTRAINT fk_addresses_user FOREIGN KEY (user_id) REFERENCES users (id),
+    CONSTRAINT fk_addresses_province FOREIGN KEY (province_code) REFERENCES provinces (code),
+    CONSTRAINT fk_addresses_district FOREIGN KEY (district_code) REFERENCES districts (code),
+    CONSTRAINT fk_addresses_ward FOREIGN KEY (ward_code) REFERENCES wards (code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS seller_profiles (
@@ -240,7 +248,7 @@ CREATE TABLE IF NOT EXISTS appraisal_reports (
     is_authentic BIT(1) NOT NULL,
     appraiser_notes TEXT,
     seller_accuracy DECIMAL(3,2) NOT NULL,
-    digital_signature VARCHAR(255) NOT NULL,
+    integrity_hash VARCHAR(255) NOT NULL,
     appraised_at DATETIME(6) NOT NULL,
     PRIMARY KEY (id),
     UNIQUE KEY uk_appraisal_reports_product_id (product_id),
@@ -281,7 +289,7 @@ CREATE TABLE IF NOT EXISTS wallet_transactions (
     id BIGINT NOT NULL AUTO_INCREMENT,
     wallet_id BIGINT NOT NULL,
     amount DECIMAL(19,2) NOT NULL,
-    type VARCHAR(20) NOT NULL,
+    type VARCHAR(40) NOT NULL,
     reference_id BIGINT,
     reference_type VARCHAR(20),
     status VARCHAR(20) NOT NULL,
@@ -298,7 +306,7 @@ CREATE TABLE IF NOT EXISTS wallet_operations (
     operation_key VARCHAR(200) NOT NULL,
     wallet_id BIGINT NOT NULL,
     amount DECIMAL(19,2) NOT NULL,
-    type VARCHAR(20) NOT NULL,
+    type VARCHAR(40) NOT NULL,
     reference_id BIGINT,
     reference_type VARCHAR(20) NOT NULL,
     status VARCHAR(20) NOT NULL,
@@ -326,7 +334,8 @@ CREATE TABLE IF NOT EXISTS vnpay_deposits (
     paid_at DATETIME(6),
     PRIMARY KEY (id),
     UNIQUE KEY idx_vnpay_deposits_txn_ref (txn_ref),
-    KEY idx_vnpay_deposits_user_id (user_id)
+    KEY idx_vnpay_deposits_user_id (user_id),
+    CONSTRAINT fk_vnpay_deposits_user FOREIGN KEY (user_id) REFERENCES users (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS platform_revenue_transactions (
@@ -343,7 +352,8 @@ CREATE TABLE IF NOT EXISTS platform_revenue_transactions (
     UNIQUE KEY uk_platform_revenue_operation_key (operation_key),
     KEY idx_platform_revenue_type (type),
     KEY idx_platform_revenue_reference (reference_type, reference_id),
-    KEY idx_platform_revenue_source_user (source_user_id)
+    KEY idx_platform_revenue_source_user (source_user_id),
+    CONSTRAINT fk_platform_revenue_source_user FOREIGN KEY (source_user_id) REFERENCES users (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS auction_sessions (
@@ -377,9 +387,12 @@ CREATE TABLE IF NOT EXISTS auction_participants (
     deposit_amount DECIMAL(19,2) NOT NULL,
     deposit_status VARCHAR(20) NOT NULL,
     registered_at DATETIME(6) NOT NULL,
+    withdrawn_at DATETIME(6),
     PRIMARY KEY (id),
     UNIQUE KEY uq_auction_participants_user_session (auction_session_id, user_id),
-    KEY idx_auction_participants_session_id (auction_session_id)
+    KEY idx_auction_participants_session_id (auction_session_id),
+    CONSTRAINT fk_auction_participants_session FOREIGN KEY (auction_session_id) REFERENCES auction_sessions (id),
+    CONSTRAINT fk_auction_participants_user FOREIGN KEY (user_id) REFERENCES users (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS bids (
@@ -394,7 +407,9 @@ CREATE TABLE IF NOT EXISTS bids (
     UNIQUE KEY uq_bids_bid_trace_id (bid_trace_id),
     KEY idx_bids_auction_session_bid_time (auction_session_id, bid_time),
     KEY idx_bids_auction_session_bid_amount (auction_session_id, bid_amount),
-    KEY idx_bids_bid_time (bid_time)
+    KEY idx_bids_bid_time (bid_time),
+    CONSTRAINT fk_bids_session FOREIGN KEY (auction_session_id) REFERENCES auction_sessions (id),
+    CONSTRAINT fk_bids_user FOREIGN KEY (user_id) REFERENCES users (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS orders (
@@ -404,6 +419,8 @@ CREATE TABLE IF NOT EXISTS orders (
     buyer_id VARCHAR(36) NOT NULL,
     seller_id VARCHAR(36) NOT NULL,
     product_id BIGINT NOT NULL,
+    product_title VARCHAR(255),
+    product_image_url VARCHAR(1000),
     final_price DECIMAL(19,2) NOT NULL,
     deposit_amount DECIMAL(19,2) NOT NULL,
     remaining_amount DECIMAL(19,2) NOT NULL,
@@ -418,6 +435,17 @@ CREATE TABLE IF NOT EXISTS orders (
     seller_payout_amount DECIMAL(19,2),
     forfeited_deposit_platform_fee_amount DECIMAL(19,2),
     forfeited_deposit_seller_amount DECIMAL(19,2),
+    buyer_refund_amount DECIMAL(19,2),
+    refunded_at DATETIME(6),
+    shipping_receiver_name VARCHAR(100),
+    shipping_phone_number VARCHAR(20),
+    shipping_street_address VARCHAR(255),
+    shipping_ward_code VARCHAR(20),
+    shipping_ward_name VARCHAR(100),
+    shipping_district_code VARCHAR(20),
+    shipping_district_name VARCHAR(100),
+    shipping_province_code VARCHAR(20),
+    shipping_province_name VARCHAR(100),
     version INT NOT NULL DEFAULT 0,
     created_at DATETIME(6) NOT NULL,
     updated_at DATETIME(6) NOT NULL,
@@ -428,6 +456,8 @@ CREATE TABLE IF NOT EXISTS orders (
     KEY idx_orders_status (status),
     KEY idx_orders_payment_deadline (payment_deadline),
     KEY idx_orders_product_id (product_id),
+    CONSTRAINT fk_orders_buyer FOREIGN KEY (buyer_id) REFERENCES users (id),
+    CONSTRAINT fk_orders_seller FOREIGN KEY (seller_id) REFERENCES users (id),
     CONSTRAINT fk_orders_product FOREIGN KEY (product_id) REFERENCES products (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -437,6 +467,8 @@ CREATE TABLE IF NOT EXISTS order_fulfillments (
     buyer_id VARCHAR(36) NOT NULL,
     seller_id VARCHAR(36) NOT NULL,
     status VARCHAR(30) NOT NULL,
+    delivery_method VARCHAR(30),
+    carrier_name VARCHAR(120),
     tracking_code VARCHAR(120),
     shipped_at DATETIME(6),
     received_at DATETIME(6),
@@ -449,7 +481,9 @@ CREATE TABLE IF NOT EXISTS order_fulfillments (
     KEY idx_order_fulfillments_buyer (buyer_id),
     KEY idx_order_fulfillments_status (status),
     KEY idx_order_fulfillments_auto_deadline (auto_complete_deadline),
-    CONSTRAINT fk_order_fulfillments_order FOREIGN KEY (order_id) REFERENCES orders (id)
+    CONSTRAINT fk_order_fulfillments_order FOREIGN KEY (order_id) REFERENCES orders (id),
+    CONSTRAINT fk_order_fulfillments_buyer FOREIGN KEY (buyer_id) REFERENCES users (id),
+    CONSTRAINT fk_order_fulfillments_seller FOREIGN KEY (seller_id) REFERENCES users (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS dispute_cases (
@@ -473,7 +507,9 @@ CREATE TABLE IF NOT EXISTS dispute_cases (
     KEY idx_dispute_cases_status (status),
     KEY idx_dispute_cases_opened_by (opened_by_user_id),
     CONSTRAINT fk_dispute_cases_order FOREIGN KEY (order_id) REFERENCES orders (id),
-    CONSTRAINT fk_dispute_cases_fulfillment FOREIGN KEY (fulfillment_id) REFERENCES order_fulfillments (id)
+    CONSTRAINT fk_dispute_cases_fulfillment FOREIGN KEY (fulfillment_id) REFERENCES order_fulfillments (id),
+    CONSTRAINT fk_dispute_cases_opened_by FOREIGN KEY (opened_by_user_id) REFERENCES users (id),
+    CONSTRAINT fk_dispute_cases_resolved_by FOREIGN KEY (resolved_by_admin_id) REFERENCES users (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS dispute_evidence (
@@ -489,5 +525,40 @@ CREATE TABLE IF NOT EXISTS dispute_evidence (
     KEY idx_dispute_evidence_media (media_id),
     KEY idx_dispute_evidence_uploaded_by (uploaded_by_user_id),
     CONSTRAINT fk_dispute_evidence_case FOREIGN KEY (dispute_case_id) REFERENCES dispute_cases (id),
-    CONSTRAINT fk_dispute_evidence_media FOREIGN KEY (media_id) REFERENCES media_assets (id)
+    CONSTRAINT fk_dispute_evidence_media FOREIGN KEY (media_id) REFERENCES media_assets (id),
+    CONSTRAINT fk_dispute_evidence_uploaded_by FOREIGN KEY (uploaded_by_user_id) REFERENCES users (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS user_capability_statuses (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    user_id VARCHAR(36) NOT NULL,
+    capability VARCHAR(20) NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    reason VARCHAR(1000),
+    updated_by_admin_id VARCHAR(36),
+    created_at DATETIME(6) NOT NULL,
+    updated_at DATETIME(6) NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_user_capability_statuses_user_capability (user_id, capability),
+    KEY idx_user_capability_statuses_user (user_id),
+    KEY idx_user_capability_statuses_status (status),
+    CONSTRAINT fk_user_capability_statuses_user FOREIGN KEY (user_id) REFERENCES users (id),
+    CONSTRAINT fk_user_capability_statuses_admin FOREIGN KEY (updated_by_admin_id) REFERENCES users (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS admin_audit_logs (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    actor_admin_id VARCHAR(36) NOT NULL,
+    action VARCHAR(60) NOT NULL,
+    target_type VARCHAR(40) NOT NULL,
+    target_id VARCHAR(80) NOT NULL,
+    reason VARCHAR(1000),
+    metadata TEXT,
+    created_at DATETIME(6) NOT NULL,
+    PRIMARY KEY (id),
+    KEY idx_admin_audit_logs_actor (actor_admin_id),
+    KEY idx_admin_audit_logs_action (action),
+    KEY idx_admin_audit_logs_target (target_type, target_id),
+    KEY idx_admin_audit_logs_created (created_at),
+    CONSTRAINT fk_admin_audit_logs_actor FOREIGN KEY (actor_admin_id) REFERENCES users (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

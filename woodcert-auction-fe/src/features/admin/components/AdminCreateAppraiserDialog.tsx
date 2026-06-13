@@ -136,7 +136,7 @@ export function AdminCreateAppraiserDialog({
         <DialogHeader>
           <DialogTitle className="text-xl font-bold text-[#f2eee5]">Tạo appraiser mới</DialogTitle>
           <DialogDescription className="text-[#a49a88]">
-            Tạo tài khoản kiểm định viên hoặc promote một user active chưa có quyền appraiser.
+            Tạo tài khoản kiểm định viên mới với quyền appraiser độc lập.
           </DialogDescription>
         </DialogHeader>
 

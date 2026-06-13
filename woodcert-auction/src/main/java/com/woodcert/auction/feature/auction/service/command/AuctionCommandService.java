@@ -21,7 +21,7 @@ import com.woodcert.auction.feature.catalog.entity.ProductSaleStatus;
 import com.woodcert.auction.feature.catalog.repository.AppraisalReportRepository;
 import com.woodcert.auction.feature.catalog.repository.ProductRepository;
 import com.woodcert.auction.feature.catalog.service.ProductImageHelper;
-import com.woodcert.auction.feature.finance.entity.WalletReferenceType;
+
 import com.woodcert.auction.feature.finance.service.WalletService;
 import com.woodcert.auction.feature.finance.support.FinanceOperationKey;
 import com.woodcert.auction.feature.finance.support.FinanceOperationKeys;
@@ -53,7 +53,8 @@ public class AuctionCommandService {
 
     @Transactional
     public AuctionDetailRes createAuctionSession(String sellerId, CreateAuctionSessionReq request) {
-        // Bước 1: Lock sản phẩm để tránh nhiều phiên đấu giá được tạo song song cho cùng sản phẩm.
+        // Bước 1: Lock sản phẩm để tránh nhiều phiên đấu giá được tạo song song cho
+        // cùng sản phẩm.
         Product product = productRepository.findByIdForUpdate(request.productId())
                 .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
 
@@ -65,10 +66,12 @@ public class AuctionCommandService {
             throw new AppException(ErrorCode.AUCTION_SESSION_CONFLICT);
         }
 
-        // Bước 4: Kiểm tra thời gian, giá khởi điểm, giá sàn, bước giá và tiền cọc theo policy.
+        // Bước 4: Kiểm tra thời gian, giá khởi điểm, giá sàn, bước giá và tiền cọc theo
+        // policy.
         auctionPolicy.validateCreateRequest(request, Instant.now());
 
-        // Bước 5: Tạo phiên đấu giá ở trạng thái WAITING và giá hiện tại bằng giá khởi điểm.
+        // Bước 5: Tạo phiên đấu giá ở trạng thái WAITING và giá hiện tại bằng giá khởi
+        // điểm.
         AuctionSession session = new AuctionSession();
         session.setProductId(product.getId());
         session.setStartingPrice(request.startingPrice());
@@ -80,7 +83,8 @@ public class AuctionCommandService {
         session.setCurrentPrice(request.startingPrice());
         session.setStatus(AuctionSessionStatus.WAITING);
 
-        // Bước 6: Lưu phiên, chuyển trạng thái bán của sản phẩm sang IN_AUCTION và trả detail response.
+        // Bước 6: Lưu phiên, chuyển trạng thái bán của sản phẩm sang IN_AUCTION và trả
+        // detail response.
         AuctionSession savedSession = auctionSessionRepository.save(session);
         product.setSaleStatus(ProductSaleStatus.IN_AUCTION);
         productRepository.save(product);
@@ -91,7 +95,8 @@ public class AuctionCommandService {
 
     @Transactional
     public void cancelAuctionSession(String sellerId, Long auctionId) {
-        // Bước 1: Lock phiên đấu giá kèm sản phẩm để kiểm tra quyền và cập nhật trạng thái nhất quán.
+        // Bước 1: Lock phiên đấu giá kèm sản phẩm để kiểm tra quyền và cập nhật trạng
+        // thái nhất quán.
         AuctionSession session = auctionSessionRepository.findByIdWithProductForUpdate(auctionId)
                 .orElseThrow(() -> new AppException(ErrorCode.AUCTION_SESSION_NOT_FOUND));
 
@@ -106,7 +111,8 @@ public class AuctionCommandService {
             throw new AppException(ErrorCode.AUCTION_SESSION_NOT_CANCELABLE);
         }
 
-        // Bước 4: Đánh dấu phiên CANCELED và trả sản phẩm về trạng thái có thể tạo phiên khác.
+        // Bước 4: Đánh dấu phiên CANCELED và trả sản phẩm về trạng thái có thể tạo
+        // phiên khác.
         session.setStatus(AuctionSessionStatus.CANCELED);
         product.setSaleStatus(ProductSaleStatus.AVAILABLE);
         refundCanceledDepositsAfterCommit(auctionId);
@@ -124,7 +130,8 @@ public class AuctionCommandService {
             throw new AppException(ErrorCode.AUCTION_SESSION_NOT_REGISTRABLE);
         }
 
-        // Bước 3: Nếu phiên đã ACTIVE thì kiểm tra runtime Redis còn tồn tại và chưa hết hạn.
+        // Bước 3: Nếu phiên đã ACTIVE thì kiểm tra runtime Redis còn tồn tại và chưa
+        // hết hạn.
         if (sessionStatus == AuctionSessionStatus.ACTIVE) {
             validateActiveRegistrationWindow(auctionId);
         }
@@ -145,10 +152,10 @@ public class AuctionCommandService {
             throw new AppException(ErrorCode.AUCTION_ALREADY_REGISTERED);
         }
 
-        // Bước 6: Đóng băng tiền cọc trong ví bằng operation key idempotent theo user và auction.
+        // Bước 6: Đóng băng tiền cọc trong ví bằng operation key idempotent theo user
+        // và auction.
         FinanceOperationKey operationKey = FinanceOperationKeys.auctionRegistrationFreeze(auctionId, userId);
-        walletService.freezeFunds(userId, operationKey, session.getDepositAmount(),
-                auctionId, WalletReferenceType.AUCTION);
+        walletService.freezeAuctionDeposit(userId, operationKey, session.getDepositAmount(), auctionId);
 
         // Bước 7: Tạo participant với trạng thái tiền cọc FROZEN.
         AuctionParticipant participant = new AuctionParticipant();
@@ -162,7 +169,8 @@ public class AuctionCommandService {
             throw new AppException(ErrorCode.AUCTION_ALREADY_REGISTERED);
         }
 
-        // Bước 8: Nếu phiên đang ACTIVE thì thêm bidder vào runtime Redis để họ có thể đặt giá ngay.
+        // Bước 8: Nếu phiên đang ACTIVE thì thêm bidder vào runtime Redis để họ có thể
+        // đặt giá ngay.
         if (sessionStatus == AuctionSessionStatus.ACTIVE) {
             boolean addedToRuntime = auctionRedisService.addBidder(auctionId, userId);
             if (!addedToRuntime) {
@@ -191,12 +199,11 @@ public class AuctionCommandService {
             throw new AppException(ErrorCode.AUCTION_PARTICIPATION_NOT_WITHDRAWABLE);
         }
 
-        walletService.unfreezeFunds(
+        walletService.releaseAuctionDeposit(
                 userId,
                 FinanceOperationKeys.auctionWithdrawalRefund(auctionId, userId),
                 participant.getDepositAmount(),
-                auctionId,
-                WalletReferenceType.AUCTION);
+                auctionId);
 
         participant.setDepositStatus(DepositStatus.WITHDRAWN);
         participant.setWithdrawnAt(Instant.now());
@@ -204,7 +211,8 @@ public class AuctionCommandService {
     }
 
     private void validateActiveRegistrationWindow(Long auctionId) {
-        // Bước 1: Đọc endTime realtime từ Redis vì phiên ACTIVE có thể được anti-sniper gia hạn.
+        // Bước 1: Đọc endTime realtime từ Redis vì phiên ACTIVE có thể được anti-sniper
+        // gia hạn.
         Long runtimeEndEpochMs = auctionRedisService.getEndTimeEpochMs(auctionId);
         if (runtimeEndEpochMs == null) {
             throw new AppException(ErrorCode.AUCTION_NOT_ACTIVE);

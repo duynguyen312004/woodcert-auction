@@ -15,7 +15,6 @@ import com.woodcert.auction.feature.identity.repository.UserRepository;
 import com.woodcert.auction.core.security.JwtService;
 import com.woodcert.auction.core.exception.ErrorCode;
 import com.woodcert.auction.feature.identity.dto.request.LoginReq;
-import com.woodcert.auction.feature.identity.dto.response.AuthRes;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.junit.jupiter.api.DisplayName;
@@ -262,11 +261,11 @@ class AuthServiceImplTest {
         when(jwtService.generateAccessToken(user)).thenReturn("access-token");
         when(jwtService.generateRefreshToken()).thenReturn("refresh-token");
 
-        AuthRes res = authService.login(request);
+        IssuedAuthTokens res = authService.login(request);
 
         assertNotNull(res);
         assertEquals("access-token", res.accessToken());
-        assertEquals("refresh-token", res.refreshToken());
+        assertEquals("refresh-token", res.rawRefreshToken());
         verify(loginAttemptService).loginSucceeded("user@example.com");
         verify(refreshTokenRepository).save(any(RefreshToken.class));
     }

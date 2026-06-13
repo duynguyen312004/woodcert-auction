@@ -18,6 +18,19 @@ test("public auction detail links anonymous buyers into protected bidding room",
     runtimeErrors.push(error.message);
   });
 
+  await page.route("**/api/v1/auth/csrf", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        statusCode: 200,
+        message: "OK",
+        data: { token: "csrf-e2e" },
+        timestamp: "2026-06-01T00:00:00Z",
+      }),
+    });
+  });
+
   await page.route("**/api/v1/auth/refresh", async (route) => {
     await route.fulfill({
       status: 401,
@@ -26,6 +39,22 @@ test("public auction detail links anonymous buyers into protected bidding room",
         statusCode: 401,
         message: "Unauthorized",
         data: null,
+        timestamp: "2026-06-01T00:00:00Z",
+      }),
+    });
+  });
+
+  await page.route("**/api/v1/system/time", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        statusCode: 200,
+        message: "OK",
+        data: {
+          serverTime: "2026-06-01T00:00:00Z",
+          epochMillis: 1780272000000,
+        },
         timestamp: "2026-06-01T00:00:00Z",
       }),
     });

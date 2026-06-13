@@ -21,10 +21,12 @@ public record OrderSummaryRes(
         BigDecimal sellerPayoutAmount,
         BigDecimal forfeitedDepositPlatformFeeAmount,
         BigDecimal forfeitedDepositSellerAmount,
+        BigDecimal buyerRefundAmount,
         Instant paymentDeadline,
         Instant paidAt,
         Instant completedAt,
         Instant canceledAt,
+        Instant refundedAt,
         String cancelReason,
         OrderFulfillmentSummaryRes fulfillment
 ) {
@@ -45,10 +47,12 @@ public record OrderSummaryRes(
                 order.getSellerPayoutAmount(),
                 order.getForfeitedDepositPlatformFeeAmount(),
                 order.getForfeitedDepositSellerAmount(),
+                order.getBuyerRefundAmount(),
                 order.getPaymentDeadline(),
                 order.getPaidAt(),
                 order.getCompletedAt(),
                 order.getCanceledAt(),
+                order.getRefundedAt(),
                 order.getCancelReason(),
                 OrderFulfillmentSummaryRes.fromSnapshot(fulfillment)
         );

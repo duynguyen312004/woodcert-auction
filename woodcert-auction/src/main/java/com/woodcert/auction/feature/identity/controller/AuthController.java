@@ -4,7 +4,6 @@ import com.woodcert.auction.core.config.RefreshCookieProperties;
 import com.woodcert.auction.core.dto.ApiResponse;
 import com.woodcert.auction.feature.identity.dto.request.ForgotPasswordReq;
 import com.woodcert.auction.feature.identity.dto.request.LoginReq;
-import com.woodcert.auction.feature.identity.dto.request.RefreshReq;
 import com.woodcert.auction.feature.identity.dto.request.ResendVerificationReq;
 import com.woodcert.auction.feature.identity.dto.request.RegisterReq;
 import com.woodcert.auction.feature.identity.dto.request.ResetPasswordReq;
@@ -13,6 +12,8 @@ import com.woodcert.auction.feature.identity.dto.response.CsrfTokenRes;
 import com.woodcert.auction.feature.identity.dto.response.RefreshRes;
 import com.woodcert.auction.feature.identity.dto.response.RegisterRes;
 import com.woodcert.auction.feature.identity.service.AuthService;
+import com.woodcert.auction.feature.identity.service.IssuedAuthTokens;
+import com.woodcert.auction.feature.identity.service.RotatedAuthTokens;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -51,8 +52,9 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthRes>> login(@RequestBody @Valid LoginReq request,
             HttpServletResponse response) {
-        AuthRes authRes = authService.login(request);
-        setRefreshTokenCookie(response, authRes.refreshToken());
+        IssuedAuthTokens tokens = authService.login(request);
+        setRefreshTokenCookie(response, tokens.rawRefreshToken());
+        AuthRes authRes = new AuthRes(tokens.accessToken(), tokens.roles());
         return ResponseEntity.ok(ApiResponse.success(authRes, "Login successful"));
     }
 
@@ -101,39 +103,27 @@ public class AuthController {
 
     /**
      * POST /api/v1/auth/refresh
-     * Refresh access token. Reads refresh token from:
-     * 1. HttpOnly cookie (Web/SPA)
-     * 2. Request body (Mobile fallback)
+     * Refresh access token using the HttpOnly refresh-token cookie.
      */
     @PostMapping("/refresh")
     public ResponseEntity<ApiResponse<RefreshRes>> refresh(
-            @RequestBody(required = false) @Valid RefreshReq request,
             @CookieValue(name = REFRESH_TOKEN_COOKIE, required = false) String cookieRefreshToken,
             @CookieValue(name = CSRF_COOKIE, required = false) String csrfCookie,
             @RequestHeader(name = CSRF_HEADER, required = false) String csrfHeader,
             HttpServletResponse response) {
 
-        // Priority: body first (explicit intent), then cookie fallback (Web/SPA)
-        String rawRefreshToken = null;
-        if (request != null && request.refreshToken() != null && !request.refreshToken().isBlank()) {
-            rawRefreshToken = request.refreshToken();
-        }
-        boolean usingCookieRefresh = rawRefreshToken == null;
-        if (rawRefreshToken == null) {
-            rawRefreshToken = cookieRefreshToken;
-        }
-
-        if (rawRefreshToken == null || rawRefreshToken.isBlank()) {
+        if (cookieRefreshToken == null || cookieRefreshToken.isBlank()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(ApiResponse.error(401, "No refresh token provided"));
         }
-        if (usingCookieRefresh && !isValidCsrf(csrfCookie, csrfHeader)) {
+        if (!isValidCsrf(csrfCookie, csrfHeader)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(ApiResponse.error(403, "Invalid CSRF token"));
         }
 
-        RefreshRes refreshRes = authService.refresh(rawRefreshToken);
-        setRefreshTokenCookie(response, refreshRes.refreshToken());
+        RotatedAuthTokens tokens = authService.refresh(cookieRefreshToken);
+        setRefreshTokenCookie(response, tokens.rawRefreshToken());
+        RefreshRes refreshRes = new RefreshRes(tokens.accessToken());
         return ResponseEntity.ok(ApiResponse.success(refreshRes, "Token refreshed"));
     }
 
@@ -143,27 +133,17 @@ public class AuthController {
      */
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Void>> logout(
-            @RequestBody(required = false) @Valid RefreshReq request,
             @CookieValue(name = REFRESH_TOKEN_COOKIE, required = false) String cookieRefreshToken,
             @CookieValue(name = CSRF_COOKIE, required = false) String csrfCookie,
             @RequestHeader(name = CSRF_HEADER, required = false) String csrfHeader,
             HttpServletResponse response) {
 
-        // Priority: body first, then cookie
-        String rawRefreshToken = null;
-        if (request != null && request.refreshToken() != null && !request.refreshToken().isBlank()) {
-            rawRefreshToken = request.refreshToken();
-        }
-        boolean usingCookieRefresh = rawRefreshToken == null && cookieRefreshToken != null && !cookieRefreshToken.isBlank();
-        if (rawRefreshToken == null) {
-            rawRefreshToken = cookieRefreshToken;
-        }
-        if (usingCookieRefresh && !isValidCsrf(csrfCookie, csrfHeader)) {
+        if (!isValidCsrf(csrfCookie, csrfHeader)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(ApiResponse.error(403, "Invalid CSRF token"));
         }
 
-        authService.logout(rawRefreshToken);
+        authService.logout(cookieRefreshToken);
         clearRefreshTokenCookie(response);
         clearCsrfCookie(response);
         return ResponseEntity.ok(ApiResponse.success(null, "Logged out successfully"));

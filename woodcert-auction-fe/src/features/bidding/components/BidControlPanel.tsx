@@ -67,10 +67,6 @@ export function BidControlPanel({
       setErrorText(`Số tiền tối thiểu phải là ${formatCurrency(minBid)}.`);
       return null;
     }
-    if ((amount - currentPrice) % stepPrice !== 0) {
-      setErrorText(`Số tiền tăng thêm phải là bội số của bước giá ${formatCurrency(stepPrice)}.`);
-      return null;
-    }
     setErrorText(null);
     return amount;
   };

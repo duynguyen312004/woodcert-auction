@@ -307,3 +307,28 @@
   border-color: #2e4a62 !important;
   color: #ffffff !important;
 }
+
+/* Custom styles for Buyer Portal (Clean Typography & Font fix) */
+.buyer-portal h1,
+.buyer-portal h2,
+.buyer-portal h3,
+.buyer-portal h4,
+.buyer-portal h5,
+.buyer-portal h6 {
+  font-family: var(--font-sans) !important;
+}
+
+/* Custom outline button styling in light panels of Buyer Portal to resolve hover state invisibility */
+.buyer-portal .light-panel [data-variant="outline"],
+.buyer-portal .light-panel [data-slot="button"][data-variant="outline"] {
+  background-color: #ffffff !important;
+  border-color: rgba(78, 70, 55, 0.2) !important;
+  color: #2e4a62 !important;
+}
+
+.buyer-portal .light-panel [data-variant="outline"]:hover,
+.buyer-portal .light-panel [data-slot="button"][data-variant="outline"]:hover {
+  background-color: #2e4a62 !important;
+  border-color: #2e4a62 !important;
+  color: #ffffff !important;
+}

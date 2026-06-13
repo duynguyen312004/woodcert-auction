@@ -4,17 +4,13 @@
  * Route khu seller và appraiser được tách khỏi PublicLayout để dùng sidebar riêng.
  * Các trang public, tài khoản và admin vẫn dùng header/footer chung.
  */
+import { lazy } from "react";
 import type { RouteObject } from "react-router";
 
-import { AdminLayout } from "@/app/layouts/AdminLayout";
-import { AppraiserLayout } from "@/app/layouts/AppraiserLayout";
-import { SellerLayout } from "@/app/layouts/SellerLayout";
 import { PublicLayout } from "@/app/layouts/PublicLayout";
-import { AdminPortalGuard } from "@/app/router/AdminPortalGuard";
-import { AppraiserPortalGuard } from "@/app/router/AppraiserPortalGuard";
+import { NotFoundPage } from "@/app/router/NotFoundPage";
 import { ProtectedRoute } from "@/app/router/ProtectedRoute";
 import { PublicPortalGuard } from "@/app/router/PublicPortalGuard";
-import { SellerPortalGuard } from "@/app/router/SellerPortalGuard";
 import { accountRoutes } from "@/features/account";
 import { adminRoutes } from "@/features/admin/routes";
 import { appraisalRoutes } from "@/features/appraisal/routes";
@@ -29,6 +25,33 @@ import { homeRoutes } from "@/features/home/routes";
 import { orderRoutes } from "@/features/order/routes";
 import { sellerRegisterRoutes, sellerRoutes } from "@/features/seller";
 import { walletRoutes } from "@/features/wallet";
+
+const AdminLayout = lazy(() =>
+  import("@/app/layouts/AdminLayout").then((module) => ({ default: module.AdminLayout })),
+);
+const AppraiserLayout = lazy(() =>
+  import("@/app/layouts/AppraiserLayout").then((module) => ({
+    default: module.AppraiserLayout,
+  })),
+);
+const SellerLayout = lazy(() =>
+  import("@/app/layouts/SellerLayout").then((module) => ({ default: module.SellerLayout })),
+);
+const AdminPortalGuard = lazy(() =>
+  import("@/app/router/AdminPortalGuard").then((module) => ({
+    default: module.AdminPortalGuard,
+  })),
+);
+const AppraiserPortalGuard = lazy(() =>
+  import("@/app/router/AppraiserPortalGuard").then((module) => ({
+    default: module.AppraiserPortalGuard,
+  })),
+);
+const SellerPortalGuard = lazy(() =>
+  import("@/app/router/SellerPortalGuard").then((module) => ({
+    default: module.SellerPortalGuard,
+  })),
+);
 
 export const routes: RouteObject[] = [
   ...authRoutes,
@@ -95,6 +118,10 @@ export const routes: RouteObject[] = [
               ...orderRoutes,
               ...sellerRegisterRoutes,
             ],
+          },
+          {
+            path: "*",
+            element: <NotFoundPage homePath="/" homeLabel="Về trang chủ" />,
           },
         ],
       },

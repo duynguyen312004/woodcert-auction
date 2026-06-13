@@ -20,7 +20,7 @@ export function GuidePage() {
     {
       icon: <FileCheck className="h-6 w-6 text-primary" />,
       title: "4. Thanh toán & Nhận chứng nhận",
-      desc: "Nếu thắng đấu giá, số tiền ký quỹ sẽ được khấu trừ vào tổng tiền thanh toán. Bạn nhận tác phẩm kèm theo Chứng thư kiểm định WoodCert tích hợp chữ ký số blockchain.",
+      desc: "Nếu thắng đấu giá, tiền ký quỹ được khấu trừ vào tổng thanh toán. Bạn có thể tra cứu chứng thư kiểm định WoodCert và dấu vân tay SHA-256 của hồ sơ.",
     },
   ];
 
@@ -124,9 +124,9 @@ export function GuidePage() {
               <h3 className="font-serif text-lg font-bold text-white">Chứng thư Điện tử</h3>
             </div>
             <p className="mt-4 text-sm leading-relaxed text-[#c4bcac]">
-              Mỗi tác phẩm giao dịch thành công sẽ nhận được một mã chứng thư điện tử kèm mã QR. Mã
-              QR này được khắc chìm hoặc dán tem niêm phong trên sản phẩm, cho phép người sở hữu tra
-              cứu nguồn gốc tác phẩm trọn đời trên cơ sở dữ liệu xác thực WoodCert.
+              Sản phẩm được thẩm định đạt sẽ có mã chứng thư điện tử để tra cứu công khai hồ sơ thẩm
+              định trên WoodCert. Phiên bản MVP sử dụng dấu vân tay SHA-256 để kiểm tra tính toàn
+              vẹn dữ liệu; QR và tem vật lý là định hướng phát triển sau.
             </p>
           </div>
         </section>

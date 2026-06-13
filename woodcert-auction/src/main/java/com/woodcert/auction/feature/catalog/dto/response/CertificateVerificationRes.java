@@ -10,7 +10,6 @@ import java.util.List;
 
 public record CertificateVerificationRes(
         String certificateCode,
-        boolean valid,
         Long productId,
         String productTitle,
         String description,
@@ -23,7 +22,7 @@ public record CertificateVerificationRes(
         ConditionGrade conditionGrade,
         BigDecimal estimatedValue,
         boolean authentic,
-        String digitalSignature,
+        String integrityHash,
         Instant appraisedAt,
         String dimensions,
         BigDecimal weight,
@@ -51,7 +50,6 @@ public record CertificateVerificationRes(
 
         return new CertificateVerificationRes(
                 report.getCertificateCode(),
-                true,
                 product != null ? product.getId() : null,
                 product != null ? product.getTitle() : null,
                 product != null ? product.getDescription() : null,
@@ -64,7 +62,7 @@ public record CertificateVerificationRes(
                 report.getConditionGrade(),
                 report.getEstimatedValue(),
                 report.isAuthentic(),
-                report.getDigitalSignature(),
+                report.getIntegrityHash(),
                 report.getAppraisedAt(),
                 product != null ? product.getDimensions() : null,
                 product != null ? product.getWeight() : null,

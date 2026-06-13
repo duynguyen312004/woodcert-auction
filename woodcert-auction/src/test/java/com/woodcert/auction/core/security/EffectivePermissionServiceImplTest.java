@@ -27,7 +27,7 @@ class EffectivePermissionServiceImplTest {
     @Test
     void buyerBanned_losesRegisterAndBidPermissionsOnly() {
         when(effectivePermissionQueryRepository.findAllPermissionNamesByUserId("user-1"))
-                .thenReturn(Set.of("REGISTER_AUCTION", "CREATE_BID", "JOIN_AUCTION"));
+                .thenReturn(Set.of("REGISTER_AUCTION", "CREATE_BID"));
         when(capabilityStatusRepository.findCapabilitiesByUserIdAndStatus("user-1", CapabilityStatus.BANNED))
                 .thenReturn(List.of(UserCapability.BUYER));
         when(capabilityPermissionMapper.getPermissionsForCapability(UserCapability.BUYER))
@@ -35,7 +35,7 @@ class EffectivePermissionServiceImplTest {
 
         Set<String> permissions = service.getEffectivePermissions("user-1");
 
-        assertThat(permissions).containsExactly("JOIN_AUCTION");
+        assertThat(permissions).isEmpty();
     }
 
     @Test

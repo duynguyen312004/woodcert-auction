@@ -32,6 +32,19 @@ export function useOpenDispute() {
   });
 }
 
+export function useCancelDispute() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ orderId, disputeId }: { orderId: number; disputeId: number }) =>
+      disputeApi.cancelDispute(orderId, disputeId),
+    onSuccess: (dispute) => {
+      void queryClient.invalidateQueries({ queryKey: ["orders"] });
+      void queryClient.invalidateQueries({ queryKey: ["disputes", "current", dispute.orderId] });
+      void queryClient.invalidateQueries({ queryKey: ["disputes", "history", dispute.orderId] });
+    },
+  });
+}
+
 export function useAdminDisputes(params?: { status?: string; page?: number; size?: number }) {
   return useQuery({
     queryKey: ["admin", "disputes", params] as const,

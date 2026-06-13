@@ -1,6 +1,8 @@
 import { lazy } from "react";
 import type { RouteObject } from "react-router";
 
+import { NotFoundPage } from "@/app/router/NotFoundPage";
+
 const AdminAuditLogsPage = lazy(() =>
   import("./pages/AdminAuditLogsPage").then((module) => ({
     default: module.AdminAuditLogsPage,
@@ -65,5 +67,9 @@ export const adminRoutes: RouteObject[] = [
   {
     path: "admin/audit-logs",
     element: <AdminAuditLogsPage />,
+  },
+  {
+    path: "admin/*",
+    element: <NotFoundPage homePath="/admin" homeLabel="Về trang quản trị" />,
   },
 ];

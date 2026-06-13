@@ -57,7 +57,7 @@ describe("AdminPortalGuard", () => {
 
   it("blocks authenticated users without admin authority", () => {
     useAuthStore.setState({
-      accessToken: createToken({ roles: ["ROLE_BIDDER"], permissions: ["JOIN_AUCTION"] }),
+      accessToken: createToken({ roles: ["ROLE_BIDDER"], permissions: ["REGISTER_AUCTION"] }),
       status: "authenticated",
     });
 

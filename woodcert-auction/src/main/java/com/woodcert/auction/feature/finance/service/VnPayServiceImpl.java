@@ -8,7 +8,7 @@ import com.woodcert.auction.feature.finance.dto.response.CreateDepositRes;
 import com.woodcert.auction.feature.finance.dto.response.VnPayDepositRes;
 import com.woodcert.auction.feature.finance.entity.VnPayDeposit;
 import com.woodcert.auction.feature.finance.entity.VnPayDepositStatus;
-import com.woodcert.auction.feature.finance.entity.WalletReferenceType;
+
 import com.woodcert.auction.feature.finance.repository.VnPayDepositRepository;
 import com.woodcert.auction.feature.finance.support.FinanceOperationKeys;
 import lombok.RequiredArgsConstructor;
@@ -253,12 +253,11 @@ public class VnPayServiceImpl implements VnPayService {
             deposit.setPaidAt(Instant.now());
             depositRepository.saveAndFlush(deposit);
 
-            walletService.depositFunds(
+            walletService.topUpFromVnPay(
                     deposit.getUserId(),
                     FinanceOperationKeys.vnpayDeposit(txnRef),
                     deposit.getAmount(),
-                    deposit.getId(),
-                    WalletReferenceType.VNPAY_DEPOSIT);
+                    deposit.getId());
             log.info("VNPay {} confirmation success for txnRef={}", source, txnRef);
         } else {
             deposit.setStatus(VnPayDepositStatus.FAILED);

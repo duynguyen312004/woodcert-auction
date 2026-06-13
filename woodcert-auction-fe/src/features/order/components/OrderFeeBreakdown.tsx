@@ -25,6 +25,7 @@ export function OrderFeeBreakdown({
 }) {
   const showSellerSaleBreakdown = audience === "seller" && order.status === "COMPLETED";
   const showSellerForfeitBreakdown = audience === "seller" && order.status === "CANCELED";
+  const showBuyerRefund = order.cancelReason === "DISPUTE_BUYER_WINS" && order.buyerRefundAmount;
 
   return (
     <div className={cn("grid gap-0", className)}>
@@ -99,6 +100,16 @@ export function OrderFeeBreakdown({
             valueClassName={valueClassName}
           />
         </>
+      )}
+      {showBuyerRefund && (
+        <OrderLine
+          label="Đã hoàn cho buyer"
+          value={formatVND(order.buyerRefundAmount ?? 0)}
+          strong
+          lineClassName={lineClassName}
+          labelClassName={labelClassName}
+          valueClassName={valueClassName}
+        />
       )}
       {order.paymentDeadline && (
         <OrderLine

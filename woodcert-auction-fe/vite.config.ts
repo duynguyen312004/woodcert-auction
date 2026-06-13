@@ -12,6 +12,18 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          "vendor-react": ["react", "react-dom", "react-router"],
+          "vendor-data": ["@tanstack/react-query", "axios", "zustand"],
+          "vendor-forms": ["react-hook-form", "@hookform/resolvers", "zod"],
+          "vendor-realtime": ["@stomp/stompjs", "sockjs-client"],
+        },
+      },
+    },
+  },
   test: {
     environment: "jsdom",
     globals: true,

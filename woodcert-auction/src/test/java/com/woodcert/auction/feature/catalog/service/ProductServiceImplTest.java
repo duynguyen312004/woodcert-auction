@@ -114,7 +114,7 @@ class ProductServiceImplTest {
         report.setAuthentic(true);
         report.setAppraiserNotes("Verified grain and finish.");
         report.setSellerAccuracy(new BigDecimal("4.5"));
-        report.setDigitalSignature("abc123");
+        report.setIntegrityHash("abc123");
         report.setAppraisedAt(java.time.Instant.now());
         return report;
     }
@@ -486,12 +486,11 @@ class ProductServiceImplTest {
 
             assertThat(product.getStatus()).isEqualTo(ProductStatus.PENDING_APPRAISAL);
             assertThat(product.getSubmittedAt()).isNotNull();
-            verify(walletService).withdrawFunds(
+            verify(walletService).chargeAppraisalFee(
                     eq(SELLER_ID),
                     eq(FinanceOperationKeys.appraisalSubmissionFee(PRODUCT_ID, SELLER_ID)),
                     eq(appraisalFee),
-                    eq(PRODUCT_ID),
-                    eq(WalletReferenceType.APPRAISAL));
+                    eq(PRODUCT_ID));
             verify(platformRevenueService).recordRevenue(
                     eq(PlatformRevenueType.APPRAISAL_FEE),
                     eq(appraisalFee),

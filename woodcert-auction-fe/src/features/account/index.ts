@@ -11,4 +11,11 @@ export {
 } from "./hooks/useProfile";
 export { accountRoutes } from "./routes";
 export { createSellerProfileSchema } from "./types";
-export type { Address, CreateSellerProfilePayload, SellerProfile, UserProfile } from "./types";
+export type {
+  Address,
+  CreateAddressPayload,
+  CreateSellerProfilePayload,
+  SellerProfile,
+  UpdateAddressPayload,
+  UserProfile,
+} from "./types";

@@ -1,3 +1,4 @@
+
 package com.woodcert.auction.feature.finance.service;
 
 import com.woodcert.auction.core.dto.PaginationResponse;
@@ -6,7 +7,12 @@ import com.woodcert.auction.core.exception.ErrorCode;
 import com.woodcert.auction.feature.finance.config.FinanceProperties;
 import com.woodcert.auction.feature.finance.dto.response.WalletRes;
 import com.woodcert.auction.feature.finance.dto.response.WalletTransactionRes;
-import com.woodcert.auction.feature.finance.entity.*;
+import com.woodcert.auction.feature.finance.entity.Wallet;
+import com.woodcert.auction.feature.finance.entity.WalletOperation;
+import com.woodcert.auction.feature.finance.entity.WalletReferenceType;
+import com.woodcert.auction.feature.finance.entity.WalletTransaction;
+import com.woodcert.auction.feature.finance.entity.WalletTransactionStatus;
+import com.woodcert.auction.feature.finance.entity.WalletTransactionType;
 import com.woodcert.auction.feature.finance.repository.WalletRepository;
 import com.woodcert.auction.feature.finance.repository.WalletTransactionRepository;
 import com.woodcert.auction.feature.finance.support.FinanceOperationKey;
@@ -59,51 +65,34 @@ public class WalletServiceImpl implements WalletService {
         return PaginationResponse.of(transactionPage);
     }
 
-
-
     @Override
     @Transactional
-    public void depositFunds(
-            String userId,
-            FinanceOperationKey operationKey,
-            BigDecimal amount,
-            Long referenceId,
-            WalletReferenceType referenceType) {
-        // Bước 1: Chuẩn hóa số tiền nạp về định dạng tiền tệ dương.
-        BigDecimal normalizedAmount = normalizePositiveAmount(amount);
-
-        // Bước 2: Gửi mutation cộng số dư available qua executor idempotent chung.
-        executeIdempotentMutation(
-                userId,
-                operationKey,
-                normalizedAmount,
-                referenceId,
-                referenceType,
-                WalletTransactionType.DEPOSIT,
-                wallet -> wallet.setAvailableBalance(wallet.getAvailableBalance().add(normalizedAmount)),
-                normalizedAmount
-        );
+    public void topUpFromVnPay(
+            String userId, FinanceOperationKey operationKey, BigDecimal amount, Long depositId) {
+        creditAvailable(userId, operationKey, amount, depositId,
+                WalletReferenceType.VNPAY_DEPOSIT, WalletTransactionType.WALLET_TOP_UP);
     }
 
     @Override
     @Transactional
-    public void freezeFunds(
-            String userId,
-            FinanceOperationKey operationKey,
-            BigDecimal amount,
-            Long referenceId,
-            WalletReferenceType referenceType) {
-        // Bước 1: Chuẩn hóa số tiền cần đóng băng trước khi kiểm tra số dư.
-        BigDecimal normalizedAmount = normalizePositiveAmount(amount);
+    public void chargeAppraisalFee(
+            String userId, FinanceOperationKey operationKey, BigDecimal amount, Long productId) {
+        debitAvailable(userId, operationKey, amount, productId,
+                WalletReferenceType.APPRAISAL, WalletTransactionType.APPRAISAL_FEE);
+    }
 
-        // Bước 2: Trừ available và cộng frozen trong cùng mutation idempotent.
+    @Override
+    @Transactional
+    public void freezeAuctionDeposit(
+            String userId, FinanceOperationKey operationKey, BigDecimal amount, Long auctionId) {
+        BigDecimal normalizedAmount = normalizePositiveAmount(amount);
         executeIdempotentMutation(
                 userId,
                 operationKey,
                 normalizedAmount,
-                referenceId,
-                referenceType,
-                WalletTransactionType.FREEZE,
+                auctionId,
+                WalletReferenceType.AUCTION,
+                WalletTransactionType.AUCTION_DEPOSIT_FREEZE,
                 wallet -> {
                     if (wallet.getAvailableBalance().compareTo(normalizedAmount) < 0) {
                         throw new AppException(ErrorCode.WALLET_INSUFFICIENT_AVAILABLE_BALANCE);
@@ -111,29 +100,21 @@ public class WalletServiceImpl implements WalletService {
                     wallet.setAvailableBalance(wallet.getAvailableBalance().subtract(normalizedAmount));
                     wallet.setFrozenBalance(wallet.getFrozenBalance().add(normalizedAmount));
                 },
-                normalizedAmount.negate()
-        );
+                normalizedAmount.negate());
     }
 
     @Override
     @Transactional
-    public void unfreezeFunds(
-            String userId,
-            FinanceOperationKey operationKey,
-            BigDecimal amount,
-            Long referenceId,
-            WalletReferenceType referenceType) {
-        // Bước 1: Chuẩn hóa số tiền cần mở đóng băng.
+    public void releaseAuctionDeposit(
+            String userId, FinanceOperationKey operationKey, BigDecimal amount, Long auctionId) {
         BigDecimal normalizedAmount = normalizePositiveAmount(amount);
-
-        // Bước 2: Chuyển tiền từ frozen về available trong cùng mutation idempotent.
         executeIdempotentMutation(
                 userId,
                 operationKey,
                 normalizedAmount,
-                referenceId,
-                referenceType,
-                WalletTransactionType.UNFREEZE,
+                auctionId,
+                WalletReferenceType.AUCTION,
+                WalletTransactionType.AUCTION_DEPOSIT_RELEASE,
                 wallet -> {
                     if (wallet.getFrozenBalance().compareTo(normalizedAmount) < 0) {
                         throw new AppException(ErrorCode.WALLET_INSUFFICIENT_FROZEN_BALANCE);
@@ -141,64 +122,101 @@ public class WalletServiceImpl implements WalletService {
                     wallet.setFrozenBalance(wallet.getFrozenBalance().subtract(normalizedAmount));
                     wallet.setAvailableBalance(wallet.getAvailableBalance().add(normalizedAmount));
                 },
-                normalizedAmount
-        );
+                normalizedAmount);
     }
 
     @Override
     @Transactional
-    public void deductFrozenFunds(
-            String userId,
-            FinanceOperationKey operationKey,
-            BigDecimal amount,
-            Long referenceId,
-            WalletReferenceType referenceType) {
-        // Bước 1: Chuẩn hóa số tiền cần thu từ phần đang bị đóng băng.
+    public void captureAuctionDeposit(
+            String userId, FinanceOperationKey operationKey, BigDecimal amount, Long auctionId) {
         BigDecimal normalizedAmount = normalizePositiveAmount(amount);
-
-        // Bước 2: Trừ frozen để ghi nhận thanh toán, không cộng lại available.
         executeIdempotentMutation(
                 userId,
                 operationKey,
                 normalizedAmount,
-                referenceId,
-                referenceType,
-                WalletTransactionType.PAYMENT,
+                auctionId,
+                WalletReferenceType.AUCTION,
+                WalletTransactionType.AUCTION_DEPOSIT_CAPTURE,
                 wallet -> {
                     if (wallet.getFrozenBalance().compareTo(normalizedAmount) < 0) {
                         throw new AppException(ErrorCode.WALLET_INSUFFICIENT_FROZEN_BALANCE);
                     }
                     wallet.setFrozenBalance(wallet.getFrozenBalance().subtract(normalizedAmount));
                 },
-                normalizedAmount.negate()
-        );
+                normalizedAmount.negate());
     }
 
     @Override
     @Transactional
-    public void withdrawFunds(
+    public void payOrder(String userId, FinanceOperationKey operationKey, BigDecimal amount, Long orderId) {
+        debitAvailable(userId, operationKey, amount, orderId,
+                WalletReferenceType.ORDER, WalletTransactionType.ORDER_PAYMENT);
+    }
+
+    @Override
+    @Transactional
+    public void refundOrder(String userId, FinanceOperationKey operationKey, BigDecimal amount, Long orderId) {
+        creditAvailable(userId, operationKey, amount, orderId,
+                WalletReferenceType.ORDER, WalletTransactionType.ORDER_REFUND);
+    }
+
+    @Override
+    @Transactional
+    public void creditSellerPayout(
+            String userId, FinanceOperationKey operationKey, BigDecimal amount, Long orderId) {
+        creditAvailable(userId, operationKey, amount, orderId,
+                WalletReferenceType.ORDER, WalletTransactionType.SELLER_PAYOUT);
+    }
+
+    @Override
+    @Transactional
+    public void creditSellerForfeitCompensation(
+            String userId, FinanceOperationKey operationKey, BigDecimal amount, Long orderId) {
+        creditAvailable(userId, operationKey, amount, orderId,
+                WalletReferenceType.ORDER, WalletTransactionType.SELLER_FORFEIT_COMPENSATION);
+    }
+
+    private void creditAvailable(
             String userId,
             FinanceOperationKey operationKey,
             BigDecimal amount,
             Long referenceId,
-            WalletReferenceType referenceType) {
+            WalletReferenceType referenceType,
+            WalletTransactionType transactionType) {
         BigDecimal normalizedAmount = normalizePositiveAmount(amount);
-
         executeIdempotentMutation(
                 userId,
                 operationKey,
                 normalizedAmount,
                 referenceId,
                 referenceType,
-                WalletTransactionType.WITHDRAW,
+                transactionType,
+                wallet -> wallet.setAvailableBalance(wallet.getAvailableBalance().add(normalizedAmount)),
+                normalizedAmount);
+    }
+
+    private void debitAvailable(
+            String userId,
+            FinanceOperationKey operationKey,
+            BigDecimal amount,
+            Long referenceId,
+            WalletReferenceType referenceType,
+            WalletTransactionType transactionType) {
+        BigDecimal normalizedAmount = normalizePositiveAmount(amount);
+        executeIdempotentMutation(
+                userId,
+                operationKey,
+                normalizedAmount,
+                referenceId,
+                referenceType,
+                transactionType,
                 wallet -> {
                     if (wallet.getAvailableBalance().compareTo(normalizedAmount) < 0) {
                         throw new AppException(ErrorCode.WALLET_INSUFFICIENT_AVAILABLE_BALANCE);
                     }
                     wallet.setAvailableBalance(wallet.getAvailableBalance().subtract(normalizedAmount));
                 },
-                normalizedAmount.negate()
-        );
+                normalizedAmount.negate());
     }
 
     private void executeIdempotentMutation(
@@ -210,7 +228,6 @@ public class WalletServiceImpl implements WalletService {
             WalletTransactionType transactionType,
             Consumer<Wallet> mutation,
             BigDecimal signedAvailableDelta) {
-        // Bước 1: Chuẩn hóa operation key, kiểm tra reference và lấy ví hiện tại hoặc tạo ví mới.
         if (operationKey == null) {
             throw new AppException(ErrorCode.WALLET_OPERATION_KEY_INVALID);
         }
@@ -218,57 +235,44 @@ public class WalletServiceImpl implements WalletService {
         validateReference(referenceType, referenceId);
         Wallet wallet = getOrCreateWallet(userId);
 
-        // Bước 2: Reserve operation để cùng một operationKey không bị xử lý lặp lại.
         WalletOperation reservedOperation = walletOperationLifecycleService.reserveOrReuseOperation(
                 wallet.getId(),
                 normalizedOperationKey,
                 amount,
                 transactionType,
                 referenceId,
-                referenceType
-        );
-
+                referenceType);
         if (reservedOperation == null) {
             return;
         }
 
-        // Bước 3: Đăng ký hook kết thúc transaction để chỉ mark SUCCESS sau khi commit thật sự thành công.
         boolean finalizedAfterCommit = registerOperationCompletionHooks(reservedOperation.getId());
-
         try {
-            // Bước 4: Áp mutation lên số dư ví, lưu ví và ghi lịch sử giao dịch cùng transaction DB.
             mutation.accept(wallet);
             walletRepository.saveAndFlush(wallet);
             logTransaction(wallet, signedAvailableDelta, transactionType, referenceId, referenceType);
             if (!finalizedAfterCommit) {
-                // Bước 5: Nếu không có transaction synchronization thì mark SUCCESS ngay sau khi lưu dữ liệu.
                 walletOperationLifecycleService.markSuccess(reservedOperation.getId());
                 log.info("Wallet mutation {} applied for user {} with operationKey={}",
                         transactionType, userId, normalizedOperationKey);
             }
         } catch (ObjectOptimisticLockingFailureException | OptimisticLockException ex) {
-            // Bước 6: Ghi trạng thái FAILED rõ nguyên nhân khi có xung đột optimistic locking.
             walletOperationLifecycleService.markFailed(
                     reservedOperation.getId(),
                     ErrorCode.WALLET_CONCURRENT_MODIFICATION.name(),
-                    ErrorCode.WALLET_CONCURRENT_MODIFICATION.getMessage()
-            );
+                    ErrorCode.WALLET_CONCURRENT_MODIFICATION.getMessage());
             throw new AppException(ErrorCode.WALLET_CONCURRENT_MODIFICATION);
         } catch (AppException ex) {
-            // Bước 7: Lỗi nghiệp vụ được lưu lại theo error code để lần gọi sau có thể truy vết.
             walletOperationLifecycleService.markFailed(
                     reservedOperation.getId(),
                     resolveFailureCode(ex),
-                    ex.getMessage()
-            );
+                    ex.getMessage());
             throw ex;
         } catch (RuntimeException ex) {
-            // Bước 8: Lỗi runtime ngoài dự kiến vẫn phải mark FAILED trước khi ném tiếp.
             walletOperationLifecycleService.markFailed(
                     reservedOperation.getId(),
                     ErrorCode.UNCATEGORIZED.name(),
-                    ex.getMessage()
-            );
+                    ex.getMessage());
             throw ex;
         }
     }
@@ -313,7 +317,6 @@ public class WalletServiceImpl implements WalletService {
         if (referenceType == null) {
             throw new AppException(ErrorCode.WALLET_REFERENCE_INVALID);
         }
-
         if ((referenceType == WalletReferenceType.AUCTION
                 || referenceType == WalletReferenceType.APPRAISAL
                 || referenceType == WalletReferenceType.ORDER)
@@ -333,7 +336,6 @@ public class WalletServiceImpl implements WalletService {
         if (!TransactionSynchronizationManager.isSynchronizationActive()) {
             return false;
         }
-
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
@@ -346,8 +348,7 @@ public class WalletServiceImpl implements WalletService {
                     walletOperationLifecycleService.markFailed(
                             operationId,
                             ErrorCode.UNCATEGORIZED.name(),
-                            "Wallet mutation rolled back before commit"
-                    );
+                            "Wallet mutation rolled back before commit");
                 }
             }
         });

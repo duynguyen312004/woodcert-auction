@@ -147,7 +147,7 @@ public class AppraisalServiceImpl implements AppraisalService {
         // Bước 5: Lưu report với mã chứng nhận tạm dựa trên UUID để tránh race condition kiểu count() + 1.
         String tempCertCode = "PENDING-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
 
-        // Bước 6: Tạo chữ ký số từ dữ liệu cốt lõi của báo cáo để truy vết tính toàn vẹn.
+        // Bước 6: Tạo dấu vân tay SHA-256 từ dữ liệu cốt lõi để truy vết tính toàn vẹn.
         Instant appraisedAt = Instant.now();
 
         AppraisalReport report = new AppraisalReport();
@@ -162,14 +162,14 @@ public class AppraisalServiceImpl implements AppraisalService {
         report.setAuthentic(request.isAuthentic());
         report.setAppraiserNotes(request.appraiserNotes());
         report.setSellerAccuracy(request.sellerAccuracy());
-        report.setDigitalSignature("PENDING-" + UUID.randomUUID());
+        report.setIntegrityHash("PENDING-" + UUID.randomUUID());
         report.setAppraisedAt(appraisedAt);
         report = appraisalReportRepository.save(report);
 
         // Bước 7: Sau khi có report id, cập nhật mã chứng nhận chính thức theo năm và id.
         String certificateCode = String.format("CERT-%d-%05d", Year.now().getValue(), report.getId());
         report.setCertificateCode(certificateCode);
-        report.setDigitalSignature(generateDigitalSignature(
+        report.setIntegrityHash(generateIntegrityHash(
                 productId,
                 appraiserId,
                 request.verifiedMaterial(),
@@ -252,9 +252,9 @@ public class AppraisalServiceImpl implements AppraisalService {
     // =========================================================================
 
     /**
-     * Tạo chữ ký số bằng cách hash SHA-256 các dữ liệu chính của báo cáo.
+     * Tạo dấu vân tay toàn vẹn bằng cách hash SHA-256 các dữ liệu chính của báo cáo.
      */
-    private String generateDigitalSignature(
+    private String generateIntegrityHash(
             Long productId, String appraiserId, String verifiedMaterial,
             BigDecimal estimatedValue, boolean isAuthentic, String certificateCode, Instant appraisedAt) {
         try {
