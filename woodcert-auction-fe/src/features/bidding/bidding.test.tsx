@@ -187,13 +187,50 @@ describe("ConnectionBanner", () => {
 });
 
 describe("EndedOverlay", () => {
-  it("renders winner result", () => {
+  it("renders a Vietnamese winner result with auction details", () => {
     render(
       <MemoryRouter>
-        <EndedOverlay outcomeCode="WINNER" />
+        <EndedOverlay
+          outcomeCode="WINNER"
+          auctionId={501}
+          productTitle="Tượng Thích Ca Mâu Ni"
+          productImageUrl="/images/statue.jpg"
+          finalPrice={15_000_000}
+          depositAmount={1_500_000}
+        />
       </MemoryRouter>,
     );
-    expect(screen.getByText(/Chúc mừng/i)).toBeInTheDocument();
+
+    expect(screen.getByText("Bạn đã thắng phiên đấu giá")).toBeInTheDocument();
+    expect(screen.getByText("Tượng Thích Ca Mâu Ni")).toBeInTheDocument();
+    expect(screen.getByText("15.000.000 VNĐ")).toBeInTheDocument();
+    expect(screen.queryByText(/You won this auction/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Xem chi tiết và thanh toán/i })).toHaveAttribute(
+      "href",
+      "/my-auctions/501",
+    );
+  });
+
+  it("renders a consistent Vietnamese loser result", () => {
+    render(
+      <MemoryRouter>
+        <EndedOverlay
+          outcomeCode="LOSER"
+          auctionId={502}
+          productTitle="Bình gỗ điêu khắc"
+          finalPrice={8_200_000}
+          depositAmount={820_000}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("Phiên đấu giá đã khép lại")).toBeInTheDocument();
+    expect(screen.getByText(/Tiền đặt cọc sẽ được hoàn/i)).toBeInTheDocument();
+    expect(screen.queryByText(/You did not win/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Khám phá phiên khác/i })).toHaveAttribute(
+      "href",
+      "/auctions",
+    );
   });
 });
 

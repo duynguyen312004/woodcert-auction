@@ -245,7 +245,7 @@ export function CertificatePage() {
                           />
                           <CertificateInfoItem
                             label="Kích thước (Dài x Rộng x Cao)"
-                            value={data.dimensions ? `${data.dimensions} cm` : "—"}
+                            value={data.dimensions ?? "—"}
                           />
                           <CertificateInfoItem
                             label="Khối lượng"

@@ -30,6 +30,9 @@ const EMPTY: CreateAddressPayload = {
   isDefault: false,
 };
 
+const LOCATION_SELECT_CLASS =
+  "address-location-select h-10 w-full rounded-md border border-input bg-card px-3 text-sm text-foreground shadow-xs outline-none transition-[border-color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50";
+
 export function AddressBookPage() {
   const [createForm, setCreateForm] = useState<CreateAddressPayload>(EMPTY);
   const [editingAddress, setEditingAddress] = useState<Address | null>(null);
@@ -329,10 +332,12 @@ function AddressFields<T extends UpdateAddressPayload>({
             wardCode: "",
           })
         }
-        className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+        className={LOCATION_SELECT_CLASS}
         disabled={provincesQuery.isLoading}
       >
-        <option value="">Chọn Tỉnh / Thành phố</option>
+        <option value="">
+          {provincesQuery.isLoading ? "Đang tải Tỉnh / Thành phố..." : "Chọn Tỉnh / Thành phố"}
+        </option>
         {provincesQuery.data?.map((province) => (
           <option key={province.code} value={province.code}>
             {province.name}
@@ -344,10 +349,12 @@ function AddressFields<T extends UpdateAddressPayload>({
         required
         value={value.districtCode}
         onChange={(event) => onChange({ ...value, districtCode: event.target.value, wardCode: "" })}
-        className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+        className={LOCATION_SELECT_CLASS}
         disabled={!value.provinceCode || districtsQuery.isLoading}
       >
-        <option value="">Chọn Quận / Huyện</option>
+        <option value="">
+          {districtsQuery.isLoading ? "Đang tải Quận / Huyện..." : "Chọn Quận / Huyện"}
+        </option>
         {districtsQuery.data?.map((district) => (
           <option key={district.code} value={district.code}>
             {district.name}
@@ -359,10 +366,12 @@ function AddressFields<T extends UpdateAddressPayload>({
         required
         value={value.wardCode}
         onChange={(event) => onChange({ ...value, wardCode: event.target.value })}
-        className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+        className={LOCATION_SELECT_CLASS}
         disabled={!value.districtCode || wardsQuery.isLoading}
       >
-        <option value="">Chọn Phường / Xã</option>
+        <option value="">
+          {wardsQuery.isLoading ? "Đang tải Phường / Xã..." : "Chọn Phường / Xã"}
+        </option>
         {wardsQuery.data?.map((ward) => (
           <option key={ward.code} value={ward.code}>
             {ward.name}

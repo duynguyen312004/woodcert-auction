@@ -112,6 +112,17 @@ describe("AddressBookPage", () => {
     );
   });
 
+  it("uses readable dark native menus for all location selectors", async () => {
+    mockQueries();
+    renderPage();
+
+    await screen.findByText("Nguyễn Văn A");
+
+    expect(screen.getByLabelText("Tỉnh hoặc thành phố")).toHaveClass("address-location-select");
+    expect(screen.getByLabelText("Quận hoặc huyện")).toHaveClass("address-location-select");
+    expect(screen.getByLabelText("Phường hoặc xã")).toHaveClass("address-location-select");
+  });
+
   it("edits an existing address without changing its default flag", async () => {
     mockQueries();
     api.updateAddress.mockResolvedValue({ ...addresses[0], receiverName: "Nguyễn Văn Mới" });

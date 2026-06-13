@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useForm, type UseFormSetError } from "react-hook-form";
 import { Link, useLocation, useNavigate } from "react-router";
 
-import { hasAppraiserAuthority } from "@/shared/auth/appraiser-authority";
 import { resolveAuthenticatedRedirect } from "@/shared/auth/auth-redirects";
 import { useAuthStore } from "@/shared/auth/auth-store";
 import { isApiError } from "@/shared/api/errors";
@@ -13,19 +12,12 @@ import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { NotificationCard, useNotification } from "@/shared/ui/notification";
 import { authApi } from "../api/auth";
+import { getLoginSuccessDescription } from "../login-success-message";
 import { loginSchema, type LoginCredentials } from "../types";
 
 const loginErrorFields = ["email", "password"] as const;
 
 type SubmitError = { type: "message"; message: string } | { type: "unverified"; email: string };
-
-function getLoginSuccessDescription(accessToken: string, roles?: readonly string[]) {
-  if (hasAppraiserAuthority(accessToken, roles)) {
-    return "Phiên kiểm định đã sẵn sàng. Bạn sẽ được chuyển đến hàng chờ sản phẩm cần duyệt.";
-  }
-
-  return "Phiên làm việc đã sẵn sàng. Bạn có thể tiếp tục đấu giá và quản lý tài khoản.";
-}
 
 function applyLoginFieldErrors(
   fieldErrors: Record<string, string> | undefined,

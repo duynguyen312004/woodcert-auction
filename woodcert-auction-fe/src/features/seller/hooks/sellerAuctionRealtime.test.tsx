@@ -1,9 +1,28 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { PaginationResponse } from "@/shared/api/types";
+
+vi.mock("@/features/order", () => ({
+  mapOrder: (order: unknown) => order,
+  useSellerOrders: () => ({
+    data: {
+      result: [],
+      meta: { page: 1, pageSize: 3, pages: 0, total: 0 },
+    },
+    isPending: false,
+    isError: false,
+    refetch: vi.fn(),
+  }),
+  useSellerSalesSummary: () => ({
+    data: { totalRealizedIncome: 0 },
+    isPending: false,
+    isError: false,
+    refetch: vi.fn(),
+  }),
+}));
 
 import { sellerApi } from "../api/seller";
 import type { SellerAuction, SellerAuctionDetail, SellerAuctionStats } from "../types";
@@ -12,6 +31,7 @@ import {
   useSellerAuctionDetail,
   useSellerAuctions,
   useSellerAuctionStats,
+  useSellerDashboard,
 } from "./useSellerDashboard";
 
 function createQueryClient() {
@@ -99,7 +119,7 @@ describe("seller auction realtime cache", () => {
     });
   });
 
-  it("polls seller auction list, stats and live detail every ten seconds", () => {
+  it("keeps seller auction list and stats fresh while polling every ten seconds", () => {
     const queryClient = createQueryClient();
     vi.spyOn(sellerApi, "getMyAuctions").mockResolvedValue(page([]));
     vi.spyOn(sellerApi, "getMyAuctionStats").mockResolvedValue({
@@ -125,12 +145,28 @@ describe("seller auction realtime cache", () => {
 
     const listOptions = queryClient.getQueryCache().find({
       queryKey: ["seller", "auctions", { page: 1, size: 10 }],
-    })?.options as { refetchInterval?: unknown } | undefined;
+    })?.options as
+      | {
+          refetchInterval?: unknown;
+          refetchOnMount?: unknown;
+          refetchOnWindowFocus?: unknown;
+        }
+      | undefined;
     const statsOptions = queryClient.getQueryCache().find({
       queryKey: ["seller", "auction-stats"],
-    })?.options as { refetchInterval?: unknown } | undefined;
+    })?.options as
+      | {
+          refetchInterval?: unknown;
+          refetchOnMount?: unknown;
+          refetchOnWindowFocus?: unknown;
+        }
+      | undefined;
     expect(listOptions?.refetchInterval).toBe(10_000);
+    expect(listOptions?.refetchOnMount).toBe("always");
+    expect(listOptions?.refetchOnWindowFocus).toBe(true);
     expect(statsOptions?.refetchInterval).toBe(10_000);
+    expect(statsOptions?.refetchOnMount).toBe("always");
+    expect(statsOptions?.refetchOnWindowFocus).toBe(true);
 
     const detailInterval = (
       queryClient.getQueryCache().find({
@@ -138,5 +174,53 @@ describe("seller auction realtime cache", () => {
       })?.options as { refetchInterval?: unknown } | undefined
     )?.refetchInterval;
     expect(typeof detailInterval).toBe("function");
+  });
+
+  it("uses the dedicated auction stats endpoint for the dashboard active count", async () => {
+    const queryClient = createQueryClient();
+    vi.spyOn(sellerApi, "getMyProducts").mockResolvedValue({
+      result: [],
+      meta: { page: 1, pageSize: 5, pages: 0, total: 0 },
+    });
+    vi.spyOn(sellerApi, "getMyProductStats").mockResolvedValue({
+      total: 1,
+      byStatus: {
+        DRAFT: 0,
+        PENDING_APPRAISAL: 0,
+        UNDER_APPRAISAL: 0,
+        REJECTED: 0,
+        APPRAISED: 1,
+      },
+      bySaleStatus: {
+        AVAILABLE: 0,
+        IN_AUCTION: 1,
+        PENDING_ORDER: 0,
+        SOLD: 0,
+        RETURNED: 0,
+      },
+    });
+    vi.spyOn(sellerApi, "getMyAuctions").mockResolvedValue(page([]));
+    vi.spyOn(sellerApi, "getMyAuctionStats").mockResolvedValue({
+      waiting: 0,
+      active: 1,
+      endedSuccess: 0,
+      endedFailed: 0,
+      canceled: 0,
+    });
+
+    const { result } = renderHook(() => useSellerDashboard(), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    await waitFor(() => expect(result.current.stats.activeAuctionCount).toBe(1));
+    await waitFor(() =>
+      expect(sellerApi.getMyAuctions).toHaveBeenCalledWith({ status: "ACTIVE", size: 1 }),
+    );
+    await waitFor(() => {
+      const activeCalls = vi
+        .mocked(sellerApi.getMyAuctions)
+        .mock.calls.filter(([params]) => params?.status === "ACTIVE");
+      expect(activeCalls).toHaveLength(2);
+    });
   });
 });

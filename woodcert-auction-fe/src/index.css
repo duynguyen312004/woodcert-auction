@@ -111,6 +111,19 @@
 }
 
 @layer components {
+  /*
+   * Native select menus on Windows can otherwise open with a white system
+   * surface while inheriting the app's light foreground color.
+   */
+  .address-location-select {
+    color-scheme: dark;
+  }
+
+  .address-location-select option {
+    background-color: #292a2f;
+    color: #f2eee5;
+  }
+
   .auction-hero {
     height: 100svh;
     min-height: 700px;

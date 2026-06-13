@@ -154,7 +154,11 @@ export default function BiddingRoomPage() {
         {showOutcome && (
           <EndedOverlay
             outcomeCode={participation.outcomeCode}
-            outcomeMessage={participation.outcomeMessage}
+            auctionId={detail.id}
+            productTitle={detail.product?.title}
+            productImageUrl={detail.product?.primaryImage}
+            finalPrice={detail.currentPrice}
+            depositAmount={participation.depositAmount ?? detail.depositAmount}
           />
         )}
       </div>
