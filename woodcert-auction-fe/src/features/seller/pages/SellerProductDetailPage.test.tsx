@@ -79,6 +79,18 @@ describe("SellerProductDetailPage", () => {
     expect(screen.getByRole("heading", { name: expectedHeading })).toBeVisible();
   });
 
+  it("hides available sale status until appraisal is completed", () => {
+    renderPage(productFixture("PENDING_APPRAISAL"));
+
+    expect(screen.queryByText("Sẵn sàng đấu giá")).not.toBeInTheDocument();
+  });
+
+  it("shows available sale status after appraisal is completed", () => {
+    renderPage(productFixture("APPRAISED"));
+
+    expect(screen.getByText("Sẵn sàng đấu giá")).toBeVisible();
+  });
+
   it("shows owner review details, proof images, certificate and auction actions", () => {
     renderPage(
       productFixture("APPRAISED", {

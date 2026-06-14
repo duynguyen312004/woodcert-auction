@@ -198,7 +198,9 @@ function ProductSummary({ product }: { product: ProductDetail }) {
     <section className="rounded-xl border border-[#4e4637]/15 bg-white p-6 shadow-sm md:p-7">
       <div className="flex flex-wrap gap-2">
         <ProductStatusBadge status={product.status} />
-        <ProductSaleStatusBadge status={product.saleStatus} />
+        {(product.saleStatus !== "AVAILABLE" || product.status === "APPRAISED") && (
+          <ProductSaleStatusBadge status={product.saleStatus} />
+        )}
       </div>
       <p className="mt-5 text-xs font-bold uppercase tracking-[0.18em] text-brushed-brass">
         Sản phẩm #{product.id}
