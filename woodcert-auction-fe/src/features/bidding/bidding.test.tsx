@@ -337,7 +337,7 @@ describe("BidControlPanel", () => {
       </MemoryRouter>,
     );
 
-    fireEvent.change(screen.getByRole("spinbutton"), { target: { value: "1350000" } });
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "1350000" } });
     fireEvent.click(screen.getByRole("button", { name: /^Đặt giá$/i }));
 
     await waitFor(() => expect(mockOnPlaceBid).toHaveBeenCalledWith(1350000));

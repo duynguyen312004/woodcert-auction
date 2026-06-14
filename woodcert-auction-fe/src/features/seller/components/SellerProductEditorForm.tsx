@@ -221,10 +221,8 @@ export function SellerProductEditorForm({
                 <div className="relative">
                   <Input
                     id="weight"
-                    type="number"
+                    type="text"
                     inputMode="decimal"
-                    step="0.01"
-                    min="0.01"
                     placeholder="Ví dụ: 2.5"
                     className="pr-9"
                     {...register("weight")}

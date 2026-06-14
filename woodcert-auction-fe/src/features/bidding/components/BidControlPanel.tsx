@@ -264,7 +264,8 @@ export function BidControlPanel({
                 đ
               </span>
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
                 disabled={isBidInputDisabled}
                 value={bidAmountInput}
                 onChange={handleInputChange}

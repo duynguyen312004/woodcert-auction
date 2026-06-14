@@ -427,9 +427,8 @@ function AppraisalForm({
             </label>
             <input
               {...register("estimatedValue")}
-              type="number"
-              min="0"
-              step="1000"
+              type="text"
+              inputMode="numeric"
               className={cn(
                 "w-full rounded-lg border px-3 py-2 text-sm outline-none transition-colors focus:border-brushed-brass focus:ring-1 focus:ring-brushed-brass/30",
                 errors.estimatedValue ? "border-red-400" : "border-[#4e4637]/30",
@@ -447,10 +446,8 @@ function AppraisalForm({
             </label>
             <input
               {...register("sellerAccuracy")}
-              type="number"
-              min="1"
-              max="5"
-              step="0.1"
+              type="text"
+              inputMode="decimal"
               className="w-full rounded-lg border border-[#4e4637]/30 px-3 py-2 text-sm outline-none transition-colors focus:border-brushed-brass focus:ring-1 focus:ring-brushed-brass/30"
               placeholder="3"
             />
