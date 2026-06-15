@@ -198,3 +198,12 @@ docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
 ```
 
 Để khôi phục lại phiên bản cũ (rollback), hãy thực hiện checkout commit hoạt động ổn định gần nhất trên Git và build lại Docker container. Tuyệt đối **không chạy** lệnh `down -v` trong quá trình rollback vì nó sẽ làm mất dữ liệu. Việc nâng cấp database (migration) chỉ hỗ trợ tiến lên phía trước; nếu một file migration bị lỗi và cần rollback, bạn phải khôi phục lại bản sao lưu cơ sở dữ liệu MySQL đã tạo trước khi nâng cấp.
+
+## 8. CI/CD
+
+GitHub Actions kiểm thử Pull Request, build image theo commit SHA và triển khai production sau
+khi được phê duyệt. Quy trình bootstrap, GitHub Environment, GHCR, bảo vệ `main` và rollback
+được mô tả tại [CI_CD.md](CI_CD.md).
+
+Lệnh build trực tiếp trên VPS ở phần 7 vẫn được giữ làm phương án vận hành dự phòng. Pipeline
+CI/CD không đưa `.env.prod` hoặc credential production vào Docker image hay GitHub repository.

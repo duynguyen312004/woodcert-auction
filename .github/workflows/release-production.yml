@@ -1,0 +1,230 @@
+name: Release production
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Deploy or roll back to images that already exist
+        required: true
+        type: choice
+        default: deploy
+        options:
+          - deploy
+          - rollback
+      target_sha:
+        description: Full 40-character commit SHA
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+  attestations: write
+  id-token: write
+
+concurrency:
+  group: production-release
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  BACKEND_REPOSITORY: duynguyen312004/woodcert-auction-backend
+  FRONTEND_REPOSITORY: duynguyen312004/woodcert-auction-frontend
+
+jobs:
+  resolve:
+    name: Resolve release
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_branch == 'main'
+      )
+    runs-on: ubuntu-latest
+    outputs:
+      operation: ${{ steps.release.outputs.operation }}
+      publish: ${{ steps.release.outputs.publish }}
+      target_sha: ${{ steps.release.outputs.target_sha }}
+    steps:
+      - name: Check out repository history
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve and validate target
+        id: release
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          WORKFLOW_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          WORKFLOW_EVENT: ${{ github.event.workflow_run.event }}
+          WORKFLOW_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          WORKFLOW_SHA: ${{ github.event.workflow_run.head_sha }}
+          INPUT_OPERATION: ${{ inputs.operation }}
+          INPUT_TARGET_SHA: ${{ inputs.target_sha }}
+        run: |
+          set -euo pipefail
+          git fetch --quiet origin main
+          remote_main="$(git rev-parse origin/main)"
+
+          if [[ "$EVENT_NAME" == "workflow_run" ]]; then
+            target_sha="$WORKFLOW_SHA"
+            operation="deploy"
+            publish="true"
+            [[ "$target_sha" == "$remote_main" ]]
+          else
+            target_sha="$INPUT_TARGET_SHA"
+            operation="$INPUT_OPERATION"
+            publish="false"
+          fi
+
+          [[ "$target_sha" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$operation" == "deploy" || "$operation" == "rollback" ]]
+          git cat-file -e "${target_sha}^{commit}"
+          git merge-base --is-ancestor "$target_sha" origin/main
+
+          {
+            echo "target_sha=$target_sha"
+            echo "operation=$operation"
+            echo "publish=$publish"
+          } >> "$GITHUB_OUTPUT"
+
+  publish:
+    name: Publish ${{ matrix.component }} image
+    needs: resolve
+    if: needs.resolve.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - component: backend
+            context: ./woodcert-auction
+            repository: duynguyen312004/woodcert-auction-backend
+          - component: frontend
+            context: ./woodcert-auction-fe
+            repository: duynguyen312004/woodcert-auction-frontend
+    steps:
+      - name: Check out release commit
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ needs.resolve.outputs.target_sha }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and publish immutable image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: ${{ matrix.context }}
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ matrix.repository }}:${{ needs.resolve.outputs.target_sha }}
+            ${{ env.REGISTRY }}/${{ matrix.repository }}:main
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ needs.resolve.outputs.target_sha }}
+          cache-from: type=gha,scope=release-${{ matrix.component }}
+          cache-to: type=gha,mode=max,scope=release-${{ matrix.component }}
+          provenance: mode=max
+          sbom: true
+
+  deploy:
+    name: Deploy production
+    needs: [resolve, publish]
+    if: >-
+      always() &&
+      vars.CD_ENABLED == 'true' &&
+      needs.resolve.result == 'success' &&
+      (needs.publish.result == 'success' || needs.publish.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: production
+      url: https://woodauction.id.vn
+    steps:
+      - name: Check out deployment script
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ needs.resolve.outputs.target_sha }}
+
+      - name: Validate production configuration
+        env:
+          PROD_HOST: ${{ vars.PROD_HOST }}
+          PROD_USER: ${{ vars.PROD_USER }}
+          PROD_APP_DIR: ${{ vars.PROD_APP_DIR }}
+          PROD_DOMAIN: ${{ vars.PROD_DOMAIN }}
+          SSH_PRIVATE_KEY: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.PROD_SSH_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          test -n "$PROD_HOST"
+          test -n "$PROD_USER"
+          test -n "$PROD_APP_DIR"
+          test -n "$PROD_DOMAIN"
+          test -n "$SSH_PRIVATE_KEY"
+          test -n "$SSH_KNOWN_HOSTS"
+
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.PROD_SSH_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
+
+      - name: Run production deployment
+        env:
+          OPERATION: ${{ needs.resolve.outputs.operation }}
+          TARGET_SHA: ${{ needs.resolve.outputs.target_sha }}
+          PROD_HOST: ${{ vars.PROD_HOST }}
+          PROD_PORT: ${{ vars.PROD_PORT }}
+          PROD_USER: ${{ vars.PROD_USER }}
+          PROD_APP_DIR: ${{ vars.PROD_APP_DIR }}
+          PROD_DOMAIN: ${{ vars.PROD_DOMAIN }}
+        run: |
+          set -euo pipefail
+          port="${PROD_PORT:-22}"
+          remote_script="/tmp/woodauction-deploy-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.sh"
+          ssh_options=(-o BatchMode=yes -o IdentitiesOnly=yes -p "$port")
+
+          scp -P "$port" -o BatchMode=yes -o IdentitiesOnly=yes \
+            scripts/deploy-production.sh \
+            "${PROD_USER}@${PROD_HOST}:${remote_script}"
+
+          ssh "${ssh_options[@]}" "${PROD_USER}@${PROD_HOST}" \
+            bash "$remote_script" \
+              --operation "$OPERATION" \
+              --target-sha "$TARGET_SHA" \
+              --backend-image "${REGISTRY}/${BACKEND_REPOSITORY}:${TARGET_SHA}" \
+              --frontend-image "${REGISTRY}/${FRONTEND_REPOSITORY}:${TARGET_SHA}" \
+              --app-dir "$PROD_APP_DIR" \
+              --domain "$PROD_DOMAIN"
+
+      - name: Verify public endpoints from GitHub runner
+        env:
+          PROD_DOMAIN: ${{ vars.PROD_DOMAIN }}
+        run: |
+          set -euo pipefail
+          curl --fail --show-error --silent \
+            --retry 6 --retry-delay 5 --retry-all-errors \
+            "https://${PROD_DOMAIN}/actuator/health/readiness"
+          curl --fail --show-error --silent \
+            --retry 6 --retry-delay 5 --retry-all-errors \
+            --output /dev/null \
+            "https://${PROD_DOMAIN}/"

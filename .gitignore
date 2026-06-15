@@ -35,6 +35,7 @@ nbdist/
 AGENTS.md
 CLAUDE.md
 run-logs/
+.deploy/
 
 # Local design notes
 design.md
