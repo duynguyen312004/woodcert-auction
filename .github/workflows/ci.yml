@@ -24,10 +24,10 @@ jobs:
         working-directory: woodcert-auction
     steps:
       - name: Check out repository
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
       - name: Set up Java 17
-        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
         with:
           distribution: temurin
           java-version: "17"
@@ -50,7 +50,7 @@ jobs:
 
       - name: Upload backend reports
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
         with:
           name: backend-test-reports
           path: woodcert-auction/target/surefire-reports/
@@ -61,25 +61,23 @@ jobs:
     name: Frontend checks
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    env:
+      VITE_API_BASE_URL: http://localhost:8080/api/v1
+      VITE_WS_BASE_URL: http://localhost:8080/ws-auction
     defaults:
       run:
         working-directory: woodcert-auction-fe
     steps:
       - name: Check out repository
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
-        with:
-          version: 11.0.9
-          run_install: false
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
       - name: Set up Node.js 22
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
           node-version: "22"
-          cache: pnpm
-          cache-dependency-path: woodcert-auction-fe/pnpm-lock.yaml
+
+      - name: Install pnpm
+        run: npm install --global pnpm@11.0.9
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -100,25 +98,23 @@ jobs:
     name: Frontend E2E
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    env:
+      VITE_API_BASE_URL: http://localhost:8080/api/v1
+      VITE_WS_BASE_URL: http://localhost:8080/ws-auction
     defaults:
       run:
         working-directory: woodcert-auction-fe
     steps:
       - name: Check out repository
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
-        with:
-          version: 11.0.9
-          run_install: false
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
       - name: Set up Node.js 22
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
           node-version: "22"
-          cache: pnpm
-          cache-dependency-path: woodcert-auction-fe/pnpm-lock.yaml
+
+      - name: Install pnpm
+        run: npm install --global pnpm@11.0.9
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -131,7 +127,7 @@ jobs:
 
       - name: Upload Playwright reports
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
         with:
           name: frontend-playwright-report
           path: |
@@ -146,7 +142,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Check out repository
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
       - name: Validate deployment script
         run: |
@@ -201,13 +197,13 @@ jobs:
             context: ./woodcert-auction-fe
     steps:
       - name: Check out repository
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4
 
       - name: Build image without publishing
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7
         with:
           context: ${{ matrix.context }}
           platforms: linux/amd64
