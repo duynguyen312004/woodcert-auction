@@ -74,6 +74,7 @@ function renderPage() {
         SOLD: 0,
         RETURNED: 0,
       },
+      auctionReadyCount: 1,
     },
   });
 

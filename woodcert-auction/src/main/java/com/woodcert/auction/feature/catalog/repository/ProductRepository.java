@@ -48,6 +48,11 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             """)
     List<Object[]> countBySellerIdGroupedBySaleStatus(@Param("sellerId") String sellerId);
 
+    long countBySellerIdAndStatusAndSaleStatus(
+            String sellerId,
+            ProductStatus status,
+            ProductSaleStatus saleStatus);
+
     boolean existsByCategoryId(Integer categoryId);
 
     boolean existsByAppraisalClaimedByAndStatusAndAppraisalClaimExpiresAtAfter(

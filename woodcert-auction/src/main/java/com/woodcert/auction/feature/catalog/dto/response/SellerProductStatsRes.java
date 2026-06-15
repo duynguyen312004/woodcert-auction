@@ -8,6 +8,7 @@ import java.util.Map;
 public record SellerProductStatsRes(
         long total,
         Map<ProductStatus, Long> byStatus,
-        Map<ProductSaleStatus, Long> bySaleStatus
+        Map<ProductSaleStatus, Long> bySaleStatus,
+        long auctionReadyCount
 ) {
 }

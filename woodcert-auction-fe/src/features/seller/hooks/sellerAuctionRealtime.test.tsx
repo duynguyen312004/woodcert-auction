@@ -189,15 +189,16 @@ describe("seller auction realtime cache", () => {
         PENDING_APPRAISAL: 0,
         UNDER_APPRAISAL: 0,
         REJECTED: 0,
-        APPRAISED: 1,
+        APPRAISED: 8,
       },
       bySaleStatus: {
-        AVAILABLE: 0,
+        AVAILABLE: 2,
         IN_AUCTION: 1,
         PENDING_ORDER: 0,
-        SOLD: 0,
+        SOLD: 5,
         RETURNED: 0,
       },
+      auctionReadyCount: 2,
     });
     vi.spyOn(sellerApi, "getMyAuctions").mockResolvedValue(page([]));
     vi.spyOn(sellerApi, "getMyAuctionStats").mockResolvedValue({
@@ -213,6 +214,7 @@ describe("seller auction realtime cache", () => {
     });
 
     await waitFor(() => expect(result.current.stats.activeAuctionCount).toBe(1));
+    await waitFor(() => expect(result.current.stats.auctionReadyCount).toBe(2));
     await waitFor(() =>
       expect(sellerApi.getMyAuctions).toHaveBeenCalledWith({ status: "ACTIVE", size: 1 }),
     );

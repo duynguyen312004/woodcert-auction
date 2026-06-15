@@ -536,22 +536,28 @@ class ProductServiceImplTest {
         void getSellerProductStats_allStatuses() {
             when(productRepository.countBySellerIdGroupedByStatus(SELLER_ID)).thenReturn(List.of(
                     new Object[]{ProductStatus.DRAFT, 2L},
-                    new Object[]{ProductStatus.APPRAISED, 3L}
+                    new Object[]{ProductStatus.APPRAISED, 8L}
             ));
             when(productRepository.countBySellerIdGroupedBySaleStatus(SELLER_ID)).thenReturn(List.of(
                     new Object[]{ProductSaleStatus.AVAILABLE, 4L},
-                    new Object[]{ProductSaleStatus.SOLD, 1L}
+                    new Object[]{ProductSaleStatus.SOLD, 6L}
             ));
+            when(productRepository.countBySellerIdAndStatusAndSaleStatus(
+                    SELLER_ID,
+                    ProductStatus.APPRAISED,
+                    ProductSaleStatus.AVAILABLE))
+                    .thenReturn(2L);
 
             SellerProductStatsRes result = productService.getSellerProductStats(SELLER_ID);
 
-            assertThat(result.total()).isEqualTo(5);
+            assertThat(result.total()).isEqualTo(10);
             assertThat(result.byStatus()).containsEntry(ProductStatus.DRAFT, 2L)
                     .containsEntry(ProductStatus.PENDING_APPRAISAL, 0L)
-                    .containsEntry(ProductStatus.APPRAISED, 3L);
+                    .containsEntry(ProductStatus.APPRAISED, 8L);
             assertThat(result.bySaleStatus()).containsEntry(ProductSaleStatus.AVAILABLE, 4L)
                     .containsEntry(ProductSaleStatus.IN_AUCTION, 0L)
-                    .containsEntry(ProductSaleStatus.SOLD, 1L);
+                    .containsEntry(ProductSaleStatus.SOLD, 6L);
+            assertThat(result.auctionReadyCount()).isEqualTo(2L);
         }
 
         @Test
@@ -567,6 +573,7 @@ class ProductServiceImplTest {
             assertThat(result.total()).isZero();
             assertThat(result.byStatus().values()).containsOnly(0L);
             assertThat(result.bySaleStatus().values()).containsOnly(0L);
+            assertThat(result.auctionReadyCount()).isZero();
         }
     }
 

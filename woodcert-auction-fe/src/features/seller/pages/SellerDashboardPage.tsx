@@ -139,7 +139,7 @@ export function SellerDashboardPage() {
             />
             <KpiCard
               label="Sẵn sàng đấu giá"
-              value={stats.appraisedCount}
+              value={stats.auctionReadyCount}
               valueClass="text-verdigris"
               accentClass="group-hover:bg-verdigris"
               isLoading={isLoading}

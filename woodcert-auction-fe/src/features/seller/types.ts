@@ -49,6 +49,7 @@ export interface SellerProductStats {
   total: number;
   byStatus: Record<ProductStatus, number>;
   bySaleStatus: Record<ProductSaleStatus, number>;
+  auctionReadyCount: number;
 }
 
 export interface SellerAuction {

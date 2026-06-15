@@ -105,7 +105,7 @@ export function useSellerDashboard() {
     () => ({
       draftCount: productStatsQuery.data?.byStatus.DRAFT ?? 0,
       pendingAppraisalCount: productStatsQuery.data?.byStatus.PENDING_APPRAISAL ?? 0,
-      appraisedCount: productStatsQuery.data?.byStatus.APPRAISED ?? 0,
+      auctionReadyCount: productStatsQuery.data?.auctionReadyCount ?? 0,
       activeAuctionCount,
       pendingShipmentCount: paidOrdersQuery.data?.meta.total ?? 0,
       disputedOrderCount: disputedOrdersQuery.data?.meta.total ?? 0,

@@ -837,10 +837,14 @@ Returns exact seller product counts without loading a capped product page. Every
       "PENDING_ORDER": 1,
       "SOLD": 5,
       "RETURNED": 0
-    }
+    },
+    "auctionReadyCount": 2
   }
 }
 ```
+
+`auctionReadyCount` counts only products whose appraisal status is `APPRAISED`
+and whose sale status is `AVAILABLE`.
 
 Access rules:
 - Owner: can view any status

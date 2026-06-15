@@ -299,7 +299,11 @@ public class ProductServiceImpl implements ProductService {
                 .forEach(row -> bySaleStatus.put((ProductSaleStatus) row[0], (Long) row[1]));
 
         long total = byStatus.values().stream().mapToLong(Long::longValue).sum();
-        return new SellerProductStatsRes(total, byStatus, bySaleStatus);
+        long auctionReadyCount = productRepository.countBySellerIdAndStatusAndSaleStatus(
+                sellerId,
+                ProductStatus.APPRAISED,
+                ProductSaleStatus.AVAILABLE);
+        return new SellerProductStatsRes(total, byStatus, bySaleStatus, auctionReadyCount);
     }
 
     /**
