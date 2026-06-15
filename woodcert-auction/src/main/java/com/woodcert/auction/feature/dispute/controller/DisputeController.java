@@ -4,7 +4,9 @@ import com.woodcert.auction.core.auth.CurrentUserId;
 import com.woodcert.auction.core.dto.ApiResponse;
 import com.woodcert.auction.core.dto.PaginationResponse;
 import com.woodcert.auction.feature.dispute.dto.request.CreateDisputeReq;
+import com.woodcert.auction.feature.dispute.dto.request.CreateDisputeMessageReq;
 import com.woodcert.auction.feature.dispute.dto.request.ResolveDisputeReq;
+import com.woodcert.auction.feature.dispute.dto.response.DisputeDetailRes;
 import com.woodcert.auction.feature.dispute.dto.response.DisputeRes;
 import com.woodcert.auction.feature.dispute.service.DisputeService;
 import com.woodcert.auction.feature.media.dto.request.ConfirmMediaUploadReq;
@@ -77,6 +79,30 @@ public class DisputeController {
                 "Fetch dispute history successful"));
     }
 
+    @GetMapping("/api/v1/orders/{orderId}/disputes/{disputeId}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<DisputeDetailRes>> getDisputeDetail(
+            @CurrentUserId String userId,
+            @PathVariable Long orderId,
+            @PathVariable Long disputeId) {
+        return ResponseEntity.ok(ApiResponse.success(
+                disputeService.getDisputeDetail(userId, orderId, disputeId),
+                "Fetch dispute detail successful"));
+    }
+
+    @PostMapping("/api/v1/orders/{orderId}/disputes/{disputeId}/messages")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<DisputeDetailRes>> addParticipantMessage(
+            @CurrentUserId String userId,
+            @PathVariable Long orderId,
+            @PathVariable Long disputeId,
+            @RequestBody @Valid CreateDisputeMessageReq request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.created(
+                        disputeService.addParticipantMessage(userId, orderId, disputeId, request),
+                        "Dispute message created successfully"));
+    }
+
     @PatchMapping("/api/v1/orders/{orderId}/disputes/{disputeId}/cancel")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<DisputeRes>> cancelDispute(
@@ -101,10 +127,22 @@ public class DisputeController {
 
     @GetMapping("/api/v1/admin/disputes/{id}")
     @PreAuthorize("hasAuthority('RESOLVE_DISPUTE')")
-    public ResponseEntity<ApiResponse<DisputeRes>> getAdminDispute(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<DisputeDetailRes>> getAdminDispute(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(
                 disputeService.getAdminDispute(id),
                 "Fetch dispute successful"));
+    }
+
+    @PostMapping("/api/v1/admin/disputes/{id}/messages")
+    @PreAuthorize("hasAuthority('RESOLVE_DISPUTE')")
+    public ResponseEntity<ApiResponse<DisputeDetailRes>> addAdminMessage(
+            @CurrentUserId String adminId,
+            @PathVariable Long id,
+            @RequestBody @Valid CreateDisputeMessageReq request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.created(
+                        disputeService.addAdminMessage(adminId, id, request),
+                        "Dispute message created successfully"));
     }
 
     @PatchMapping("/api/v1/admin/disputes/{id}/review")

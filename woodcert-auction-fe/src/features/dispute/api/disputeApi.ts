@@ -3,7 +3,13 @@ import type { ApiResponse, PaginationResponse } from "@/shared/api/types";
 import { unwrapApiResponse } from "@/shared/api/unwrap";
 import { uploadToCloudinary, type CloudinaryUploadIntentRes } from "@/shared/lib/cloudinaryUpload";
 
-import type { CreateDisputePayload, DisputeCase, DisputeResolutionOutcome } from "../types";
+import type {
+  CreateDisputeMessagePayload,
+  CreateDisputePayload,
+  DisputeCase,
+  DisputeDetail,
+  DisputeResolutionOutcome,
+} from "../types";
 
 type UploadIntentReq = {
   originalFileName: string;
@@ -57,6 +63,25 @@ export const disputeApi = {
     return unwrapApiResponse(response);
   },
 
+  getDisputeDetail: async (orderId: number, disputeId: number): Promise<DisputeDetail> => {
+    const response = await apiClient.get<ApiResponse<DisputeDetail>>(
+      `/orders/${orderId}/disputes/${disputeId}`,
+    );
+    return unwrapApiResponse(response);
+  },
+
+  addParticipantMessage: async (
+    orderId: number,
+    disputeId: number,
+    payload: CreateDisputeMessagePayload,
+  ): Promise<DisputeDetail> => {
+    const response = await apiClient.post<ApiResponse<DisputeDetail>>(
+      `/orders/${orderId}/disputes/${disputeId}/messages`,
+      payload,
+    );
+    return unwrapApiResponse(response);
+  },
+
   cancelDispute: async (orderId: number, disputeId: number): Promise<DisputeCase> => {
     const response = await apiClient.patch<ApiResponse<DisputeCase>>(
       `/orders/${orderId}/disputes/${disputeId}/cancel`,
@@ -76,8 +101,19 @@ export const disputeApi = {
     return unwrapApiResponse(response);
   },
 
-  getAdminDispute: async (id: number): Promise<DisputeCase> => {
-    const response = await apiClient.get<ApiResponse<DisputeCase>>(`/admin/disputes/${id}`);
+  getAdminDispute: async (id: number): Promise<DisputeDetail> => {
+    const response = await apiClient.get<ApiResponse<DisputeDetail>>(`/admin/disputes/${id}`);
+    return unwrapApiResponse(response);
+  },
+
+  addAdminMessage: async (
+    id: number,
+    payload: CreateDisputeMessagePayload,
+  ): Promise<DisputeDetail> => {
+    const response = await apiClient.post<ApiResponse<DisputeDetail>>(
+      `/admin/disputes/${id}/messages`,
+      payload,
+    );
     return unwrapApiResponse(response);
   },
 

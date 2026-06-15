@@ -13,11 +13,11 @@ import { DISPUTE_STATUS_LABEL } from "../lib/dispute-labels";
 
 const TABS: Array<{ label: string; status?: DisputeStatus }> = [
   { label: "Tất cả" },
-  { label: "Mới mở", status: "OPEN" },
-  { label: "Đang xử lý", status: "UNDER_REVIEW" },
-  { label: "Đã xử lý", status: "RESOLVED" },
-  { label: "Từ chối", status: "REJECTED" },
-  { label: "Đã hủy", status: "CANCELED" },
+  { label: DISPUTE_STATUS_LABEL.OPEN, status: "OPEN" },
+  { label: DISPUTE_STATUS_LABEL.UNDER_REVIEW, status: "UNDER_REVIEW" },
+  { label: DISPUTE_STATUS_LABEL.RESOLVED, status: "RESOLVED" },
+  { label: DISPUTE_STATUS_LABEL.REJECTED, status: "REJECTED" },
+  { label: DISPUTE_STATUS_LABEL.CANCELED, status: "CANCELED" },
 ];
 
 const STATUS_CARD: Record<
@@ -82,7 +82,7 @@ export function AdminDisputesPage() {
       <div className="mx-auto max-w-[1180px] space-y-6">
         <header className="flex flex-wrap items-end justify-between gap-4 border-b border-white/10 pb-5">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Admin</p>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Quản trị</p>
             <h1 className="mt-1 text-3xl font-bold tracking-tight">Tranh chấp</h1>
           </div>
           <Button type="button" variant="outline" onClick={() => void query.refetch()}>
@@ -192,7 +192,7 @@ export function AdminDisputesPage() {
                               "bg-white/5 text-[#a49a88] border-white/10",
                           )}
                         >
-                          {DISPUTE_STATUS_LABEL[item.status] ?? item.status}
+                          {DISPUTE_STATUS_LABEL[item.status]}
                         </span>
                       </td>
                       <td className="px-5 py-3 text-[#a49a88]">{formatDateTime(item.openedAt)}</td>

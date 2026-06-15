@@ -10,8 +10,11 @@ import java.util.List;
 public interface DisputeEvidenceRepository extends JpaRepository<DisputeEvidence, Long> {
 
     @EntityGraph(attributePaths = "mediaAsset")
-    List<DisputeEvidence> findByDisputeCaseIdOrderBySortOrderAscIdAsc(Long disputeCaseId);
+    List<DisputeEvidence> findByDisputeCaseIdAndMessageIdIsNullOrderBySortOrderAscIdAsc(Long disputeCaseId);
 
     @EntityGraph(attributePaths = "mediaAsset")
-    List<DisputeEvidence> findByDisputeCaseIdIn(Collection<Long> disputeCaseIds);
+    List<DisputeEvidence> findByDisputeCaseIdInAndMessageIdIsNull(Collection<Long> disputeCaseIds);
+
+    @EntityGraph(attributePaths = "mediaAsset")
+    List<DisputeEvidence> findByMessageIdIn(Collection<Long> messageIds);
 }

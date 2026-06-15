@@ -203,6 +203,7 @@ export function BuyerOrderDetailPage() {
             <DisputeHistoryPanel
               disputes={disputeHistoryQuery.data ?? []}
               isLoading={disputeHistoryQuery.isPending}
+              getDetailPath={(dispute) => BUYER_PATHS.disputeDetail(order.id, dispute.id)}
             />
           </Panel>
         </section>

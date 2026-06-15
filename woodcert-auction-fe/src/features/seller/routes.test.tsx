@@ -31,6 +31,7 @@ describe("seller routes", () => {
         "seller/products/:productId/edit",
         "seller/orders",
         "seller/orders/:orderId",
+        "seller/orders/:orderId/disputes/:disputeId",
         "seller/revenue",
         "seller/auctions",
         "seller/auctions/:auctionId",
@@ -47,6 +48,7 @@ describe("seller routes", () => {
     expect([...paths]).toEqual(
       expect.arrayContaining([
         "orders",
+        "orders/:orderId/disputes/:disputeId",
         "account/addresses",
         "certificates",
         "certificates/:certificateCode",

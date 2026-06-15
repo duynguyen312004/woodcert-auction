@@ -1695,7 +1695,9 @@ Scheduler behavior:
 
 ## 11. Disputes
 
-Dispute v1 supports buyer-opened evidence cases only. Resolution is full outcome only: `SELLER_WINS` or `BUYER_WINS`; partial refund is not supported.
+Only the buyer may open a dispute. After opening, the buyer, seller, and an admin with
+`RESOLVE_DISPUTE` may add immutable text/image messages to the case timeline. Resolution is full
+outcome only: `SELLER_WINS` or `BUYER_WINS`; partial refund is not supported.
 
 Open rules:
 
@@ -1732,7 +1734,75 @@ Returns the current active dispute for the order, or `null`.
 
 ### GET /orders/{orderId}/disputes 🔒
 
-Returns full dispute history for an order. Only the buyer or seller of the order may read it.
+Returns compact dispute history for an order. Only the buyer or seller of the order may read it.
+The `evidence` field contains opening evidence only and does not include message attachments.
+
+### GET /orders/{orderId}/disputes/{disputeId} 🔒
+
+Returns the complete dispute file to the order buyer or seller. Messages are ordered by
+`createdAt`, then `id`, ascending. Author identity is intentionally reduced to `BUYER`, `SELLER`,
+or `ADMIN`; real names are not exposed.
+
+Success data:
+
+```json
+{
+  "dispute": {
+    "id": 31,
+    "orderId": 91,
+    "status": "UNDER_REVIEW",
+    "reason": "Product does not match appraisal",
+    "description": "The delivered item has visible damage.",
+    "openedAt": "2026-06-15T02:00:00Z",
+    "evidence": [
+      {
+        "id": 1,
+        "mediaId": 101,
+        "url": "https://res.cloudinary.com/.../opening.jpg",
+        "originalFilename": "opening.jpg",
+        "sortOrder": 0
+      }
+    ]
+  },
+  "messages": [
+    {
+      "id": 41,
+      "authorRole": "SELLER",
+      "content": "Photo taken before sealing the parcel.",
+      "createdAt": "2026-06-15T02:10:00Z",
+      "evidence": []
+    }
+  ]
+}
+```
+
+### POST /orders/{orderId}/disputes/{disputeId}/messages 🔒
+
+Buyer or seller adds an immutable response. The backend derives `authorRole` from order
+membership. The case must be `OPEN` or `UNDER_REVIEW`.
+
+### POST /admin/disputes/{id}/messages 🔒
+
+Admin with `RESOLVE_DISPUTE` adds an immutable clarification request or response. The case must be
+`OPEN` or `UNDER_REVIEW`.
+
+Message request for both endpoints:
+
+```json
+{
+  "content": "Additional delivery evidence.",
+  "evidenceMediaIds": [201, 202]
+}
+```
+
+Rules:
+
+- At least one of `content` or `evidenceMediaIds` is required.
+- `content` is trimmed and limited to 2,000 characters.
+- A message accepts at most 10 image media IDs.
+- Every media asset must be active, owned by the sender, and typed as `DISPUTE_EVIDENCE`.
+- Messages and message evidence cannot be edited or deleted.
+- `RESOLVED`, `REJECTED`, and `CANCELED` cases are read-only.
 
 ### PATCH /orders/{orderId}/disputes/{disputeId}/cancel 🔒
 
@@ -1744,7 +1814,7 @@ Admin lists disputes. Optional query: `status`, `page`, `size`.
 
 ### GET /admin/disputes/{id} 🔒
 
-Admin fetches one dispute detail including evidence.
+Admin with `RESOLVE_DISPUTE` fetches the complete dispute file using the same detail response shape.
 
 ### PATCH /admin/disputes/{id}/review 🔒
 

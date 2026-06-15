@@ -11,6 +11,7 @@ import lombok.Setter;
 @Entity
 @Table(name = "dispute_evidence", indexes = {
         @Index(name = "idx_dispute_evidence_case", columnList = "dispute_case_id"),
+        @Index(name = "idx_dispute_evidence_message", columnList = "message_id"),
         @Index(name = "idx_dispute_evidence_media", columnList = "media_id"),
         @Index(name = "idx_dispute_evidence_uploaded_by", columnList = "uploaded_by_user_id")
 })
@@ -22,6 +23,9 @@ public class DisputeEvidence extends BaseEntity {
 
     @Column(name = "dispute_case_id", nullable = false)
     private Long disputeCaseId;
+
+    @Column(name = "message_id")
+    private Long messageId;
 
     @Column(name = "media_id", nullable = false)
     private Long mediaId;
@@ -35,6 +39,10 @@ public class DisputeEvidence extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "dispute_case_id", insertable = false, updatable = false)
     private DisputeCase disputeCase;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "message_id", insertable = false, updatable = false)
+    private DisputeMessage message;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "media_id", insertable = false, updatable = false)

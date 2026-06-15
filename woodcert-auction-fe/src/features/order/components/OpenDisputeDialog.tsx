@@ -84,7 +84,7 @@ export function OpenDisputeDialog({ order, onOpenChange }: OpenDisputeDialogProp
         <DialogHeader>
           <DialogTitle>Mở tranh chấp đơn #{order?.id}</DialogTitle>
           <DialogDescription>
-            Tranh chấp sẽ tạm giữ payout cho seller cho đến khi admin xử lý.
+            Tranh chấp sẽ tạm giữ khoản giải ngân cho người bán đến khi quản trị viên xử lý.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
@@ -110,7 +110,7 @@ export function OpenDisputeDialog({ order, onOpenChange }: OpenDisputeDialogProp
               accept="image/*"
               onChange={(e) => setFiles(Array.from(e.target.files ?? []).slice(0, 10))}
             />
-            <p className="mt-1 text-xs text-stone-500">{files.length} file đã chọn</p>
+            <p className="mt-1 text-xs text-stone-500">{files.length} ảnh đã chọn</p>
           </div>
         </div>
         <DialogFooter>

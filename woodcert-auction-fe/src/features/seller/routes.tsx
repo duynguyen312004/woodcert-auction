@@ -40,6 +40,11 @@ const SellerOrderDetailPage = lazy(() =>
     default: module.SellerOrderDetailPage,
   })),
 );
+const SellerDisputeDetailPage = lazy(() =>
+  import("@/features/dispute/pages/ParticipantDisputeDetailPage").then((module) => ({
+    default: module.SellerDisputeDetailPage,
+  })),
+);
 const SellerRevenuePage = lazy(() =>
   import("@/features/order/pages/SellerRevenuePage").then((module) => ({
     default: module.SellerRevenuePage,
@@ -118,6 +123,10 @@ export const sellerRoutes: RouteObject[] = [
   {
     path: SELLER_ROUTE_PATHS.orderDetail,
     element: <SellerOrderDetailPage />,
+  },
+  {
+    path: SELLER_ROUTE_PATHS.disputeDetail,
+    element: <SellerDisputeDetailPage />,
   },
   {
     path: SELLER_ROUTE_PATHS.revenue,

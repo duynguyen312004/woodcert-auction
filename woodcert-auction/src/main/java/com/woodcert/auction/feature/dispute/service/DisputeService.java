@@ -2,7 +2,9 @@ package com.woodcert.auction.feature.dispute.service;
 
 import com.woodcert.auction.core.dto.PaginationResponse;
 import com.woodcert.auction.feature.dispute.dto.request.CreateDisputeReq;
+import com.woodcert.auction.feature.dispute.dto.request.CreateDisputeMessageReq;
 import com.woodcert.auction.feature.dispute.dto.request.ResolveDisputeReq;
+import com.woodcert.auction.feature.dispute.dto.response.DisputeDetailRes;
 import com.woodcert.auction.feature.dispute.dto.response.DisputeRes;
 import com.woodcert.auction.feature.media.dto.request.ConfirmMediaUploadReq;
 import com.woodcert.auction.feature.media.dto.request.CreateMediaUploadIntentReq;
@@ -22,11 +24,24 @@ public interface DisputeService {
 
     List<DisputeRes> getDisputeHistory(String userId, Long orderId);
 
+    DisputeDetailRes getDisputeDetail(String userId, Long orderId, Long disputeId);
+
+    DisputeDetailRes addParticipantMessage(
+            String userId,
+            Long orderId,
+            Long disputeId,
+            CreateDisputeMessageReq request);
+
     DisputeRes cancelDispute(String userId, Long orderId, Long disputeId);
 
     PaginationResponse<DisputeRes> getAdminDisputes(String status, int page, int size);
 
-    DisputeRes getAdminDispute(Long disputeId);
+    DisputeDetailRes getAdminDispute(Long disputeId);
+
+    DisputeDetailRes addAdminMessage(
+            String adminId,
+            Long disputeId,
+            CreateDisputeMessageReq request);
 
     DisputeRes markUnderReview(String adminId, Long disputeId);
 

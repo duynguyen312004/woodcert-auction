@@ -11,6 +11,8 @@ export const BUYER_PATHS = {
   auctionDetail: (id: string | number) => `/my-auctions/${id}`,
   orders: "/orders",
   orderDetail: (id: string | number) => `/orders/${id}`,
+  disputeDetail: (orderId: string | number, disputeId: string | number) =>
+    `/orders/${orderId}/disputes/${disputeId}`,
 } as const;
 
 export const SELLER_PATHS = {
@@ -25,6 +27,8 @@ export const SELLER_PATHS = {
   newAuction: "/seller/auctions/new",
   orders: "/seller/orders",
   orderDetail: (id: string | number) => `/seller/orders/${id}`,
+  disputeDetail: (orderId: string | number, disputeId: string | number) =>
+    `/seller/orders/${orderId}/disputes/${disputeId}`,
   revenue: "/seller/revenue",
   register: "/seller/register",
 } as const;
@@ -47,6 +51,7 @@ export const SELLER_ROUTE_PATHS = {
   newAuction: "seller/auctions/new",
   orders: "seller/orders",
   orderDetail: "seller/orders/:orderId",
+  disputeDetail: "seller/orders/:orderId/disputes/:disputeId",
   revenue: "seller/revenue",
   register: "seller/register",
 } as const;

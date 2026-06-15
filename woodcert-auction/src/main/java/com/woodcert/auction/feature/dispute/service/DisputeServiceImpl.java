@@ -4,15 +4,21 @@ import com.woodcert.auction.core.dto.PaginationResponse;
 import com.woodcert.auction.core.exception.AppException;
 import com.woodcert.auction.core.exception.ErrorCode;
 import com.woodcert.auction.feature.dispute.dto.request.CreateDisputeReq;
+import com.woodcert.auction.feature.dispute.dto.request.CreateDisputeMessageReq;
 import com.woodcert.auction.feature.dispute.dto.request.ResolveDisputeReq;
+import com.woodcert.auction.feature.dispute.dto.response.DisputeDetailRes;
 import com.woodcert.auction.feature.dispute.dto.response.DisputeEvidenceRes;
+import com.woodcert.auction.feature.dispute.dto.response.DisputeMessageRes;
 import com.woodcert.auction.feature.dispute.dto.response.DisputeRes;
+import com.woodcert.auction.feature.dispute.entity.DisputeAuthorRole;
 import com.woodcert.auction.feature.dispute.entity.DisputeCase;
 import com.woodcert.auction.feature.dispute.entity.DisputeEvidence;
+import com.woodcert.auction.feature.dispute.entity.DisputeMessage;
 import com.woodcert.auction.feature.dispute.entity.DisputeResolutionOutcome;
 import com.woodcert.auction.feature.dispute.entity.DisputeStatus;
 import com.woodcert.auction.feature.dispute.repository.DisputeCaseRepository;
 import com.woodcert.auction.feature.dispute.repository.DisputeEvidenceRepository;
+import com.woodcert.auction.feature.dispute.repository.DisputeMessageRepository;
 import com.woodcert.auction.feature.identity.entity.AdminAction;
 import com.woodcert.auction.feature.identity.entity.AdminTargetType;
 import com.woodcert.auction.feature.identity.service.AdminAuditLogService;
@@ -57,6 +63,7 @@ public class DisputeServiceImpl implements DisputeService {
 
     private final DisputeCaseRepository disputeCaseRepository;
     private final DisputeEvidenceRepository disputeEvidenceRepository;
+    private final DisputeMessageRepository disputeMessageRepository;
     private final DisputeFulfillmentPort disputeFulfillmentPort;
     private final OrderService orderService;
     private final MediaAssetService mediaAssetService;
@@ -150,6 +157,32 @@ public class DisputeServiceImpl implements DisputeService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public DisputeDetailRes getDisputeDetail(String userId, Long orderId, Long disputeId) {
+        orderService.getOrderDetail(userId, orderId);
+        DisputeCase dispute = disputeCaseRepository.findByIdAndOrderId(disputeId, orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.DISPUTE_NOT_FOUND));
+        return toDetailRes(dispute);
+    }
+
+    @Override
+    @Transactional
+    public DisputeDetailRes addParticipantMessage(
+            String userId,
+            Long orderId,
+            Long disputeId,
+            CreateDisputeMessageReq request) {
+        DisputeCase dispute = disputeCaseRepository.findByIdForUpdate(disputeId)
+                .filter(item -> item.getOrderId().equals(orderId))
+                .orElseThrow(() -> new AppException(ErrorCode.DISPUTE_NOT_FOUND));
+        OrderRes order = orderService.getOrderDetail(userId, orderId);
+        DisputeAuthorRole authorRole = participantRole(order, userId);
+        ensureActive(dispute);
+        createMessage(dispute, userId, authorRole, request);
+        return toDetailRes(dispute);
+    }
+
+    @Override
     @Transactional
     public DisputeRes cancelDispute(String userId, Long orderId, Long disputeId) {
         DisputeCase dispute = disputeCaseRepository.findByIdForUpdate(disputeId)
@@ -186,10 +219,23 @@ public class DisputeServiceImpl implements DisputeService {
 
     @Override
     @Transactional(readOnly = true)
-    public DisputeRes getAdminDispute(Long disputeId) {
+    public DisputeDetailRes getAdminDispute(Long disputeId) {
         return disputeCaseRepository.findById(disputeId)
-                .map(this::toRes)
+                .map(this::toDetailRes)
                 .orElseThrow(() -> new AppException(ErrorCode.DISPUTE_NOT_FOUND));
+    }
+
+    @Override
+    @Transactional
+    public DisputeDetailRes addAdminMessage(
+            String adminId,
+            Long disputeId,
+            CreateDisputeMessageReq request) {
+        DisputeCase dispute = disputeCaseRepository.findByIdForUpdate(disputeId)
+                .orElseThrow(() -> new AppException(ErrorCode.DISPUTE_NOT_FOUND));
+        ensureActive(dispute);
+        createMessage(dispute, adminId, DisputeAuthorRole.ADMIN, request);
+        return toDetailRes(dispute);
     }
 
     @Override
@@ -272,6 +318,52 @@ public class DisputeServiceImpl implements DisputeService {
         }
     }
 
+    private DisputeAuthorRole participantRole(OrderRes order, String userId) {
+        if (userId.equals(order.buyerId())) {
+            return DisputeAuthorRole.BUYER;
+        }
+        if (userId.equals(order.sellerId())) {
+            return DisputeAuthorRole.SELLER;
+        }
+        throw new AppException(ErrorCode.DISPUTE_NOT_OWNED);
+    }
+
+    private void createMessage(
+            DisputeCase dispute,
+            String authorUserId,
+            DisputeAuthorRole authorRole,
+            CreateDisputeMessageReq request) {
+        String content = trimToNull(request.content());
+        List<Long> evidenceMediaIds = request.evidenceMediaIds() == null
+                ? List.of()
+                : request.evidenceMediaIds();
+        if (content == null && evidenceMediaIds.isEmpty()) {
+            throw new AppException(ErrorCode.DISPUTE_MESSAGE_REQUIRED);
+        }
+        validateEvidenceMedia(authorUserId, evidenceMediaIds);
+
+        DisputeMessage message = new DisputeMessage();
+        message.setDisputeCaseId(dispute.getId());
+        message.setAuthorUserId(authorUserId);
+        message.setAuthorRole(authorRole);
+        message.setContent(content);
+        DisputeMessage savedMessage = disputeMessageRepository.save(message);
+
+        List<DisputeEvidence> evidence = new ArrayList<>();
+        for (int i = 0; i < evidenceMediaIds.size(); i++) {
+            DisputeEvidence item = new DisputeEvidence();
+            item.setDisputeCaseId(dispute.getId());
+            item.setMessageId(savedMessage.getId());
+            item.setMediaId(evidenceMediaIds.get(i));
+            item.setUploadedByUserId(authorUserId);
+            item.setSortOrder(i);
+            evidence.add(item);
+        }
+        if (!evidence.isEmpty()) {
+            disputeEvidenceRepository.saveAll(evidence);
+        }
+    }
+
     private DisputeStatus parseStatus(String status) {
         try {
             return DisputeStatus.valueOf(status.trim().toUpperCase());
@@ -282,11 +374,42 @@ public class DisputeServiceImpl implements DisputeService {
 
     private DisputeRes toRes(DisputeCase dispute) {
         List<DisputeEvidenceRes> evidence = disputeEvidenceRepository
-                .findByDisputeCaseIdOrderBySortOrderAscIdAsc(dispute.getId())
+                .findByDisputeCaseIdAndMessageIdIsNullOrderBySortOrderAscIdAsc(dispute.getId())
                 .stream()
                 .map(item -> DisputeEvidenceRes.fromEntity(item, mediaUrlBuilder))
                 .toList();
         return DisputeRes.fromEntity(dispute, evidence);
+    }
+
+    private DisputeDetailRes toDetailRes(DisputeCase dispute) {
+        DisputeRes disputeRes = toRes(dispute);
+        List<DisputeMessage> messages = disputeMessageRepository
+                .findByDisputeCaseIdOrderByCreatedAtAscIdAsc(dispute.getId());
+        if (messages.isEmpty()) {
+            return new DisputeDetailRes(disputeRes, List.of());
+        }
+
+        List<Long> messageIds = messages.stream().map(DisputeMessage::getId).toList();
+        Comparator<DisputeEvidence> evidenceOrder = Comparator
+                .comparing(DisputeEvidence::getMessageId)
+                .thenComparingInt(DisputeEvidence::getSortOrder)
+                .thenComparing(DisputeEvidence::getId, Comparator.nullsLast(Comparator.naturalOrder()));
+        Map<Long, List<DisputeEvidenceRes>> evidenceByMessageId = disputeEvidenceRepository
+                .findByMessageIdIn(messageIds)
+                .stream()
+                .sorted(evidenceOrder)
+                .collect(Collectors.groupingBy(
+                        DisputeEvidence::getMessageId,
+                        LinkedHashMap::new,
+                        Collectors.mapping(
+                                item -> DisputeEvidenceRes.fromEntity(item, mediaUrlBuilder),
+                                Collectors.toList())));
+        List<DisputeMessageRes> messageResponses = messages.stream()
+                .map(message -> DisputeMessageRes.fromEntity(
+                        message,
+                        evidenceByMessageId.getOrDefault(message.getId(), List.of())))
+                .toList();
+        return new DisputeDetailRes(disputeRes, messageResponses);
     }
 
     private List<DisputeRes> toRes(List<DisputeCase> disputes) {
@@ -299,7 +422,7 @@ public class DisputeServiceImpl implements DisputeService {
                 .thenComparingInt(DisputeEvidence::getSortOrder)
                 .thenComparing(DisputeEvidence::getId, Comparator.nullsLast(Comparator.naturalOrder()));
         Map<Long, List<DisputeEvidenceRes>> evidenceByDisputeId = disputeEvidenceRepository
-                .findByDisputeCaseIdIn(disputeIds)
+                .findByDisputeCaseIdInAndMessageIdIsNull(disputeIds)
                 .stream()
                 .sorted(evidenceOrder)
                 .collect(Collectors.groupingBy(

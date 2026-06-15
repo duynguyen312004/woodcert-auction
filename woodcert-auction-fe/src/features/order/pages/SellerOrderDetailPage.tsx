@@ -22,6 +22,7 @@ import { Button } from "@/shared/ui/button";
 import { useNotification } from "@/shared/ui/notification";
 
 import { OrderFeeBreakdown } from "../components/OrderFeeBreakdown";
+import { DisputeHistoryPanel } from "../components/DisputeHistoryPanel";
 import { ShippingConfirmationForm } from "../components/ShippingConfirmationForm";
 import { useOrderDetail, useOrderMutations } from "../hooks/useOrders";
 import {
@@ -130,28 +131,11 @@ export function SellerOrderDetailPage() {
           </Panel>
 
           <Panel title="Lịch sử tranh chấp" icon={<ShieldAlert />}>
-            {disputeQuery.isPending ? (
-              <Loader2 className="size-5 animate-spin text-brushed-brass" />
-            ) : (disputeQuery.data ?? []).length === 0 ? (
-              <p className="text-sm text-muted-warm">Đơn chưa phát sinh tranh chấp.</p>
-            ) : (
-              <div className="space-y-3">
-                {(disputeQuery.data ?? []).map((dispute) => (
-                  <div key={dispute.id} className="rounded-lg border border-[#4e4637]/10 p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="font-bold text-ink-blue">{dispute.reason}</p>
-                      <span className="text-xs font-bold text-terracotta">{dispute.status}</span>
-                    </div>
-                    <p className="mt-2 text-sm text-muted-warm">
-                      {dispute.description || "Không có mô tả bổ sung."}
-                    </p>
-                    <p className="mt-2 text-xs text-muted-warm">
-                      Mở lúc {formatDateTime(dispute.openedAt)}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
+            <DisputeHistoryPanel
+              disputes={disputeQuery.data ?? []}
+              isLoading={disputeQuery.isPending}
+              getDetailPath={(dispute) => SELLER_PATHS.disputeDetail(order.id, dispute.id)}
+            />
           </Panel>
         </div>
 

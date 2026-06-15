@@ -105,6 +105,7 @@ public enum ErrorCode {
     DISPUTE_NOT_OWNED(403, "You do not own this dispute"),
     DISPUTE_INVALID_STATUS(400, "Dispute status does not allow this action"),
     DISPUTE_EVIDENCE_REQUIRED(400, "At least one dispute evidence image is required"),
+    DISPUTE_MESSAGE_REQUIRED(400, "Dispute message content or evidence is required"),
     DISPUTE_RESOLUTION_REQUIRED(400, "Dispute resolution outcome is required"),
     ;
 

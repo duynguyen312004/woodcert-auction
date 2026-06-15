@@ -11,8 +11,14 @@ const BuyerOrdersPage = lazy(() =>
     default: module.BuyerOrdersPage,
   })),
 );
+const BuyerDisputeDetailPage = lazy(() =>
+  import("@/features/dispute/pages/ParticipantDisputeDetailPage").then((module) => ({
+    default: module.BuyerDisputeDetailPage,
+  })),
+);
 
 export const orderRoutes: RouteObject[] = [
   { path: "orders", element: <BuyerOrdersPage /> },
   { path: "orders/:orderId", element: <BuyerOrderDetailPage /> },
+  { path: "orders/:orderId/disputes/:disputeId", element: <BuyerDisputeDetailPage /> },
 ];

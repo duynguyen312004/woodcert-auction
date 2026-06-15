@@ -55,6 +55,21 @@ function dispute(status = "OPEN") {
   };
 }
 
+function disputeDetail(status = "OPEN") {
+  return {
+    dispute: dispute(status),
+    messages: [
+      {
+        id: 41,
+        authorRole: "SELLER",
+        content: "Hang giao dung mo ta",
+        createdAt: "2026-06-02T00:10:00Z",
+        evidence: [],
+      },
+    ],
+  };
+}
+
 describe("disputeApi", () => {
   const originalAdapter = apiClient.defaults.adapter;
 
@@ -112,6 +127,87 @@ describe("disputeApi", () => {
       { id: 31, status: "RESOLVED" },
       { id: 31, status: "OPEN" },
     ]);
+  });
+
+  it("fetches the full participant dispute timeline", async () => {
+    const adapter: AxiosAdapter = async (config) => {
+      expect(config.method).toBe("get");
+      expect(config.url).toBe("/orders/91/disputes/31");
+
+      return createResponse(config, 200, createApiResponse(disputeDetail()));
+    };
+    apiClient.defaults.adapter = adapter;
+
+    await expect(disputeApi.getDisputeDetail(91, 31)).resolves.toMatchObject({
+      dispute: { id: 31, orderId: 91 },
+      messages: [{ id: 41, authorRole: "SELLER" }],
+    });
+  });
+
+  it("posts a participant message with text and evidence ids", async () => {
+    const payload = {
+      content: "Anh kien hang",
+      evidenceMediaIds: [201, 202],
+    };
+    const adapter: AxiosAdapter = async (config) => {
+      expect(config.method).toBe("post");
+      expect(config.url).toBe("/orders/91/disputes/31/messages");
+      expect(parseRequestBody(config)).toEqual(payload);
+
+      return createResponse(config, 201, createApiResponse(disputeDetail(), 201));
+    };
+    apiClient.defaults.adapter = adapter;
+
+    await expect(disputeApi.addParticipantMessage(91, 31, payload)).resolves.toMatchObject({
+      dispute: { id: 31 },
+    });
+  });
+
+  it("fetches admin detail and posts an admin clarification message", async () => {
+    const payload = {
+      content: "Vui long bo sung hoa don",
+      evidenceMediaIds: [],
+    };
+    let requestCount = 0;
+    const adapter: AxiosAdapter = async (config) => {
+      requestCount += 1;
+      if (requestCount === 1) {
+        expect(config.method).toBe("get");
+        expect(config.url).toBe("/admin/disputes/31");
+        return createResponse(config, 200, createApiResponse(disputeDetail("UNDER_REVIEW")));
+      }
+
+      expect(config.method).toBe("post");
+      expect(config.url).toBe("/admin/disputes/31/messages");
+      expect(parseRequestBody(config)).toEqual(payload);
+      return createResponse(
+        config,
+        201,
+        createApiResponse(
+          {
+            ...disputeDetail("UNDER_REVIEW"),
+            messages: [
+              {
+                id: 42,
+                authorRole: "ADMIN",
+                content: payload.content,
+                createdAt: "2026-06-02T00:20:00Z",
+                evidence: [],
+              },
+            ],
+          },
+          201,
+        ),
+      );
+    };
+    apiClient.defaults.adapter = adapter;
+
+    await expect(disputeApi.getAdminDispute(31)).resolves.toMatchObject({
+      dispute: { status: "UNDER_REVIEW" },
+    });
+    await expect(disputeApi.addAdminMessage(31, payload)).resolves.toMatchObject({
+      messages: [{ authorRole: "ADMIN" }],
+    });
   });
 
   it("resolves an admin dispute with explicit outcome and note", async () => {

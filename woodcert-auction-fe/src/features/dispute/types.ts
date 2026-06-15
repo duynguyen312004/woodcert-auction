@@ -2,6 +2,8 @@ export type DisputeStatus = "OPEN" | "UNDER_REVIEW" | "RESOLVED" | "REJECTED" | 
 
 export type DisputeResolutionOutcome = "SELLER_WINS" | "BUYER_WINS";
 
+export type DisputeAuthorRole = "BUYER" | "SELLER" | "ADMIN";
+
 export interface DisputeEvidence {
   id: number;
   mediaId: number;
@@ -26,8 +28,26 @@ export interface DisputeCase {
   evidence: DisputeEvidence[];
 }
 
+export interface DisputeMessage {
+  id: number;
+  authorRole: DisputeAuthorRole;
+  content: string | null;
+  createdAt: string;
+  evidence: DisputeEvidence[];
+}
+
+export interface DisputeDetail {
+  dispute: DisputeCase;
+  messages: DisputeMessage[];
+}
+
 export interface CreateDisputePayload {
   reason: string;
   description?: string;
+  evidenceMediaIds: number[];
+}
+
+export interface CreateDisputeMessagePayload {
+  content?: string;
   evidenceMediaIds: number[];
 }
