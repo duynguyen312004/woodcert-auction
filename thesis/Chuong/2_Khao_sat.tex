@@ -1,0 +1,706 @@
+\documentclass[../DoAn.tex]{subfiles}
+\begin{document}
+
+\section{Khảo sát hiện trạng}
+\label{section:2.1}
+
+\subsection{Bối cảnh nghiệp vụ}
+
+WoodCert Auction được định hướng như một hệ thống hỗ trợ giao dịch sản phẩm gỗ mỹ nghệ có thẩm định chất lượng và đấu giá trực tuyến. Trong phạm vi đồ án, trọng tâm không phải là chứng minh quy mô thị trường, mà là giải quyết chuỗi nghiệp vụ có mức độ rủi ro cao khi sản phẩm giá trị lớn được giao dịch trên môi trường trực tuyến.
+
+Chuỗi nghiệp vụ này gồm các nhu cầu liên tiếp: người bán công bố thông tin và hình ảnh sản phẩm; Chuyên gia kiểm định đánh giá chất lượng, lập báo cáo và chốt kết quả thẩm định; hệ thống cấp chứng thư số cho sản phẩm hợp lệ; người mua tra cứu độ tin cậy trước khi đấu giá; hệ thống quản lý đặt cọc, cập nhật giá theo thời gian thực, kết thúc phiên, xử lý thanh toán, giao nhận và tranh chấp. Điểm khác biệt của WoodCert Auction là kết hợp các bước này trong một luồng nghiệp vụ khép kín cho sản phẩm gỗ, thay vì xem đấu giá trực tuyến là một chức năng giao dịch độc lập.
+
+Các vai trò chính gồm Khách truy cập (Guest), Người tham gia đấu giá (Bidder/Buyer), Người bán (Seller), Chuyên gia kiểm định (Appraiser) và Quản trị viên (Admin). Luồng chính bắt đầu từ việc Người bán tạo sản phẩm và gửi yêu cầu kiểm định; sản phẩm hợp lệ được cấp chứng thư số và đưa vào phiên đấu giá; người mua đăng ký tham gia, bị phong tỏa tiền đặt cọc trong ví nội bộ và đặt giá theo thời gian thực. Sau khi phiên kết thúc, hệ thống xác định người thắng, xử lý tiền cọc, khởi tạo đơn hàng, theo dõi giao nhận và cho phép mở tranh chấp kèm bằng chứng khi có lỗi phát sinh.
+
+Từ góc nhìn nghiệp vụ, bài toán kết hợp ba nhóm yêu cầu cốt lõi: độ tin cậy của thông tin sản phẩm, tính công bằng của cơ chế đấu giá trực tuyến và an toàn giao dịch sau đấu giá. Vì vậy, phần khảo sát hiện trạng tập trung so sánh các nền tảng theo các khía cạnh: kiểm định chất lượng, hình thức đấu giá, cơ chế thanh toán, giao nhận và xử lý khiếu nại sau giao dịch.
+
+\subsection{Khảo sát hệ thống tương tự}
+
+Ba nền tảng được chọn để đối chiếu là eBay Auction, Catawiki và Lạc Việt Auction. eBay đại diện cho sàn thương mại điện tử có hình thức đấu giá trực tuyến; Catawiki đại diện cho nền tảng đấu giá hàng sưu tầm có cơ chế bảo vệ người mua và kiểm tra chất lượng đối tượng giao dịch; Lạc Việt Auction đại diện cho hệ thống đấu giá tài sản trực tuyến tại Việt Nam, có đăng ký tham gia và tiền đặt trước theo từng cuộc đấu giá \cite{ebay-bidding,catawiki-buyer-terms,lacviet-home,lacviet-user-guide}. Việc so sánh nhằm rút ra các yêu cầu thực tiễn phù hợp cho WoodCert Auction, không nhằm đánh giá chất lượng tổng thể của từng nền tảng.
+
+Các tài liệu chính thức cho thấy eBay hỗ trợ đăng bán kiểu đấu giá, tự động đặt giá, cam kết mua hàng khi thắng phiên, chính sách bảo vệ giao dịch và chương trình xác thực cho một số nhóm hàng đủ điều kiện \cite{ebay-bidding,ebay-authenticity-guarantee,ebay-money-back-guarantee,ebay-resolving-issues}. Catawiki cung cấp cơ chế trả giá và mua hàng, phí bảo vệ người mua, thanh toán an toàn, kiểm tra chất lượng đối tượng giao dịch và xác minh người bán \cite{catawiki-general-terms,catawiki-buyer-terms}. Lạc Việt Auction thể hiện rõ quy trình đăng ký tham gia, phí hồ sơ, tiền đặt trước, bước giá và quy chế đấu giá theo từng cuộc đấu giá \cite{lacviet-home,lacviet-user-guide,lacviet-auction-notice,lacviet-auction-regulation}. Tuy nhiên, các nền tảng này chưa thể hiện một quy trình khép kín dành riêng cho sản phẩm gỗ, trong đó chứng thư số, đặt cọc, đấu giá thời gian thực, giao nhận và tranh chấp được quản lý thống nhất.
+
+\subsection{Bảng so sánh hệ thống tương tự}
+
+Bảng~\ref{tab:similar-auction-systems} tổng hợp phạm vi, điểm có thể tham khảo và giới hạn của ba hệ thống tương tự so với phạm vi thiết kế của WoodCert Auction.
+
+\begin{table}[H]
+    \centering
+    \caption{So sánh các hệ thống đấu giá tương tự}
+    \label{tab:similar-auction-systems}
+    \small
+    \setlength{\tabcolsep}{3pt}
+    \renewcommand{\arraystretch}{1.08}
+    \begin{tabular}{|>{\raggedright\arraybackslash}p{0.15\textwidth}|>{\raggedright\arraybackslash}p{0.24\textwidth}|>{\raggedright\arraybackslash}p{0.27\textwidth}|>{\raggedright\arraybackslash}p{0.24\textwidth}|}
+        \hline
+        \textbf{Nền tảng} & \textbf{Phạm vi theo tài liệu chính thức} & \textbf{Điểm tham khảo cho WoodCert Auction} & \textbf{Giới hạn so với WoodCert Auction} \\
+        \hline
+        eBay Auction & Sàn thương mại điện tử có hình thức đấu giá, đặt giá tự động, bảo vệ giao dịch và xác thực cho một số nhóm hàng. & Tham khảo trải nghiệm đặt giá, cam kết mua hàng, bảo vệ người mua và xử lý vấn đề sau giao dịch. & Không chuyên biệt cho sản phẩm gỗ; chưa có quy trình thẩm định, chứng thư số riêng và đặt cọc trước phiên cho sản phẩm gỗ. \\
+        \hline
+        Catawiki & Nền tảng đấu giá hàng sưu tầm, có kiểm tra chất lượng đối tượng giao dịch, xác minh người bán và phí bảo vệ người mua. & Tham khảo mô hình kiểm duyệt chất lượng, thanh toán an toàn và cơ chế bảo vệ người mua. & Không chuyên biệt cho sản phẩm gỗ; chưa thể hiện chứng thư số có mã tra cứu công khai và cơ chế toàn vẹn dữ liệu riêng. \\
+        \hline
+        Lạc Việt Auction & Hệ thống đấu giá trực tuyến tài sản tại Việt Nam, có đăng ký tham gia, tiền đặt trước, bước giá và quy chế theo từng cuộc. & Tham khảo quy trình đăng ký, tiền đặt trước, công bố thông tin phiên và yêu cầu minh bạch trong bối cảnh Việt Nam. & Tập trung vào đấu giá tài sản theo từng cuộc; chưa phải quy trình khép kín cho sản phẩm gỗ có thẩm định, ví, đơn hàng và tranh chấp. \\
+        \hline
+    \end{tabular}
+
+    \vspace{2pt}
+    \parbox{0.95\textwidth}{\footnotesize Nguồn: Tổng hợp từ tài liệu chính thức của eBay, Catawiki và Lạc Việt Auction.}
+\end{table}
+
+\FloatBarrier
+
+\subsection{Vấn đề cần giải quyết cho WoodCert Auction}
+
+Từ bối cảnh nghiệp vụ và kết quả khảo sát các hệ thống tương tự, WoodCert Auction cần tập trung giải quyết các khoảng trống tính năng giữa ba nhóm hệ thống: sàn đấu giá tổng quát, nền tảng đấu giá có chuyên gia thẩm định và hệ thống đấu giá tài sản theo cuộc đấu giá pháp lý. Điểm đổi mới của đề tài là tích hợp quy trình thẩm định chất lượng sản phẩm gỗ với cơ chế đấu giá trực tuyến thời gian thực và quy trình xử lý giao dịch an toàn sau đấu giá thành một luồng công việc thống nhất.
+
+Bảng~\ref{tab:survey-problems-requirements} trình bày chi tiết các vấn đề rút ra từ khảo sát hiện trạng và các yêu cầu kỹ thuật tương ứng đối với hệ thống WoodCert Auction.
+
+\begin{table}[!htbp]
+    \centering
+    \caption{Vấn đề rút ra từ khảo sát và yêu cầu đối với WoodCert Auction}
+    \label{tab:survey-problems-requirements}
+    \small
+    \setlength{\tabcolsep}{4pt}
+    \renewcommand{\arraystretch}{1.2}
+    \begin{tabular}{|>{\raggedright\arraybackslash}p{0.31\textwidth}|>{\raggedright\arraybackslash}p{0.34\textwidth}|>{\raggedright\arraybackslash}p{0.25\textwidth}|}
+        \hline
+        \textbf{Vấn đề rút ra từ khảo sát} & \textbf{Yêu cầu đối với WoodCert Auction} & \textbf{Thành phần/Phân hệ đáp ứng} \\
+        \hline
+        Người mua cần cơ sở tin cậy trước khi trả giá cho sản phẩm gỗ có giá trị lớn. & Sản phẩm cần được thẩm định trước khi đấu giá; chứng thư số cần có mã tra cứu và kiểm tra toàn vẹn dữ liệu. & Catalog, Appraisal, Certificate. \\
+        \hline
+        Hình ảnh và mô tả sản phẩm cần được quản lý như bằng chứng trong thẩm định và tranh chấp. & Lưu trữ hình ảnh theo đúng ngữ cảnh: ảnh sản phẩm, ảnh thẩm định và ảnh bằng chứng tranh chấp. & Media, Catalog, Dispute. \\
+        \hline
+        Phiên đấu giá trực tuyến cần cập nhật giá công bằng, nhanh và có lịch sử đối chiếu. & Cập nhật giá theo thời gian thực, kiểm tra lượt đặt giá, ghi nhận lịch sử và tự động hóa đóng/mở phiên. & Auction, Auction Lifecycle Worker. \\
+        \hline
+        Người tham gia cần có cam kết tài chính trước khi đặt giá. & Phong tỏa tiền đặt cọc khi đăng ký; hoàn cọc cho người thua và xử lý thanh toán cho người thắng. & Finance, Auction Participants, Wallet. \\
+        \hline
+        Sau khi có người thắng, giao dịch vẫn cần theo dõi thanh toán, giao nhận và giải ngân. & Tạo đơn hàng sau phiên thành công, kiểm soát hạn thanh toán, theo dõi giao nhận, hoàn tất và giải ngân. & Order, Fulfillment, Finance. \\
+        \hline
+        Giao dịch trực tuyến có thể phát sinh tranh chấp do hàng lỗi, sai mô tả hoặc sự cố giao nhận. & Cho phép mở tranh chấp, tải bằng chứng, trao đổi trong hồ sơ tranh chấp và hỗ trợ Quản trị viên xử lý. & Dispute, Dispute Messages, Dispute Evidence. \\
+        \hline
+        Phạm vi đồ án cần phân biệt chức năng cốt lõi với chức năng mở rộng trong tương lai. & Trình bày rõ phần đã hoàn thành và phần mở rộng như trung tâm thông báo lưu trữ, hoàn tiền một phần hoặc kết nối vận chuyển bên thứ ba. & Tài liệu phạm vi chức năng, Chức năng mở rộng trong tương lai. \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\FloatBarrier
+
+\section{Tổng quan chức năng}
+\label{section:2.2}
+
+Từ các vấn đề đã rút ra ở phần khảo sát hiện trạng, WoodCert Auction được xác định như một hệ thống hỗ trợ giao dịch sản phẩm gỗ mỹ nghệ theo chuỗi nghiệp vụ khép kín: tạo sản phẩm, kiểm định, cấp chứng thư, tổ chức đấu giá, xử lý thanh toán, giao nhận và tranh chấp sau giao dịch. Ở mức tổng quan, hệ thống được tổ chức quanh các vai trò người dùng và các nhóm nghiệp vụ chính, qua đó làm rõ phạm vi chức năng trước khi đi vào đặc tả chức năng chi tiết.
+
+\subsection{Biểu đồ use case tổng quát}
+\label{subsection:2.2.1}
+
+\subsubsection{Actor và vai trò người dùng}
+
+Các actor của WoodCert Auction bao gồm Guest, Bidder/Buyer, Seller, Appraiser, Admin, Scheduler/System và External systems. Các vai trò này phản ánh cả người dùng trực tiếp, tiến trình hệ thống tự động và dịch vụ tích hợp phục vụ media, thanh toán thử nghiệm, email định danh. Trong đó, Bidder/Buyer đại diện cho người tham gia đấu giá và người mua sau khi thắng phiên; Seller là người dùng có thêm năng lực bán hàng thông qua seller profile; Appraiser phụ trách kiểm định; Admin đảm nhiệm các nghiệp vụ quản trị. Các vai trò và nhóm chức năng tương ứng được tổng hợp chi tiết trong Bảng~\ref{tab:actor-main-functions}.
+
+\begin{table}[H]
+    \centering
+    \caption{Bảng tổng hợp actor và chức năng chính của hệ thống WoodCert Auction}
+    \label{tab:actor-main-functions}
+    \fontsize{8}{9}\selectfont
+    \setlength{\tabcolsep}{3pt}
+    \renewcommand{\arraystretch}{0.98}
+    \begin{tabular}{|>{\raggedright\arraybackslash}p{0.20\textwidth}|>{\raggedright\arraybackslash}p{0.27\textwidth}|>{\raggedright\arraybackslash}p{0.43\textwidth}|}
+        \hline
+        \textbf{Actor} & \textbf{Vai trò trong hệ thống} & \textbf{Nhóm chức năng chính} \\
+        \hline
+        Khách truy cập (Guest) & Người dùng chưa đăng nhập, tiếp cận các thông tin công khai của hệ thống. & Xem danh sách và chi tiết phiên đấu giá công khai; tra cứu chứng thư sản phẩm; xem thông tin giới thiệu và hướng dẫn sử dụng. \\
+        \hline
+        Người tham gia đấu giá / Người mua (Bidder/Buyer) & Tài khoản người dùng tham gia đấu giá và trở thành người mua khi thắng phiên. & Quản lý hồ sơ, ví và địa chỉ; đăng ký tham gia đấu giá; đặt giá theo thời gian thực; thanh toán đơn hàng; xác nhận nhận hàng; mở tranh chấp khi phát sinh vấn đề. \\
+        \hline
+        Người bán (Seller) & Người dùng có seller profile và năng lực bán hàng, không phải loại tài khoản độc lập với người mua. & Tạo và quản lý sản phẩm; quản lý ảnh sản phẩm; gửi yêu cầu kiểm định; tạo phiên đấu giá; theo dõi đơn bán; cập nhật thông tin giao hàng. \\
+        \hline
+        Chuyên gia kiểm định (Appraiser) & Người dùng được cấp quyền để xử lý nghiệp vụ kiểm định sản phẩm. & Tiếp nhận yêu cầu kiểm định; đánh giá sản phẩm; lập báo cáo thẩm định; chốt kết quả thẩm định theo quy trình hệ thống. \\
+        \hline
+        Quản trị viên (Admin) & Người vận hành hệ thống và xử lý các nghiệp vụ quản trị. & Quản lý người dùng, năng lực tài khoản, appraiser, danh mục, doanh thu, audit log và tranh chấp. \\
+        \hline
+        Scheduler/System & Các tiến trình tự động hỗ trợ vận hành nghiệp vụ theo thời gian và trạng thái. & Tự động mở hoặc kết thúc phiên đấu giá; xử lý quá hạn thanh toán; tự hoàn tất giao nhận theo điều kiện cấu hình. \\
+        \hline
+        Hệ thống bên ngoài (External systems) & Các dịch vụ tích hợp phục vụ một số chức năng hạ tầng và nghiệp vụ. & VNPay Sandbox cho nạp ví; Cloudinary cho lưu trữ media; SMTP cho email định danh và đặt lại mật khẩu. \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\newpage
+\subsubsection{Nhóm chức năng chính}
+
+Các chức năng của WoodCert Auction được chia theo các nhóm nghiệp vụ lớn để liên kết rõ giữa actor, mục đích sử dụng và phạm vi xử lý. Các nhóm chức năng này là cơ sở cho phần đặc tả chức năng chi tiết ở các phần sau, được trình bày cụ thể trong Bảng~\ref{tab:main-functional-groups}.
+
+\begingroup
+\setlength{\parskip}{0pt}
+\fontsize{8}{9}\selectfont
+\setlength{\tabcolsep}{2.6pt}
+\setlength{\LTpre}{0.35\baselineskip}
+\setlength{\LTpost}{0.35\baselineskip}
+\renewcommand{\arraystretch}{0.94}
+\begin{longtable}{|>{\raggedright\arraybackslash}p{0.21\textwidth}|>{\raggedright\arraybackslash}p{0.24\textwidth}|>{\raggedright\arraybackslash}p{0.45\textwidth}|}
+    \caption{Bảng phân nhóm chức năng chính theo nghiệp vụ của hệ thống}
+    \label{tab:main-functional-groups} \\
+    \hline
+    \textbf{Nhóm chức năng} & \textbf{Actor liên quan} & \textbf{Mục đích nghiệp vụ} \\
+    \hline
+    \endfirsthead
+    \hline
+    \textbf{Nhóm chức năng} & \textbf{Actor liên quan} & \textbf{Mục đích nghiệp vụ} \\
+    \hline
+    \endhead
+    Quản lý tài khoản và phân quyền & Guest, Bidder/Buyer, Seller, Appraiser, Admin & Hỗ trợ đăng ký, xác thực, hồ sơ cá nhân, địa chỉ, vai trò và quyền thao tác theo từng actor. \\
+    \hline
+    Quản lý sản phẩm gỗ & Seller, Appraiser, Admin & Cho phép người bán tạo bản nháp sản phẩm, cập nhật mô tả, danh mục và hình ảnh trước khi gửi kiểm định. \\
+    \hline
+    Thẩm định và chứng thư & Seller, Appraiser, Guest, Bidder/Buyer & Quản lý yêu cầu kiểm định, thao tác tiếp nhận, báo cáo thẩm định và chứng thư để người mua tra cứu trước khi đấu giá. \\
+    \hline
+    Quản lý media/hình ảnh & Seller, Appraiser, Bidder/Buyer, Admin (xem bằng chứng tranh chấp) & Quản lý ảnh theo ngữ cảnh sử dụng, gồm ảnh sản phẩm, ảnh kiểm định, ảnh đại diện và bằng chứng tranh chấp. \\
+    \hline
+    Quản lý phiên đấu giá & Seller, Guest, Bidder/Buyer, Scheduler/System & Hỗ trợ tạo phiên từ sản phẩm đủ điều kiện, công bố thông tin phiên và quản lý các trạng thái chờ mở, đang diễn ra, kết thúc. \\
+    \hline
+    Đăng ký tham gia và đặt giá realtime & Bidder/Buyer, Seller, Scheduler/System & Cho phép người mua đăng ký tham gia, phong tỏa tiền đặt cọc và đặt giá theo thời gian thực khi phiên đang hoạt động. \\
+    \hline
+    Ví nội bộ và thanh toán & Bidder/Buyer, Seller, Admin, External systems & Quản lý số dư, nạp ví qua VNPay Sandbox, tiền cọc, thanh toán đơn hàng và doanh thu nền tảng. \\
+    \hline
+    Đơn hàng sau đấu giá & Bidder/Buyer, Seller, Scheduler/System & Tạo đơn hàng cho người thắng sau phiên thành công và theo dõi nghĩa vụ thanh toán phần còn lại. \\
+    \hline
+    Giao nhận/hoàn tất giao dịch & Seller, Bidder/Buyer, Scheduler/System & Hỗ trợ cập nhật giao hàng, xác nhận nhận hàng, tự hoàn tất giao dịch theo điều kiện cấu hình và giải ngân cho người bán. \\
+    \hline
+    Tranh chấp & Bidder/Buyer, Seller, Admin & Cho phép mở tranh chấp, tải bằng chứng, trao đổi trong hồ sơ tranh chấp và hỗ trợ Admin đưa ra quyết định xử lý. \\
+    \hline
+    Quản trị hệ thống & Admin & Cung cấp chức năng quản lý người dùng, appraiser, danh mục, doanh thu, audit log và tranh chấp. \\
+    \hline
+\end{longtable}
+\endgroup
+
+\subsubsection{Mô tả biểu đồ use case tổng quát}
+
+Biểu đồ use case tổng quát cần thể hiện biên hệ thống WoodCert Auction và các nhóm chức năng chính theo từng actor. Guest liên kết với các use case xem danh sách phiên đấu giá, xem chi tiết phiên và tra cứu chứng thư. Bidder/Buyer liên kết với quản lý ví, đăng ký tham gia đấu giá, đặt giá, thanh toán, xác nhận nhận hàng và mở tranh chấp. Seller liên kết với tạo sản phẩm, gửi kiểm định, tạo phiên đấu giá, giao hàng và xem đơn bán. Appraiser liên kết với nhận yêu cầu kiểm định và lập báo cáo thẩm định. Admin liên kết với quản trị người dùng, danh mục, doanh thu và tranh chấp. Scheduler/System liên kết với các use case tự động mở hoặc kết thúc phiên, xử lý quá hạn thanh toán và tự hoàn tất giao nhận. Vị trí chèn sơ đồ use case tổng quát được bố trí tại Hình~\ref{fig:overall-use-case}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\linewidth]{chapter-2/overall-use-case.png}
+    \caption{Biểu đồ use case tổng quát của hệ thống WoodCert Auction}
+    \label{fig:overall-use-case}
+\end{figure}
+\FloatBarrier
+
+\subsection{Biểu đồ use case phân rã}
+\label{subsection:decomposed-use-cases}
+
+Sau khi xác định actor và các use case mức cao ở biểu đồ tổng quát, phần này phân rã từng use case chính thành các chức năng nhỏ hơn. Tên các mục phân rã được giữ thống nhất với tên use case mức cao trong Hình~\ref{fig:overall-use-case} để người đọc dễ đối chiếu giữa sơ đồ tổng quan và các sơ đồ chi tiết.
+
+\subsubsection{Phân rã use case Quản lý tài khoản \& hồ sơ}
+\label{subsubsection:account-use-case}
+
+Nhóm chức năng này quản lý toàn bộ vòng đời tài khoản người dùng và thông tin pháp lý đi kèm. Khách vãng lai (Guest) có thể đăng ký tài khoản mới; hệ thống sử dụng dịch vụ Email (SMTP Server) để gửi token xác thực qua email trước khi chuyển trạng thái tài khoản thành hoạt động. Sau khi đăng nhập, người dùng (vai trò mặc định là Bidder) có thể quản lý thông tin cá nhân, cập nhật sổ địa chỉ nhận hàng và thực hiện đăng ký hồ sơ người bán (Seller Profile) để hệ thống cấp thêm vai trò Seller (\texttt{ROLE\_SELLER}). Biểu đồ phân rã của nhóm chức năng này được trình bày tại Hình~\ref{fig:account-use-case}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\linewidth,height=0.34\textheight,keepaspectratio]{chapter-2/account-use-case.png}
+    \caption{Biểu đồ use case phân rã chức năng Quản lý tài khoản \& hồ sơ}
+    \label{fig:account-use-case}
+\end{figure}
+\FloatBarrier
+
+\subsubsection{Phân rã use case Tra cứu chứng thư}
+\label{subsubsection:certificate-use-case}
+
+Sau khi sản phẩm được kiểm định hợp lệ, hệ thống sẽ tự động cấp một chứng thư số đi kèm mã tra cứu duy nhất. Khách truy cập và người mua có thể thực hiện tra cứu thông tin chứng thư số này để kiểm tra nguồn gốc, chất lượng và báo cáo thẩm định đã ký. Để đảm bảo tính toàn vẹn dữ liệu, hệ thống tự động thực hiện tính toán và đối soát mã băm toàn vẹn SHA-256 đối với tài liệu chứng thư trước khi trả về kết quả hiển thị cho người dùng. Biểu đồ phân rã của nhóm chức năng này được trình bày tại Hình~\ref{fig:certificate-use-case}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.86\linewidth,height=0.30\textheight,keepaspectratio]{chapter-2/certificate-use-case.png}
+    \caption{Biểu đồ use case phân rã chức năng Tra cứu chứng thư}
+    \label{fig:certificate-use-case}
+\end{figure}
+\FloatBarrier
+
+\subsubsection{Phân rã use case Quản lý sản phẩm \& kiểm định}
+\label{subsubsection:product-use-case}
+
+Quy trình quản lý sản phẩm và kiểm định chất lượng là chốt chặn đảm bảo tính minh bạch cho các giao dịch gỗ mỹ nghệ giá trị cao. Người bán (Seller) thực hiện tạo sản phẩm nháp và cập nhật hình ảnh thông qua dịch vụ lưu trữ Cloudinary. Khi thông tin đã hoàn thiện, sản phẩm được gửi yêu cầu kiểm định và chuyển sang trạng thái chờ. Kiểm định viên (Appraiser) tiếp nhận yêu cầu, thực hiện đánh giá sản phẩm thực tế, chụp ảnh kiểm định lưu trữ trên Cloudinary và nộp báo cáo thẩm định chi tiết để chốt kết quả thẩm định. Biểu đồ phân rã của nhóm chức năng này được trình bày tại Hình~\ref{fig:product-use-case}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.90\linewidth,height=0.34\textheight,keepaspectratio]{chapter-2/product-use-case.png}
+    \caption{Biểu đồ use case phân rã chức năng Quản lý sản phẩm \& kiểm định}
+    \label{fig:product-use-case}
+\end{figure}
+\FloatBarrier
+
+\subsubsection{Phân rã use case Tổ chức \& tham gia đấu giá}
+\label{subsubsection:auction-use-case}
+
+Đấu giá trực tuyến thời gian thực là nghiệp vụ cốt lõi của hệ thống. Người bán cấu hình thông tin và tạo phiên đấu giá từ sản phẩm đã có chứng thư. Tiến trình tự động (Scheduler) quản lý trạng thái đóng/mở phiên theo lịch trình. Người mua thực hiện đăng ký tham gia, hệ thống tự động kiểm tra số dư và phong tỏa tiền cọc trong ví. Khi phiên đang diễn ra, người dùng thực hiện đặt giá realtime; hệ thống sẽ kiểm tra bước giá, cập nhật giá hiện tại theo thời gian thực và ghi nhận lịch sử đặt giá. Khi kết thúc, hệ thống tự động xác định người thắng và xử lý tiền cọc (hoàn cọc cho người thua, giữ cọc người thắng). Biểu đồ phân rã của nhóm chức năng này được trình bày tại Hình~\ref{fig:auction-use-case}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth,height=0.50\textheight,keepaspectratio]{chapter-2/auction-use-case.png}
+    \caption{Biểu đồ use case phân rã chức năng Tổ chức \& tham gia đấu giá}
+    \label{fig:auction-use-case}
+\end{figure}
+\FloatBarrier
+
+\subsubsection{Phân rã use case Quản lý ví \& thanh toán}
+\label{subsubsection:wallet-use-case}
+
+Hệ thống cung cấp một ví nội bộ để quản lý số dư khả dụng và số dư đóng băng của người dùng nhằm đảm bảo tính an toàn giao dịch. Người tham gia có thể xem thông tin ví và nạp tiền thông qua cổng thanh toán VNPay Sandbox. Sau khi người dùng thanh toán trên cổng VNPay, hệ thống xử lý callback, cập nhật ví và ghi nhận lịch sử biến động số dư. Quản trị viên (Admin) có quyền xem báo cáo doanh thu và dòng tiền của toàn bộ nền tảng. Biểu đồ phân rã của nhóm chức năng này được trình bày tại Hình~\ref{fig:wallet-use-case}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth,height=0.48\textheight,keepaspectratio]{chapter-2/wallet-use-case.png}
+    \caption{Biểu đồ use case phân rã chức năng Quản lý ví \& thanh toán}
+    \label{fig:wallet-use-case}
+\end{figure}
+\FloatBarrier
+
+\subsubsection{Phân rã use case Xử lý đơn hàng \& giao nhận}
+\label{subsubsection:order-use-case}
+
+Đơn hàng được tự động khởi tạo sau khi phiên đấu giá kết thúc thành công với người thắng cuộc. Người mua có nghĩa vụ thanh toán phần tiền còn lại của đơn hàng trong thời hạn cấu hình (nếu quá hạn sẽ kích hoạt xử lý vi phạm tịch thu cọc). Sau khi thanh toán hoàn tất, Người bán cập nhật thông tin giao nhận vận chuyển. Đơn hàng sẽ chuyển sang trạng thái hoàn tất khi Người mua xác nhận nhận hàng, hoặc do hệ thống tự động hoàn tất sau thời hạn xác nhận theo cấu hình nếu không có tranh chấp phát sinh. Khi hoàn tất đơn hàng, hệ thống thực hiện giải ngân tiền bán cho người bán. Biểu đồ phân rã của nhóm chức năng này được trình bày tại Hình~\ref{fig:order-use-case}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.94\linewidth,height=0.34\textheight,keepaspectratio]{chapter-2/order-use-case.png}
+    \caption{Biểu đồ use case phân rã chức năng Xử lý đơn hàng \& giao nhận}
+    \label{fig:order-use-case}
+\end{figure}
+\FloatBarrier
+
+\subsubsection{Phân rã use case Giải quyết tranh chấp}
+\label{subsubsection:dispute-use-case}
+
+Khi phát sinh lỗi sản phẩm, sai mô tả hoặc sự cố giao nhận, người mua có quyền mở yêu cầu tranh chấp kèm theo ảnh bằng chứng thực tế tải lên Cloudinary. Người mua và người bán tiến hành đối thoại trực tiếp trong hồ sơ tranh chấp để làm rõ thông tin. Admin sẽ theo dõi cuộc trò chuyện, đánh giá chứng cứ và đưa ra phán quyết xử lý toàn phần (hoàn trả lại toàn bộ tiền cho người mua, hoặc giải ngân toàn bộ tiền bán cho người bán) rồi đóng hồ sơ tranh chấp. Biểu đồ phân rã của nhóm chức năng này được trình bày tại Hình~\ref{fig:dispute-use-case}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.94\linewidth,height=0.34\textheight,keepaspectratio]{chapter-2/dispute-use-case.png}
+    \caption{Biểu đồ use case phân rã chức năng Giải quyết tranh chấp}
+    \label{fig:dispute-use-case}
+\end{figure}
+\FloatBarrier
+
+\subsubsection{Phân rã use case Quản trị hệ thống \& tự động hóa}
+\label{subsubsection:admin-use-case}
+
+Nhóm chức năng này hỗ trợ các vai trò quản trị viên và các tác vụ vận hành ngầm của hệ thống. Admin thực hiện quản lý tài khoản người dùng, khóa hoặc mở các năng lực giao dịch (capability) tương ứng, quản lý danh mục sản phẩm, quản lý danh sách chuyên gia và xem nhật ký hệ thống (Audit Log) để phát hiện hành vi bất thường. Bên cạnh đó, Scheduler/System đại diện cho các tác vụ tự động định kỳ như mở phiên, kết thúc phiên, xử lý quá hạn thanh toán và tự hoàn tất giao nhận theo điều kiện nghiệp vụ. Biểu đồ phân rã của nhóm chức năng này được trình bày tại Hình~\ref{fig:admin-use-case}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\linewidth,height=0.32\textheight,keepaspectratio]{chapter-2/admin-use-case.png}
+    \caption{Biểu đồ use case phân rã chức năng Quản trị hệ thống \& tự động hóa}
+    \label{fig:admin-use-case}
+\end{figure}
+\FloatBarrier
+
+\subsection{Quy trình nghiệp vụ tổng quát}
+\label{subsection:overall-business-flow}
+
+Quy trình nghiệp vụ tổng quát của WoodCert Auction bắt đầu khi Seller tạo sản phẩm ở trạng thái nháp, bổ sung thông tin mô tả và hình ảnh, sau đó gửi yêu cầu kiểm định. Appraiser tiếp nhận yêu cầu, đánh giá sản phẩm và lập báo cáo thẩm định. Nếu sản phẩm hợp lệ, hệ thống cấp chứng thư để sản phẩm có cơ sở tin cậy trước khi được đưa vào phiên đấu giá.
+
+Sau khi sản phẩm đủ điều kiện, Seller tạo phiên đấu giá với các thông tin về thời gian, giá khởi điểm, bước giá và tiền đặt cọc. Bidder đăng ký tham gia phiên; hệ thống kiểm tra ví và phong tỏa tiền đặt cọc trước khi cho phép đặt giá. Khi phiên chuyển sang trạng thái đang diễn ra, Bidder đặt giá theo thời gian thực và hệ thống cập nhật giá hiện tại cho các bên theo dõi. Đến thời điểm kết thúc, hệ thống tự động xác định kết quả phiên, xử lý tiền cọc theo kết quả thắng hoặc thua và tạo đơn hàng cho người thắng nếu phiên thành công. Vị trí chèn quy trình nghiệp vụ tổng quát được bố trí tại Hình~\ref{fig:overall-business-flow}.
+
+Ở giai đoạn sau đấu giá, người thắng thanh toán phần còn lại của đơn hàng, Seller cập nhật thông tin giao hàng và Buyer xác nhận nhận hàng. Khi giao dịch hoàn tất theo điều kiện hợp lệ, hệ thống thực hiện các bước tài chính cần thiết để giải ngân cho người bán. Nếu hàng hóa có lỗi, sai mô tả hoặc phát sinh sự cố trong giao nhận, Buyer có thể mở tranh chấp kèm bằng chứng để Admin xem xét và xử lý.
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.96\linewidth,height=0.82\textheight,keepaspectratio]{chapter-2/auction-business-flow.png}
+    \caption{Sơ đồ quy trình nghiệp vụ tổng quát từ sản phẩm đến xử lý tranh chấp}
+    \label{fig:overall-business-flow}
+\end{figure}
+\FloatBarrier
+
+\subsection{Phạm vi chức năng chưa bao gồm}
+\label{subsection:functional-scope-exclusions}
+
+Để giữ phạm vi đồ án rõ ràng, một số chức năng được xác định là chức năng mở rộng trong tương lai thay vì chức năng cốt lõi hiện tại. Hệ thống chưa bao gồm trung tâm thông báo lưu bền cho người thắng hoặc người thua phiên đấu giá; hệ thống sử dụng các phản hồi tức thời trên giao diện (toast notification) và email xác thực phục vụ luồng định danh, chưa xây dựng một trung tâm lưu trữ và quản lý thông báo tập trung (notification center) cho người dùng. Cơ chế hoàn tiền một phần trong tranh chấp, tích hợp đơn vị vận chuyển bên thứ ba và video đóng gói giao hàng cũng chưa thuộc luồng nghiệp vụ chính hiện tại. Các nội dung này có thể được xem xét ở giai đoạn mở rộng sau khi các luồng cốt lõi về kiểm định, đấu giá, thanh toán, giao nhận và tranh chấp đã ổn định.
+
+\FloatBarrier
+
+\section{Đặc tả chức năng}
+\label{section:2.3}
+
+Phần Tổng quan chức năng đã trình bày các actor, nhóm chức năng và các use case chính của hệ thống WoodCert Auction. Dựa trên phạm vi đó, phần này lựa chọn một số use case tiêu biểu để đặc tả chi tiết, qua đó làm rõ cách một chức năng cụ thể vận hành từ góc nhìn nghiệp vụ và tương tác giữa người dùng với hệ thống. Các use case được lựa chọn đại diện cho chuỗi nghiệp vụ cốt lõi của hệ thống, bao gồm kiểm định sản phẩm, tạo phiên đấu giá, đăng ký tham gia, đặt giá realtime, thanh toán sau đấu giá và mở tranh chấp. Những chức năng phổ biến như đăng nhập, quản lý hồ sơ, xem danh sách phiên đấu giá, tra cứu chứng thư, xem ví hoặc xem doanh thu không được đặc tả sâu trong phần này vì ít thể hiện điểm đặc thù của đề tài hơn.
+
+\subsection{Danh sách use case được đặc tả}
+\label{subsection:selected-use-cases}
+
+Bảng~\ref{tab:selected-detailed-use-cases} tổng hợp các use case được lựa chọn để đặc tả chi tiết trong phạm vi Chương 2. Việc lựa chọn tập trung vào các chức năng có ảnh hưởng trực tiếp đến tính tin cậy của sản phẩm, tính công bằng của phiên đấu giá và an toàn giao dịch sau khi phiên kết thúc.
+
+\begin{table}[H]
+    \centering
+    \caption{Danh sách use case được đặc tả chi tiết}
+    \label{tab:selected-detailed-use-cases}
+    \fontsize{8}{9}\selectfont
+    \setlength{\tabcolsep}{3pt}
+    \renewcommand{\arraystretch}{1.08}
+    \begin{tabular}{|>{\raggedright\arraybackslash}p{0.12\textwidth}|>{\raggedright\arraybackslash}p{0.24\textwidth}|>{\raggedright\arraybackslash}p{0.15\textwidth}|>{\raggedright\arraybackslash}p{0.39\textwidth}|}
+        \hline
+        \textbf{Mã use case} & \textbf{Tên use case} & \textbf{Actor chính} & \textbf{Lý do lựa chọn} \\
+        \hline
+        UC-01 & Gửi yêu cầu kiểm định sản phẩm & Seller & Đại diện cho bước đưa sản phẩm vào quy trình kiểm định trước khi được phép đấu giá. \\
+        \hline
+        UC-02 & Tạo phiên đấu giá & Seller & Đại diện cho bước tổ chức phiên đấu giá từ sản phẩm đã đủ điều kiện. \\
+        \hline
+        UC-03 & Đăng ký tham gia phiên đấu giá & Bidder/Buyer & Đại diện cho cơ chế ràng buộc đặt cọc trước khi người mua được tham gia đặt giá. \\
+        \hline
+        UC-04 & Đặt giá realtime & Bidder/Buyer & Đại diện cho nghiệp vụ đấu giá thời gian thực, kiểm tra bước giá và cập nhật giá hiện tại. \\
+        \hline
+        UC-05 & Thanh toán phần còn lại của đơn hàng & Bidder/Buyer & Đại diện cho nghĩa vụ thanh toán sau khi thắng phiên và chuyển sang giai đoạn giao nhận. \\
+        \hline
+        UC-06 & Mở tranh chấp & Bidder/Buyer & Đại diện cho cơ chế bảo vệ người mua và xử lý sự cố sau giao nhận. \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\FloatBarrier
+
+\subsection{Đặc tả use case UC-01: Gửi yêu cầu kiểm định sản phẩm}
+\label{subsection:uc-submit-appraisal}
+
+Use case này mô tả bước Người bán gửi sản phẩm đã tạo nháp vào quy trình kiểm định. Đây là điều kiện quan trọng để sản phẩm có thể được đánh giá bởi Chuyên gia kiểm định và đủ cơ sở đưa vào phiên đấu giá sau khi đạt yêu cầu.
+
+\begingroup
+\setlength{\parskip}{0pt}
+\fontsize{8}{9}\selectfont
+\setlength{\tabcolsep}{4pt}
+\setlength{\LTpre}{0.35\baselineskip}
+\setlength{\LTpost}{0.35\baselineskip}
+\renewcommand{\arraystretch}{1.05}
+\begin{longtable}{|>{\raggedright\arraybackslash}p{0.24\textwidth}|>{\raggedright\arraybackslash}p{0.66\textwidth}|}
+    \caption{Đặc tả use case UC-01: Gửi yêu cầu kiểm định sản phẩm}
+    \label{tab:uc-submit-appraisal} \\
+    \hline
+    \textbf{Mục} & \textbf{Nội dung} \\
+    \hline
+    \endfirsthead
+    \hline
+    \textbf{Mục} & \textbf{Nội dung} \\
+    \hline
+    \endhead
+    Mã use case & UC-01 \\
+    \hline
+    Tên use case & Gửi yêu cầu kiểm định sản phẩm \\
+    \hline
+    Actor chính & Seller \\
+    \hline
+    Actor phụ & WoodCert Auction, Cloudinary, hệ thống ví nội bộ; Appraiser tham gia ở bước xử lý yêu cầu sau khi yêu cầu được tạo. \\
+    \hline
+    Mục tiêu & Seller gửi sản phẩm đã tạo nháp vào quy trình kiểm định để Appraiser đánh giá và chốt kết quả trước khi sản phẩm được phép đưa vào đấu giá. \\
+    \hline
+    Tiền điều kiện & (i) Seller đã đăng nhập; (ii) Seller có quyền bán hàng; (iii) sản phẩm thuộc sở hữu của Seller; (iv) sản phẩm đang ở trạng thái cho phép gửi kiểm định; (v) thông tin mô tả và hình ảnh cần thiết đã được bổ sung; (vi) nếu có phí thẩm định, ví của Seller phải đủ số dư để hệ thống trừ phí. \\
+    \hline
+    Hậu điều kiện & (i) Yêu cầu kiểm định được tạo và chờ Appraiser xử lý; (ii) hệ thống ghi nhận phí thẩm định nếu có; (iii) sản phẩm chuyển sang trạng thái chờ kiểm định hoặc trạng thái tương đương; (iv) Appraiser có thể nhìn thấy yêu cầu kiểm định trong danh sách xử lý. \\
+    \hline
+    Luồng sự kiện chính & (i) Seller mở màn hình quản lý sản phẩm; (ii) Seller chọn sản phẩm nháp cần gửi kiểm định; (iii) hệ thống kiểm tra quyền sở hữu sản phẩm và trạng thái sản phẩm; (iv) hệ thống kiểm tra thông tin bắt buộc và hình ảnh sản phẩm; (v) Seller xác nhận gửi yêu cầu kiểm định; (vi) hệ thống trừ phí thẩm định nếu có; (vii) hệ thống tạo yêu cầu kiểm định; (viii) hệ thống cập nhật trạng thái sản phẩm và thông báo gửi yêu cầu thành công. \\
+    \hline
+    Luồng thay thế/ngoại lệ & Sản phẩm không thuộc Seller; sản phẩm thiếu thông tin hoặc thiếu hình ảnh; sản phẩm không ở trạng thái cho phép gửi kiểm định; Seller không đủ số dư để thanh toán phí thẩm định; ảnh sản phẩm chưa được tải lên hoặc xác nhận thành công. \\
+    \hline
+    Ghi chú nghiệp vụ & Sản phẩm chỉ nên được đưa vào phiên đấu giá sau khi đã được kiểm định hợp lệ và có chứng thư. Ảnh sản phẩm là dữ liệu quan trọng phục vụ kiểm định và đối chiếu sau này. \\
+    \hline
+\end{longtable}
+\endgroup
+
+\subsection{Đặc tả use case UC-02: Tạo phiên đấu giá}
+\label{subsection:uc-create-auction}
+
+Use case này mô tả việc Người bán tạo phiên đấu giá từ một sản phẩm đã đủ điều kiện. Chức năng này liên kết trực tiếp giữa kết quả kiểm định sản phẩm và quá trình tổ chức phiên đấu giá công khai trên hệ thống.
+
+\begingroup
+\setlength{\parskip}{0pt}
+\fontsize{8}{9}\selectfont
+\setlength{\tabcolsep}{4pt}
+\setlength{\LTpre}{0.35\baselineskip}
+\setlength{\LTpost}{0.35\baselineskip}
+\renewcommand{\arraystretch}{1.05}
+\begin{longtable}{|>{\raggedright\arraybackslash}p{0.24\textwidth}|>{\raggedright\arraybackslash}p{0.66\textwidth}|}
+    \caption{Đặc tả use case UC-02: Tạo phiên đấu giá}
+    \label{tab:uc-create-auction} \\
+    \hline
+    \textbf{Mục} & \textbf{Nội dung} \\
+    \hline
+    \endfirsthead
+    \hline
+    \textbf{Mục} & \textbf{Nội dung} \\
+    \hline
+    \endhead
+    Mã use case & UC-02 \\
+    \hline
+    Tên use case & Tạo phiên đấu giá \\
+    \hline
+    Actor chính & Seller \\
+    \hline
+    Actor phụ & WoodCert Auction, Scheduler/System. \\
+    \hline
+    Mục tiêu & Seller tạo phiên đấu giá từ sản phẩm đã đủ điều kiện, cấu hình thời gian, giá khởi điểm, bước giá và tiền đặt cọc. \\
+    \hline
+    Tiền điều kiện & (i) Seller đã đăng nhập; (ii) Seller có quyền bán hàng; (iii) sản phẩm thuộc Seller; (iv) sản phẩm đã được kiểm định hợp lệ và đủ điều kiện đấu giá; (v) sản phẩm chưa nằm trong một phiên đấu giá đang hoạt động hoặc đang chờ mở; (vi) thời gian bắt đầu, thời gian kết thúc, giá khởi điểm, bước giá và tiền đặt cọc hợp lệ. \\
+    \hline
+    Hậu điều kiện & (i) Phiên đấu giá được tạo ở trạng thái chờ mở; (ii) phiên đấu giá được Scheduler/System theo dõi để tự động mở khi đến thời gian bắt đầu; (iii) người dùng có thể xem thông tin phiên theo phạm vi công khai phù hợp. \\
+    \hline
+    Luồng sự kiện chính & (i) Seller chọn sản phẩm đã đủ điều kiện đấu giá; (ii) Seller nhập thông tin phiên đấu giá; (iii) hệ thống kiểm tra quyền sở hữu sản phẩm; (iv) hệ thống kiểm tra điều kiện đấu giá của sản phẩm; (v) hệ thống kiểm tra tính hợp lệ của thời gian, giá khởi điểm, bước giá và tiền đặt cọc; (vi) Seller xác nhận tạo phiên; (vii) hệ thống tạo phiên đấu giá ở trạng thái chờ mở; (viii) hệ thống ghi nhận phiên để Scheduler/System tự động xử lý theo thời gian. \\
+    \hline
+    Luồng thay thế/ngoại lệ & Sản phẩm không thuộc Seller; sản phẩm chưa được kiểm định hợp lệ; sản phẩm đã có phiên đấu giá chưa kết thúc; thời gian bắt đầu hoặc kết thúc không hợp lệ; giá khởi điểm, bước giá hoặc tiền đặt cọc không hợp lệ. \\
+    \hline
+    Ghi chú nghiệp vụ & Scheduler/System chịu trách nhiệm mở phiên khi đến thời gian bắt đầu và đóng phiên khi hết thời gian. Seller chỉ được tạo phiên từ sản phẩm đủ điều kiện nhằm đảm bảo tính tin cậy của hàng hóa trước khi đấu giá. \\
+    \hline
+\end{longtable}
+\endgroup
+
+\subsection{Đặc tả use case UC-03: Đăng ký tham gia phiên đấu giá}
+\label{subsection:uc-register-auction}
+
+Use case này mô tả bước Bidder/Buyer đăng ký tham gia một phiên đấu giá. Điểm trọng tâm của chức năng là kiểm tra điều kiện tham gia và phong tỏa tiền đặt cọc trước khi người dùng được phép đặt giá.
+
+\begingroup
+\setlength{\parskip}{0pt}
+\fontsize{8}{9}\selectfont
+\setlength{\tabcolsep}{4pt}
+\setlength{\LTpre}{0.35\baselineskip}
+\setlength{\LTpost}{0.35\baselineskip}
+\renewcommand{\arraystretch}{1.05}
+\begin{longtable}{|>{\raggedright\arraybackslash}p{0.24\textwidth}|>{\raggedright\arraybackslash}p{0.66\textwidth}|}
+    \caption{Đặc tả use case UC-03: Đăng ký tham gia phiên đấu giá}
+    \label{tab:uc-register-auction} \\
+    \hline
+    \textbf{Mục} & \textbf{Nội dung} \\
+    \hline
+    \endfirsthead
+    \hline
+    \textbf{Mục} & \textbf{Nội dung} \\
+    \hline
+    \endhead
+    Mã use case & UC-03 \\
+    \hline
+    Tên use case & Đăng ký tham gia phiên đấu giá \\
+    \hline
+    Actor chính & Bidder/Buyer \\
+    \hline
+    Actor phụ & WoodCert Auction, hệ thống ví nội bộ. \\
+    \hline
+    Mục tiêu & Bidder/Buyer đăng ký tham gia một phiên đấu giá và bị phong tỏa tiền đặt cọc trước khi được phép đặt giá. \\
+    \hline
+    Tiền điều kiện & (i) Bidder/Buyer đã đăng nhập; (ii) phiên đấu giá tồn tại và đang cho phép đăng ký; (iii) người đăng ký không phải Seller của sản phẩm trong phiên; (iv) ví của người dùng có đủ số dư khả dụng để phong tỏa tiền đặt cọc; (v) người dùng chưa đăng ký phiên đó trước đó. \\
+    \hline
+    Hậu điều kiện & (i) Người dùng được ghi nhận là người tham gia phiên; (ii) tiền đặt cọc được phong tỏa trong ví; (iii) người dùng được phép đặt giá khi phiên chuyển sang trạng thái đang diễn ra. \\
+    \hline
+    Luồng sự kiện chính & (i) Bidder/Buyer xem chi tiết phiên đấu giá; (ii) Bidder/Buyer chọn đăng ký tham gia phiên; (iii) hệ thống kiểm tra trạng thái phiên và điều kiện đăng ký; (iv) hệ thống kiểm tra người dùng không phải Seller của phiên; (v) hệ thống kiểm tra số dư khả dụng trong ví; (vi) hệ thống phong tỏa tiền đặt cọc; (vii) hệ thống ghi nhận người dùng là người tham gia phiên; (viii) hệ thống thông báo đăng ký thành công. \\
+    \hline
+    Luồng thay thế/ngoại lệ & Phiên không tồn tại hoặc không cho phép đăng ký; người dùng là Seller của sản phẩm trong phiên; người dùng đã đăng ký phiên trước đó; ví không đủ số dư khả dụng; tài khoản bị hạn chế năng lực tham gia đấu giá. \\
+    \hline
+    Ghi chú nghiệp vụ & Tiền đặt cọc giúp ràng buộc trách nhiệm của người tham gia trước khi đặt giá. Người không đăng ký hợp lệ sẽ không được đặt giá trong phiên. \\
+    \hline
+\end{longtable}
+\endgroup
+
+\subsection{Đặc tả use case UC-04: Đặt giá realtime}
+\label{subsection:uc-place-bid}
+
+Use case này mô tả hành vi đặt giá trong một phiên đấu giá đang diễn ra. Đây là chức năng cốt lõi của hệ thống, đòi hỏi hệ thống kiểm tra điều kiện đặt giá, cập nhật giá hiện tại và ghi nhận lịch sử một cách nhất quán.
+
+\begingroup
+\setlength{\parskip}{0pt}
+\fontsize{8}{9}\selectfont
+\setlength{\tabcolsep}{4pt}
+\setlength{\LTpre}{0.35\baselineskip}
+\setlength{\LTpost}{0.35\baselineskip}
+\renewcommand{\arraystretch}{1.05}
+\begin{longtable}{|>{\raggedright\arraybackslash}p{0.24\textwidth}|>{\raggedright\arraybackslash}p{0.66\textwidth}|}
+    \caption{Đặc tả use case UC-04: Đặt giá realtime}
+    \label{tab:uc-place-bid} \\
+    \hline
+    \textbf{Mục} & \textbf{Nội dung} \\
+    \hline
+    \endfirsthead
+    \hline
+    \textbf{Mục} & \textbf{Nội dung} \\
+    \hline
+    \endhead
+    Mã use case & UC-04 \\
+    \hline
+    Tên use case & Đặt giá realtime \\
+    \hline
+    Actor chính & Bidder/Buyer \\
+    \hline
+    Actor phụ & WoodCert Auction, Scheduler/System. \\
+    \hline
+    Mục tiêu & Bidder/Buyer gửi lượt đặt giá trong phiên đang diễn ra; hệ thống kiểm tra điều kiện đặt giá, cập nhật giá hiện tại và ghi nhận lịch sử đặt giá theo thời gian thực. \\
+    \hline
+    Tiền điều kiện & (i) Bidder/Buyer đã đăng nhập; (ii) người dùng đã đăng ký tham gia phiên và tiền cọc đã được phong tỏa; (iii) phiên đấu giá đang diễn ra; (iv) giá đặt mới phải thỏa mãn bước giá tối thiểu so với giá hiện tại; (v) người dùng không phải Seller của phiên; (vi) người dùng không phải người đang giữ giá cao nhất nếu hệ thống không cho phép tự nâng giá liên tiếp. \\
+    \hline
+    Hậu điều kiện & (i) Lượt đặt giá hợp lệ được ghi nhận vào lịch sử; (ii) giá hiện tại và người giữ giá cao nhất được cập nhật; (iii) các bên theo dõi phiên nhận được thông tin giá mới; (iv) nếu đặt giá gần cuối phiên và chính sách cho phép, thời gian kết thúc phiên có thể được gia hạn. \\
+    \hline
+    Luồng sự kiện chính & (i) Bidder/Buyer nhập mức giá muốn đặt; (ii) hệ thống kiểm tra phiên còn đang diễn ra; (iii) hệ thống kiểm tra người dùng đã đăng ký tham gia; (iv) hệ thống kiểm tra người dùng không phải Seller và không vi phạm điều kiện đặt giá; (v) hệ thống kiểm tra mức giá mới theo bước giá tối thiểu; (vi) hệ thống ghi nhận lượt đặt giá hợp lệ; (vii) hệ thống cập nhật giá hiện tại và người giữ giá cao nhất; (viii) hệ thống cập nhật thông tin realtime cho các bên theo dõi phiên. \\
+    \hline
+    Luồng thay thế/ngoại lệ & Phiên chưa mở hoặc đã kết thúc; người dùng chưa đăng ký tham gia; giá đặt thấp hơn mức tối thiểu; người dùng đang là người giữ giá cao nhất; tài khoản bị hạn chế năng lực đặt giá; phiên bị đóng trong lúc người dùng gửi lượt đặt giá. \\
+    \hline
+    Ghi chú nghiệp vụ & Đây là use case cốt lõi của nghiệp vụ đấu giá realtime. Hệ thống cần đảm bảo mỗi lượt đặt giá được kiểm tra nhất quán để tránh sai lệch giá hiện tại. \\
+    \hline
+\end{longtable}
+\endgroup
+
+\subsection{Đặc tả use case UC-05: Thanh toán phần còn lại của đơn hàng}
+\label{subsection:uc-pay-order-remainder}
+
+Use case này mô tả nghĩa vụ thanh toán của người thắng phiên sau khi phiên đấu giá kết thúc thành công. Sau bước này, đơn hàng chuyển từ giai đoạn chờ thanh toán sang giai đoạn giao nhận.
+
+\begingroup
+\setlength{\parskip}{0pt}
+\fontsize{8}{9}\selectfont
+\setlength{\tabcolsep}{4pt}
+\setlength{\LTpre}{0.35\baselineskip}
+\setlength{\LTpost}{0.35\baselineskip}
+\renewcommand{\arraystretch}{1.05}
+\begin{longtable}{|>{\raggedright\arraybackslash}p{0.24\textwidth}|>{\raggedright\arraybackslash}p{0.66\textwidth}|}
+    \caption{Đặc tả use case UC-05: Thanh toán phần còn lại của đơn hàng}
+    \label{tab:uc-pay-order-remainder} \\
+    \hline
+    \textbf{Mục} & \textbf{Nội dung} \\
+    \hline
+    \endfirsthead
+    \hline
+    \textbf{Mục} & \textbf{Nội dung} \\
+    \hline
+    \endhead
+    Mã use case & UC-05 \\
+    \hline
+    Tên use case & Thanh toán phần còn lại của đơn hàng \\
+    \hline
+    Actor chính & Bidder/Buyer \\
+    \hline
+    Actor phụ & WoodCert Auction, hệ thống ví nội bộ, Seller. \\
+    \hline
+    Mục tiêu & Người thắng phiên thanh toán phần tiền còn lại sau khi đã trừ tiền đặt cọc, từ đó chuyển đơn hàng sang giai đoạn giao nhận. \\
+    \hline
+    Tiền điều kiện & (i) Bidder/Buyer đã đăng nhập; (ii) đơn hàng thuộc về người mua; (iii) đơn hàng đang ở trạng thái chờ thanh toán; (iv) đơn hàng chưa quá hạn thanh toán; (v) người mua có địa chỉ giao hàng hợp lệ; (vi) ví của người mua có đủ số dư khả dụng để thanh toán phần còn lại. \\
+    \hline
+    Hậu điều kiện & (i) Phần tiền còn lại được trừ từ ví người mua; (ii) đơn hàng chuyển sang trạng thái đã thanh toán; (iii) hệ thống tạo bản ghi chờ giao hàng; (iv) Seller có thể thực hiện xác nhận giao hàng. \\
+    \hline
+    Luồng sự kiện chính & (i) Bidder/Buyer mở danh sách đơn mua; (ii) Bidder/Buyer chọn đơn hàng cần thanh toán; (iii) hệ thống kiểm tra quyền sở hữu đơn hàng; (iv) hệ thống kiểm tra trạng thái đơn hàng và hạn thanh toán; (v) Bidder/Buyer chọn địa chỉ giao hàng; (vi) hệ thống tính số tiền còn lại cần thanh toán; (vii) hệ thống trừ tiền từ ví người mua và ghi nhận giao dịch; (viii) hệ thống cập nhật đơn hàng sang trạng thái đã thanh toán; (ix) hệ thống tạo bản ghi chờ giao hàng để Seller xử lý. \\
+    \hline
+    Luồng thay thế/ngoại lệ & Đơn hàng không thuộc về người mua; đơn hàng không ở trạng thái chờ thanh toán; đơn hàng đã quá hạn thanh toán; ví không đủ số dư; địa chỉ giao hàng không hợp lệ hoặc không thuộc người mua; nếu số tiền còn lại bằng 0, hệ thống có thể chuyển trạng thái thanh toán mà không cần trừ thêm tiền. \\
+    \hline
+    Ghi chú nghiệp vụ & Nếu người thắng không thanh toán đúng hạn, hệ thống xử lý hủy đơn và xử lý tiền cọc theo chính sách. Sau khi thanh toán thành công, giao dịch chuyển sang giai đoạn giao nhận. \\
+    \hline
+\end{longtable}
+\endgroup
+
+\subsection{Đặc tả use case UC-06: Mở tranh chấp}
+\label{subsection:uc-open-dispute}
+
+Use case này mô tả tình huống Buyer mở hồ sơ tranh chấp khi phát sinh lỗi sản phẩm, sai mô tả hoặc sự cố giao nhận. Chức năng này giúp hệ thống giữ lại ngữ cảnh giao dịch, bằng chứng và trao đổi giữa các bên để Admin có cơ sở xử lý.
+
+\begingroup
+\setlength{\parskip}{0pt}
+\fontsize{8}{9}\selectfont
+\setlength{\tabcolsep}{4pt}
+\setlength{\LTpre}{0.35\baselineskip}
+\setlength{\LTpost}{0.35\baselineskip}
+\renewcommand{\arraystretch}{1.05}
+\begin{longtable}{|>{\raggedright\arraybackslash}p{0.24\textwidth}|>{\raggedright\arraybackslash}p{0.66\textwidth}|}
+    \caption{Đặc tả use case UC-06: Mở tranh chấp}
+    \label{tab:uc-open-dispute} \\
+    \hline
+    \textbf{Mục} & \textbf{Nội dung} \\
+    \hline
+    \endfirsthead
+    \hline
+    \textbf{Mục} & \textbf{Nội dung} \\
+    \hline
+    \endhead
+    Mã use case & UC-06 \\
+    \hline
+    Tên use case & Mở tranh chấp \\
+    \hline
+    Actor chính & Bidder/Buyer \\
+    \hline
+    Actor phụ & Seller, Admin, WoodCert Auction, Cloudinary. \\
+    \hline
+    Mục tiêu & Buyer mở hồ sơ tranh chấp cho đơn hàng đang trong giai đoạn giao nhận khi phát sinh lỗi sản phẩm, sai mô tả hoặc sự cố giao nhận. \\
+    \hline
+    Tiền điều kiện & (i) Bidder/Buyer đã đăng nhập; (ii) đơn hàng thuộc về Buyer; (iii) đơn hàng đang trong giai đoạn giao nhận; (iv) Seller đã xác nhận giao hàng; (v) chưa có tranh chấp đang hoạt động cho đơn hàng đó; (vi) Buyer đã tải lên ít nhất một ảnh bằng chứng hợp lệ. \\
+    \hline
+    Hậu điều kiện & (i) Hồ sơ tranh chấp được tạo ở trạng thái mở; (ii) đơn hàng được đánh dấu đang tranh chấp; (iii) bằng chứng tranh chấp được gắn với hồ sơ tranh chấp; (iv) Seller và Admin có thể xem hồ sơ tranh chấp; (v) các bên có thể gửi tin nhắn trong hồ sơ tranh chấp khi hồ sơ còn hoạt động. \\
+    \hline
+    Luồng sự kiện chính & (i) Buyer tạo yêu cầu tải ảnh bằng chứng; (ii) Buyer tải ảnh bằng chứng lên hệ thống lưu trữ; (iii) hệ thống xác nhận ảnh bằng chứng hợp lệ; (iv) Buyer mở đơn hàng đang giao nhận và chọn mở tranh chấp; (v) Buyer nhập lý do, mô tả và chọn ảnh bằng chứng; (vi) hệ thống kiểm tra quyền sở hữu đơn hàng và trạng thái đơn hàng; (vii) hệ thống kiểm tra chưa có tranh chấp đang hoạt động; (viii) hệ thống tạo hồ sơ tranh chấp và gắn bằng chứng; (ix) hệ thống đánh dấu đơn hàng đang tranh chấp; (x) hệ thống thông báo mở tranh chấp thành công. \\
+    \hline
+    Luồng thay thế/ngoại lệ & Đơn hàng không thuộc về Buyer; đơn hàng chưa đến trạng thái được phép tranh chấp; Seller chưa xác nhận giao hàng; đã tồn tại tranh chấp đang hoạt động; Buyer không cung cấp ảnh bằng chứng; ảnh bằng chứng chưa được xác nhận, không thuộc Buyer hoặc không đúng loại media; hồ sơ tranh chấp đã đóng thì không được gửi thêm tin nhắn. \\
+    \hline
+    Ghi chú nghiệp vụ & Tranh chấp chỉ hỗ trợ hai kết quả xử lý toàn phần: Buyer thắng hoặc Seller thắng. Nếu Buyer thắng, hệ thống hoàn trả tiền cho Buyer và hủy giao nhận. Nếu Seller thắng, hệ thống hoàn tất đơn hàng và giải ngân cho Seller. Không mô tả hoàn tiền một phần trong phần này. \\
+    \hline
+\end{longtable}
+\endgroup
+
+\FloatBarrier
+
+\section{Yêu cầu phi chức năng}
+\label{section:2.4}
+
+Bên cạnh các chức năng nghiệp vụ đã mô tả, WoodCert Auction cần đáp ứng các yêu cầu chất lượng để đảm bảo hệ thống vận hành ổn định trong các luồng giao dịch có rủi ro cao. Các yêu cầu phi chức năng tập trung vào hiệu năng realtime, tính nhất quán dữ liệu, bảo mật và phân quyền, khả năng sẵn sàng, khả năng truy vết, khả năng sử dụng và bảo trì. Những yêu cầu này đặc biệt quan trọng vì hệ thống xử lý sản phẩm có giá trị lớn, tiền đặt cọc, ví nội bộ, phiên đấu giá realtime và tranh chấp phát sinh sau giao dịch.
+
+\subsection{Hiệu năng và thời gian phản hồi}
+\label{subsection:nfr-performance}
+
+Các thao tác thường xuyên như xem danh sách phiên đấu giá, xem chi tiết sản phẩm, xem ví và xem đơn hàng cần phản hồi trong thời gian hợp lý để người dùng có thể theo dõi giao dịch liên tục. Riêng luồng đặt giá realtime cần xử lý nhanh việc kiểm tra điều kiện đặt giá, ghi nhận lượt đặt và cập nhật giá hiện tại kịp thời cho các bên theo dõi, đồng thời tránh để các thao tác nặng ảnh hưởng đến phiên đấu giá đang diễn ra.
+
+\subsection{Tính nhất quán và toàn vẹn dữ liệu}
+\label{subsection:nfr-consistency}
+
+Các nghiệp vụ liên quan đến ví, đặt cọc, thanh toán, hoàn cọc, tịch thu cọc và giải ngân cần được xử lý nhất quán, không ghi nhận trùng lặp một giao dịch tài chính. Trạng thái phiên đấu giá, đơn hàng, giao nhận và tranh chấp cần chuyển đổi theo đúng điều kiện nghiệp vụ; chứng thư sản phẩm cần có cơ chế kiểm tra toàn vẹn bằng mã băm toàn vẹn SHA-256.
+
+\subsection{Bảo mật và phân quyền}
+\label{subsection:nfr-security}
+
+Người dùng chỉ được thao tác trên tài nguyên thuộc quyền của mình. Seller chỉ quản lý sản phẩm, phiên đấu giá và đơn bán thuộc mình; Bidder/Buyer chỉ thanh toán, xác nhận nhận hàng hoặc mở tranh chấp trên đơn hàng thuộc mình; Appraiser thực hiện nghiệp vụ kiểm định theo quyền được cấp; Admin thao tác các chức năng quản trị theo phân quyền tương ứng.
+
+\subsection{Khả năng sẵn sàng và tự động hóa}
+\label{subsection:nfr-availability}
+
+Scheduler/System cần hỗ trợ tự động mở phiên, kết thúc phiên, xử lý đơn quá hạn thanh toán và tự hoàn tất giao nhận theo điều kiện cấu hình. Các tác vụ tự động cần được tổ chức theo cách giảm phụ thuộc vào thao tác thủ công của Admin, đồng thời hạn chế việc một lỗi cục bộ làm gián đoạn toàn bộ nhóm nghiệp vụ theo thời gian.
+
+\subsection{Khả năng truy vết và kiểm toán}
+\label{subsection:nfr-auditability}
+
+Các thao tác quản trị quan trọng, lịch sử đặt giá, giao dịch ví, trạng thái đơn hàng, bằng chứng tranh chấp và tin nhắn tranh chấp cần có khả năng đối chiếu khi phát sinh sự cố. Ảnh kiểm định và bằng chứng tranh chấp cần được lưu đúng ngữ cảnh sử dụng để hỗ trợ quá trình giải quyết tranh chấp và kiểm tra lại hoạt động hệ thống.
+
+\subsection{Khả năng sử dụng và bảo trì}
+\label{subsection:nfr-usability-maintainability}
+
+Giao diện và luồng thao tác cần rõ ràng theo từng vai trò người dùng, đặc biệt trong các tình huống không đủ số dư, phiên đã kết thúc, đơn quá hạn hoặc trạng thái không hợp lệ. Hệ thống cũng cần được tổ chức theo các phân hệ nghiệp vụ như định danh, sản phẩm, kiểm định, chứng thư, đấu giá, tài chính, đơn hàng, giao nhận và tranh chấp để thuận lợi cho bảo trì và mở rộng.
+
+Các nhóm yêu cầu phi chức năng chính của hệ thống được tổng hợp trong Bảng~\ref{tab:non-functional-requirements}.
+
+\begin{table}[!htbp]
+    \centering
+    \caption{Tổng hợp yêu cầu phi chức năng của hệ thống WoodCert Auction}
+    \label{tab:non-functional-requirements}
+    \fontsize{8}{9}\selectfont
+    \setlength{\tabcolsep}{3pt}
+    \renewcommand{\arraystretch}{1.06}
+    \begin{tabular}{|>{\raggedright\arraybackslash}p{0.20\textwidth}|>{\raggedright\arraybackslash}p{0.37\textwidth}|>{\raggedright\arraybackslash}p{0.33\textwidth}|}
+        \hline
+        \textbf{Nhóm yêu cầu} & \textbf{Mô tả yêu cầu} & \textbf{Ý nghĩa đối với WoodCert Auction} \\
+        \hline
+        Hiệu năng và thời gian phản hồi & Các thao tác xem phiên, xem sản phẩm, xem ví và xem đơn hàng cần phản hồi trong thời gian hợp lý. Luồng đặt giá realtime cần xử lý nhanh, kiểm tra điều kiện đặt giá và cập nhật giá hiện tại kịp thời. & Bảo đảm trải nghiệm đấu giá liên tục, tránh tình trạng người dùng nhận thông tin giá chậm hoặc sai lệch trong phiên realtime. \\
+        \hline
+        Tính nhất quán và toàn vẹn dữ liệu & Ví, đặt cọc, thanh toán, hoàn cọc, tịch thu cọc và giải ngân cần được xử lý nhất quán; giao dịch tài chính không được ghi nhận trùng lặp; chứng thư có cơ chế kiểm tra toàn vẹn bằng mã băm toàn vẹn SHA-256. & Tránh sai lệch số dư ví và kết quả đấu giá, đồng thời bảo đảm các giao dịch sau đấu giá có thể đối chiếu. \\
+        \hline
+        Bảo mật và phân quyền & Người dùng chỉ thao tác trên tài nguyên thuộc quyền của mình. Các chức năng quản lý người dùng, xử lý tranh chấp, xem doanh thu và audit log cần được bảo vệ bằng phân quyền phù hợp. & Ngăn truy cập trái phép vào dữ liệu hoặc thao tác của người khác, bảo vệ các nghiệp vụ có rủi ro tài chính và quản trị. \\
+        \hline
+        Khả năng sẵn sàng và tự động hóa & Scheduler/System tự động mở phiên, kết thúc phiên, xử lý đơn quá hạn thanh toán và tự hoàn tất giao nhận theo điều kiện cấu hình; các tác vụ định kỳ cần hạn chế bỏ sót nghiệp vụ. & Giảm phụ thuộc vào thao tác thủ công của Admin và tránh các luồng theo thời gian bị treo trạng thái. \\
+        \hline
+        Khả năng truy vết và kiểm toán & Các thao tác quản trị, lịch sử đặt giá, giao dịch ví, trạng thái đơn hàng, bằng chứng và tin nhắn tranh chấp cần có khả năng đối chiếu; media được lưu đúng ngữ cảnh. & Hỗ trợ Admin giải quyết tranh chấp, kiểm tra hoạt động hệ thống và truy vết khi có sự cố. \\
+        \hline
+        Khả năng sử dụng và bảo trì & Luồng thao tác cần rõ ràng theo vai trò; thông báo lỗi cần dễ hiểu; hệ thống được tổ chức theo các phân hệ nghiệp vụ để thuận lợi bảo trì và mở rộng. & Giúp người dùng thao tác đúng quy trình và tạo nền tảng cho các mở rộng tương lai như trung tâm thông báo, hoàn tiền một phần hoặc tích hợp vận chuyển. \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\FloatBarrier
+
+Tổng kết lại, Chương 2 đã khảo sát hiện trạng, đối chiếu một số hệ thống tương tự và xác định các vấn đề cần giải quyết cho WoodCert Auction. Trên cơ sở đó, chương đã trình bày tổng quan chức năng, actor, use case tổng quát, use case phân rã, quy trình nghiệp vụ tổng quát, sáu use case tiêu biểu và các yêu cầu phi chức năng cần đảm bảo. Nội dung của chương là cơ sở để chuyển sang Chương 3, trong đó báo cáo trình bày thiết kế kiến trúc, thiết kế dữ liệu và thiết kế chi tiết hệ thống.
+
+\FloatBarrier
+
+\end{document}

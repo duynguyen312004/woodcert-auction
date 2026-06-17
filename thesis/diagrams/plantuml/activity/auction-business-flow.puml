@@ -1,0 +1,150 @@
+@startuml
+
+skinparam defaultFontName Arial
+skinparam backgroundColor White
+skinparam shadowing false
+skinparam linetype ortho
+skinparam ArrowColor Black
+
+skinparam activity {
+    BackgroundColor White
+    BorderColor Black
+    FontColor Black
+    FontSize 12
+}
+
+skinparam swimlane {
+    BorderColor Black
+    TitleBackgroundColor White
+    TitleFontColor Black
+}
+
+|Seller|
+start
+:Tạo sản phẩm nháp\nvà bổ sung thông tin, hình ảnh;
+:Gửi yêu cầu kiểm định;
+
+|Appraiser|
+:Tiếp nhận yêu cầu\nvà đánh giá sản phẩm;
+:Lập báo cáo thẩm định\nvà chốt kết quả kiểm định;
+
+|WoodCert Auction|
+if (Sản phẩm hợp lệ?) then ([hợp lệ])
+    :Cấp chứng thư số;
+    :Đánh dấu sản phẩm đủ điều kiện đấu giá;
+else ([không hợp lệ])
+    :Từ chối sản phẩm;
+    |Seller|
+    :Nhận kết quả kiểm định\nvà cập nhật lại sản phẩm nếu cần;
+    stop
+endif
+
+|Seller|
+:Tạo phiên đấu giá từ sản phẩm\nđã đủ điều kiện;
+
+|WoodCert Auction|
+:Ghi nhận phiên ở trạng thái chờ mở;
+
+|WoodCert Auction|
+:Scheduler tự động mở phiên đấu giá;
+
+|Bidder/Buyer|
+:Xem phiên đấu giá\nvà đăng ký tham gia;
+
+|WoodCert Auction|
+:Kiểm tra điều kiện tham gia\nvà số dư ví;
+
+if (Đủ số dư đặt cọc?) then ([đủ số dư])
+    :Phong tỏa tiền đặt cọc;
+    :Ghi nhận người tham gia phiên;
+else ([không đủ số dư])
+    |Bidder/Buyer|
+    :Nạp ví qua VNPay Sandbox;
+
+    |WoodCert Auction|
+    :Nhận callback thanh toán\nvà cập nhật số dư ví;
+    :Phong tỏa tiền đặt cọc;
+    :Ghi nhận người tham gia phiên;
+endif
+
+while (Phiên còn đang diễn ra?) is ([còn thời gian])
+    |Bidder/Buyer|
+    :Đặt giá realtime;
+
+    |WoodCert Auction|
+    :Kiểm tra phiên, bước giá\nvà tính hợp lệ lượt đặt;
+    :Ghi nhận lịch sử đặt giá\nvà cập nhật realtime;
+endwhile ([hết thời gian])
+
+|WoodCert Auction|
+:Scheduler tự động kết thúc phiên đấu giá;
+:Xác định kết quả phiên;
+
+if (Có người thắng?) then ([có người thắng])
+    :Hoàn cọc người thua\nvà giữ cọc người thắng;
+    :Tạo đơn hàng sau đấu giá;
+else ([không có người thắng])
+    :Đóng phiên không thành công;
+    :Hoàn tiền cọc nếu có;
+    stop
+endif
+
+|Bidder/Buyer|
+:Thanh toán phần tiền còn lại\ncủa đơn hàng;
+
+|WoodCert Auction|
+if (Thanh toán đúng hạn?) then ([đúng hạn])
+    :Xác nhận thanh toán\nvà tạo bản ghi chờ giao hàng;
+else ([quá hạn])
+    |WoodCert Auction|
+    :Scheduler phát hiện\nđơn hàng quá hạn thanh toán;
+    :Hủy đơn hàng;
+    :Xử lý tiền cọc quá hạn\ntheo chính sách;
+    stop
+endif
+
+|Seller|
+:Xác nhận giao hàng\nvà cập nhật thông tin giao hàng;
+
+|Bidder/Buyer|
+:Theo dõi giao hàng;
+
+if (Phát sinh tranh chấp?) then ([có tranh chấp])
+    :Mở tranh chấp\nvà tải ảnh bằng chứng;
+
+    |WoodCert Auction|
+    :Lưu bằng chứng\nvà đánh dấu đơn hàng đang tranh chấp;
+
+    |Seller|
+    :Phản hồi tranh chấp\nvà gửi tin nhắn nếu cần;
+
+    |Admin|
+    :Xem hồ sơ, bằng chứng\nvà trao đổi của hai bên;
+    :Ra phán quyết tranh chấp;
+
+    |WoodCert Auction|
+    if (Kết quả xử lý tranh chấp?) then ([Buyer thắng])
+        :Hoàn trả toàn bộ cho Buyer\nvà hủy giao nhận;
+        :Đóng hồ sơ tranh chấp;
+        stop
+    else ([Seller thắng])
+        :Hoàn tất đơn hàng\nvà giải ngân cho Seller;
+        :Đóng hồ sơ tranh chấp;
+        stop
+    endif
+
+else ([không có tranh chấp])
+    if (Buyer xác nhận nhận hàng?) then ([xác nhận])
+        :Xác nhận nhận hàng;
+
+        |WoodCert Auction|
+        :Hoàn tất đơn hàng\nvà giải ngân cho Seller;
+        stop
+    else ([quá hạn xác nhận])
+        |WoodCert Auction|
+        :Scheduler tự động hoàn tất giao nhận;
+        :Hoàn tất đơn hàng\nvà giải ngân cho Seller;
+        stop
+    endif
+endif
+@enduml

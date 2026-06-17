@@ -3,8 +3,12 @@ name: CI
 on:
   pull_request:
     branches: [main]
+    paths-ignore:
+      - 'thesis/**'
   push:
     branches: [main]
+    paths-ignore:
+      - 'thesis/**'
   workflow_dispatch:
 
 permissions:
