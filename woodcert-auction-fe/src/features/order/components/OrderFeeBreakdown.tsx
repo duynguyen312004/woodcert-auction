@@ -1,6 +1,7 @@
 import { formatDateTime, formatVND } from "@/shared/lib/format";
 import { cn } from "@/shared/lib/utils";
 
+import { DeadlineLabel } from "./DeadlineLabel";
 import { getOrderStatusText } from "../lib/order-labels";
 import type { OrderSummary } from "../types";
 
@@ -125,7 +126,12 @@ export function OrderFeeBreakdown({
       )}
       {order.fulfillment?.shipmentDeadline && (
         <OrderLine
-          label="Hạn giao hàng"
+          label={
+            <DeadlineLabel
+              label="Hạn xác nhận đã gửi hàng"
+              explanation="Seller phải xác nhận đã gửi hoặc bàn giao hàng cho đơn vị vận chuyển trước thời điểm này. Đây không phải hạn hàng phải đến tay Buyer."
+            />
+          }
           value={formatDateTime(order.fulfillment.shipmentDeadline)}
           lineClassName={lineClassName}
           labelClassName={labelClassName}
@@ -134,7 +140,12 @@ export function OrderFeeBreakdown({
       )}
       {order.fulfillment?.autoCompleteDeadline && (
         <OrderLine
-          label="Tự hoàn tất"
+          label={
+            <DeadlineLabel
+              label="Đơn tự động hoàn tất lúc"
+              explanation="Nếu Buyer không xác nhận nhận hàng hoặc mở tranh chấp trước thời điểm này, hệ thống sẽ hoàn tất đơn và thanh toán cho Seller."
+            />
+          }
           value={formatDateTime(order.fulfillment.autoCompleteDeadline)}
           lineClassName={lineClassName}
           labelClassName={labelClassName}
@@ -162,7 +173,7 @@ function OrderLine({
   labelClassName,
   valueClassName,
 }: {
-  label: string;
+  label: ReactNode;
   value: string;
   strong?: boolean;
   lineClassName?: string;
@@ -184,3 +195,4 @@ function OrderLine({
     </div>
   );
 }
+import type { ReactNode } from "react";

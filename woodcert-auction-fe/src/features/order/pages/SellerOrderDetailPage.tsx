@@ -23,6 +23,7 @@ import { Button } from "@/shared/ui/button";
 import { useNotification } from "@/shared/ui/notification";
 
 import { OrderFeeBreakdown } from "../components/OrderFeeBreakdown";
+import { DeadlineLabel } from "../components/DeadlineLabel";
 import { DisputeHistoryPanel } from "../components/DisputeHistoryPanel";
 import { ShippingConfirmationForm } from "../components/ShippingConfirmationForm";
 import { useOrderDetail, useOrderMutations } from "../hooks/useOrders";
@@ -56,10 +57,10 @@ export function SellerOrderDetailPage() {
         orderId: order.id,
         payload,
       });
-      notification.success("Đã xác nhận giao hàng");
+      notification.success("Đã xác nhận gửi hàng");
       void orderQuery.refetch();
     } catch (error) {
-      notification.error("Không thể xác nhận giao hàng", {
+      notification.error("Không thể xác nhận gửi hàng", {
         description: isApiError(error) ? error.message : "Vui lòng thử lại.",
       });
       throw error;
@@ -131,7 +132,7 @@ export function SellerOrderDetailPage() {
           <Panel title="Dòng thời gian" icon={<CalendarClock />}>
             <Timeline label="Tạo đơn" value={order.createdAt} />
             <Timeline label="Thanh toán" value={order.paidAt} />
-            <Timeline label="Bắt đầu giao" value={order.fulfillment?.shippedAt} />
+            <Timeline label="Xác nhận đã gửi hàng" value={order.fulfillment?.shippedAt} />
             <Timeline label="Người mua nhận hàng" value={order.fulfillment?.receivedAt} />
             <Timeline label="Hoàn tất" value={order.completedAt} />
             <Timeline label="Hủy đơn" value={order.canceledAt} />
@@ -176,7 +177,12 @@ export function SellerOrderDetailPage() {
               )}
               <InfoPair label="Mã vận đơn" value={order.fulfillment?.trackingCode ?? "—"} />
               <InfoPair
-                label="Hạn giao hàng"
+                label={
+                  <DeadlineLabel
+                    label="Hạn xác nhận đã gửi hàng"
+                    explanation="Bạn phải xác nhận đã gửi hoặc bàn giao hàng cho đơn vị vận chuyển trước thời điểm này. Đây không phải hạn hàng phải đến tay Buyer."
+                  />
+                }
                 value={
                   order.fulfillment?.shipmentDeadline
                     ? formatDateTime(order.fulfillment.shipmentDeadline)
@@ -186,11 +192,19 @@ export function SellerOrderDetailPage() {
             </div>
             {order.status === "PAID" && shipmentDeadlineExceeded && (
               <p className="mt-5 rounded-md border border-terracotta/25 bg-terracotta/10 px-3 py-3 text-sm font-semibold text-terracotta">
-                Đã quá hạn giao hàng. Hệ thống sẽ tự hủy đơn và hoàn đủ tiền cho Buyer.
+                Đã quá hạn xác nhận gửi hàng. Hệ thống sẽ tự hủy đơn và hoàn toàn bộ tiền cho Buyer.
               </p>
             )}
             {order.status === "PAID" && !shipmentDeadlineExceeded && (
               <div className="mt-5 border-t border-[#4e4637]/10 pt-4">
+                <p className="mb-4 rounded-md border border-brushed-brass/30 bg-brushed-brass/10 px-3 py-3 text-sm leading-relaxed text-ink-blue">
+                  Hãy xác nhận ngay sau khi bạn đã bàn giao hàng cho đơn vị vận chuyển hoặc bắt đầu
+                  tự giao. Nếu quá hạn, đơn sẽ bị hủy và toàn bộ tiền được hoàn cho Buyer.{" "}
+                  <Link to="/guide#order-deadlines" className="font-bold underline">
+                    Xem quy định
+                  </Link>
+                  .
+                </p>
                 <ShippingConfirmationForm
                   isPending={mutations.confirmShipping.isPending}
                   onSubmit={ship}
@@ -267,7 +281,7 @@ function Panel({ title, icon, children }: { title: string; icon: ReactNode; chil
   );
 }
 
-function InfoPair({ label, value }: { label: string; value: string }) {
+function InfoPair({ label, value }: { label: ReactNode; value: string }) {
   return (
     <div className="flex justify-between gap-4 border-b border-[#4e4637]/10 py-2.5 last:border-0">
       <span>{label}</span>

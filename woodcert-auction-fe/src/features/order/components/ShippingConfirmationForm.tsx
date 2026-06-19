@@ -97,7 +97,7 @@ export function ShippingConfirmationForm({
         ) : (
           <PackageCheck className="size-4" />
         )}
-        Xác nhận giao hàng
+        Xác nhận đã gửi hàng
       </Button>
     </div>
   );

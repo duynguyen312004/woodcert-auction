@@ -9,7 +9,7 @@ describe("ShippingConfirmationForm", () => {
     const onSubmit = vi.fn();
     render(<ShippingConfirmationForm onSubmit={onSubmit} />);
 
-    await userEvent.click(screen.getByRole("button", { name: /xác nhận giao hàng/i }));
+    await userEvent.click(screen.getByRole("button", { name: /xác nhận đã gửi hàng/i }));
 
     expect(screen.getByText(/cần nhập đơn vị vận chuyển và mã vận đơn/i)).toBeVisible();
     expect(onSubmit).not.toHaveBeenCalled();
@@ -21,7 +21,7 @@ describe("ShippingConfirmationForm", () => {
 
     await userEvent.type(screen.getByPlaceholderText(/đơn vị vận chuyển/i), "Viettel Post");
     await userEvent.type(screen.getByPlaceholderText(/mã vận đơn/i), "VT123");
-    await userEvent.click(screen.getByRole("button", { name: /xác nhận giao hàng/i }));
+    await userEvent.click(screen.getByRole("button", { name: /xác nhận đã gửi hàng/i }));
 
     await waitFor(() =>
       expect(onSubmit).toHaveBeenCalledWith({
@@ -37,7 +37,7 @@ describe("ShippingConfirmationForm", () => {
     render(<ShippingConfirmationForm onSubmit={onSubmit} />);
 
     await userEvent.click(screen.getByRole("button", { name: /tự giao/i }));
-    await userEvent.click(screen.getByRole("button", { name: /xác nhận giao hàng/i }));
+    await userEvent.click(screen.getByRole("button", { name: /xác nhận đã gửi hàng/i }));
 
     await waitFor(() =>
       expect(onSubmit).toHaveBeenCalledWith({

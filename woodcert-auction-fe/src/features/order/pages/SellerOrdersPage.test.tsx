@@ -83,7 +83,7 @@ describe("SellerOrdersPage", () => {
     );
 
     expect(screen.getByText("Tượng Thích Ca Mâu Ni")).toBeVisible();
-    expect(screen.getByText("Chờ seller giao hàng")).toBeVisible();
+    expect(screen.getByText("Chờ Seller gửi hàng")).toBeVisible();
     expect(screen.getByRole("link", { name: /chi tiết/i })).toBeVisible();
     expect(screen.queryByPlaceholderText(/mã vận/i)).not.toBeInTheDocument();
     expect(screen.queryByText("PENDING_SHIPMENT")).not.toBeInTheDocument();

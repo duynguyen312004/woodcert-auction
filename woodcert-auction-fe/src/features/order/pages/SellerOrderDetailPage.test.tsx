@@ -117,7 +117,13 @@ describe("SellerOrderDetailPage", () => {
     expect(screen.getByText("Tran Thi B")).toBeVisible();
     expect(screen.getByText(/165 Xã Đàn/)).toBeVisible();
 
-    await userEvent.click(screen.getByRole("button", { name: /xác nhận giao hàng/i }));
+    expect(screen.getByText(/nếu quá hạn, đơn sẽ bị hủy/i)).toBeVisible();
+    expect(screen.getByRole("link", { name: /xem quy định/i })).toHaveAttribute(
+      "href",
+      "/guide#order-deadlines",
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: /^xác nhận đã gửi hàng$/i }));
 
     expect(screen.getByText(/cần nhập đơn vị vận chuyển và mã vận đơn/i)).toBeVisible();
   });
@@ -146,7 +152,9 @@ describe("SellerOrderDetailPage", () => {
 
     renderPage();
 
-    expect(screen.getByText(/đã quá hạn giao hàng/i)).toBeVisible();
-    expect(screen.queryByRole("button", { name: /xác nhận giao hàng/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/đã quá hạn xác nhận gửi hàng/i)).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: /^xác nhận đã gửi hàng$/i }),
+    ).not.toBeInTheDocument();
   });
 });

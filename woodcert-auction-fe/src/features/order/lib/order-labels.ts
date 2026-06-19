@@ -2,16 +2,16 @@ import type { DeliveryMethod, FulfillmentStatus, OrderStatus } from "../types";
 
 const ORDER_STATUS_TEXT: Record<OrderStatus, string> = {
   PENDING_PAYMENT: "Chờ buyer thanh toán phần còn lại",
-  PAID: "Buyer đã thanh toán, chờ seller giao hàng",
-  FULFILLING: "Đang giao hàng",
+  PAID: "Buyer đã thanh toán, chờ Seller gửi hàng",
+  FULFILLING: "Đang vận chuyển",
   COMPLETED: "Đã hoàn tất",
   CANCELED: "Đã hủy",
   DISPUTED: "Đang có tranh chấp",
 };
 
 const FULFILLMENT_STATUS_TEXT: Record<FulfillmentStatus, string> = {
-  PENDING_SHIPMENT: "Chờ seller giao hàng",
-  SHIPPED: "Đang giao",
+  PENDING_SHIPMENT: "Chờ Seller gửi hàng",
+  SHIPPED: "Đang vận chuyển",
   DELIVERED: "Buyer đã nhận hàng",
   AUTO_COMPLETED: "Tự động hoàn tất",
   CANCELED: "Đã hủy vận chuyển",
@@ -24,7 +24,7 @@ const DELIVERY_METHOD_TEXT: Record<DeliveryMethod, string> = {
 
 const CANCEL_REASON_TEXT: Record<string, string> = {
   PAYMENT_DEADLINE_EXCEEDED: "Buyer quá hạn thanh toán",
-  SHIPMENT_DEADLINE_EXCEEDED: "Seller quá hạn giao hàng, hệ thống đã hoàn tiền",
+  SHIPMENT_DEADLINE_EXCEEDED: "Seller quá hạn xác nhận gửi hàng, hệ thống đã hoàn tiền",
   DISPUTE_BUYER_WINS: "Tranh chấp xử lý nghiêng về buyer",
 };
 

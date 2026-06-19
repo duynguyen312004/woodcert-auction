@@ -27,6 +27,7 @@ import { Button } from "@/shared/ui/button";
 import { useNotification } from "@/shared/ui/notification";
 
 import { DisputeHistoryPanel } from "../components/DisputeHistoryPanel";
+import { DeadlineLabel } from "../components/DeadlineLabel";
 import { OpenDisputeDialog } from "../components/OpenDisputeDialog";
 import { OrderFeeBreakdown } from "../components/OrderFeeBreakdown";
 import { PaymentAddressDialog } from "../components/PaymentAddressDialog";
@@ -160,18 +161,44 @@ export function BuyerOrderDetailPage() {
                 <Info label="Đơn vị" value={order.fulfillment?.carrierName ?? "—"} />
                 <Info label="Mã vận đơn" value={order.fulfillment?.trackingCode ?? "—"} />
                 <Info
-                  label="Bắt đầu giao"
+                  label="Seller xác nhận đã gửi lúc"
                   value={formatOptionalDate(order.fulfillment?.shippedAt)}
                 />
                 <Info
-                  label="Hạn Seller giao hàng"
+                  label={
+                    <DeadlineLabel
+                      label="Hạn Seller xác nhận đã gửi"
+                      explanation="Seller phải khai báo đã gửi hoặc bàn giao hàng cho đơn vị vận chuyển trước thời điểm này. Đây không phải hạn hàng phải đến tay bạn."
+                    />
+                  }
                   value={formatOptionalDate(order.fulfillment?.shipmentDeadline)}
                 />
                 <Info
-                  label="Tự hoàn tất"
+                  label={
+                    <DeadlineLabel
+                      label="Đơn tự động hoàn tất lúc"
+                      explanation="Nếu bạn không xác nhận nhận hàng hoặc mở tranh chấp trước thời điểm này, hệ thống sẽ hoàn tất đơn và thanh toán cho Seller."
+                    />
+                  }
                   value={formatOptionalDate(order.fulfillment?.autoCompleteDeadline)}
                 />
               </div>
+              {order.status === "FULFILLING" &&
+                order.fulfillment?.status === "SHIPPED" &&
+                order.fulfillment.autoCompleteDeadline && (
+                  <div className="mt-4 rounded-md border border-amber-700/30 bg-amber-50 px-4 py-3 text-sm leading-relaxed text-amber-950">
+                    <p className="font-bold">Hãy kiểm tra hàng trước thời điểm tự động hoàn tất</p>
+                    <p className="mt-1">
+                      Nếu chưa nhận được hàng hoặc hàng có vấn đề, hãy mở tranh chấp trước{" "}
+                      <strong>{formatDateTime(order.fulfillment.autoCompleteDeadline)}</strong>. Sau
+                      thời điểm này, đơn có thể tự hoàn tất và tiền sẽ được thanh toán cho Seller.{" "}
+                      <Link to="/guide#order-deadlines" className="font-bold underline">
+                        Xem quy định
+                      </Link>
+                      .
+                    </p>
+                  </div>
+                )}
               {order.shippingAddress && (
                 <p className="mt-4 border-t border-stone-300 pt-4 text-sm leading-relaxed text-stone-700">
                   {[order.shippingAddress.receiverName, order.shippingAddress.phoneNumber].join(
@@ -196,7 +223,7 @@ export function BuyerOrderDetailPage() {
           <Panel title="Timeline" icon={<RotateCcw />}>
             <Timeline label="Tạo đơn" value={order.createdAt} />
             <Timeline label="Thanh toán" value={order.paidAt} />
-            <Timeline label="Giao hàng" value={order.fulfillment?.shippedAt} />
+            <Timeline label="Seller xác nhận đã gửi" value={order.fulfillment?.shippedAt} />
             <Timeline label="Hoàn tiền" value={order.refundedAt} />
             <Timeline label="Hoàn tất" value={order.completedAt} />
             <Timeline label="Hủy đơn" value={order.canceledAt} />
@@ -330,7 +357,7 @@ function Panel({ title, icon, children }: { title: string; icon: ReactNode; chil
   );
 }
 
-function Info({ label, value }: { label: string; value: string }) {
+function Info({ label, value }: { label: ReactNode; value: string }) {
   return (
     <div className="rounded-md border border-stone-300 bg-[#e9e2d6] px-3 py-2">
       <p className="text-xs font-bold uppercase tracking-wide text-stone-500">{label}</p>
