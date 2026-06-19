@@ -77,6 +77,8 @@ services:
       VNPAY_RETURN_URL: https://${APP_DOMAIN:?APP_DOMAIN is required}/api/v1/wallets/vnpay/return
       VNPAY_FE_RETURN_URL: https://${APP_DOMAIN:?APP_DOMAIN is required}/wallet/deposit/result
       VNPAY_CONFIRM_ON_RETURN_ENABLED: "true"
+      FULFILLMENT_SHIPMENT_DEADLINE: ${FULFILLMENT_SHIPMENT_DEADLINE:-PT72H}
+      FULFILLMENT_SHIPMENT_DEADLINE_CRON: ${FULFILLMENT_SHIPMENT_DEADLINE_CRON:-0 */1 * * * *}
     ports:
       - "127.0.0.1:${BACKEND_HOST_PORT:-8080}:8080"
     healthcheck:

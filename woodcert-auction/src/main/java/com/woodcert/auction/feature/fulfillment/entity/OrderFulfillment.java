@@ -16,6 +16,7 @@ import java.time.Instant;
         @Index(name = "idx_order_fulfillments_seller", columnList = "seller_id"),
         @Index(name = "idx_order_fulfillments_buyer", columnList = "buyer_id"),
         @Index(name = "idx_order_fulfillments_status", columnList = "status"),
+        @Index(name = "idx_order_fulfillments_shipment_deadline", columnList = "status,shipment_deadline"),
         @Index(name = "idx_order_fulfillments_auto_deadline", columnList = "auto_complete_deadline")
 })
 public class OrderFulfillment extends BaseEntity {
@@ -36,6 +37,9 @@ public class OrderFulfillment extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 30)
     private FulfillmentStatus status;
+
+    @Column(name = "shipment_deadline")
+    private Instant shipmentDeadline;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "delivery_method", length = 30)

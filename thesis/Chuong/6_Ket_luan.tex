@@ -1,12 +1,52 @@
 \documentclass[../DoAn.tex]{subfiles}
 \begin{document}
 \section{Kết luận}
-Sinh viên so sánh kết quả nghiên cứu hoặc sản phẩm của mình với các nghiên cứu hoặc sản phẩm tương tự.
+Hệ thống WoodCert Auction được xây dựng dựa trên cơ sở khảo sát và phân tích các nền tảng đấu giá trực tuyến phổ biến như eBay và Catawiki. So với các hệ thống thương mại này, WoodCert Auction tập trung vào việc hỗ trợ giải quyết một số thách thức đặc thù trong lĩnh vực giao dịch gỗ mỹ nghệ thông qua việc tích hợp các quy trình: thẩm định chất lượng sản phẩm trước khi đưa vào đấu giá, quản lý đặt cọc trước phiên, ví nội bộ, áp dụng cơ chế tự động gia hạn thời gian (anti-sniping) và quản lý hồ sơ tranh chấp kèm lưu trữ bằng chứng. Trong phạm vi đồ án, hệ thống chủ yếu phục vụ mục tiêu học tập, nghiên cứu và kiểm chứng các giải pháp kỹ thuật được đề xuất, chưa hướng tới quy mô thương mại thực tế hoặc tích hợp sâu với các dịch vụ logistics và thanh toán thực tế của các bên thứ ba.
 
-Sinh viên phân tích trong suốt quá trình thực hiện ĐATN, mình đã làm được gì, chưa làm được gì, các đóng góp nổi bật là gì, và tổng hợp những bài học kinh nghiệm rút ra nếu có.
+Trong quá trình thực hiện đề tài, một số kết quả kỹ thuật đã được xây dựng; các luồng trọng yếu được đối chiếu bằng mã nguồn và kiểm thử tự động trong phạm vi dự án, bao gồm:
+\begin{itemize}
+    \item \textbf{Kiến trúc Modular Monolith:} Áp dụng mô hình kiến trúc nguyên khối phân mô-đun để tổ chức mã nguồn theo các ranh giới nghiệp vụ trong cùng một ứng dụng triển khai. Cách tổ chức này hỗ trợ phân tách trách nhiệm ở mức mã nguồn, nhưng không đồng nghĩa các mô-đun độc lập về tiến trình hoặc hạ tầng như kiến trúc microservices.
+    \item \textbf{Quản lý trạng thái lai (Hybrid Redis + MySQL):} Sử dụng MySQL để lưu trữ bền vững và Redis làm nguồn trạng thái runtime của phiên \texttt{ACTIVE}. Thiết kế này giảm số thao tác tranh chấp trực tiếp trên MySQL trong luồng đặt giá; đồ án chưa thực hiện benchmark tải để kết luận định lượng về mức cải thiện hiệu năng.
+    \item \textbf{Xử lý đặt giá nguyên tử qua Lua Script:} Triển khai các logic xác thực điều kiện đặt giá và cập nhật trạng thái phiên đấu giá ngay trên Redis thông qua cơ chế thực thi Lua Script đơn luồng, góp phần giảm thiểu các nguy cơ tranh chấp dữ liệu (race condition) và hỗ trợ tính nguyên tử của thao tác đặt giá.
+    \item \textbf{Cơ chế tự động gia hạn thời gian (Anti-sniping):} Thiết lập logic tự động cộng thêm thời gian hoạt động của phiên khi có lượt đặt giá hợp lệ xuất hiện trong những giây cuối cùng trước khi kết thúc, giúp giảm thiểu rủi ro đầu cơ từ hành vi đặt giá giây cuối và hỗ trợ tính công bằng cho người tham gia.
+    \item \textbf{Ví nội bộ và giao dịch lũy đẳng:} Xây dựng phân hệ ví nội bộ với cơ chế ghi nhận giao dịch lũy đẳng dựa trên \texttt{operation\_key}, kết hợp giải pháp khóa tối ưu (Optimistic Locking) ở tầng dữ liệu bền vững và Spring Transaction Synchronization, góp phần ngăn ngừa lỗi trừ tiền trùng lặp và hỗ trợ duy trì tính nhất quán số dư ví.
+    \item \textbf{Mã vân tay SHA-256 (Integrity Fingerprint):} Áp dụng SHA-256 lên payload cốt lõi của báo cáo thẩm định để lưu dấu vân tay tại thời điểm phê duyệt. Phiên bản hiện tại chưa tự động tính lại và so sánh mã băm khi truy vấn chứng thư.
+    \item \textbf{Quy trình nghiệp vụ liên kết tự động:} Các Scheduler hỗ trợ vận hành vòng đời phiên đấu giá, tạo đơn hàng từ phiên thắng cuộc, xử lý quá hạn thanh toán và quá hạn giao hàng. Đối với đơn đã thanh toán, fulfillment có deadline mặc định 72 giờ; nếu người bán không gửi hàng đúng hạn, hệ thống tự động hủy đơn và hoàn toàn bộ tiền cọc cùng tiền hàng cho người mua.
+\end{itemize}
+
+Mặc dù đã xây dựng và kiểm chứng được các luồng nghiệp vụ chính, hệ thống vẫn tồn tại một số điểm hạn chế cần được ghi nhận:
+\begin{itemize}
+    \item \textbf{Tính xác thực của chứng thư:} Mã SHA-256 hiện là dấu vân tay được lưu cùng báo cáo, chưa có luồng tự động đối chiếu lại, chưa áp dụng chữ ký số hoặc hạ tầng khóa công khai (PKI), và không bảo đảm chống chối bỏ. Độ tin cậy của thông tin ban đầu vẫn phụ thuộc vào năng lực của Thẩm định viên và quy trình kiểm tra ngoài phần mềm.
+    \item \textbf{Quy chế phạt đối với người bán:} Hệ thống đã bảo vệ người mua bằng deadline giao hàng, hủy đơn và hoàn tiền tự động khi quá hạn, nhưng chưa có cơ chế ký quỹ, phạt tài chính hoặc khấu trừ điểm uy tín trực tiếp đối với người bán.
+    \item \textbf{Hạn chế của hệ thống thông báo:} Chưa có Notification Center lưu vết bền vững trên giao diện. Toast chỉ tồn tại tức thời; email hiện chủ yếu phục vụ các luồng định danh tài khoản, chưa phải kênh thông báo nghiệp vụ đầy đủ.
+    \item \textbf{Hạn chế của kênh thanh toán:} Tích hợp ví nội bộ mới dừng lại ở việc kết nối với môi trường thử nghiệm (Sandbox) của VNPay cho chiều nạp tiền, chưa hỗ trợ quy trình rút tiền về tài khoản ngân hàng cũng như cơ chế đối soát tài chính hai chiều tự động.
+    \item \textbf{Hạn chế trong phân xử tranh chấp:} Hồ sơ tranh chấp được giao diện polling lại theo chu kỳ 10 giây khi đang hoạt động, chưa có kênh chat WebSocket thời gian thực và chưa hiện thực hóa bằng chứng video đóng gói trong luồng nghiệp vụ.
+    \item \textbf{Sai lệch tạm thời giữa Redis và MySQL:} Sau khi Redis chấp nhận lượt đặt giá, lịch sử và snapshot được ghi sang MySQL theo cơ chế best-effort. Sự cố MySQL có thể làm dữ liệu hai phía tạm thời không khớp; scheduler có thể sửa snapshot nhưng không tái tạo bản ghi lịch sử bid đã ghi thất bại.
+    \item \textbf{Khả năng mở rộng:} Kiến trúc hiện tại phù hợp phạm vi đồ án, nhưng chưa có kết quả benchmark tải hoặc kiểm thử dung lượng production để xác lập giới hạn mở rộng. Việc tối ưu tài nguyên hay tách dịch vụ cần dựa trên số liệu vận hành thay vì xem là yêu cầu mặc định.
+\end{itemize}
+
+Quá trình phân tích, thiết kế và phát triển hệ thống WoodCert Auction mang lại một số bài học kinh nghiệm thiết thực cho tác giả:
+\begin{itemize}
+    \item \textbf{Thiết kế ranh giới lưu trữ và cơ chế khôi phục:} Khi Redis giữ trạng thái runtime còn MySQL lưu dữ liệu bền vững, hệ thống cần xác định rõ thứ tự ghi, khả năng sai lệch, log cảnh báo và giới hạn của tác vụ sửa chữa; chỉ tách vai trò lưu trữ là chưa đủ để khẳng định tính nhất quán.
+    \item \textbf{Vai trò của thiết kế lũy đẳng:} Trong các hệ thống có liên quan đến giao dịch tài chính, việc thiết kế các thao tác biến động số dư theo nguyên lý lũy đẳng kết hợp khóa dữ liệu ở mức độ phù hợp là yếu tố cần thiết để ngăn ngừa rủi ro sai lệch dữ liệu do các sự cố mạng hoặc yêu cầu gửi trùng lặp.
+    \item \textbf{Tầm quan trọng của thiết kế nghiệp vụ:} Việc xây dựng mô hình nghiệp vụ và xác định rõ ràng các trạng thái chuyển đổi của phiên đấu giá, đơn hàng và các giao dịch tài chính có vai trò quan trọng trong việc giảm thiểu sai sót, giúp phát hiện sớm các xung đột logic và tăng tính nhất quán của hệ thống trong quá trình vận hành.
+\end{itemize}
 
 \section{Hướng phát triển}
-Trong phần này, sinh viên trình bày định hướng công việc trong tương lai để hoàn thiện sản phẩm hoặc nghiên cứu của mình.
+Để hoàn thiện và mở rộng hệ thống WoodCert Auction, các công việc phát triển trong tương lai được định hướng tập trung vào hai nhóm nhiệm vụ chính:
 
-Trước tiên, sinh viên trình bày các công việc cần thiết để hoàn thiện các chức năng/nhiệm vụ đã làm. Sau đó sinh viên phân tích các hướng đi mới cho phép cải thiện và nâng cấp các chức năng/nhiệm vụ đã làm.
+\subsection{Hoàn thiện các chức năng hiện có}
+\begin{itemize}
+    \item \textbf{Bổ sung chế tài đối với người bán:} Trên nền deadline giao hàng và hoàn tiền tự động đã triển khai, nghiên cứu cơ chế ký quỹ, trích khấu số dư hoặc điểm uy tín cho người bán vi phạm; quy tắc cần xác định rõ điều kiện miễn trừ và quy trình khiếu nại.
+    \item \textbf{Xây dựng trung tâm thông báo tập trung:} Hiện thực hóa phân hệ Notification Center để lưu trữ và hiển thị các thông báo nghiệp vụ (biến động số dư, trạng thái đơn hàng, kết quả đấu giá) trực tiếp trên giao diện tài khoản người dùng, kết hợp với các giải pháp gửi thông báo đẩy (push notification) qua trình duyệt.
+    \item \textbf{Hoàn thiện kênh thanh toán và đối soát:} Tích hợp cổng thanh toán thực tế hỗ trợ đầy đủ quy trình rút tiền tự động từ ví nội bộ về tài khoản ngân hàng của người dùng, đồng thời thiết lập cơ chế đối soát tài chính (financial reconciliation) định kỳ giữa ví hệ thống và cổng thanh toán để tăng tính minh bạch.
+\end{itemize}
+
+\subsection{Mở rộng hệ thống}
+\begin{itemize}
+    \item \textbf{Áp dụng chữ ký số và hạ tầng khóa công khai (PKI):} Nghiên cứu tích hợp cơ chế chữ ký số để Chuyên gia kiểm định ký số trực tiếp lên các báo cáo thẩm định gỗ, hỗ trợ nâng cao giá trị xác thực và khả năng chống chối bỏ cho các hồ sơ chứng thư.
+    \item \textbf{Tích hợp API dịch vụ logistics và theo dõi hành trình:} Kết nối hệ thống với các đơn vị vận chuyển bên thứ ba để tự động tính toán chi phí giao hàng dựa trên khoảng cách thực tế, đồng thời đồng bộ hóa trạng thái giao nhận (Shipment Tracking) gần thời gian thực hoặc theo chu kỳ về đơn hàng trên hệ thống.
+    \item \textbf{Xây dựng kênh chat realtime hỗ trợ xử lý tranh chấp:} Nâng cấp phân hệ tranh chấp bằng việc áp dụng giao thức WebSocket kết hợp STOMP để tạo kênh trò chuyện trực tuyến, hỗ trợ người mua, người bán và quản trị viên trao đổi thông tin nhanh chóng và trực quan hơn.
+    \item \textbf{Triển khai giám sát hệ thống (Monitoring và Observability):} Thiết lập các công cụ giám sát hiệu năng cho Redis, MySQL cùng các dịch vụ nghiệp vụ chính, nhằm thu thập các chỉ số vận hành, hỗ trợ theo dõi hiệu năng hệ thống và chủ động phát hiện sớm các lỗi hoặc hành vi bất thường trong quá trình vận hành thực tế.
+\end{itemize}
 \end{document}

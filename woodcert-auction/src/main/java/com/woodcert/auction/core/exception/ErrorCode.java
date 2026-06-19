@@ -93,6 +93,7 @@ public enum ErrorCode {
     ORDER_NOT_OWNED(403, "You do not own this order"),
     ORDER_INVALID_STATUS(400, "Order status does not allow this action"),
     ORDER_PAYMENT_DEADLINE_EXCEEDED(400, "Payment deadline has been exceeded"),
+    ORDER_SHIPMENT_DEADLINE_EXCEEDED(400, "Shipment deadline has been exceeded"),
     ORDER_SHIPPING_ADDRESS_NOT_FOUND(404, "Shipping address not found"),
 
     // --- Admin ---

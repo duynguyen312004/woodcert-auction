@@ -23,6 +23,25 @@ public class FulfillmentScheduler {
     private final FulfillmentService fulfillmentService;
     private final FulfillmentProperties fulfillmentProperties;
 
+    @Scheduled(cron = "${fulfillment.shipment-deadline-cron:0 */1 * * * *}")
+    public void cancelOverdueShipments() {
+        if (!fulfillmentProperties.isSchedulerEnabled()) {
+            return;
+        }
+        var ids = fulfillmentRepository.findOverdueShipmentIds(
+                FulfillmentStatus.PENDING_SHIPMENT,
+                OrderStatus.PAID,
+                Instant.now(),
+                PageRequest.of(0, BATCH_SIZE));
+        for (Long id : ids) {
+            try {
+                fulfillmentService.cancelOverdueShipment(id);
+            } catch (Exception ex) {
+                log.error("Failed to cancel overdue shipment fulfillment {}: {}", id, ex.getMessage());
+            }
+        }
+    }
+
     @Scheduled(cron = "${fulfillment.auto-complete-cron:0 */5 * * * *}")
     public void autoCompleteOverdueFulfillments() {
         if (!fulfillmentProperties.isSchedulerEnabled()) {

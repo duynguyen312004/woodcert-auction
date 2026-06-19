@@ -40,6 +40,7 @@ const order = {
   fulfillment: {
     id: 17,
     status: "PENDING_SHIPMENT",
+    shipmentDeadline: "2026-06-11T10:13:00Z",
     deliveryMethod: null,
     carrierName: null,
     trackingCode: null,

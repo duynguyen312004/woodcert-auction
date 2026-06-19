@@ -249,6 +249,32 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
+    public boolean cancelForShipmentDeadline(Long orderId) {
+        OrderEntity order = orderRepository.findByIdForUpdate(orderId).orElse(null);
+        if (order == null || order.getStatus() != OrderStatus.PAID) {
+            return false;
+        }
+
+        BigDecimal refundAmount = refundCalculator.fullBuyerRefundAmount(order);
+        walletService.refundOrder(
+                order.getBuyerId(),
+                FinanceOperationKeys.orderShipmentDeadlineRefund(order.getId()),
+                refundAmount,
+                order.getId());
+
+        Instant now = Instant.now();
+        order.setStatus(OrderStatus.CANCELED);
+        order.setCanceledAt(now);
+        order.setCancelReason("SHIPMENT_DEADLINE_EXCEEDED");
+        order.setBuyerRefundAmount(refundAmount);
+        order.setRefundedAt(now);
+        OrderEntity saved = orderRepository.save(order);
+        adapterFor(saved.getSourceType()).onShipmentCanceled(saved);
+        return true;
+    }
+
+    @Override
+    @Transactional
     public void markFulfilling(String sellerId, Long orderId) {
         OrderEntity order = getSellerOrderForUpdate(orderId, sellerId);
         if (order.getStatus() != OrderStatus.PAID) {

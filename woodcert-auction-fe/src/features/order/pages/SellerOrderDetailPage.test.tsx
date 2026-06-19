@@ -70,6 +70,7 @@ const order = {
   fulfillment: {
     id: 17,
     status: "PENDING_SHIPMENT",
+    shipmentDeadline: "2099-06-11T10:13:00Z",
     deliveryMethod: null,
     carrierName: null,
     trackingCode: null,
@@ -119,5 +120,33 @@ describe("SellerOrderDetailPage", () => {
     await userEvent.click(screen.getByRole("button", { name: /xác nhận giao hàng/i }));
 
     expect(screen.getByText(/cần nhập đơn vị vận chuyển và mã vận đơn/i)).toBeVisible();
+  });
+
+  it("hides shipping form and warns when the deadline has passed", () => {
+    vi.mocked(useOrderDetail).mockReturnValue({
+      data: {
+        ...order,
+        fulfillment: {
+          ...order.fulfillment,
+          shipmentDeadline: "2020-06-11T10:13:00Z",
+        },
+      },
+      isPending: false,
+      isError: false,
+      isFetching: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useOrderDetail>);
+    vi.mocked(useDisputeHistory).mockReturnValue({
+      data: [],
+      isPending: false,
+    } as unknown as ReturnType<typeof useDisputeHistory>);
+    vi.mocked(useOrderMutations).mockReturnValue({
+      confirmShipping: { mutateAsync: vi.fn(), isPending: false },
+    } as unknown as ReturnType<typeof useOrderMutations>);
+
+    renderPage();
+
+    expect(screen.getByText(/đã quá hạn giao hàng/i)).toBeVisible();
+    expect(screen.queryByRole("button", { name: /xác nhận giao hàng/i })).not.toBeInTheDocument();
   });
 });

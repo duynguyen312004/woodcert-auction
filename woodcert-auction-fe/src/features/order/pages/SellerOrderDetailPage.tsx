@@ -17,6 +17,7 @@ import { Link, useParams } from "react-router";
 import { useDisputeHistory } from "@/features/dispute";
 import { isApiError } from "@/shared/api/errors";
 import { SELLER_PATHS } from "@/shared/constants/routes";
+import { useServerNow } from "@/shared/hooks/useServerNow";
 import { formatDateTime } from "@/shared/lib/format";
 import { Button } from "@/shared/ui/button";
 import { useNotification } from "@/shared/ui/notification";
@@ -30,6 +31,7 @@ import {
   getDeliveryMethodText,
   getFulfillmentStatusText,
   getOrderStatusText,
+  isShipmentDeadlineExceeded,
 } from "../lib/order-labels";
 import type { ConfirmShippingPayload, OrderBuyerSummary, OrderShippingAddress } from "../types";
 
@@ -44,6 +46,7 @@ export function SellerOrderDetailPage() {
   const disputeQuery = useDisputeHistory(orderId);
   const mutations = useOrderMutations();
   const notification = useNotification();
+  const serverNow = useServerNow();
   const order = orderQuery.data;
 
   const ship = async (payload: ConfirmShippingPayload) => {
@@ -69,6 +72,10 @@ export function SellerOrderDetailPage() {
   if (orderQuery.isPending || !order) {
     return <OrderState title="Đang tải chi tiết đơn" loading />;
   }
+  const shipmentDeadlineExceeded = isShipmentDeadlineExceeded(
+    order.fulfillment?.shipmentDeadline,
+    serverNow,
+  );
 
   return (
     <div className="flex h-full flex-col bg-warm-ivory">
@@ -168,8 +175,21 @@ export function SellerOrderDetailPage() {
                 <InfoPair label="Đơn vị" value={order.fulfillment.carrierName} />
               )}
               <InfoPair label="Mã vận đơn" value={order.fulfillment?.trackingCode ?? "—"} />
+              <InfoPair
+                label="Hạn giao hàng"
+                value={
+                  order.fulfillment?.shipmentDeadline
+                    ? formatDateTime(order.fulfillment.shipmentDeadline)
+                    : "—"
+                }
+              />
             </div>
-            {order.status === "PAID" && (
+            {order.status === "PAID" && shipmentDeadlineExceeded && (
+              <p className="mt-5 rounded-md border border-terracotta/25 bg-terracotta/10 px-3 py-3 text-sm font-semibold text-terracotta">
+                Đã quá hạn giao hàng. Hệ thống sẽ tự hủy đơn và hoàn đủ tiền cho Buyer.
+              </p>
+            )}
+            {order.status === "PAID" && !shipmentDeadlineExceeded && (
               <div className="mt-5 border-t border-[#4e4637]/10 pt-4">
                 <ShippingConfirmationForm
                   isPending={mutations.confirmShipping.isPending}

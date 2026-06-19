@@ -24,6 +24,7 @@ const DELIVERY_METHOD_TEXT: Record<DeliveryMethod, string> = {
 
 const CANCEL_REASON_TEXT: Record<string, string> = {
   PAYMENT_DEADLINE_EXCEEDED: "Buyer quá hạn thanh toán",
+  SHIPMENT_DEADLINE_EXCEEDED: "Seller quá hạn giao hàng, hệ thống đã hoàn tiền",
   DISPUTE_BUYER_WINS: "Tranh chấp xử lý nghiêng về buyer",
 };
 
@@ -41,4 +42,13 @@ export function getDeliveryMethodText(method: DeliveryMethod | null | undefined)
 
 export function getCancelReasonText(reason: string | null | undefined) {
   return reason ? (CANCEL_REASON_TEXT[reason] ?? reason) : "Không có ghi chú";
+}
+
+export function isShipmentDeadlineExceeded(
+  deadline: string | null | undefined,
+  nowEpochMs = Date.now(),
+) {
+  if (!deadline) return false;
+  const deadlineEpochMs = Date.parse(deadline);
+  return Number.isFinite(deadlineEpochMs) && deadlineEpochMs <= nowEpochMs;
 }

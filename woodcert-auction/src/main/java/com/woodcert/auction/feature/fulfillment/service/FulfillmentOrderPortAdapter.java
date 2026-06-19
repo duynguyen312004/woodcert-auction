@@ -2,6 +2,7 @@ package com.woodcert.auction.feature.fulfillment.service;
 
 import com.woodcert.auction.feature.fulfillment.entity.FulfillmentStatus;
 import com.woodcert.auction.feature.fulfillment.entity.OrderFulfillment;
+import com.woodcert.auction.feature.fulfillment.config.FulfillmentProperties;
 import com.woodcert.auction.feature.fulfillment.repository.FulfillmentRepository;
 import com.woodcert.auction.feature.order.entity.OrderEntity;
 import com.woodcert.auction.feature.order.service.fulfillment.OrderFulfillmentPort;
@@ -14,12 +15,14 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.time.Instant;
 
 @Component
 @RequiredArgsConstructor
 public class FulfillmentOrderPortAdapter implements OrderFulfillmentPort {
 
     private final FulfillmentRepository fulfillmentRepository;
+    private final FulfillmentProperties fulfillmentProperties;
 
     @Override
     @Transactional
@@ -32,6 +35,8 @@ public class FulfillmentOrderPortAdapter implements OrderFulfillmentPort {
         fulfillment.setBuyerId(order.getBuyerId());
         fulfillment.setSellerId(order.getSellerId());
         fulfillment.setStatus(FulfillmentStatus.PENDING_SHIPMENT);
+        Instant deadlineBase = order.getPaidAt() != null ? order.getPaidAt() : Instant.now();
+        fulfillment.setShipmentDeadline(deadlineBase.plus(fulfillmentProperties.getShipmentDeadline()));
         fulfillmentRepository.save(fulfillment);
     }
 
@@ -59,6 +64,7 @@ public class FulfillmentOrderPortAdapter implements OrderFulfillmentPort {
                 fulfillment.getId(),
                 fulfillment.getOrderId(),
                 fulfillment.getStatus().name(),
+                fulfillment.getShipmentDeadline(),
                 fulfillment.getDeliveryMethod() != null ? fulfillment.getDeliveryMethod().name() : null,
                 fulfillment.getCarrierName(),
                 fulfillment.getTrackingCode(),

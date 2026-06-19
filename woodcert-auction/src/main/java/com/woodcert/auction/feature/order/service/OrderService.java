@@ -31,6 +31,8 @@ public interface OrderService {
 
     boolean cancelOverduePayment(Long orderId);
 
+    boolean cancelForShipmentDeadline(Long orderId);
+
     void markFulfilling(String sellerId, Long orderId);
 
     void completeFromFulfillment(Long orderId);

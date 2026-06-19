@@ -79,9 +79,9 @@ class ProductionRuntimeConfigurationIntegrationTest {
     void productionEnvironmentAppliesFlywayPlaceholdersAndRedisAuthentication() {
         assertThat(jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1",
-                Integer.class)).isEqualTo(4);
+                Integer.class)).isEqualTo(5);
         assertThat(jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM flyway_schema_history WHERE version = '4' AND success = 1",
+                "SELECT COUNT(*) FROM flyway_schema_history WHERE version = '5' AND success = 1",
                 Integer.class)).isEqualTo(1);
         assertThat(passwordHashFor("admin@woodcert.local")).isEqualTo(ADMIN_HASH);
         assertThat(passwordHashFor("appraiser@woodcert.local")).isEqualTo(APPRAISER_HASH);

@@ -42,6 +42,21 @@ public interface FulfillmentRepository extends JpaRepository<OrderFulfillment, L
             FROM OrderFulfillment f, OrderEntity o
             WHERE f.status = :status
               AND o.id = f.orderId
+              AND o.status = :orderStatus
+              AND f.shipmentDeadline <= :now
+            ORDER BY f.shipmentDeadline ASC, f.id ASC
+            """)
+    List<Long> findOverdueShipmentIds(
+            @Param("status") FulfillmentStatus status,
+            @Param("orderStatus") OrderStatus orderStatus,
+            @Param("now") Instant now,
+            Pageable pageable);
+
+    @Query("""
+            SELECT f.id
+            FROM OrderFulfillment f, OrderEntity o
+            WHERE f.status = :status
+              AND o.id = f.orderId
               AND o.status <> :excludedOrderStatus
               AND f.autoCompleteDeadline <= :now
             ORDER BY f.autoCompleteDeadline ASC, f.id ASC

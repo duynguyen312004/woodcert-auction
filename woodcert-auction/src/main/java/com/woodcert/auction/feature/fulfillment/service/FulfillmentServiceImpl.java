@@ -40,6 +40,10 @@ public class FulfillmentServiceImpl implements FulfillmentService {
         if (fulfillment.getStatus() != FulfillmentStatus.PENDING_SHIPMENT) {
             throw new AppException(ErrorCode.ORDER_INVALID_STATUS);
         }
+        if (fulfillment.getShipmentDeadline() != null
+                && !fulfillment.getShipmentDeadline().isAfter(Instant.now())) {
+            throw new AppException(ErrorCode.ORDER_SHIPMENT_DEADLINE_EXCEEDED);
+        }
 
         String normalizedCarrierName = trimToNull(carrierName);
         String normalizedTrackingCode = trimToNull(trackingCode);
@@ -74,6 +78,26 @@ public class FulfillmentServiceImpl implements FulfillmentService {
         fulfillment.setReceivedAt(Instant.now());
         fulfillmentRepository.save(fulfillment);
         return orderService.getOrderDetail(buyerId, orderId);
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public boolean cancelOverdueShipment(Long fulfillmentId) {
+        OrderFulfillment fulfillment = fulfillmentRepository.findByIdForUpdate(fulfillmentId).orElse(null);
+        if (fulfillment == null || fulfillment.getStatus() != FulfillmentStatus.PENDING_SHIPMENT) {
+            return false;
+        }
+        Instant now = Instant.now();
+        if (fulfillment.getShipmentDeadline() == null || fulfillment.getShipmentDeadline().isAfter(now)) {
+            return false;
+        }
+
+        if (!orderService.cancelForShipmentDeadline(fulfillment.getOrderId())) {
+            return false;
+        }
+        fulfillment.setStatus(FulfillmentStatus.CANCELED);
+        fulfillmentRepository.save(fulfillment);
+        return true;
     }
 
     @Override

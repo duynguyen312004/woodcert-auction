@@ -40,8 +40,24 @@ class FulfillmentSchedulerTest {
         fulfillmentProperties.setSchedulerEnabled(false);
 
         scheduler.autoCompleteOverdueFulfillments();
+        scheduler.cancelOverdueShipments();
 
         verifyNoInteractions(fulfillmentRepository, fulfillmentService);
+    }
+
+    @Test
+    void cancelOverdueShipments_cancelsEachPendingShipment() {
+        when(fulfillmentRepository.findOverdueShipmentIds(
+                eq(FulfillmentStatus.PENDING_SHIPMENT),
+                eq(OrderStatus.PAID),
+                any(Instant.class),
+                any(Pageable.class)
+        )).thenReturn(List.of(3L, 4L));
+
+        scheduler.cancelOverdueShipments();
+
+        verify(fulfillmentService).cancelOverdueShipment(3L);
+        verify(fulfillmentService).cancelOverdueShipment(4L);
     }
 
     @Test

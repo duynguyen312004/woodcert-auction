@@ -57,6 +57,10 @@ public final class FinanceOperationKeys {
         return key("order", "dispute", "refund", id(orderId, "orderId"));
     }
 
+    public static FinanceOperationKey orderShipmentDeadlineRefund(Long orderId) {
+        return key("order", "shipment", "deadline", "refund", id(orderId, "orderId"));
+    }
+
     public static FinanceOperationKey orderCompletionPayout(Long orderId) {
         return key("order", "complete", "payout", id(orderId, "orderId"));
     }

@@ -172,6 +172,7 @@ retry_curl() {
 
 verify_runtime() {
   local failed_migrations
+  local missing_shipment_deadlines
 
   wait_for_stack || return 1
   retry_curl http://127.0.0.1:8080/actuator/health/readiness >/dev/null || return 1
@@ -186,7 +187,16 @@ verify_runtime() {
       'exec mysql --batch --skip-column-names -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -e "SELECT COUNT(*) FROM flyway_schema_history WHERE success = 0;"' \
       2>/dev/null
   )"
-  [[ "$failed_migrations" == "0" ]]
+  [[ "$failed_migrations" == "0" ]] || return 1
+
+  missing_shipment_deadlines="$(
+    # Variables are intentionally expanded by the shell inside the MySQL container.
+    # shellcheck disable=SC2016
+    base_compose exec -T mysql-db sh -lc \
+      'exec mysql --batch --skip-column-names -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -e "SELECT COUNT(*) FROM order_fulfillments f JOIN orders o ON o.id = f.order_id WHERE f.status = '\''PENDING_SHIPMENT'\'' AND o.status = '\''PAID'\'' AND f.shipment_deadline IS NULL;"' \
+      2>/dev/null
+  )"
+  [[ "$missing_shipment_deadlines" == "0" ]]
 }
 
 print_diagnostics() {

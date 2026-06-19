@@ -148,6 +148,8 @@ order:
 
 fulfillment:
   scheduler-enabled: ${FULFILLMENT_SCHEDULER_ENABLED:true}
+  shipment-deadline: ${FULFILLMENT_SHIPMENT_DEADLINE:PT72H}
+  shipment-deadline-cron: ${FULFILLMENT_SHIPMENT_DEADLINE_CRON:0 */1 * * * *}
   auto-complete-after: ${FULFILLMENT_AUTO_COMPLETE_AFTER:PT168H}
   auto-complete-cron: ${FULFILLMENT_AUTO_COMPLETE_CRON:0 */5 * * * *}
 

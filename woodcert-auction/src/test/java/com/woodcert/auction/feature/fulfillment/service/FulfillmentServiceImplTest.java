@@ -21,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -50,6 +51,7 @@ class FulfillmentServiceImplTest {
     @Test
     void confirmShipping_marksOrderFulfillingAndStoresShipmentDetails() {
         OrderFulfillment fulfillment = fulfillment(FulfillmentStatus.PENDING_SHIPMENT);
+        fulfillment.setShipmentDeadline(Instant.now().plusSeconds(3600));
         when(fulfillmentRepository.findByOrderIdForUpdate(ORDER_ID)).thenReturn(Optional.of(fulfillment));
         when(fulfillmentRepository.save(any(OrderFulfillment.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -69,6 +71,26 @@ class FulfillmentServiceImplTest {
         assertThat(fulfillment.getAutoCompleteDeadline()).isNotNull();
         verify(fulfillmentRepository).save(fulfillment);
         verify(orderService).getOrderDetail(SELLER_ID, ORDER_ID);
+    }
+
+    @Test
+    void confirmShipping_rejectsShipmentAfterDeadline() {
+        OrderFulfillment fulfillment = fulfillment(FulfillmentStatus.PENDING_SHIPMENT);
+        fulfillment.setShipmentDeadline(Instant.now().minusSeconds(1));
+        when(fulfillmentRepository.findByOrderIdForUpdate(ORDER_ID)).thenReturn(Optional.of(fulfillment));
+
+        assertThatThrownBy(() -> fulfillmentService.confirmShipping(
+                SELLER_ID,
+                ORDER_ID,
+                DeliveryMethod.SELF_DELIVERY,
+                null,
+                null))
+                .isInstanceOf(AppException.class)
+                .satisfies(throwable -> assertThat(((AppException) throwable).getErrorCode())
+                        .isEqualTo(ErrorCode.ORDER_SHIPMENT_DEADLINE_EXCEEDED));
+
+        verifyNoInteractions(orderService);
+        verify(fulfillmentRepository, never()).save(any());
     }
 
     @Test
@@ -143,6 +165,50 @@ class FulfillmentServiceImplTest {
         assertThat(fulfillment.getReceivedAt()).isNotNull();
         verify(fulfillmentRepository).save(fulfillment);
         verify(orderService).getOrderDetail(BUYER_ID, ORDER_ID);
+    }
+
+    @Test
+    void cancelOverdueShipment_withFutureDeadlineDoesNotCancel() {
+        OrderFulfillment fulfillment = fulfillment(FulfillmentStatus.PENDING_SHIPMENT);
+        fulfillment.setShipmentDeadline(Instant.now().plusSeconds(3600));
+        when(fulfillmentRepository.findByIdForUpdate(FULFILLMENT_ID)).thenReturn(Optional.of(fulfillment));
+
+        boolean canceled = fulfillmentService.cancelOverdueShipment(FULFILLMENT_ID);
+
+        assertThat(canceled).isFalse();
+        verify(orderService, never()).cancelForShipmentDeadline(any());
+        verify(fulfillmentRepository, never()).save(any());
+    }
+
+    @Test
+    void cancelOverdueShipment_refundsOrderAndCancelsFulfillment() {
+        OrderFulfillment fulfillment = fulfillment(FulfillmentStatus.PENDING_SHIPMENT);
+        fulfillment.setShipmentDeadline(Instant.now().minusSeconds(1));
+        when(fulfillmentRepository.findByIdForUpdate(FULFILLMENT_ID)).thenReturn(Optional.of(fulfillment));
+        when(orderService.cancelForShipmentDeadline(ORDER_ID)).thenReturn(true);
+        when(fulfillmentRepository.save(any(OrderFulfillment.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        boolean canceled = fulfillmentService.cancelOverdueShipment(FULFILLMENT_ID);
+
+        assertThat(canceled).isTrue();
+        assertThat(fulfillment.getStatus()).isEqualTo(FulfillmentStatus.CANCELED);
+        verify(orderService).cancelForShipmentDeadline(ORDER_ID);
+        verify(fulfillmentRepository).save(fulfillment);
+    }
+
+    @Test
+    void cancelOverdueShipment_whenRetriedDoesNotRefundTwice() {
+        OrderFulfillment fulfillment = fulfillment(FulfillmentStatus.PENDING_SHIPMENT);
+        fulfillment.setShipmentDeadline(Instant.now().minusSeconds(1));
+        when(fulfillmentRepository.findByIdForUpdate(FULFILLMENT_ID)).thenReturn(Optional.of(fulfillment));
+        when(orderService.cancelForShipmentDeadline(ORDER_ID)).thenReturn(true);
+        when(fulfillmentRepository.save(any(OrderFulfillment.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        assertThat(fulfillmentService.cancelOverdueShipment(FULFILLMENT_ID)).isTrue();
+        assertThat(fulfillmentService.cancelOverdueShipment(FULFILLMENT_ID)).isFalse();
+
+        verify(orderService, times(1)).cancelForShipmentDeadline(ORDER_ID);
+        verify(fulfillmentRepository, times(1)).save(fulfillment);
     }
 
     @Test

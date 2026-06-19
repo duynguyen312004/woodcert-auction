@@ -344,6 +344,44 @@ class OrderServiceImplTest {
         }
 
         @Test
+        void cancelForShipmentDeadline_refundsFullOrderAndReopensSource() {
+                OrderEntity order = baseOrder();
+                order.setStatus(OrderStatus.PAID);
+                when(orderRepository.findByIdForUpdate(ORDER_ID)).thenReturn(Optional.of(order));
+                when(orderRepository.save(any(OrderEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+                boolean canceled = orderService.cancelForShipmentDeadline(ORDER_ID);
+
+                assertThat(canceled).isTrue();
+                assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELED);
+                assertThat(order.getCancelReason()).isEqualTo("SHIPMENT_DEADLINE_EXCEEDED");
+                assertThat(order.getBuyerRefundAmount()).isEqualByComparingTo("10000000.00");
+                assertThat(order.getRefundedAt()).isNotNull();
+                verify(walletService).refundOrder(
+                                eq(BUYER_ID),
+                                eq(FinanceOperationKeys.orderShipmentDeadlineRefund(ORDER_ID)),
+                                eq(money("10000000")),
+                                eq(ORDER_ID));
+                verify(sourceAdapter).onShipmentCanceled(order);
+                verify(sourceAdapter, never()).onPaymentCanceled(any());
+                verify(sourceAdapter, never()).onOrderCompleted(any());
+        }
+
+        @Test
+        void cancelForShipmentDeadline_skipsOrderOutsidePaidState() {
+                OrderEntity order = baseOrder();
+                order.setStatus(OrderStatus.FULFILLING);
+                when(orderRepository.findByIdForUpdate(ORDER_ID)).thenReturn(Optional.of(order));
+
+                boolean canceled = orderService.cancelForShipmentDeadline(ORDER_ID);
+
+                assertThat(canceled).isFalse();
+                verify(walletService, never()).refundOrder(any(), any(), any(), any());
+                verify(orderRepository, never()).save(any());
+                verify(sourceAdapter, never()).onShipmentCanceled(any());
+        }
+
+        @Test
         void completeFromFulfillmentPaysSellerAndRecordsCommission() {
                 OrderEntity order = baseOrder();
                 order.setStatus(OrderStatus.FULFILLING);
@@ -548,6 +586,7 @@ class OrderServiceImplTest {
                                 11L,
                                 ORDER_ID,
                                 "SHIPPED",
+                                null,
                                 "THIRD_PARTY",
                                 "Viettel Post",
                                 "TRK-1",

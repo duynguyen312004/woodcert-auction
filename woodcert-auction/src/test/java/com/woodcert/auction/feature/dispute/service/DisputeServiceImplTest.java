@@ -555,6 +555,7 @@ class DisputeServiceImplTest {
                 new OrderFulfillmentSummaryRes(
                         FULFILLMENT_ID,
                         "SHIPPED",
+                        null,
                         "THIRD_PARTY",
                         "Viettel Post",
                         "TRK-1",

@@ -15,6 +15,10 @@ public class OrderRefundCalculator {
     }
 
     public BigDecimal disputeBuyerRefundAmount(OrderEntity order) {
+        return fullBuyerRefundAmount(order);
+    }
+
+    public BigDecimal fullBuyerRefundAmount(OrderEntity order) {
         BigDecimal deposit = feeCalculator.money(order.getDepositAmount());
         BigDecimal remaining = feeCalculator.money(order.getRemainingAmount());
         return feeCalculator.money(deposit.add(remaining));

@@ -7,6 +7,7 @@ import java.time.Instant;
 public record OrderFulfillmentSummaryRes(
         Long id,
         String status,
+        Instant shipmentDeadline,
         String deliveryMethod,
         String carrierName,
         String trackingCode,
@@ -21,6 +22,7 @@ public record OrderFulfillmentSummaryRes(
         return new OrderFulfillmentSummaryRes(
                 snapshot.id(),
                 snapshot.status(),
+                snapshot.shipmentDeadline(),
                 snapshot.deliveryMethod(),
                 snapshot.carrierName(),
                 snapshot.trackingCode(),

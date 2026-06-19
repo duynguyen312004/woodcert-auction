@@ -14,5 +14,7 @@ public interface FulfillmentService {
 
     OrderRes confirmReceived(String buyerId, Long orderId);
 
+    boolean cancelOverdueShipment(Long fulfillmentId);
+
     boolean autoCompleteOverdueFulfillment(Long fulfillmentId);
 }

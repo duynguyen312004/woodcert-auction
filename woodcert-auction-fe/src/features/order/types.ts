@@ -20,6 +20,7 @@ export type DeliveryMethod = "THIRD_PARTY" | "SELF_DELIVERY";
 export interface OrderFulfillmentSummary {
   id: number;
   status: FulfillmentStatus;
+  shipmentDeadline: string | null;
   deliveryMethod: DeliveryMethod | null;
   carrierName: string | null;
   trackingCode: string | null;

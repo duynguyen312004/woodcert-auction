@@ -97,6 +97,15 @@ public class AuctionOrderSourceAdapter implements OrderSourceAdapter {
 
     @Override
     @Transactional
+    public void onShipmentCanceled(OrderEntity order) {
+        productRepository.findByIdForUpdate(order.getProductId()).ifPresent(product -> {
+            product.setSaleStatus(ProductSaleStatus.AVAILABLE);
+            productRepository.save(product);
+        });
+    }
+
+    @Override
+    @Transactional
     public void onOrderCompleted(OrderEntity order) {
         productRepository.findByIdForUpdate(order.getProductId()).ifPresent(product -> {
             product.setSaleStatus(ProductSaleStatus.SOLD);

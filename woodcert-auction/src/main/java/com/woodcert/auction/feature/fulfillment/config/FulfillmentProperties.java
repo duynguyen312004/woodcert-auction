@@ -13,6 +13,8 @@ import java.time.Duration;
 @ConfigurationProperties(prefix = "fulfillment")
 public class FulfillmentProperties {
     private boolean schedulerEnabled = true;
+    private Duration shipmentDeadline = Duration.ofDays(3);
+    private String shipmentDeadlineCron = "0 */1 * * * *";
     private Duration autoCompleteAfter = Duration.ofDays(7);
     private String autoCompleteCron = "0 */5 * * * *";
 }

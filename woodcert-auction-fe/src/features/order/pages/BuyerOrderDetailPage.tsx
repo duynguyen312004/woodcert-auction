@@ -164,6 +164,10 @@ export function BuyerOrderDetailPage() {
                   value={formatOptionalDate(order.fulfillment?.shippedAt)}
                 />
                 <Info
+                  label="Hạn Seller giao hàng"
+                  value={formatOptionalDate(order.fulfillment?.shipmentDeadline)}
+                />
+                <Info
                   label="Tự hoàn tất"
                   value={formatOptionalDate(order.fulfillment?.autoCompleteDeadline)}
                 />

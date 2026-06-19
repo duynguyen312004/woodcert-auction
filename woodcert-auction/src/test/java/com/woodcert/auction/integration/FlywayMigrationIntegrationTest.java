@@ -1,6 +1,7 @@
 package com.woodcert.auction.integration;
 
 import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.MigrationVersion;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.MySQLContainer;
 
@@ -69,6 +70,20 @@ class FlywayMigrationIntegrationTest {
                         """)).isEqualTo(3L);
                 assertThat(queryLong(connection, """
                         SELECT COUNT(*)
+                        FROM information_schema.columns
+                        WHERE table_schema = DATABASE()
+                          AND table_name = 'order_fulfillments'
+                          AND column_name = 'shipment_deadline'
+                        """)).isEqualTo(1L);
+                assertThat(queryLong(connection, """
+                        SELECT COUNT(*)
+                        FROM information_schema.statistics
+                        WHERE table_schema = DATABASE()
+                          AND table_name = 'order_fulfillments'
+                          AND index_name = 'idx_order_fulfillments_shipment_deadline'
+                        """)).isEqualTo(2L);
+                assertThat(queryLong(connection, """
+                        SELECT COUNT(*)
                         FROM information_schema.tables
                         WHERE table_schema = DATABASE()
                           AND table_name IN ('user_capability_statuses', 'admin_audit_logs')
@@ -97,6 +112,101 @@ class FlywayMigrationIntegrationTest {
                 assertThat(queryString(connection,
                         "SELECT password_hash FROM users WHERE email = 'appraiser@woodcert.local'"))
                         .isEqualTo(APPRAISER_HASH);
+            }
+        }
+    }
+
+    @Test
+    @SuppressWarnings("resource")
+    void migrationFiveGivesLegacyPendingShipmentsASeventyTwoHourGracePeriod() throws Exception {
+        MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0")
+                .withDatabaseName("woodcert_flyway_upgrade_test")
+                .withUsername("woodcert")
+                .withPassword("woodcert");
+        try (mysql) {
+            mysql.start();
+
+            Flyway.configure()
+                    .dataSource(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword())
+                    .locations("classpath:db/migration")
+                    .target(MigrationVersion.fromVersion("4"))
+                    .placeholders(Map.of(
+                            "adminPasswordHash", ADMIN_HASH,
+                            "appraiserPasswordHash", APPRAISER_HASH))
+                    .load()
+                    .migrate();
+
+            try (var connection = DriverManager.getConnection(
+                    mysql.getJdbcUrl(),
+                    mysql.getUsername(),
+                    mysql.getPassword());
+                 var statement = connection.createStatement()) {
+                statement.executeUpdate("""
+                        INSERT INTO products (
+                            seller_id, category_id, title, status, sale_status, created_at, updated_at
+                        ) VALUES (
+                            '00000000-0000-0000-0000-000000000401',
+                            1,
+                            'Legacy shipment product',
+                            'APPRAISED',
+                            'PENDING_ORDER',
+                            UTC_TIMESTAMP(6),
+                            UTC_TIMESTAMP(6)
+                        )
+                        """);
+                statement.executeUpdate("""
+                        INSERT INTO orders (
+                            source_type, source_id, buyer_id, seller_id, product_id,
+                            final_price, deposit_amount, remaining_amount, status,
+                            paid_at, version, created_at, updated_at
+                        ) VALUES (
+                            'AUCTION',
+                            999001,
+                            '00000000-0000-0000-0000-000000000301',
+                            '00000000-0000-0000-0000-000000000401',
+                            LAST_INSERT_ID(),
+                            10000000.00,
+                            1000000.00,
+                            9000000.00,
+                            'PAID',
+                            DATE_SUB(UTC_TIMESTAMP(6), INTERVAL 30 DAY),
+                            0,
+                            UTC_TIMESTAMP(6),
+                            UTC_TIMESTAMP(6)
+                        )
+                        """);
+                statement.executeUpdate("""
+                        INSERT INTO order_fulfillments (
+                            order_id, buyer_id, seller_id, status, created_at, updated_at
+                        ) VALUES (
+                            LAST_INSERT_ID(),
+                            '00000000-0000-0000-0000-000000000301',
+                            '00000000-0000-0000-0000-000000000401',
+                            'PENDING_SHIPMENT',
+                            UTC_TIMESTAMP(6),
+                            UTC_TIMESTAMP(6)
+                        )
+                        """);
+            }
+
+            Flyway.configure()
+                    .dataSource(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword())
+                    .locations("classpath:db/migration")
+                    .placeholders(Map.of(
+                            "adminPasswordHash", ADMIN_HASH,
+                            "appraiserPasswordHash", APPRAISER_HASH))
+                    .load()
+                    .migrate();
+
+            try (var connection = DriverManager.getConnection(
+                    mysql.getJdbcUrl(),
+                    mysql.getUsername(),
+                    mysql.getPassword())) {
+                assertThat(queryLong(connection, """
+                        SELECT TIMESTAMPDIFF(HOUR, UTC_TIMESTAMP(6), shipment_deadline)
+                        FROM order_fulfillments
+                        WHERE status = 'PENDING_SHIPMENT'
+                        """)).isBetween(71L, 72L);
             }
         }
     }

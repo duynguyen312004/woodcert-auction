@@ -1,14 +1,138 @@
 \documentclass[../DoAn.tex]{subfiles}
 \begin{document}
 
-Chương này có độ dài tối thiểu 5 trang, tối đa không giới hạn.\footnote{Trong trường hợp phần này dưới 5 trang thì sinh viên nên gộp vào phần kết luận, không tách ra một chương riêng rẽ nữa.} Sinh viên cần trình bày tất cả những nội dung đóng góp mà mình thấy tâm đắc nhất trong suốt quá trình làm ĐATN. Đó có thể là một loạt các vấn đề khó khăn mà sinh viên đã từng bước giải quyết được, là giải thuật cho một bài toán cụ thể, là giải pháp tổng quát cho một lớp bài toán, hoặc là mô hình/kiến trúc hữu hiệu nào đó được sinh viên thiết kế.
+Chương này trình bày các giải pháp kỹ thuật cốt lõi và đóng góp nổi bật trong quá trình thiết kế, xây dựng hệ thống WoodCert Auction. Các giải pháp tập trung giải quyết các bài toán về hiệu năng thời gian thực, tính nhất quán tài chính, sự công bằng trong đấu giá và bảo toàn tính toàn vẹn của dữ liệu thẩm định nguồn gốc gỗ. Đây là các giải pháp được thiết kế và hiện thực hóa trực tiếp dựa trên mã nguồn thực tế của dự án.
 
-Chương này \textbf{là cơ sở quan trọng} để các thầy cô đánh giá sinh viên. Vì vậy, sinh viên cần phát huy tính sáng tạo, khả năng phân tích, phản biện, lập luận, tổng quát hóa vấn đề và tập trung viết cho thật tốt.
-Mỗi giải pháp hoặc đóng góp của sinh viên cần được trình bày trong một mục độc lập bao gồm ba mục con: (i) dẫn dắt/giới thiệu về bài toán/vấn đề, (ii) giải pháp, và (iii) kết quả đạt được (nếu có).
+\section{Giải pháp quản lý trạng thái phiên đấu giá lai và cơ chế chống đặt giá giây cuối}
+\label{sec:hybrid-state-management}
 
-Sinh viên lưu ý \textbf{không trình bày lặp lại nội dung}. Những nội dung đã trình bày chi tiết trong các chương trước không được trình bày lại trong chương này. Vì vậy, với nội dung hay, mang tính đóng góp/giải pháp, sinh viên chỉ nên tóm lược/mô tả sơ bộ trong các chương trước, đồng thời tạo tham chiếu chéo tới đề mục tương ứng trong Chương 5 này. Chi tiết thông tin về đóng góp/giải pháp được trình bày trong mục đó.
+\subsection{Giới thiệu bài toán và khó khăn}
+Đấu giá trực tuyến thời gian thực đặt ra hai thách thức kỹ thuật lớn đối với hệ thống phần mềm: tính đồng thời (Concurrency) và khả năng chịu tải (Scalability).
 
-Ví dụ, trong Chương 4, sinh viên có thiết kế được kiến trúc đáng lưu ý gì đó, là sự kết hợp của các kiến trúc MVC, MVP, SOA, v.v. Khi đó, sinh viên sẽ chỉ mô tả ngắn gọn kiến trúc đó ở Chương 4, rồi thêm các câu có dạng: ``Chi tiết về kiến trúc này sẽ được trình bày trong phần 5.1". 
+Trong những phút hoặc giây cuối cùng của một phiên đấu giá sôi nổi, lượng yêu cầu đặt giá (bid requests) gửi từ trình duyệt của nhiều người tham gia có xu hướng tăng đột biến. Nếu hệ thống sử dụng cơ sở dữ liệu quan hệ truyền thống như MySQL làm nguồn trạng thái duy nhất để xử lý trực tiếp, mỗi lượt đặt giá sẽ yêu cầu thực hiện khóa dòng hoặc khóa bảng để kiểm tra các điều kiện ràng buộc như: giá đặt mới phải lớn hơn giá hiện tại cộng với bước giá tối thiểu, phiên đấu giá phải còn trong thời gian hiệu lực và người dùng phải có tư cách tham gia hợp lệ. Các thao tác khóa dữ liệu đồng thời này sẽ gây ra hiện tượng nghẽn cổ chai cơ sở dữ liệu, làm tăng đáng kể độ trễ phản hồi, thậm chí dẫn đến lỗi tranh chấp khóa hoặc tình trạng race condition làm mất mát hoặc ghi đè các lượt đặt giá hợp lệ.
 
+Ngoài ra, hệ thống còn phải đối mặt với rủi ro nghiệp vụ đặt giá giây cuối (Sniping). Đây là hành vi mà người tham gia cố tình chờ đến những giây cuối cùng của phiên đấu giá để đưa ra mức giá cao hơn một chút nhằm không cho những người tham gia khác cơ hội phản hồi. Hành vi này làm giảm tính cạnh tranh công bằng của sàn đấu giá và làm hạn chế khả năng đạt được giá trị chốt phiên của các tài sản gỗ có chứng thư.
 
+Cuối cùng, việc xử lý sự kiện chính xác (Event Ordering) yêu cầu các lượt đặt giá phải được xử lý theo thứ tự tiếp nhận tại phía máy chủ, tránh trường hợp một lượt đặt giá đến sau lại được ghi nhận trước do sự bất đồng bộ trong luồng xử lý đa luồng của máy chủ.
+
+\subsection{Giải pháp kỹ thuật}
+Để giải quyết các khó khăn trên, trong giải pháp thiết kế của hệ thống, WoodCert Auction đã hiện thực hóa cơ chế quản lý trạng thái lai (Hybrid State Management) phối hợp giữa Redis và MySQL, kết hợp với giải thuật tự động gia hạn thời gian (Auto-extension) ngay tại tầng xử lý bộ nhớ trong.
+
+\subsubsection{Tách biệt vai trò lưu trữ giữa Redis và MySQL}
+Hệ thống phân định ranh giới lưu trữ rõ ràng nhằm tối ưu hóa hiệu năng và độ tin cậy:
+\begin{itemize}
+    \item \textbf{Redis (Nguồn trạng thái runtime chính):} Khi phiên đấu giá ở trạng thái hoạt động (\texttt{ACTIVE}), trong giải pháp quản lý của hệ thống, Redis đóng vai trò nguồn trạng thái chính để xử lý các yêu cầu đặt giá thời gian thực, trong khi MySQL vẫn là nơi lưu trữ bền vững của toàn hệ thống. Dữ liệu trạng thái phiên đấu giá và danh sách người tham gia đóng băng tiền cọc được lưu trên bộ nhớ trong của Redis dưới cấu trúc dữ liệu Hash (\texttt{auction:\allowbreak session:\allowbreak \{\allowbreak id\allowbreak\}:\allowbreak state}) và Set (\texttt{auction:\allowbreak session:\allowbreak \{\allowbreak id\allowbreak\}:\allowbreak bidders}).
+    \item \textbf{MySQL (Nguồn lưu trữ bền vững):} MySQL lưu trữ dữ liệu bền vững của toàn hệ thống, gồm trạng thái phiên trước khi bắt đầu (\texttt{WAITING}), các trạng thái kết thúc (\texttt{ENDED\_SUCCESS}, \texttt{ENDED\_FAILED}, \texttt{CANCELED}), snapshot của phiên và lịch sử đặt giá. Sau khi lượt đặt giá được Redis chấp nhận, mã nguồn gọi tuần tự các phương thức ghi lịch sử và đồng bộ snapshot sang MySQL; các lời gọi này không chạy bằng \texttt{@Async}, nhưng được xử lý theo cơ chế best-effort để lỗi MySQL không làm đảo ngược kết quả đã được chấp nhận trên Redis.
+\end{itemize}
+
+\subsubsection{Xử lý nguyên tử bằng Redis Lua Script}
+Trong giải pháp xử lý đặt giá thời gian thực của hệ thống, các logic kiểm tra và cập nhật được đóng gói trong một Redis Lua script. Vì Redis chạy đơn luồng (single-threaded), việc thực thi Lua script giúp hỗ trợ bảo đảm tính nguyên tử trong phạm vi một Redis instance. Các bước xử lý trong Lua script bao gồm:
+\begin{enumerate}
+    \item \textbf{Kiểm tra thời gian:} So sánh thời gian máy chủ hiện tại (\texttt{nowMs}) với thời gian kết thúc phiên (\texttt{endTimeEpochMs}). Nếu phiên đã quá hạn, trả về trạng thái từ chối \texttt{ENDED}.
+    \item \textbf{Kiểm tra tư cách:} Xác thực sự tồn tại của thành viên trong Set đặt cọc bằng lệnh \texttt{SISMEMBER}; hệ thống trả về \texttt{NOT\allowbreak\_REGISTERED} nếu không hợp lệ.
+    \item \textbf{Chống tự đặt giá:} So sánh người đặt giá hiện tại với người đang giữ giá cao nhất (\texttt{highestBidderId}). Nếu trùng nhau, chặn yêu cầu tự nâng giá của chính mình và trả về \texttt{SELF\_BID}.
+    \item \textbf{Kiểm tra giá đặt tối thiểu:} Xác thực số tiền đặt mới phải lớn hơn hoặc bằng giá hiện tại cộng với bước giá tối thiểu (\texttt{currentPrice + stepPrice}). Nếu không thỏa mãn, trả về \texttt{LOW}.
+    \item \textbf{Cập nhật trạng thái:} Ghi nhận giá mới (\texttt{currentPrice}), người dẫn đầu (\texttt{highestBidderId}) và mã vết đặt giá (\texttt{highestBidTraceId}).
+    \item \textbf{Cơ chế tự động gia hạn (Auto-extension):} Tính toán thời gian còn lại của phiên (\texttt{endTimeEpochMs - nowMs}). Nếu thời gian còn lại nhỏ hơn hoặc bằng ngưỡng cấu hình (anti-sniper threshold, mặc định là 30 giây), hệ thống tự động cộng thêm thời gian gia hạn (anti-sniper extension, mặc định là 60 giây) vào thời gian kết thúc của phiên và cập nhật lại Redis Hash.
+\end{enumerate}
+
+\subsubsection{Phát sự kiện thời gian thực và lưu bền vững theo cơ chế best-effort}
+Sau khi Redis Lua script trả về kết quả thành công (\texttt{OK}), máy chủ thực hiện phát sự kiện \texttt{NEW\_BID} chứa giá mới và thời gian kết thúc mới thông qua WebSocket STOMP tới topic \texttt{/topic/\allowbreak auctions/\allowbreak \{id\}}.
+
+Sau bước broadcast, việc ghi nhận lịch sử đặt giá vào bảng \texttt{bids} và đồng bộ snapshot phiên đấu giá về MySQL được thực hiện tuần tự qua hai phương thức phụ trợ (\texttt{persistBidBestEffort} và \texttt{sync\allowbreak Session\allowbreak Snapshot\allowbreak BestEffort}). Các phương thức này được bọc trong khối \texttt{try-catch} để xử lý ngoại lệ và ghi log lỗi tương ứng (\texttt{event=\allowbreak accepted\_bid\_not\_persisted}, \texttt{event=\allowbreak accepted\_bid\_snapshot\_not\_synced}).
+
+Trong cơ chế này, kết quả đặt giá đã thành công trên Redis không bị rollback nếu bước ghi MySQL gặp lỗi. Đánh đổi là trạng thái runtime trên Redis và dữ liệu bền vững trên MySQL có thể tạm thời sai lệch; khi đó giá hiện tại trong phòng đấu giá có thể khác lịch sử đọc từ MySQL. \texttt{AuctionRepairScheduler} hỗ trợ đồng bộ lại snapshot phiên theo chu kỳ, nhưng không tái tạo được bản ghi lịch sử \texttt{bids} đã thất bại. Vì vậy, log cảnh báo là căn cứ vận hành để phát hiện và xử lý trường hợp mất vết lịch sử.
+
+\subsection{Kết quả đạt được}
+\begin{itemize}
+    \item \textbf{Kiểm soát tranh chấp đồng thời:} Lua script gom các bước kiểm tra và cập nhật giá vào một thao tác nguyên tử trên Redis, nhờ đó hạn chế race condition trong phạm vi một Redis instance. Đồ án chưa thực hiện benchmark tải để kết luận định lượng về độ trễ hoặc thông lượng của API đặt giá.
+    \item \textbf{Hạn chế rủi ro đầu cơ và sniping:} Cơ chế auto-extension giúp giảm lợi thế của hành vi sniping và tăng cơ hội phản hồi công bằng cho các bidder khác. Điều này góp phần cải thiện giá trị chốt phiên của tài sản gỗ đấu giá, hỗ trợ tính công bằng cho sàn giao dịch.
+    \item \textbf{Phản hồi giao diện theo sự kiện:} WebSocket giúp các máy khách nhận giá và thời gian kết thúc mới sau khi Redis chấp nhận lượt đặt giá. Tính nhất quán giữa Redis và MySQL là nhất quán cuối cùng theo cơ chế best-effort, không phải giao dịch nguyên tử xuyên hai hệ lưu trữ.
+\end{itemize}
+
+\section{Quy trình xử lý ví và đặt cọc an toàn, lũy đẳng và tự động}
+\label{sec:deposit-settlement-idempotency}
+
+\subsection{Giới thiệu bài toán và khó khăn}
+Trong các hệ thống đấu giá trực tuyến, quy trình xử lý tài chính liên quan đến tiền đặt cọc là một trong những thành phần nhạy cảm và phức tạp. Nhằm hỗ trợ bảo đảm nghĩa vụ tham gia và thanh toán của các thành viên, WoodCert Auction áp dụng cơ chế đặt cọc (deposit). Trạng thái tham gia được chuyển từ \texttt{FROZEN} khi đăng ký sang \texttt{REFUNDED} đối với người không thắng hoặc \texttt{DEDUCTED} đối với người thắng để cấn trừ vào giá trị đơn hàng. Các biến động ví tương ứng được ghi nhận bằng các loại giao dịch đóng băng, giải phóng và khấu trừ tiền cọc.
+
+Thách thức kỹ thuật trong quy trình này là hạn chế hiện tượng xử lý trùng lặp (Duplicate Processing). Do các sự cố mạng hoặc độ trễ từ phía máy khách, người dùng có thể gửi yêu cầu thanh toán hoặc đặt cọc nhiều lần liên tiếp, hoặc hệ thống thực hiện cơ chế gửi lại yêu cầu (retry) khi gặp lỗi mạng. Nếu không được kiểm soát tốt, việc này có khả năng dẫn đến lỗi trừ tiền trùng lặp.
+
+Vấn đề tiếp theo là khả năng hỗ trợ khôi phục sau sự cố (Fault Tolerance) và hỗ trợ duy trì tính nhất quán dữ liệu (Data Consistency). Các giao dịch tài chính thường đi qua nhiều module (Ví, Phiên đấu giá, Đơn hàng) và chịu sự điều phối của các tiến trình chạy nền. Nếu máy chủ bị sập đột ngột hoặc mất kết nối cơ sở dữ liệu giữa chừng khi đang xử lý đóng phiên đấu giá, hệ thống có thể rơi vào trạng thái không nhất quán (ví dụ: đã giải phóng cọc nhưng chưa cập nhật trạng thái đơn hàng, hoặc người thắng bị trừ tiền nhưng đơn hàng chưa được khởi tạo).
+
+Bên cạnh đó, hệ thống còn phải đối phó với rủi ro nghiệp vụ người thắng không thanh toán. Sau khi phiên đấu giá kết thúc thành công, nếu người thắng cuộc cố tình từ chối thanh toán số tiền còn lại trong thời hạn thanh toán theo cấu hình, hệ thống thực hiện quy trình tịch thu cọc làm hình phạt nhằm bù đắp chi phí cơ hội cho người bán và vận hành sàn.
+
+\subsection{Giải pháp kỹ thuật}
+Trong giải pháp xử lý, WoodCert Auction giải quyết các bài toán trên thông qua cơ chế giao dịch lũy đẳng (Idempotent Mutation), quản lý khóa tối ưu ở tầng lưu trữ, và sự phối hợp đồng bộ giữa các Scheduler chạy nền.
+
+\subsubsection{Thiết kế giao dịch ví lũy đẳng với Operation Key}
+Các biến động số dư ví (\texttt{avail\allowbreak able\allowbreak\_balance}, \texttt{frozen\allowbreak\_balance}) trong giải pháp tài chính của hệ thống đều được thực hiện qua phương thức điều phối \texttt{execute\allowbreak Idempotent\allowbreak Mutation}.
+\begin{itemize}
+    \item \textbf{Đăng ký Operation Key:} Trước khi thực hiện các thay đổi số dư, hệ thống tạo một khóa lũy đẳng duy nhất (\texttt{operation\allowbreak Key}) theo định dạng riêng của từng nghiệp vụ, ví dụ \texttt{auction:\allowbreak register:\allowbreak freeze:\allowbreak \{auctionId\}:\allowbreak \{userId\}}. Khóa này được lưu vào bảng \texttt{wallet\allowbreak\_operations} trước khi giao dịch ví bắt đầu.
+    \item \textbf{Kiểm soát trùng lặp:} Khi một yêu cầu trùng lặp hoặc yêu cầu retry gửi tới, hệ thống kiểm tra sự tồn tại của \texttt{operation\allowbreak Key}. Nếu khóa đã tồn tại ở trạng thái thành công, hệ thống sẽ trả về kết quả và bỏ qua phần xử lý phía sau, giúp ngăn chặn hiệu quả lỗi xử lý trùng lặp tài chính trong phạm vi cơ chế hiện thực của Operation Key.
+\end{itemize}
+
+\subsubsection{Kiểm soát tranh chấp đồng thời và đồng bộ Transaction}
+\begin{itemize}
+    \item \textbf{Khóa tối ưu (Optimistic Locking):} Bảng ví (\texttt{wallets}) sử dụng thuộc tính phiên bản \texttt{@Version} để thực hiện khóa tối ưu. Khi có nhiều luồng cố gắng cập nhật số dư ví của cùng một tài khoản cùng lúc, JPA sẽ phát hiện xung đột phiên bản và ném ra ngoại lệ \texttt{WALLET\allowbreak \_CONCURRENT\allowbreak \_MODIFICATION}, giúp bảo vệ dữ liệu ví không bị ghi đè sai lệch.
+    \item \textbf{Spring Transaction Synchronization:} Trạng thái của \texttt{Wallet\allowbreak Operation} được chuyển sang thành công (\texttt{markSuccess}) tại sự kiện \texttt{afterCommit()} của Spring Transaction Manager. Nếu các thao tác ghi dữ liệu xuống MySQL bị lỗi và dẫn đến rollback, trạng thái của khóa lũy đẳng sẽ tự động chuyển về thất bại (\texttt{markFailed}) thông qua hook \texttt{after\allowbreak Completion\allowbreak (status)}, giúp hỗ trợ duy trì tính nhất quán dữ liệu giữa bảng số dư ví và bảng nhật ký giao dịch.
+\end{itemize}
+
+\subsubsection{Tự động hóa xử lý bằng Scheduler chạy nền}
+Hệ thống sử dụng các tác vụ nền (Schedulers) để tự động hóa các quy trình cọc và xử lý vi phạm:
+\begin{itemize}
+    \item \textbf{Tác vụ đóng phiên đấu giá:} Quét định kỳ các phiên đấu giá đến hạn. Khi phiên kết thúc thành công, tác vụ nền khấu trừ tiền cọc của người thắng, giải phóng tiền cọc của những người còn lại và tạo đơn hàng chờ thanh toán. Việc quyết toán từng người tham gia được thực hiện trong giao dịch \texttt{REQUIRES\_NEW} riêng, do đó không phải một giao dịch nguyên tử duy nhất bao trùm toàn bộ danh sách người tham gia.
+    \item \textbf{Tác vụ xử lý quá hạn thanh toán:} Tác vụ nền quét các đơn hàng quá hạn thanh toán theo thời gian cấu hình. Nếu người mua không thanh toán phần còn lại của đơn hàng đúng hạn, hệ thống tự động hủy đơn và thực hiện tịch thu tiền đặt cọc đã capture, phân phối theo tỷ lệ phân chia được cấu hình trong hệ thống (đọc từ thuộc tính \texttt{forfeited\allowbreak Deposit\allowbreak Platform\allowbreak Rate} trong file cấu hình tài chính) cho nền tảng và người bán.
+\end{itemize}
+
+\subsection{Kết quả đạt được}
+\begin{itemize}
+    \item \textbf{Giảm thiểu rủi ro giao dịch:} Cơ chế \texttt{WalletOperation} lũy đẳng kết hợp khóa tối ưu giúp kiểm soát tốt các lỗi tài chính phát sinh do yêu cầu trùng lặp hoặc truy cập đồng thời, hỗ trợ duy trì tính nhất quán tài chính trong phạm vi cơ chế hiện thực.
+    \item \textbf{Tự động hóa luồng phạt cọc:} Luồng nghiệp vụ phạt cọc khi người thắng bùng thanh toán được thực thi chính xác và tự động thông qua tác vụ nền mà không cần sự can thiệp thủ công của quản trị viên, góp phần bảo vệ quyền lợi kinh tế của người bán.
+    \item \textbf{Bảo vệ người mua khi người bán quá hạn giao hàng:} Fulfillment được gán \texttt{shipment\_deadline} sau khi đơn được thanh toán, mặc định là 72 giờ. Scheduler quét các fulfillment \texttt{PENDING\_SHIPMENT} quá hạn, khóa bản ghi, hủy đơn, hoàn lại toàn bộ tiền cọc cùng phần tiền đã thanh toán cho người mua và đưa sản phẩm về trạng thái có thể giao dịch. Hệ thống vẫn chưa áp dụng tiền cọc, phạt tài chính hoặc điểm uy tín đối với người bán vi phạm.
+\end{itemize}
+
+\section{Cơ chế bảo toàn tính toàn vẹn của báo cáo thẩm định gỗ và chứng thư}
+\label{sec:appraisal-integrity-fingerprint}
+
+\subsection{Giới thiệu bài toán và khó khăn}
+Trong thị trường giao dịch và đấu giá gỗ quý, tính toàn vẹn của thông tin thẩm định nguồn gốc và chất lượng của sản phẩm là yếu tố quan trọng quyết định đến giá trị kinh tế của tài sản. Để giải quyết rủi ro nghiệp vụ sản phẩm không đúng mô tả hoặc sai lệch nguồn gốc, hệ thống yêu cầu một quy trình kiểm soát chất lượng chặt chẽ trước khi sản phẩm được đưa lên sàn đấu giá.
+
+Khó khăn đặt ra ở đây là bảo vệ tính toàn vẹn của thông tin thẩm định sau khi đã được ban hành bởi Thẩm định viên (Appraiser). Nếu không có cơ chế bảo vệ, dữ liệu báo cáo thẩm định lưu trong cơ sở dữ liệu có khả năng bị sửa đổi do lỗ hổng bảo mật, sự can thiệp trực tiếp từ quản trị viên hệ thống hoặc hành vi gian lận từ phía người bán nhằm nâng khống giá trị gỗ.
+
+Bên cạnh đó, hệ thống yêu cầu về khả năng truy vết (Auditability) và đồng bộ thời gian (Time Synchronization). Mỗi báo cáo thẩm định khi được phê duyệt phải được gắn mốc thời gian máy chủ thống nhất và có khả năng đối chiếu lại thông tin gốc khi xảy ra tranh chấp phát sinh giữa người mua và người bán sau khi nhận hàng.
+
+\subsection{Giải pháp kỹ thuật}
+Trong giải pháp bảo đảm tính toàn vẹn dữ liệu của hệ thống, WoodCert Auction giải quyết thách thức này bằng quy trình thẩm định đa trạng thái kết hợp với mã vân tay toàn vẹn (Integrity Fingerprint) sử dụng thuật toán băm mật mã SHA-256 cho từng báo cáo thẩm định.
+
+\subsubsection{Quy trình kiểm định và ban hành chứng thư}
+Sản phẩm gỗ muốn đấu giá phải đi qua máy trạng thái thẩm định khép kín:
+\texttt{DRAFT} $\rightarrow$ \texttt{PENDING\_APPRAISAL} $\rightarrow$ \texttt{UNDER\_APPRAISAL} $\rightarrow$ \texttt{APPRAISED} (hoặc \texttt{REJECTED}).
+\begin{itemize}
+    \item Khi Thẩm định viên nhận yêu cầu, hệ thống khóa bản ghi liên quan ở tầng cơ sở dữ liệu để hạn chế nhiều người đồng thời nhận cùng một yêu cầu. Mã UUID tạm thời chỉ được dùng trong bước lưu báo cáo nhằm tạo bản ghi và lấy ID, không được cấp ngay tại thời điểm nhận yêu cầu.
+    \item Sau khi Thẩm định viên hoàn thành các thông tin giám định, báo cáo được lưu và hệ thống sinh số chứng thư theo định dạng \texttt{CERT-\char`\{year\char`\}-\char`\{id\char`\}} (trong đó \texttt{year} là năm hiện tại và \texttt{id} là ID tăng tự động của báo cáo). Danh sách ảnh bằng chứng là dữ liệu có thể đính kèm, không phải điều kiện bắt buộc của mọi báo cáo.
+\end{itemize}
+
+\subsubsection{Cơ chế sinh mã vân tay toàn vẹn SHA-256 (Integrity Fingerprint)}
+Để tạo dấu vân tay tham chiếu cho báo cáo tại thời điểm ban hành, hệ thống thực hiện các bước sau:
+\begin{enumerate}
+    \item \textbf{Ghép nối dữ liệu (Payload Serialization):} Hệ thống tiến hành ghép nối các thuộc tính cốt lõi của báo cáo thẩm định thành một chuỗi văn bản theo một thứ tự cố định, ngăn cách bởi ký tự đặc biệt:
+    \begin{center}
+    \texttt{productId} $\vert$ \texttt{appraiserId} $\vert$ \texttt{verifiedMaterial} $\vert$ \texttt{estimatedValue} $\vert$ \texttt{isAuthentic} $\vert$ \texttt{certificateCode} $\vert$ \texttt{appraisedAt}
+    \end{center}
+    (trong đó \texttt{appraisedAt} là mốc thời gian ghi nhận của máy chủ lúc phê duyệt báo cáo).
+    \item \textbf{Tính toán mã băm:} Chuỗi payload trên được băm bằng thuật toán băm mật mã SHA-256 để sinh ra một chuỗi Hex băm duy nhất dài 64 ký tự (Integrity Fingerprint) và được lưu trữ bền vững cùng báo cáo thẩm định trong MySQL.
+    \item \textbf{Lưu dấu vân tay:} Giá trị \texttt{integrityHash} được trả về cùng thông tin chứng thư khi truy vấn. Phiên bản hiện tại chưa tự động tính lại payload và so sánh mã băm trong luồng đọc; vì vậy mã băm mới đóng vai trò dấu vân tay được lưu tại thời điểm phê duyệt, chưa phải cơ chế kiểm chứng thay đổi tự động.
+\end{enumerate}
+
+\subsection{Kết quả đạt được}
+\begin{itemize}
+    \item \textbf{Tạo dấu vân tay cho dữ liệu tại thời điểm phê duyệt:} SHA-256 tạo một giá trị tham chiếu ổn định từ payload cốt lõi của báo cáo. Muốn dùng giá trị này để phát hiện sửa đổi, hệ thống cần bổ sung bước tái tạo payload và đối chiếu khi đọc hoặc khi kiểm toán. Tính đúng đắn của nội dung giám định ban đầu vẫn phụ thuộc vào năng lực chuyên môn của Thẩm định viên và quy trình kiểm định thực tế.
+    \item \textbf{Khả năng truy vết rõ ràng:} Mốc thời gian phê duyệt thống nhất dựa trên thời gian máy chủ cùng mã băm toàn vẹn tạo cơ sở kỹ thuật hỗ trợ truy vết và đối chiếu khi xảy ra tranh chấp chất lượng sau đấu giá.
+    \item \textbf{Giới hạn xác thực:} Mã băm không phải chữ ký số, không xác minh danh tính người ký và không cung cấp khả năng chống chối bỏ. Do mã băm được lưu cùng cơ sở dữ liệu với báo cáo, cơ chế hiện tại cũng chưa độc lập trước người có quyền sửa đồng thời cả dữ liệu và giá trị băm.
+\end{itemize}
+
+\section{Tổng kết chương}
+\label{sec:conclusion-ch5}
+Chương 5 đã trình bày ba nhóm giải pháp được hiện thực hóa trong WoodCert Auction. Hybrid State Management kết hợp Redis Lua script và cơ chế tự động gia hạn để xử lý trạng thái phiên \texttt{ACTIVE}, đồng thời chấp nhận đánh đổi nhất quán cuối cùng với MySQL. Idempotent Wallet Mutation sử dụng \texttt{WalletOperation}, khóa dữ liệu và các giao dịch tách biệt để hạn chế xử lý tài chính trùng lặp; luồng giao nhận còn bổ sung deadline 72 giờ và hoàn tiền tự động cho người mua khi người bán không gửi hàng. Appraisal Integrity Fingerprint tạo dấu vân tay SHA-256 tại thời điểm phê duyệt báo cáo, nhưng phiên bản hiện tại chưa tự động đối chiếu lại và không thay thế chữ ký số. Các kết luận này phản ánh phạm vi mã nguồn và kiểm thử hiện có, không được hiểu là kết quả benchmark tải hoặc chứng nhận an toàn độc lập.
 \end{document}

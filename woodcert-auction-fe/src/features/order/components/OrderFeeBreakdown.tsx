@@ -24,8 +24,11 @@ export function OrderFeeBreakdown({
   showStatus?: boolean;
 }) {
   const showSellerSaleBreakdown = audience === "seller" && order.status === "COMPLETED";
-  const showSellerForfeitBreakdown = audience === "seller" && order.status === "CANCELED";
-  const showBuyerRefund = order.cancelReason === "DISPUTE_BUYER_WINS" && order.buyerRefundAmount;
+  const showSellerForfeitBreakdown =
+    audience === "seller" &&
+    order.status === "CANCELED" &&
+    Boolean(order.forfeitedDepositPlatformFeeAmount || order.forfeitedDepositSellerAmount);
+  const showBuyerRefund = Boolean(order.buyerRefundAmount);
 
   return (
     <div className={cn("grid gap-0", className)}>
@@ -115,6 +118,15 @@ export function OrderFeeBreakdown({
         <OrderLine
           label="Hạn thanh toán"
           value={formatDateTime(order.paymentDeadline)}
+          lineClassName={lineClassName}
+          labelClassName={labelClassName}
+          valueClassName={valueClassName}
+        />
+      )}
+      {order.fulfillment?.shipmentDeadline && (
+        <OrderLine
+          label="Hạn giao hàng"
+          value={formatDateTime(order.fulfillment.shipmentDeadline)}
           lineClassName={lineClassName}
           labelClassName={labelClassName}
           valueClassName={valueClassName}
