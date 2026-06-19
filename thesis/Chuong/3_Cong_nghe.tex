@@ -25,7 +25,7 @@ Hình~\ref{fig:chapter3-system-architecture} cho thấy Nginx trên máy chủ U
 
 Backend sử dụng Java 17 và Spring Boot 3.5.15. Java cung cấp mô hình kiểu tĩnh, thư viện chuẩn và môi trường JVM; Spring Boot cung cấp cơ chế tự động cấu hình, dependency injection, quản lý vòng đời bean và tích hợp các thành phần trong hệ sinh thái Spring \cite{walls2022spring,springdocs}. Trong dự án, Java record được dùng cho nhiều DTO và text block được dùng để biểu diễn Lua script, giúp giảm mã lặp và giữ cấu trúc dữ liệu rõ ràng.
 
-Spring Data JPA đảm nhiệm ánh xạ dữ liệu quan hệ; Spring Validation kiểm tra request; Spring Mail hỗ trợ email xác thực và đặt lại mật khẩu; Spring Actuator cung cấp health endpoint. Cơ chế \texttt{@Transactional} xác định biên giao dịch cho các thao tác như cập nhật ví, thanh toán và chuyển trạng thái. Tuy nhiên, transaction không tự loại bỏ mọi lỗi đồng thời; hệ thống còn sử dụng khóa bản ghi, optimistic locking, operation key idempotent và ràng buộc dữ liệu để kiểm soát các trường hợp tương ứng.
+Spring Data JPA đảm nhiệm ánh xạ dữ liệu quan hệ; Spring Validation kiểm tra request; Spring Mail hỗ trợ email xác thực và đặt lại mật khẩu; Spring Actuator cung cấp health endpoint; Spring Task Scheduling (\texttt{@Scheduled}) được cấu hình để quản lý các tác vụ nền định kỳ như mở/đóng phiên đấu giá, xử lý quá hạn thanh toán, và tự động hủy đơn hoàn tiền khi quá hạn giao hàng. Cơ chế \texttt{@Transactional} xác định biên giao dịch cho các thao tác như cập nhật ví, thanh toán và chuyển trạng thái. Tuy nhiên, transaction không tự loại bỏ mọi lỗi đồng thời; hệ thống còn sử dụng khóa bản ghi, optimistic locking, operation key idempotent và ràng buộc dữ liệu để kiểm soát các trường hợp tương ứng.
 
 Các framework khác như NestJS hoặc Django cũng có thể triển khai bài toán. Spring Boot được lựa chọn vì phù hợp với mã nguồn hiện tại, hỗ trợ tốt transaction quan hệ và có hệ sinh thái kiểm thử, bảo mật, dữ liệu và vận hành được tích hợp thống nhất. Đây là lựa chọn kỹ thuật của dự án, không phải kết luận rằng các nền tảng khác không đáp ứng được tính nhất quán.
 
@@ -85,7 +85,7 @@ Lua script thực hiện liên tiếp các kiểm tra thời gian, tư cách tha
     \caption*{\textit{Nguồn: Tác giả tổng hợp từ các dịch vụ auction runtime và settlement}}
 \end{figure}
 
-Hình~\ref{fig:chapter3-mysql-redis} phân biệt ba giai đoạn. Scheduler tải phiên đến hạn và participant từ MySQL để khởi tạo runtime Redis. Trong giai đoạn \texttt{ACTIVE}, Lua script là nguồn quyết định bid, còn MySQL nhận bản lưu audit và snapshot best-effort. Khi đến hạn, lifecycle worker ưu tiên snapshot Redis nhưng có đường phục hồi từ snapshot và bid audit trong MySQL; worker ghi \texttt{ENDED\_SUCCESS} hoặc \texttt{ENDED\_FAILED} trước khi settlement xử lý tiền cọc, tạo đơn hàng và dọn Redis.
+Hình~\ref{fig:chapter3-mysql-redis} phân biệt ba giai đoạn. Lớp lập lịch \texttt{AuctionSessionScheduler} (sử dụng cơ chế \texttt{@Scheduled} của Spring) tải phiên đến hạn và participant từ MySQL để khởi tạo runtime Redis. Trong giai đoạn \texttt{ACTIVE}, Lua script là nguồn quyết định bid, còn MySQL nhận bản lưu audit và snapshot best-effort. Khi đến hạn, lifecycle worker ưu tiên snapshot Redis nhưng có đường phục hồi từ snapshot và bid audit trong MySQL; worker ghi \texttt{ENDED\_SUCCESS} hoặc \texttt{ENDED\_FAILED} trước khi settlement xử lý tiền cọc, tạo đơn hàng và dọn Redis.
 
 \subsection{Cloudinary}
 

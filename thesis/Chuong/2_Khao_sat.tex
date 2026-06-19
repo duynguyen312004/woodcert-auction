@@ -264,7 +264,7 @@ Hệ thống cung cấp ví nội bộ để quản lý số dư khả dụng v�
 \subsubsection{Phân rã use case Xử lý đơn hàng \& giao nhận}
 \label{subsubsection:order-use-case}
 
-Đơn hàng được tạo sau khi phiên kết thúc thành công. Người thắng thanh toán phần còn lại trong thời hạn cấu hình 72 giờ; nếu quá hạn, scheduler hủy đơn và phân bổ tiền cọc theo chính sách hiện hành. Sau khi thanh toán, Seller xác nhận giao hàng. Đơn hàng hoàn tất khi Buyer xác nhận nhận hàng hoặc scheduler tự hoàn tất sau 168 giờ kể từ khi giao hàng nếu không có tranh chấp. Khi hoàn tất, hệ thống giải ngân cho Seller và ghi nhận phí nền tảng. Biểu đồ phân rã được trình bày tại Hình~\ref{fig:order-use-case}.
+Đơn hàng được tạo sau khi phiên kết thúc thành công. Người thắng thanh toán phần còn lại trong thời hạn cấu hình 72 giờ; nếu quá hạn, scheduler hủy đơn và phân bổ tiền cọc theo chính sách hiện hành. Sau khi thanh toán, Seller có nghĩa vụ giao hàng trong vòng 72 giờ (thiết lập \texttt{shipment\_deadline}). Nếu quá thời hạn này mà Seller chưa giao hàng, hệ thống tự động hủy đơn, hoàn trả toàn bộ tiền cọc và tiền hàng cho Buyer, chuyển đơn hàng sang trạng thái \texttt{CANCELED} (lý do \texttt{SHIPMENT\_DEADLINE\_EXCEEDED}) và sản phẩm về trạng thái \texttt{AVAILABLE} để có thể mở bán lại. Trong trường hợp Seller xác nhận giao hàng đúng hạn, đơn hàng hoàn tất khi Buyer xác nhận nhận hàng hoặc scheduler tự hoàn tất sau 168 giờ kể từ khi giao hàng nếu không có tranh chấp. Khi hoàn tất, hệ thống giải ngân cho Seller và ghi nhận phí nền tảng. Biểu đồ phân rã được trình bày tại Hình~\ref{fig:order-use-case}.
 
 \begin{figure}[htbp]
     \centering
@@ -312,25 +312,21 @@ Sau khi sản phẩm đủ điều kiện, Seller tạo phiên đấu giá. Bidd
 
 Giai đoạn sau đấu giá gồm thanh toán, giao nhận, tự hoàn tất và tranh chấp, được trình bày riêng tại Hình~\ref{fig:post-auction-business-flow}.
 
-\begin{landscape}
-\begin{figure}[p]
+\begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.94\linewidth,height=0.78\textheight,keepaspectratio]{chapter-2/auction-business-flow.pdf}
+    \includegraphics[width=\linewidth,keepaspectratio]{chapter-2/auction-business-flow.pdf}
     \caption{Quy trình từ tạo sản phẩm đến kết thúc phiên đấu giá}
     \label{fig:overall-business-flow}
     \caption*{\textit{Nguồn: Tác giả tổng hợp}}
 \end{figure}
-\end{landscape}
 
-\begin{landscape}
-\begin{figure}[p]
+\begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.94\linewidth,height=0.78\textheight,keepaspectratio]{chapter-2/order-fulfillment-dispute-flow.pdf}
+    \includegraphics[width=\linewidth,keepaspectratio]{chapter-2/order-fulfillment-dispute-flow.pdf}
     \caption{Quy trình thanh toán, giao nhận và xử lý tranh chấp}
     \label{fig:post-auction-business-flow}
     \caption*{\textit{Nguồn: Tác giả tổng hợp}}
 \end{figure}
-\end{landscape}
 \FloatBarrier
 
 \subsection{Phạm vi chức năng chưa bao gồm}
@@ -645,13 +641,13 @@ Use case này mô tả nghĩa vụ thanh toán của người thắng và chuy�
     \hline
     Tiền điều kiện & (i) Buyer đã đăng nhập; (ii) đơn thuộc Buyer và ở \texttt{PENDING\_PAYMENT}; (iii) chưa quá hạn 72 giờ; (iv) địa chỉ giao hàng thuộc Buyer; (v) ví đủ tiền nếu remaining amount lớn hơn 0. \\
     \hline
-    Hậu điều kiện & (i) Địa chỉ được snapshot vào đơn; (ii) tiền còn lại được trừ idempotent nếu lớn hơn 0; (iii) đơn chuyển sang \texttt{PAID}; (iv) fulfillment chờ giao hàng được tạo; (v) Seller có thể xác nhận gửi hàng. \\
+    Hậu điều kiện & (i) Địa chỉ được snapshot vào đơn; (ii) tiền còn lại được trừ idempotent nếu lớn hơn 0; (iii) đơn chuyển sang \texttt{PAID}; (iv) fulfillment chờ giao hàng được tạo và thiết lập thời hạn giao hàng (\texttt{shipment\_deadline} = thời điểm thanh toán + 72 giờ); (v) Seller có nghĩa vụ giao hàng trước thời hạn này. \\
     \hline
-    Luồng sự kiện chính & (i) Buyer chọn đơn và địa chỉ; (ii) hệ thống khóa đơn, kiểm tra quyền, trạng thái và deadline; (iii) lấy snapshot địa chỉ; (iv) trừ remaining amount bằng operation key nếu cần; (v) cập nhật \texttt{PAID} và thời điểm thanh toán; (vi) tạo fulfillment chờ giao hàng; (vii) trả chi tiết đơn. \\
+    Luồng sự kiện chính & (i) Buyer chọn đơn và địa chỉ; (ii) hệ thống khóa đơn, kiểm tra quyền, trạng thái và deadline; (iii) lấy snapshot địa chỉ; (iv) trừ remaining amount bằng operation key nếu cần; (v) cập nhật \texttt{PAID} và thời điểm thanh toán; (vi) tạo fulfillment chờ giao hàng và thiết lập thời hạn giao hàng (72 giờ); (vii) trả chi tiết đơn. \\
     \hline
     Luồng thay thế/ngoại lệ & Đơn không tồn tại, không thuộc Buyer, sai trạng thái hoặc quá hạn; địa chỉ không hợp lệ; ví không đủ số dư; remaining amount bằng 0 thì bỏ qua bước trừ tiền nhưng vẫn yêu cầu địa chỉ. \\
     \hline
-    Ghi chú nghiệp vụ & Quá hạn thanh toán làm đơn bị hủy; tiền cọc được phân bổ theo cấu hình hiện hành, không mô tả chung chung là “tịch thu toàn bộ”. \\
+    Ghi chú nghiệp vụ & Quá hạn thanh toán làm đơn bị hủy; tiền cọc được phân bổ theo cấu hình hiện hành. Nếu quá 72 giờ kể từ khi thanh toán mà Seller không xác nhận giao hàng, hệ thống tự động hủy đơn, hoàn trả toàn bộ tiền cọc và tiền hàng về ví Buyer, chuyển trạng thái đơn sang \texttt{CANCELED} (lý do \texttt{SHIPMENT\_DEADLINE\_EXCEEDED}) và cập nhật sản phẩm thành \texttt{AVAILABLE} để cho phép bán lại. \\
     \hline
 \end{longtable}
 \endgroup

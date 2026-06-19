@@ -41,7 +41,7 @@ Sau khi Redis Lua script trả về kết quả thành công (\texttt{OK}), máy
 
 Sau bước broadcast, việc ghi nhận lịch sử đặt giá vào bảng \texttt{bids} và đồng bộ snapshot phiên đấu giá về MySQL được thực hiện tuần tự qua hai phương thức phụ trợ (\texttt{persistBidBestEffort} và \texttt{sync\allowbreak Session\allowbreak Snapshot\allowbreak BestEffort}). Các phương thức này được bọc trong khối \texttt{try-catch} để xử lý ngoại lệ và ghi log lỗi tương ứng (\texttt{event=\allowbreak accepted\_bid\_not\_persisted}, \texttt{event=\allowbreak accepted\_bid\_snapshot\_not\_synced}).
 
-Trong cơ chế này, kết quả đặt giá đã thành công trên Redis không bị rollback nếu bước ghi MySQL gặp lỗi. Đánh đổi là trạng thái runtime trên Redis và dữ liệu bền vững trên MySQL có thể tạm thời sai lệch; khi đó giá hiện tại trong phòng đấu giá có thể khác lịch sử đọc từ MySQL. \texttt{AuctionRepairScheduler} hỗ trợ đồng bộ lại snapshot phiên theo chu kỳ, nhưng không tái tạo được bản ghi lịch sử \texttt{bids} đã thất bại. Vì vậy, log cảnh báo là căn cứ vận hành để phát hiện và xử lý trường hợp mất vết lịch sử.
+Trong cơ chế này, kết quả đặt giá đã thành công trên Redis không bị rollback nếu bước ghi MySQL gặp lỗi. Đánh đổi là trạng thái runtime trên Redis và dữ liệu bền vững trên MySQL có thể tạm thời sai lệch; khi đó giá hiện tại trong phòng đấu giá có thể khác lịch sử đọc từ MySQL. \texttt{AuctionSessionScheduler} hỗ trợ đồng bộ lại snapshot phiên theo chu kỳ, nhưng không tái tạo được bản ghi lịch sử \texttt{bids} đã thất bại. Vì vậy, log cảnh báo là căn cứ vận hành để phát hiện và xử lý trường hợp mất vết lịch sử.
 
 \subsection{Kết quả đạt được}
 \begin{itemize}

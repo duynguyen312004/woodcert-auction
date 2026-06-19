@@ -35,8 +35,16 @@ else ([Không])
     stop
 endif
 
-|Seller|
-:Xác nhận giao hàng và\ncập nhật thông tin vận chuyển;
+if (Có giao hàng trong 72 giờ?) then ([Có])
+    |Seller|
+    :Xác nhận giao hàng và\ncập nhật thông tin vận chuyển;
+else ([Không (Quá hạn)])
+    |WoodCert Auction|
+    :Scheduler tự động hủy đơn;
+    :Hoàn trả toàn bộ tiền cọc và tiền hàng cho Buyer;
+    :Chuyển trạng thái sản phẩm sang AVAILABLE;
+    stop
+endif
 
 |WoodCert Auction|
 :Chuyển fulfillment sang SHIPPED;
