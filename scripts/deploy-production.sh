@@ -13,6 +13,7 @@ backend_image=""
 frontend_image=""
 app_dir=""
 domain=""
+allow_active_auctions=0
 replacement_started=0
 previous_sha=""
 fallback_backend_image=""
@@ -27,7 +28,8 @@ Usage:
     --backend-image <image-ref> \
     --frontend-image <image-ref> \
     --app-dir <absolute-path> \
-    --domain <hostname>
+    --domain <hostname> \
+    [--allow-active-auctions]
 EOF
 }
 
@@ -65,6 +67,10 @@ while (($# > 0)); do
     --domain)
       domain="${2:-}"
       shift 2
+      ;;
+    --allow-active-auctions)
+      allow_active_auctions=1
+      shift
       ;;
     --help|-h)
       usage
@@ -288,8 +294,32 @@ if [[ "$operation" == "deploy" ]]; then
       'exec mysql --batch --skip-column-names -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -e "SELECT COUNT(*) FROM auction_sessions WHERE status = 0x414354495645;"' \
       2>/dev/null
   )"
-  [[ "$active_auctions" == "0" ]] ||
-    die "Deployment is blocked while $active_auctions auction session(s) are ACTIVE"
+  if [[ "$active_auctions" != "0" ]]; then
+    ((allow_active_auctions == 1)) ||
+      die "Deployment is blocked while $active_auctions auction session(s) are ACTIVE"
+
+    recent_active_bids="$(
+      # Variables are intentionally expanded by the shell inside the MySQL container.
+      # shellcheck disable=SC2016
+      base_compose exec -T mysql-db sh -lc \
+        'exec mysql --batch --skip-column-names -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -e "SELECT COUNT(*) FROM bids b JOIN auction_sessions a ON a.id = b.auction_session_id WHERE a.status = 0x414354495645 AND b.bid_time >= UTC_TIMESTAMP(6) - INTERVAL 10 MINUTE;"' \
+        2>/dev/null
+    )"
+    [[ "$recent_active_bids" == "0" ]] ||
+      die "Active-auction override refused because $recent_active_bids bid(s) were recorded in the last 10 minutes"
+
+    ending_soon_auctions="$(
+      # Variables are intentionally expanded by the shell inside the MySQL container.
+      # shellcheck disable=SC2016
+      base_compose exec -T mysql-db sh -lc \
+        'exec mysql --batch --skip-column-names -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -e "SELECT COUNT(*) FROM auction_sessions WHERE status = 0x414354495645 AND end_time <= UTC_TIMESTAMP(6) + INTERVAL 15 MINUTE;"' \
+        2>/dev/null
+    )"
+    [[ "$ending_soon_auctions" == "0" ]] ||
+      die "Active-auction override refused because $ending_soon_auctions auction session(s) end within 15 minutes"
+
+    log "WARNING: proceeding with $active_auctions ACTIVE auction session(s); no recent bids or imminent endings were detected"
+  fi
 
   backup_file="$backups_dir/ci-woodauction-$(date +%F-%H%M%S)-${target_sha:0:12}.sql.gz"
   log "Creating MySQL backup at $backup_file"

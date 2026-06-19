@@ -18,6 +18,11 @@ on:
         description: Full 40-character commit SHA
         required: true
         type: string
+      allow_active_auctions:
+        description: Allow deploy with ACTIVE auctions only when no bid occurred in 10 minutes and none end within 15 minutes
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -49,6 +54,7 @@ jobs:
       operation: ${{ steps.release.outputs.operation }}
       publish: ${{ steps.release.outputs.publish }}
       target_sha: ${{ steps.release.outputs.target_sha }}
+      allow_active_auctions: ${{ steps.release.outputs.allow_active_auctions }}
     steps:
       - name: Check out repository history
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
@@ -65,6 +71,7 @@ jobs:
           WORKFLOW_SHA: ${{ github.event.workflow_run.head_sha }}
           INPUT_OPERATION: ${{ inputs.operation }}
           INPUT_TARGET_SHA: ${{ inputs.target_sha }}
+          INPUT_ALLOW_ACTIVE_AUCTIONS: ${{ inputs.allow_active_auctions }}
         run: |
           set -euo pipefail
           git fetch --quiet origin main
@@ -74,15 +81,18 @@ jobs:
             target_sha="$WORKFLOW_SHA"
             operation="deploy"
             publish="true"
+            allow_active_auctions="false"
             [[ "$target_sha" == "$remote_main" ]]
           else
             target_sha="$INPUT_TARGET_SHA"
             operation="$INPUT_OPERATION"
             publish="false"
+            allow_active_auctions="$INPUT_ALLOW_ACTIVE_AUCTIONS"
           fi
 
           [[ "$target_sha" =~ ^[0-9a-f]{40}$ ]]
           [[ "$operation" == "deploy" || "$operation" == "rollback" ]]
+          [[ "$allow_active_auctions" == "true" || "$allow_active_auctions" == "false" ]]
           git cat-file -e "${target_sha}^{commit}"
           git merge-base --is-ancestor "$target_sha" origin/main
 
@@ -90,6 +100,7 @@ jobs:
             echo "target_sha=$target_sha"
             echo "operation=$operation"
             echo "publish=$publish"
+            echo "allow_active_auctions=$allow_active_auctions"
           } >> "$GITHUB_OUTPUT"
 
   publish:
@@ -197,24 +208,33 @@ jobs:
           PROD_USER: ${{ vars.PROD_USER }}
           PROD_APP_DIR: ${{ vars.PROD_APP_DIR }}
           PROD_DOMAIN: ${{ vars.PROD_DOMAIN }}
+          ALLOW_ACTIVE_AUCTIONS: ${{ needs.resolve.outputs.allow_active_auctions }}
         run: |
           set -euo pipefail
           port="${PROD_PORT:-22}"
           remote_script="/tmp/woodauction-deploy-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.sh"
           ssh_options=(-o BatchMode=yes -o IdentitiesOnly=yes -p "$port")
+          deploy_args=(
+            --operation "$OPERATION"
+            --target-sha "$TARGET_SHA"
+            --backend-image "${REGISTRY}/${BACKEND_REPOSITORY}:${TARGET_SHA}"
+            --frontend-image "${REGISTRY}/${FRONTEND_REPOSITORY}:${TARGET_SHA}"
+            --app-dir "$PROD_APP_DIR"
+            --domain "$PROD_DOMAIN"
+          )
+          if [[ "$ALLOW_ACTIVE_AUCTIONS" == "true" ]]; then
+            deploy_args+=(--allow-active-auctions)
+          fi
 
           scp -P "$port" -o BatchMode=yes -o IdentitiesOnly=yes \
             scripts/deploy-production.sh \
             "${PROD_USER}@${PROD_HOST}:${remote_script}"
 
+          # The validated deployment arguments are intentionally expanded by the runner.
+          # shellcheck disable=SC2029
           ssh "${ssh_options[@]}" "${PROD_USER}@${PROD_HOST}" \
             bash "$remote_script" \
-              --operation "$OPERATION" \
-              --target-sha "$TARGET_SHA" \
-              --backend-image "${REGISTRY}/${BACKEND_REPOSITORY}:${TARGET_SHA}" \
-              --frontend-image "${REGISTRY}/${FRONTEND_REPOSITORY}:${TARGET_SHA}" \
-              --app-dir "$PROD_APP_DIR" \
-              --domain "$PROD_DOMAIN"
+              "${deploy_args[@]}"
 
       - name: Verify public endpoints from GitHub runner
         env:
