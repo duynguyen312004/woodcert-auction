@@ -306,8 +306,9 @@ log.info("User {} placed bid {}", userId, amount);
 ### Public Visibility
 
 - Default public auction statuses: `WAITING`, `ACTIVE`
-- Explicit public status filter may include only `WAITING`, `ACTIVE`, `ENDED_SUCCESS`
-- `CANCELED` and `ENDED_FAILED` are not public-facing
+- Explicit public status filter may include `WAITING`, `ACTIVE`, `ENDED_SUCCESS`, `ENDED_FAILED`
+- Public detail follows the same visibility set
+- `CANCELED` is not public-facing
 
 ### Create / Cancel
 
@@ -337,14 +338,16 @@ if (remaining_time <= 30s)
 
 ### Concurrency
 
-- Redis handles real-time
-- MySQL only stores final state
+- Redis is authoritative for live price, leader, and end time while `ACTIVE`
+- MySQL stores durable configuration, snapshots, bid audit rows, and terminal state
 - Public/seller auction lists must load participant counts with one grouped query, not N per-session count queries
 - Auction response image selection must go through `ProductImageHelper`
 
-## 13. Order & Escrow Rules
+## 13. Order, Wallet Settlement & Fulfillment Rules
 
-Current status: implemented for DATN/MVP order, fulfillment, and dispute flows. There is no separate production-grade escrow ledger in this iteration; invariants are enforced through wallet operations, order payout snapshots, and tests.
+Current status: order, fulfillment, and dispute flows are implemented. There is no independent
+escrow ledger. Financial invariants are enforced through available/frozen wallet balances,
+transaction records, idempotent operation keys, order financial snapshots, and tests.
 
 Additional current rules:
 
@@ -355,24 +358,19 @@ Additional current rules:
 
 ### Payment Flow
 
-- Winner pays remaining
-- Money goes to SYSTEM (NOT seller)
-- After completion → release to seller
+- Winner deposit is captured at auction settlement
+- Winner pays `finalPrice - depositAmount` from available wallet balance
+- Seller is credited only after order completion
+- Platform commission is recorded separately
+- Default payment deadline is 72 hours
 
 ### Auto Complete
 
-- Use @Scheduled
-- NEVER use while(true)
-
-### SQL Logic
-
-```sql
-UPDATE orders
-SET status = 'COMPLETED'
-WHERE status = 'DELIVERED'
-AND delivered_at <= NOW() - 72h
-AND NOT EXISTS (dispute)
-```
+- Seller shipping changes fulfillment to `SHIPPED` and order to `FULFILLING`
+- Buyer receipt changes fulfillment to `DELIVERED` and completes the order immediately
+- Scheduler auto-completes `SHIPPED` fulfillment after 168 hours by default
+- Orders in `DISPUTED` state must be excluded from auto-completion
+- Use `@Scheduled`; never implement an infinite polling loop
 
 ## 14. Quy tắc chú thích
 

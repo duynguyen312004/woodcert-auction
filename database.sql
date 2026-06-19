@@ -1,368 +1,174 @@
-NHOM 1: QUAN LY DINH DANH VA PHAN QUYEN (IAM)
-
-Tai lieu du lieu duoc format lai de de doc, de doi chieu va de chuyen thanh DDL sau nay.
-
-1) Bang users (Tai khoan nguoi dung trung tam)
-Mo ta:
-- Luu tru thong tin dang nhap va dinh danh co ban cua moi user tren he thong.
-- Doi tuong: Bidder, Seller, Appraiser, Admin.
-
-Cac cot:
-- id                VARCHAR(36)   PK. Khuyen dung UUID.
-- email             VARCHAR(255)  UNIQUE, NOT NULL. Dung lam tai khoan dang nhap.
-- password_hash     VARCHAR(255)  NOT NULL. Mat khau da ma hoa (Bcrypt/Argon2).
-- full_name         VARCHAR(100)  NOT NULL. Ho va ten hien thi.
-- phone_number      VARCHAR(20)   UNIQUE. So dien thoai lien he.
-- avatar_url        VARCHAR(500)  Duong dan anh dai dien.
-- status            ENUM          ACTIVE, BANNED, UNVERIFIED (mac dinh).
-- created_at        TIMESTAMP     Thoi gian tao tai khoan.
-- updated_at        TIMESTAMP     Thoi gian cap nhat gan nhat.
-
-1.1) Bang email_verification_tokens (Token xac minh email)
-Mo ta:
-- Luu token xac minh dang raw duoc hash SHA-256 truoc khi luu DB.
-- Moi token chi dung mot lan va co han su dung.
-
-Cac cot:
-- id                BIGINT        PK, auto increment.
-- user_id           VARCHAR(36)   FK -> users.id.
-- token_hash        CHAR(64)      UNIQUE, NOT NULL. SHA-256 cua raw token gui cho user.
-- expires_at        TIMESTAMP     Thoi gian het han cua token.
-- verified_at       TIMESTAMP     Thoi gian token duoc xac minh thanh cong.
-- created_at        TIMESTAMP     Thoi gian tao token.
-
-2) Bang addresses (So dia chi giao/nhan hang)
-Mo ta:
-- Thay the cho buyer_profile.
-- Cho phep mot user co nhieu dia chi nhan hang khac nhau.
-
-Cac cot:
-- id                BIGINT        PK, auto increment.
-- user_id           VARCHAR(36)   FK -> users.id.
-- receiver_name     VARCHAR(100)  NOT NULL. Ten nguoi nhan (co the khac chu tai khoan).
-- phone_number      VARCHAR(20)   NOT NULL. So dien thoai nguoi nhan.
-- street_address    VARCHAR(255)  NOT NULL. So nha, ten duong, thon/xom.
-- province_id       INT           ID Tinh/Thanh pho (de tich hop API van chuyen).
-- district_id       INT           ID Quan/Huyen.
-- ward_id           INT           ID Phuong/Xa.
-- is_default        BOOLEAN       Danh dau dia chi mac dinh (default: false).
-
-3) Bang roles (Tu dien vai tro)
-Mo ta:
-- Dinh nghia cac nhom vai tro lon trong he thong.
-- To hop role hop le do he thong tao: BIDDER; BIDDER + SELLER; APPRAISER; ADMIN.
-
-Cac cot:
-- id                INT           PK, auto increment.
-- name              VARCHAR(50)   UNIQUE, NOT NULL.
-                                    Vi du: ROLE_BIDDER, ROLE_SELLER,
-                                           ROLE_APPRAISER, ROLE_ADMIN.
-
-4) Bang permissions (Tu dien quyen han nghiep vu)
-Mo ta:
-- Luu tru cac quyen cu the, doc lap voi endpoint API.
-- Huong thiet ke theo mo hinh enterprise.
-
-Cac cot:
-- id                INT            PK, auto increment.
-- name              VARCHAR(100)   UNIQUE, NOT NULL.
-                                     Vi du: CREATE_BID, REGISTER_AUCTION,
-                                     APPROVE_PRODUCT, BAN_USER.
-- description       VARCHAR(255)   Mo ta chi tiet muc dich su dung quyen.
-
-5) Bang role_permissions (Phan quyen cho vai tro)
-Mo ta:
-- Bang trung gian N-N giua roles va permissions.
-
-Cac cot:
-- role_id           INT           PK, FK -> roles.id.
-- permission_id     INT           PK, FK -> permissions.id.
-
-Rang buoc:
-- Composite key: (role_id, permission_id).
-
-6) Bang user_roles (Gan vai tro cho nguoi dung)
-Mo ta:
-- Bang trung gian N-N giua users va roles.
-
-Cac cot:
-- user_id           VARCHAR(36)   PK, FK -> users.id.
-- role_id           INT           PK, FK -> roles.id.
-
-Rang buoc:
-- Composite key: (user_id, role_id).
-
-7) Bang seller_profiles (Ho so nguoi ban)
-Mo ta:
-- Luu tru thong tin mo rong mang tinh phap ly cho user dang ky ban hang.
-
-Cac cot:
-- user_id              VARCHAR(36)   PK, FK -> users.id (quan he 1-1).
-- store_name           VARCHAR(100)  NOT NULL. Ten gian hang / xuong go hien thi tren san.
-- identity_card_number VARCHAR(20)   UNIQUE, NOT NULL. So CCCD/CMND dinh danh phap ly.
-- tax_code             VARCHAR(50)   Ma so thue (ca nhan hoac doanh nghiep).
-- reputation_score     DECIMAL(3,2)  Diem uy tin, default: 5.00,
-                                      sau appraisal tinh bang AVG(seller_accuracy) va lam tron 1 chu so.
-- created_at           TIMESTAMP     Thoi gian tao ho so nguoi ban.
-- updated_at           TIMESTAMP     Thoi gian cap nhat ho so nguoi ban.
-
-
-
-==============================================================================
-NHOM 2: SAN PHAM & LUONG KIEM DINH (PRODUCT & APPRAISAL)
-==============================================================================
-
-1) Bang categories (Danh muc phan loai)
-Mo ta:
-- Su dung thiet ke da cap (Hierarchical) qua cot parent_id.
-- Khong luu ten cac loai go vao day de tranh rac danh muc.
-- Loai go se duoc bo loc (Filter) xu ly dua tren du lieu kiem dinh.
-
-Cac cot:
-- id                INT           PK, auto increment.
-- name              VARCHAR(100)  UNIQUE, NOT NULL. Ten danh muc (VD: Tuong Go Phong Thuy).
-- slug              VARCHAR(100)  UNIQUE, NOT NULL. Dung cho URL SEO.
-- parent_id         INT           FK -> categories.id. NULL neu la cap cao nhat.
-- description       VARCHAR(255)  Mo ta danh muc.
-
-2) Bang products (Thong tin San pham tho do Seller khai bao)
-Mo ta:
-- Thong tin "quang cao" cua Seller, chua duoc xac thuc.
-- Cot status dieu huong luong di cua san pham (State Machine).
-
-Cac cot:
-- id                BIGINT        PK, auto increment.
-- seller_id         VARCHAR(36)   FK -> users.id.
-- category_id       INT           FK -> categories.id.
-- title             VARCHAR(255)  NOT NULL. Ten san pham.
-- description       LONGTEXT      Bai gioi thieu chi tiet (HTML/Markdown).
-- material          VARCHAR(100)  Chat lieu do nguoi ban tu khai bao.
-- dimensions        VARCHAR(100)  Kich thuoc (Dai x Rong x Cao).
-- weight            DECIMAL(10,2) Trong luong (kg) de tinh phi van chuyen.
-- status            ENUM          DRAFT, PENDING_APPRAISAL, REJECTED, APPRAISED.
-- sale_status       ENUM          AVAILABLE, IN_AUCTION, SOLD, RETURNED. Trang thai kha nang ban cua san pham vat ly.
-                                    RETURNED dung khi buyer thang dispute; khong tu relist san pham loi.
-- submitted_at      TIMESTAMP     Thoi diem Seller bam "Gui kiem dinh".
-- rejected_reason   TEXT          Ly do tu choi (chi co khi status = REJECTED).
-- created_at        TIMESTAMP     Thoi gian tao.
-- updated_at        TIMESTAMP     Thoi gian cap nhat.
-
-3) Bang product_images (Bo suu tap anh quang cao)
-Mo ta:
-- Bo sung sort_order de Frontend hien thi anh theo y do sap xep cua Seller.
-
-Cac cot:
-- id                BIGINT        PK, auto increment.
-- product_id        BIGINT        FK -> products.id.
-- image_url         VARCHAR(500)  NOT NULL. Link anh luu tren Cloud.
-- is_primary        BOOLEAN       Anh bia Thumbnail (default: false).
-- sort_order        INT           Thu tu sap xep anh (default: 0).
-
-4) Bang appraisal_reports (Chung thu Tham dinh - Loi He Thong)
-Mo ta:
-- Giai quyet bai toan cot loi: Chong lua dao va Xac thuc thong tin.
-- Chuan hoa ENUM de tranh rac du lieu.
-
-Cac cot:
-- id                        BIGINT        PK, auto increment.
-- product_id                BIGINT        UNIQUE, FK -> products.id (1-1).
-- appraiser_id              VARCHAR(36)   FK -> users.id (Chuyen gia thuc hien).
-- certificate_code          VARCHAR(50)   UNIQUE, NOT NULL. Ma tra cuu cong khai.
-- verified_material         VARCHAR(100)  NOT NULL. Chat go that (VD: Go Sua).
-- origin                    VARCHAR(100)  Noi che tac/xuat xu.
-- age_estimation            VARCHAR(50)   Tuoi tho uoc tinh cua vat pham.
-- condition_grade           ENUM          EXCELLENT, GOOD, FAIR, POOR.
-- estimated_value           DECIMAL(19,2) NOT NULL. Dinh gia tien mat (VND).
-- is_authentic              BOOLEAN       True = Hang that / False = Hang gia, kem chat luong.
-- appraiser_notes           TEXT          Ghi chu cac loi, vet nut, lich su phuc che...
-- seller_accuracy           DECIMAL(3,2) NOT NULL. Diem trung thuc cua Seller (1-5), nhap dang 4.5.
-- integrity_hash            VARCHAR(255)  NOT NULL. Dau van tay SHA-256 cua cac truong cot loi.
-- appraised_at              TIMESTAMP     Thoi diem ky duyet.
-
-5) Bang appraisal_images (Bang chung Phap ly)
-Mo ta:
-- Anh thuc te do chuyen gia chup khi soi loi san pham.
-- Bat buoc phai co de Admin giai quyet tranh chap (Dispute) neu co khieu nai.
-
-Cac cot:
-- id                    BIGINT        PK, auto increment.
-- appraisal_report_id   BIGINT        FK -> appraisal_reports.id.
-- image_url             VARCHAR(500)  NOT NULL. Link anh bang chung thuc te.
-- description           VARCHAR(255)  Chu thich anh (VD: "Vet nut o de tuong").
-
-
-==============================================================================
-NHOM 3: HE THONG VI KY QUY & LUONG DAU GIA (ESCROW WALLET & AUCTION)
-==============================================================================
-
-1) Bang wallets (Vi tien ky quy)
-Mo ta:
-- Quan ly so du kha dung va so du dong bang de phuc vu coc dau gia.
-
-Cac cot:
-- id                BIGINT        PK, auto increment.
-- user_id           VARCHAR(36)   UNIQUE, FK -> users.id.
-- available_balance DECIMAL(19,2) Tien kha dung. Default: 0.
-- frozen_balance    DECIMAL(19,2) Tien coc dang bi dong bang. Default: 0.
-- version           INT           BAT BUOC. Optimistic locking cho giao dich dong thoi.
-
-2) Bang wallet_transactions (Lich su dong tien - audit)
-Mo ta:
-- Luu vet moi bien dong tien cua vi de doi soat va truy vet.
-
-Cac cot:
-- id                BIGINT        PK, auto increment.
-- wallet_id         BIGINT        FK -> wallets.id.
-- amount            DECIMAL(19,2) So tien (+ hoac -).
-- type              ENUM          WALLET_TOP_UP, APPRAISAL_FEE, AUCTION_DEPOSIT_FREEZE,
-                                   AUCTION_DEPOSIT_RELEASE, AUCTION_DEPOSIT_CAPTURE,
-                                   ORDER_PAYMENT, ORDER_REFUND, SELLER_PAYOUT,
-                                   SELLER_FORFEIT_COMPENSATION.
-- reference_id      BIGINT        ID phien dau gia hoac ID don hang.
-- reference_type    ENUM          AUCTION, APPRAISAL, ORDER, SYSTEM, VNPAY_DEPOSIT.
-- status            ENUM          SUCCESS, FAILED, PENDING.
-- created_at        TIMESTAMP     Thoi diem bien dong.
-
-3) Bang auction_sessions (Phien dau gia)
-Ghi chu cot loi:
-- Khi status = ACTIVE, cot current_price tren DB chi de tham khao (sync dinh ky).
-- Toc do xu ly gia thuc te chay tren RAM (Redis).
-
-Cac cot:
-- id                BIGINT        PK, auto increment.
-- product_id        BIGINT        FK -> products.id.
-- starting_price    DECIMAL(19,2) Gia khoi diem.
-- reserve_price     DECIMAL(19,2) Gia san (ban toi thieu).
-- step_price        DECIMAL(19,2) Buoc gia.
-- deposit_amount    DECIMAL(19,2) Tien coc yeu cau.
-- start_time        TIMESTAMP     Gio bat dau.
-- end_time          TIMESTAMP     Gio ket thuc (duoc update boi he Anti-Sniper).
-- current_price     DECIMAL(19,2) Gia cao nhat cuoi cung (chot khi ENDED).
-- highest_bidder_id VARCHAR(36)   FK. Nguoi thang cuoc.
-- winner_bid_id     BIGINT        FK. Cuoc bid thang cuoc (de doi soat va tranh gian lan).
-- status            ENUM          WAITING, ACTIVE, ENDED_SUCCESS, ENDED_FAILED, CANCELED.
-- version           INT           Optimistic locking cho DB.
-
-4) Bang auction_participants (Quan ly coc cua nguoi tham gia)
-Mo ta:
-- Theo doi trang thai tien coc cua tung nguoi trong tung phien dau gia.
-
-Cac cot:
-- id                 BIGINT        PK, auto increment.
-- auction_session_id BIGINT        FK -> auction_sessions.id.
-- user_id            VARCHAR(36)   FK -> users.id.
-- deposit_amount     DECIMAL(19,2) So tien da khoa.
-- deposit_status     ENUM          FROZEN, REFUNDED, DEDUCTED, CONFISCATED.
-- withdrawn_at       TIMESTAMP     Thoi diem bidder rut khoi phien WAITING.
-
-Rang buoc quan trong:
-- UNIQUE(user_id, auction_session_id) de chong dup coc.
-
-5) Bang bids (Lich su dau gia)
-Mo ta:
-- Luu toan bo lan ra gia va ket qua xac thuc cua he thong.
-
-Cac cot:
-- id                 BIGINT        PK, auto increment.
-- auction_session_id BIGINT        FK -> auction_sessions.id.
-- user_id            VARCHAR(36)   FK -> users.id.
-- bid_amount         DECIMAL(19,2) So tien bid.
-- status             ENUM          VALID, INVALID_PRICE, REJECTED_TIME.
-- bid_time           TIMESTAMP     Thoi diem he thong ghi nhan.
-INDEX (auction_session_id, bid_amount DESC) de nhanh chong xac dinh gia cao nhat va tranh gian lan.
-Rang buoc quan trong:
-- Can tao INDEX cho cot bid_time.
-
-
-==============================================================================
-NHOM 4: DON HANG, GIAO NHAN & GIAI QUYET TRANH CHAP (ORDER, FULFILLMENT & DISPUTE)
-==============================================================================
-
-1) Bang orders (Don hang canonical)
-Mo ta:
-- Don hang luu snapshot tien bat bien va source_type/source_id de auction chi la mot nguon tao order.
-
-Cac cot:
-- id                  BIGINT        PK, auto increment.
-- source_type         ENUM          AUCTION.
-- source_id           BIGINT        ID aggregate nguon, hien tai la auction_sessions.id.
-- buyer_id            VARCHAR(36)   FK. Nguoi mua (nguoi thang).
-- seller_id           VARCHAR(36)   FK. Nguoi ban (chu san pham).
-- product_id          BIGINT        FK -> products.id.
-- product_title       VARCHAR(255)  Snapshot ten san pham tai luc tao order.
-- product_image_url   VARCHAR(1000) Snapshot anh dai dien tai luc tao order.
-- final_price         DECIMAL(19,2) Gia chot (chua tru coc).
-- deposit_amount      DECIMAL(19,2) Coc cua winner da ap dung vao order.
-- remaining_amount    DECIMAL(19,2) So tien buyer tra them = final_price - deposit_amount.
-- platform_commission_rate              DECIMAL(5,4)  Ty le hoa hong seller.
-- platform_commission_amount            DECIMAL(19,2) Hoa hong san khi order COMPLETED.
-- seller_payout_amount                  DECIMAL(19,2) Seller nhan sau khi tru hoa hong.
-- forfeited_deposit_platform_fee_amount DECIMAL(19,2) San giu khi buyer qua han thanh toan.
-- forfeited_deposit_seller_amount       DECIMAL(19,2) Seller nhan tu coc phat.
-- buyer_refund_amount                   DECIMAL(19,2) Buyer nhan lai khi thang dispute = deposit_amount + remaining_amount.
-- refunded_at                           TIMESTAMP     Thoi diem hoan tien buyer.
-- shipping_receiver_name               VARCHAR(100)  Snapshot nguoi nhan.
-- shipping_phone_number                VARCHAR(20)   Snapshot so dien thoai nhan hang.
-- shipping_street/district/ward/province             Snapshot dia chi giao hang.
-- status              ENUM          PENDING_PAYMENT, PAID, FULFILLING, COMPLETED, CANCELED, DISPUTED.
-- payment_deadline    TIMESTAMP     Han chot thanh toan not tien.
-- paid_at             TIMESTAMP     Thoi diem buyer thanh toan phan con lai.
-- completed_at        TIMESTAMP     Thoi diem hoan tat va release payout.
-- canceled_at         TIMESTAMP     Thoi diem huy.
-- cancel_reason       VARCHAR(255)  Ly do huy.
-- created_at          TIMESTAMP     Thoi gian tao don hang.
-- updated_at          TIMESTAMP     Thoi gian cap nhat don hang.
-
-2) Bang order_fulfillments (Van don)
-Cap nhat:
-- Tao khi order PAID, tach rieng shipping/receive/auto-complete khoi order.
-
-Cac cot:
-- id                BIGINT        PK, auto increment.
-- order_id          BIGINT        UNIQUE, FK -> orders.id.
-- buyer_id          VARCHAR(36)   Buyer snapshot.
-- seller_id         VARCHAR(36)   Seller snapshot.
-- delivery_method   ENUM          THIRD_PARTY, SELF_DELIVERY.
-- carrier_name      VARCHAR(120)  Don vi van chuyen, bat buoc voi THIRD_PARTY.
-- tracking_code     VARCHAR(120)  Ma tra cuu.
-- status            ENUM          PENDING_SHIPMENT, SHIPPED, DELIVERED, AUTO_COMPLETED, CANCELED.
-- shipped_at        TIMESTAMP     Thoi diem seller xac nhan giao hang.
-- received_at       TIMESTAMP     Thoi diem buyer nhan hoac scheduler auto-complete.
-- auto_complete_deadline TIMESTAMP Han scheduler tu dong hoan tat.
-- created_at        TIMESTAMP     Thoi gian tao fulfillment.
-- updated_at        TIMESTAMP     Thoi gian cap nhat fulfillment.
-
-3) Bang dispute_cases (Ho so tranh chap)
-Mo ta:
-- Buyer mo tranh chap khi order dang FULFILLING va fulfillment da SHIPPED.
-- Admin review va resolve theo 2 outcome: SELLER_WINS hoac BUYER_WINS.
-
-Cac cot:
-- id                BIGINT        PK, auto increment.
-- order_id          BIGINT        FK -> orders.id.
-- fulfillment_id    BIGINT        FK -> order_fulfillments.id, nullable.
-- opened_by_user_id VARCHAR(36)   User mo tranh chap.
-- reason            VARCHAR(120)  Ly do ngan gon.
-- description       TEXT          Mo ta chi tiet.
-- status            ENUM          OPEN, UNDER_REVIEW, RESOLVED, REJECTED, CANCELED.
-- resolution_outcome ENUM         SELLER_WINS, BUYER_WINS. Chi co khi RESOLVED.
-- resolved_by_admin_id VARCHAR(36) FK -> users.id, nullable.
-- resolution_note   TEXT          Ghi chu ket luan cua admin.
-- opened_at         TIMESTAMP     Thoi diem mo case.
-- resolved_at       TIMESTAMP     Thoi diem xu ly xong.
-- created_at        TIMESTAMP     Thoi gian tao case.
-- updated_at        TIMESTAMP     Thoi gian cap nhat case.
-
-4) Bang dispute_evidence (Bang chung tranh chap)
-Mo ta:
-- Luu tham chieu media_assets do buyer upload cho mot dispute.
-- Media usage_type = DISPUTE_EVIDENCE, chi chap nhan asset ACTIVE.
-
-Cac cot:
-- id                BIGINT        PK, auto increment.
-- dispute_case_id   BIGINT        FK -> dispute_cases.id.
-- media_id          BIGINT        FK -> media_assets.id.
-- uploaded_by_user_id VARCHAR(36) FK -> users.id.
-- sort_order        INT           Thu tu hien thi bang chung.
-- created_at        TIMESTAMP     Thoi gian tao.
-- updated_at        TIMESTAMP     Thoi gian cap nhat.
+-- WOODCERT AUCTION - HUMAN-READABLE DATABASE INDEX
+-- Last verified: 2026-06-19
+--
+-- IMPORTANT:
+-- 1. This file is documentation only.
+-- 2. Do not execute this file to create or migrate a database.
+-- 3. The executable schema source of truth is:
+--    woodcert-auction/src/main/resources/db/migration/
+-- 4. Hibernate validates mappings; Flyway owns schema changes.
+--
+-- CURRENT MIGRATIONS
+-- V1__baseline_schema.sql
+--   Complete baseline schema.
+-- V2__seed_reference_data.sql
+--   Roles, permissions, role mappings, and categories.
+-- V3__seed_demo_users.sql
+--   Separate admin and appraiser accounts using password-hash placeholders.
+-- V4__add_dispute_conversation.sql
+--   Dispute messages and message-level evidence.
+--
+-- MODULE: IDENTITY AND ACCESS
+-- users
+-- roles
+-- permissions
+-- user_roles
+-- role_permissions
+-- refresh_tokens
+-- email_verification_tokens
+-- password_reset_tokens
+-- seller_profiles
+-- user_capability_statuses
+-- admin_audit_logs
+--
+-- UserStatus:
+--   ACTIVE, BANNED, UNVERIFIED
+--
+-- UserCapability:
+--   BUYER, SELLER, APPRAISER
+--
+-- CapabilityStatus:
+--   ACTIVE, BANNED
+--
+-- MODULE: LOCATION AND ADDRESS
+-- provinces
+-- districts
+-- wards
+-- addresses
+--
+-- Location primary/foreign keys use VARCHAR codes.
+-- The first user address becomes default. Deleting the default address promotes
+-- the oldest remaining address.
+--
+-- MODULE: MEDIA
+-- media_assets
+--
+-- MediaStatus:
+--   PENDING, ACTIVE, ORPHANED, PENDING_DELETE, DELETE_FAILED, DELETED
+--
+-- MediaUsageType:
+--   USER_AVATAR, PRODUCT_IMAGE, APPRAISAL_IMAGE,
+--   SHIPMENT_PACKING_VIDEO, DISPUTE_EVIDENCE
+--
+-- SHIPMENT_PACKING_VIDEO is reserved but not implemented by fulfillment.
+--
+-- MODULE: CATALOG AND APPRAISAL
+-- categories
+-- products
+-- product_images
+-- appraisal_reports
+-- appraisal_images
+--
+-- ProductStatus:
+--   DRAFT, PENDING_APPRAISAL, UNDER_APPRAISAL, REJECTED, APPRAISED
+--
+-- ProductSaleStatus:
+--   AVAILABLE, IN_AUCTION, PENDING_ORDER, SOLD, RETURNED
+--
+-- Each product has at most one appraisal report.
+-- Appraisal reports are immutable after submission.
+-- Certificate format: CERT-{year}-{reportId padded to 5 digits}.
+-- The integrity hash is SHA-256, not a digital signature or blockchain proof.
+--
+-- MODULE: FINANCE
+-- wallets
+-- wallet_transactions
+-- wallet_operations
+-- vnpay_deposits
+-- platform_revenue_transactions
+--
+-- Wallets store available_balance and frozen_balance.
+-- wallet_operations provides deterministic idempotency.
+-- wallet_transactions records successful balance mutations.
+-- platform_revenue_transactions records appraisal fees, sale commissions, and
+-- forfeited-deposit platform fees.
+--
+-- The current system does NOT implement an independent escrow ledger.
+--
+-- WalletTransactionType:
+--   WALLET_TOP_UP
+--   APPRAISAL_FEE
+--   AUCTION_DEPOSIT_FREEZE
+--   AUCTION_DEPOSIT_RELEASE
+--   AUCTION_DEPOSIT_CAPTURE
+--   ORDER_PAYMENT
+--   ORDER_REFUND
+--   SELLER_PAYOUT
+--   SELLER_FORFEIT_COMPENSATION
+--
+-- MODULE: AUCTION
+-- auction_sessions
+-- auction_participants
+-- bids
+--
+-- AuctionSessionStatus:
+--   WAITING, ACTIVE, ENDED_SUCCESS, ENDED_FAILED, CANCELED
+--
+-- DepositStatus:
+--   FROZEN, WITHDRAWN, REFUNDED, DEDUCTED, CONFISCATED
+--
+-- BidStatus:
+--   VALID, INVALID_PRICE, REJECTED_TIME
+--
+-- MySQL owns WAITING and terminal state.
+-- Redis owns live current price, highest bidder, and end time during ACTIVE.
+-- Public defaults: WAITING and ACTIVE.
+-- Explicit public status/detail: WAITING, ACTIVE, ENDED_SUCCESS, ENDED_FAILED.
+-- CANCELED is not public.
+--
+-- MODULE: ORDER
+-- orders
+--
+-- OrderSourceType:
+--   AUCTION
+--
+-- OrderStatus:
+--   PENDING_PAYMENT, PAID, FULFILLING, COMPLETED, CANCELED, DISPUTED
+--
+-- Orders store immutable product and shipping-address snapshots plus financial
+-- outcome fields. Buyer payment deadline defaults to 72 hours.
+--
+-- MODULE: FULFILLMENT
+-- order_fulfillments
+--
+-- FulfillmentStatus:
+--   PENDING_SHIPMENT, SHIPPED, DELIVERED, AUTO_COMPLETED, CANCELED
+--
+-- DeliveryMethod:
+--   THIRD_PARTY, SELF_DELIVERY
+--
+-- Shipped fulfillment auto-completes after 168 hours by default when the order
+-- is not disputed.
+--
+-- MODULE: DISPUTE
+-- dispute_cases
+-- dispute_messages
+-- dispute_evidence
+--
+-- DisputeStatus:
+--   OPEN, UNDER_REVIEW, RESOLVED, REJECTED, CANCELED
+--
+-- DisputeResolutionOutcome:
+--   SELLER_WINS, BUYER_WINS
+--
+-- Opening evidence has message_id NULL.
+-- Message evidence references dispute_messages.
+-- Partial refunds are not implemented.
+--
+-- REDIS RUNTIME KEYS (NOT MYSQL TABLES)
+-- auction:session:{id}:state
+-- auction:session:{id}:bidders
+-- auth:failed_attempts:{normalizedEmail}
+-- auth:locked:{normalizedEmail}
+--
+-- See woodcert-auction/docs/DATABASE.md for the maintained schema overview.

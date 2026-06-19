@@ -1,6 +1,6 @@
 # Testing Strategy
 
-Last updated: 2026-06-13
+Last updated: 2026-06-19
 
 ## Official FE Test Stack
 
@@ -63,7 +63,14 @@ Use for:
 - seller auction creation form rules
 - media uploader state machine
 
-Current automated status: `pnpm test` passes with 51 test files and 175 tests. WebSocket reconnect, countdown offset, auction registration, and bidding-room behavior have targeted unit coverage; full backend-connected realtime concurrency remains manual acceptance scope.
+Current automated status: `pnpm test` passes with 55 test files and 190 tests. WebSocket reconnect,
+countdown offset, auction registration, bidding-room behavior, dispute conversation, order flows,
+portal guards, and admin screens have targeted coverage. Full backend-connected realtime
+concurrency remains manual acceptance scope.
+
+Current browser status: 7 Playwright scenarios pass. These cover root/public routing, public auction
+detail, dispute-detail responsiveness, and portal-specific not-found behavior. They do not prove the
+entire production business flow.
 
 ## Critical E2E Scenarios
 

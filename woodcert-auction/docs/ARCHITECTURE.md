@@ -1,365 +1,374 @@
-# Architecture
+# WoodCert Auction Backend Architecture
 
-> System design overview for Woodcert Auction Platform. Update only during architecture review sessions.
+Last verified against source: 2026-06-19
 
----
+## 1. Source of truth
 
-## High-Level Architecture
+This document describes the current implementation. When sources disagree, use:
 
-```text
-                             ┌─────────────────┐
-                             │   Client (SPA)  │
-                             └────────┬─────────┘
-                                      │ HTTPS / WSS
-                                      ▼
-                             ┌─────────────────┐
-                             │   Spring Boot   │
-                             │   Application   │
-                             └────────┬─────────┘
-                                      │
-          ┌───────────────────────┬───┴───────────────────┬───────────────────────┐
-          ▼                       ▼                       ▼                       ▼
- ┌────────────────┐      ┌────────────────┐      ┌────────────────┐      ┌────────────────┐
- │  Controllers   │      │ Security Layer │      │ Exception      │      │ WebSocket      │
- │  (REST API)    │      │ (JWT + RBAC)   │      │ Handler        │      │ Controller     │
- └───────┬────────┘      └────────────────┘      └────────────────┘      └────────┬───────┘
-         │                                                                        │
-         ▼                                                                        ▼
- ┌────────────────────────────────────────────────────────────────────────────────────┐
- │                                   Service Layer                                    │
- │                                (Interface + Impl)                                  │
- │                  (Business Logic, Transaction Management, Lock)                    │
- └───────┬────────────────────────────────────────────────────────────────────┬───────┘
-         │                                                                    │
-         ▼                                                                    ▼
- ┌────────────────┐                                                  ┌────────────────┐
- │  Repository    │                                                  │  Redis Cache   │
- │  (Spring Data) │                                                  │  & Lock        │
- └───────┬────────┘                                                  └────────────────┘
-         │
-         ▼
- ┌────────────────┐
- │    MySQL       │
- └────────────────┘
-```
+1. Flyway migrations for schema and seed data.
+2. Current Java source for business behavior and API ownership.
+3. `application.yaml` for runtime defaults.
+4. Automated test reports for verified behavior.
+5. Architecture decision records and project-status documents as supporting context.
 
----
+`database.sql` is a human-readable index only. It is not an executable schema source.
 
-## Request Flow
+## 2. Architecture style
 
-### Standard CRUD Request
+The backend is a Spring Boot modular monolith:
 
-```
-Client
-→ [HTTP Request]
-→ SecurityFilterChain (JWT validation using Spring Security OAuth2 Resource Server with custom-issued tokens)
-→ Controller (receive request, validate with @Valid)
-→ Service (business logic, entity ↔ DTO conversion)
-→ Repository (JPA query)
-→ Database
-→ Repository (return Entity)
-→ Service (convert Entity → Response DTO)
-→ Controller (wrap in ApiResponse)
-→ [HTTP Response]
-→ Client
-```
+- one deployable Java application;
+- one MySQL schema;
+- one Redis instance for runtime state;
+- feature-oriented packages with internal service, repository, DTO, and entity layers;
+- synchronous module collaboration through services, query snapshots, and ports/adapters.
 
-### Authentication Flow
+It is not a microservices system. The package boundaries reduce coupling inside one process but do
+not create independently deployed services or distributed transactions.
 
-```
-1. Login:
-Client → POST /api/v1/auth/login (email + password)
-→ AuthController → AuthService
-→ AuthenticationManager.authenticate()
-→ CustomUserDetailsService.loadUserByUsername() → query DB
-→ Password verified (BCrypt)
-→ JwtService creates access token (15min) + refresh token (7d)
-→ Return access token in JSON and refresh token only in HttpOnly cookie
-2. Authenticated Request:
-Client → [Authorization: Bearer <access_token>]
-→ SecurityFilterChain → OAuth2 Resource Server
-→ JwtDecoder verifies token using Secret Key
-→ JwtAuthenticationConverter extracts 'permissions' to SecurityContext
-→ Controller (@PreAuthorize) → Service → Repository → Response
-3. Token Refresh:
-Client → GET /api/v1/auth/csrf
-Client → POST /api/v1/auth/refresh (empty body + matching X-XSRF-TOKEN)
-→ Read and rotate refresh token from HttpOnly cookie
-→ Return new access token and set the rotated refresh cookie
-```
+## 3. Runtime components
 
----
+| Component | Responsibility |
+|---|---|
+| React SPA | Browser user interface; calls REST and subscribes to auction topics |
+| Nginx host proxy | HTTPS termination and routing for SPA, REST, health, and WebSocket traffic |
+| Spring Boot 3.5 / Java 17 | REST API, security, business workflows, schedulers, and STOMP broker |
+| MySQL 8 | Durable business data and terminal auction/order state |
+| Redis 7 | Active-auction runtime state, registered bidder sets, and login brute-force counters |
+| Cloudinary | Media object storage; the application stores verified metadata and ownership |
+| VNPay Sandbox | Wallet top-up payment flow |
+| SMTP server | Email verification and password-reset delivery |
 
-### Password Reset Flow
+The application uses Flyway for schema management and Hibernate with
+`spring.jpa.hibernate.ddl-auto=validate`.
+
+## 4. Feature modules
 
 ```text
-Forgot password:
-Client -> POST /api/v1/auth/forgot-password
--> AuthController
--> AuthService facade
--> PasswordResetService
--> Find eligible ACTIVE account by normalized email
--> Enforce per-account cooldown
--> Generate raw one-time token and store only SHA-256 hash
--> IdentityEmailService sends reset link when SMTP is configured
--> Return generic 200 response for all non-validation cases
-
-Reset password:
-Client -> POST /api/v1/auth/reset-password
--> Hash submitted raw token
--> Validate token exists, unused, and not expired
--> Update BCrypt password hash
--> Mark reset token used
--> Revoke active refresh tokens for the account
--> Return success
+com.woodcert.auction/
+├── core/
+│   ├── auth/
+│   ├── config/
+│   ├── controller/
+│   ├── dto/
+│   ├── entity/
+│   ├── exception/
+│   └── security/
+└── feature/
+    ├── identity/
+    ├── media/
+    ├── catalog/
+    ├── finance/
+    ├── auction/
+    ├── order/
+    ├── fulfillment/
+    └── dispute/
 ```
 
-Refresh tokens are returned only in cookies built with `ResponseCookie`, including `HttpOnly`, configured `Secure`, configured `SameSite`, `Path`, and `Max-Age`.
+| Module | Current ownership |
+|---|---|
+| `core` | Shared response types, exceptions, JWT validation, effective permissions, CORS, WebSocket, and server time |
+| `identity` | Authentication, refresh sessions, profiles, seller registration, addresses, locations, roles, capability suspension, and admin audit logs |
+| `media` | Cloudinary upload intents, confirmation, metadata, delivery URLs, ownership checks, and cleanup |
+| `catalog` | Categories, seller products, product images, appraisal workflow, reports, certificates, and seller reputation |
+| `finance` | Wallets, wallet transactions, idempotent operations, VNPay deposits, and platform revenue |
+| `auction` | Sessions, participants, Redis runtime, bids, broadcasts, activation/closure, deposit settlement, and auction read models |
+| `order` | Post-auction commercial transaction, remaining payment, deadlines, financial snapshots, payout, refund, and source callbacks |
+| `fulfillment` | Shipment state, tracking, buyer receipt confirmation, and automatic completion |
+| `dispute` | Evidence, immutable conversation timeline, admin review, and full buyer/seller resolution |
 
-Raw password-reset tokens, reset links, and email-verification links must not be written to application logs, including local fallback paths when SMTP is not configured.
+Some catalog/identity and dispute/fulfillment associations remain accepted package-level technical
+debt. New code should use public services, snapshots, or ports rather than expanding direct
+repository coupling.
 
----
+## 5. Security model
 
-### JWT Strategy
+### 5.1 Authentication
 
-The system does not implement a full OAuth2 Authorization Server.
+- The application issues its own HS512 access tokens.
+- Spring Security OAuth2 Resource Server validates the tokens.
+- Access-token lifetime is 15 minutes.
+- Refresh-token lifetime is 7 days.
+- Raw refresh, email-verification, and password-reset tokens are never persisted.
+- Refresh tokens are stored as SHA-256 hashes and rotated after use.
+- The browser receives refresh tokens only through an HttpOnly cookie.
+- Refresh and logout use a double-submit CSRF token from `GET /api/v1/auth/csrf`.
 
-Instead:
-- Tokens are generated internally using a custom JwtService.
-- Spring Security OAuth2 Resource Server is used solely for validating JWTs.
-- This approach leverages Spring's built-in security filters while keeping the authentication flow simple and secure.
+### 5.2 Authorization
 
----
+Flyway seeds four roles:
 
-### Real-time Bidding Flow (High Concurrency)
+- `ROLE_BIDDER`
+- `ROLE_SELLER`
+- `ROLE_APPRAISER`
+- `ROLE_ADMIN`
+
+Controllers use semantic permissions such as `CREATE_BID`, `CREATE_PRODUCT`,
+`APPROVE_PRODUCT`, and `RESOLVE_DISPUTE`.
+
+The backend does not rely only on JWT permission claims. For each authenticated request it:
+
+1. verifies that the user still exists and is `ACTIVE`;
+2. loads current role permissions from MySQL;
+3. removes permissions disabled by a banned `BUYER`, `SELLER`, or `APPRAISER` capability;
+4. evaluates controller `@PreAuthorize` rules.
+
+Frontend guards improve navigation but are not the final security boundary.
+
+## 6. Data ownership
+
+### 6.1 MySQL
+
+MySQL is authoritative for:
+
+- user, role, permission, and capability state;
+- catalog, appraisal, and certificate data;
+- wallet balances and financial audit records;
+- auction `WAITING`, terminal, and cancellation state;
+- participants and persisted bid audit rows;
+- orders, immutable product/address snapshots, and financial outcome fields;
+- fulfillment and dispute records.
+
+### 6.2 Redis
+
+Redis is authoritative only while an auction is `ACTIVE`.
+
+Each active session uses:
 
 ```text
-Client → POST /api/v1/bids (Session ID, Amount)
-→ SecurityFilterChain (Validate Token)
-→ BidService
-→ Redis (Execute Lua Script for Atomic check & update current_price)
-
-→ Redis acts as the source of truth for all ACTIVE auction sessions
-
-→ If valid:
-→ If (end_time - now) <= 30 seconds:
-→ Extend auction end_time by 60 seconds (Anti-Sniper Rule)
-→ Update Redis TTL
-  → Push message via WebSocketBroker to all clients in Room
-  → Best-effort REQUIRES_NEW persistence saves Bid record to MySQL
-→ Return 200 OK
+auction:session:{id}:state
+auction:session:{id}:bidders
 ```
 
-### Auction Read Flow (Criteria + Redis Overlay)
+The state hash stores the live current price, step price, reserve price, end time, highest bidder,
+highest bid trace, and runtime status. The bidder set contains users with a `FROZEN` participant
+deposit.
+
+Redis also stores temporary login protection keys:
 
 ```text
-Client -> GET /api/v1/auctions or /api/v1/auctions/{id}
--> AuctionController
--> AuctionServiceImpl facade
--> AuctionQueryService
--> PublicAuctionSearchCriteria captures list filters
--> MySQL query for sessions/products with optional material/category/price filters
--> Catalog enrichment loads category, appraisal, and product image read data in bulk
--> Identity enrichment loads seller summaries through SellerSummaryQueryService
--> GROUP BY participant count for list views
--> For ACTIVE sessions only: read Redis currentPrice/endTime
--> AuctionResponseAssembler maps DTOs and overlays Redis fields when present
--> If Redis state/field is missing: fall back to MySQL snapshot
--> Return public/seller DTO
+auth:failed_attempts:{normalizedEmail}
+auth:locked:{normalizedEmail}
 ```
 
-Default public list statuses are `WAITING` and `ACTIVE`. Explicit public status filter accepts only `WAITING`, `ACTIVE`, and `ENDED_SUCCESS`. Unknown `categoryName` returns an empty page, while `priceMin > priceMax` returns `INVALID_REQUEST`. Price filters use the persisted DB snapshot before Redis overlay.
+Redis is not the only database of the system.
 
-### Auction Command Flow (Create/Cancel/Register)
+## 7. Main business flow
+
+### 7.1 Account and seller onboarding
+
+1. Registration creates an `UNVERIFIED` bidder account.
+2. Email verification activates the account.
+3. Login returns an access token and sets the refresh cookie.
+4. A bidder with a phone number may create a seller profile.
+5. Seller-profile creation adds `ROLE_SELLER`; a new login is required for updated JWT role claims.
+
+### 7.2 Product and appraisal
+
+1. Seller uploads and confirms product media through Cloudinary.
+2. Seller creates a `DRAFT` product with exactly one primary image.
+3. Submitting for appraisal charges the configured appraisal fee and records platform revenue.
+4. Product moves to `PENDING_APPRAISAL`.
+5. An appraiser claims it, moving it to `UNDER_APPRAISAL` for a limited claim period.
+6. The appraiser submits one immutable report.
+7. Authentic products become `APPRAISED`; rejected products become `REJECTED`.
+8. Approved reports receive `CERT-{year}-{id}` and a SHA-256 integrity fingerprint.
+
+The integrity hash is not a digital signature or blockchain proof.
+
+### 7.3 Auction creation and registration
+
+1. Seller creates a session only for an owned `APPRAISED` and `AVAILABLE` product.
+2. Product and session conflict checks use database locks.
+3. Session starts as `WAITING`; the product becomes `IN_AUCTION`.
+4. Bidder registration moves the deposit from available balance to frozen balance.
+5. Registration is allowed in `WAITING` and during a still-live `ACTIVE` Redis runtime.
+6. Withdrawal is allowed only in `WAITING`; the deposit is released and the participant cannot
+   register again for that session.
+
+### 7.4 Active bidding
+
+1. The scheduler loads due sessions and frozen bidder IDs into Redis.
+2. Session status becomes `ACTIVE`.
+3. `POST /api/v1/bids` performs preliminary ownership/status checks.
+4. A Redis Lua script atomically verifies time, registration, current leader, and minimum price.
+5. A valid bid updates Redis and may extend the end time.
+6. If remaining time is at most 30 seconds, the end time is extended by 60 seconds.
+7. The server broadcasts a `NEW_BID` STOMP event.
+8. Bid audit persistence and MySQL snapshot synchronization are best-effort secondary writes.
+
+The Redis result is the bid acceptance boundary. MySQL bid persistence must not be described as a
+prerequisite for a successful live bid.
+
+### 7.5 Auction closure and order creation
+
+1. The close scheduler reads the Redis snapshot.
+2. If Redis state is missing, it falls back to the MySQL session snapshot and persisted valid bids.
+3. A session becomes:
+   - `ENDED_SUCCESS` when a valid highest bid meets the reserve price;
+   - `ENDED_FAILED` otherwise.
+4. Loser deposits are released.
+5. The winner deposit is captured from frozen balance.
+6. An idempotent order is created only after winner-deposit settlement succeeds.
+7. A repair scheduler retries terminal sessions with frozen deposits or a missing order.
+
+Public default listing shows `WAITING` and `ACTIVE`. Explicit public status filters and public detail
+also support `ENDED_SUCCESS` and `ENDED_FAILED`. `CANCELED` is not public.
+
+## 8. Financial model
+
+The current system does not implement an independent escrow ledger.
+
+It uses:
+
+- `wallets.available_balance`;
+- `wallets.frozen_balance`;
+- immutable `wallet_transactions`;
+- idempotent `wallet_operations`;
+- order-owned financial snapshots;
+- `platform_revenue_transactions`.
+
+Money flow:
+
+1. VNPay top-up credits the buyer wallet.
+2. Auction registration freezes a deposit.
+3. Auction loss/cancellation releases the deposit.
+4. Winning captures the deposit and applies it to the future order price.
+5. The winner pays `finalPrice - depositAmount` from available wallet balance.
+6. The seller is credited only when the order completes.
+7. Platform commission is recorded separately.
+
+Commission rates:
+
+- up to 50,000,000 VND: 5%;
+- above 50,000,000 and up to 200,000,000 VND: 4%;
+- above 200,000,000 VND: 3%.
+
+If the winner misses the 72-hour payment deadline, the order is canceled. By default, 10% of the
+captured deposit is platform revenue and 90% is credited to the seller.
+
+## 9. Order, fulfillment, and dispute
+
+### 9.1 Order lifecycle
 
 ```text
-Create session:
-Controller -> AuctionServiceImpl -> AuctionCommandService
--> lock Product with PESSIMISTIC_WRITE
--> validate owner/appraised/rules/conflict
--> insert WAITING AuctionSession
-
-Cancel session:
-Controller -> AuctionServiceImpl -> AuctionCommandService
--> lock AuctionSession with Product
--> allow only WAITING
--> set CANCELED
-
-Register:
-Controller -> AuctionServiceImpl -> AuctionCommandService
--> allow WAITING or Redis-valid ACTIVE
--> freeze deposit
--> insert AuctionParticipant(FROZEN)
--> if ACTIVE, add bidder to Redis bidder set
+PENDING_PAYMENT -> PAID -> FULFILLING -> COMPLETED
+       |                         |
+       v                         v
+   CANCELED                  DISPUTED
+                                 |
+                    COMPLETED or CANCELED
 ```
 
-### Order, Fulfillment, Dispute, and Auto-Complete Flow (Background Job)
+- Auction is the only implemented order source.
+- Buyer selects an owned address when paying.
+- Product and shipping-address values are copied into immutable order snapshots.
+- Payment creates a `PENDING_SHIPMENT` fulfillment.
 
-Current status: implemented for the DATN/MVP commerce flow. The backend keeps the current finance model with wallet operations and order payout snapshots; a separate escrow ledger is intentionally not added in this iteration.
-
-Seller Portal v1 remains a composition layer in the SPA. It does not introduce a seller aggregate
-or cross-module repository access:
-
-- identity owns seller profile and buyer shipping-address validation
-- catalog owns products and product statistics
-- auction owns session lifecycle and STOMP events
-- order owns product/address/financial snapshots and seller revenue summaries
-- fulfillment owns shipping transitions
-- finance owns wallet mutations
-
-The order module reads buyer addresses through `ShippingAddressQueryService` and auction product
-data through the existing source adapter boundary. Seller auction details use STOMP for immediate
-events and REST polling as reconciliation; operational lists poll every 10 seconds.
+### 9.2 Fulfillment lifecycle
 
 ```text
-Spring @Scheduled (Runs every 1 hour)
-→ OrderService.processCompletedOrders()
-→ @Transactional triggers
-→ Query MySQL for Orders where status='DELIVERED'
-AND (NOW() - delivered_at) >= 72 hours
-AND no dispute exists
-
-→ Transfer funds from platform escrow to seller wallet
-→ Deduct platform fee before settlement
-→ Update Order status to 'COMPLETED'
+PENDING_SHIPMENT -> SHIPPED -> DELIVERED
+                           -> AUTO_COMPLETED
+                           -> CANCELED
 ```
 
-## Feature Package Structure
+- Third-party delivery requires carrier name and tracking code.
+- Self-delivery does not require carrier information.
+- Buyer receipt confirmation immediately completes the order.
+- A shipped fulfillment automatically completes after 168 hours by default.
+- Orders in `DISPUTED` state are excluded from automatic completion.
 
-The application follows a Package-by-Feature architecture. Each business domain is highly encapsulated.
+There is no post-confirmation dispute window after buyer receipt confirmation.
+
+### 9.3 Dispute lifecycle
+
+- Only the buyer can open a dispute.
+- The order must be `FULFILLING` and fulfillment must be `SHIPPED`.
+- Opening evidence is mandatory.
+- Buyer, seller, and authorized admin can add immutable text/image messages while active.
+- The buyer may cancel an active dispute.
+- Admin resolution supports only:
+  - `SELLER_WINS`: complete payout and mark fulfillment automatically completed;
+  - `BUYER_WINS`: refund deposit plus remaining payment, cancel fulfillment, and mark the product
+    `RETURNED`.
+
+Partial refunds are not implemented.
+
+## 10. Media flow
+
+All business media follows the same sequence:
+
+1. business module requests a signed upload intent;
+2. browser uploads directly to Cloudinary;
+3. business module confirms the upload by `mediaId` and immutable Cloudinary `assetId`;
+4. confirmed media is attached by ID;
+5. detached, stale, or orphaned media is deleted asynchronously.
+
+Supported usage types are avatar, product image, appraisal image, and dispute evidence. Shipment
+packing video is reserved in the enum but not implemented in the business workflow.
+
+## 11. Background jobs
+
+| Job | Default schedule | Responsibility |
+|---|---|---|
+| Auction activation | every 5 seconds | Load due sessions into Redis |
+| Auction closure | every 5 seconds | Finalize due active sessions |
+| Auction repair | every 30 seconds | Repair deposit settlement and missing orders |
+| Order payment deadline | every minute | Cancel overdue unpaid orders |
+| Fulfillment completion | every 5 minutes | Complete overdue shipped orders without disputes |
+| Refresh-token cleanup | every 6 hours | Remove expired/revoked refresh tokens |
+| Media cleanup | every 6 hours | Mark and delete stale/orphaned assets |
+
+## 12. Realtime contract
+
+Clients connect to:
 
 ```text
-feature/
-├── identity/                # Auth, User, Role, Permission, Address, SellerProfile
-├── catalog/                 # Internal inventory + appraisal workflow
-├── finance/                 # Wallet, wallet operations, VNPay, platform revenue
-├── auction/                 # Buyer-facing browse/detail + AuctionSession, Bid, Participant
-├── order/                   # Post-auction order payment and payout snapshots
-├── fulfillment/             # Shipment and auto-complete
-└── dispute/                 # Buyer evidence and admin resolution
+/ws-auction
 ```
 
-### Feature Dependency Rules
-
-- Prefer stable service, query-snapshot, or port interfaces for synchronous cross-feature calls.
-- Use application events when the interaction is asynchronous and eventual consistency is acceptable.
-- Auction composes catalog, identity, finance, and order behavior for the auction lifecycle.
-- Order owns commercial settlement and uses source and fulfillment ports.
-- Fulfillment owns shipment state and calls order for commercial completion.
-- Dispute coordinates order and fulfillment outcomes without mutating finance directly.
-
-New code must not introduce additional package cycles. The current identity/catalog and
-dispute/fulfillment relationships contain accepted legacy coupling; they are documented
-technical debt and are not part of the deployment refactor.
-
-### Cross-Cutting Concerns
-
-### Security
-
-- JWT validation handled by Spring Security OAuth2 Resource Server.
-- Tokens are issued internally via JwtService.
-
-- Access token: 15 minutes  
-- Refresh token: 7 days (stored in HttpOnly Cookie)
-
-- Authorization:
-
-```java
-@PreAuthorize("hasAuthority('APPROVE_PRODUCT')")
-```
-
-
----
-
-### Exception Handling
-
-- GlobalExceptionHandler (@RestControllerAdvice)
-- All responses wrapped in ApiResponse<T>
-
----
-
-### Concurrency & Data Integrity
-
-- Optimistic Locking:
-  - Applied via @Version (Wallet, AuctionSession, Order)
-
-- Transactions:
-  - @Transactional on all critical state-changing operations
-  - Especially in finance and fulfillment flows
-
----
-
-### Audit Fields
-
-- All entities extend BaseEntity:
-  - createdAt
-  - updatedAt
-
-- Managed by Hibernate:
-  - @CreationTimestamp
-  - @UpdateTimestamp
-
----
-
-### DTO Strategy
-
-- Entity classes are NEVER exposed to Controller layer
-
-- DTOs are feature-specific and located in each feature module
-
-- DTOs may aggregate data from multiple entities  
-  (e.g., Product + AppraisalReport) to present a unified view
-
----
-
-## Scalability & Future Improvements
-
-- The system is designed as a Modular Monolith
-
-- Can be split into microservices:
-  - auction-service
-  - wallet-service
-  - order-service
-
-- Redis can be scaled using Redis Cluster
-
-- Message Queue (Kafka / RabbitMQ) can replace best-effort in-process bid persistence
-
-- CDN can be used for serving product images
-
----
-
-## Media Module
-
-- `feature/media` is the shared integration layer for Cloudinary upload, media metadata, delivery URL generation, ownership confirmation, and cleanup.
-- Domain tables should keep foreign keys to `media_assets` instead of persisting raw cloud URLs.
-- Business modules own attach/detach orchestration. `identity` owns avatar APIs and calls generic media services instead of letting `media` touch identity repositories.
-- `catalog` owns product-image and appraisal-image APIs and also reuses the generic media services.
-- Backend issues signed upload intents, client uploads directly to Cloudinary, backend confirms uploaded ownership, and the owning business module attaches the asset to its entity.
-- Media deletion is asynchronous: detach first, mark asset `PENDING_DELETE`, then scheduled cleanup calls Cloudinary destroy.
-- Direct Cloudinary upload should send both:
-  - `public_id` for stable asset identity and delivery URLs
-  - `asset_folder` for Cloudinary Media Library organization
-- Current avatar folder pattern is `woodcert/dev/users/{userId}/avatar`.
-- Product folder pattern is `woodcert/dev/users/{userId}/products`.
-- Appraisal folder pattern is `woodcert/dev/users/{userId}/appraisals`.
-- The same pattern should be extended later for shipment and dispute media so the module can stay generic.
-
-### Avatar Flow
+and subscribe to:
 
 ```text
-Client -> POST /api/v1/users/me/avatar/upload-intent
--> identity module validates current user
--> media service creates media_assets row (PENDING) + signs Cloudinary upload params including assetFolder/publicId
-
-Client -> upload file directly to Cloudinary
-
-Client -> PUT /api/v1/users/me/avatar
--> identity module calls media service to verify assetId + publicId ownership
--> identity module sets users.avatar_media_id
--> old avatar marked PENDING_DELETE
-
-GET /api/v1/users/me
--> avatarUrl is generated from public_id + asset_version
+/topic/auctions/{auctionSessionId}
 ```
 
+Event types:
+
+- `SESSION_ACTIVATED`
+- `NEW_BID`
+- `SESSION_ENDED`
+
+WebSocket subscription is public and read-only. Registration and bidding remain protected REST
+operations. Broadcasts expose a masked bidder alias, not a full user ID.
+
+## 13. Deployment
+
+Production Compose runs:
+
+- MySQL 8;
+- Redis 7.4 with AOF and password;
+- backend container;
+- frontend Nginx container.
+
+Host Nginx routes:
+
+- `/api/` to backend;
+- `/ws-auction` to backend with WebSocket upgrade;
+- the exact readiness endpoint to backend;
+- all other paths to the frontend container.
+
+The release workflow builds immutable backend/frontend images tagged by full commit SHA and deploys
+them through the guarded production script. Application secrets remain in the VPS `.env.prod`.
+
+## 14. Verified limitations
+
+- Accepted bid audit persistence is best-effort after Redis acceptance.
+- Rare close-time partial failures rely on the repair scheduler and operational review.
+- VNPay deployment target is Sandbox.
+- Disputes do not support partial refunds.
+- Shipment packing media is not implemented.
+- Stored winner/loser notifications are not implemented.
+- Blog content belongs to the frontend and is static/mock, not an API-backed CMS feature.

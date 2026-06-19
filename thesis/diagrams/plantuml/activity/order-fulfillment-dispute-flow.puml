@@ -1,0 +1,86 @@
+@startuml
+title Quy trình sau đấu giá: thanh toán, giao nhận và tranh chấp
+
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam backgroundColor White
+skinparam shadowing false
+skinparam linetype ortho
+skinparam ArrowColor Black
+skinparam activity {
+    BackgroundColor White
+    BorderColor Black
+    FontColor Black
+    FontSize 13
+}
+skinparam swimlane {
+    BorderColor Black
+    TitleBackgroundColor White
+    TitleFontColor Black
+}
+
+|Bidder/Buyer|
+start
+:Chọn địa chỉ giao hàng;
+:Thanh toán phần tiền còn lại;
+
+|WoodCert Auction|
+if (Thanh toán đúng hạn?) then ([Có])
+    :Trừ tiền ví theo operation key;
+    :Chuyển đơn hàng sang PAID;
+    :Tạo fulfillment chờ giao hàng;
+else ([Không])
+    :Scheduler hủy đơn quá hạn;
+    :Phân bổ tiền cọc theo chính sách;
+    stop
+endif
+
+|Seller|
+:Xác nhận giao hàng và\ncập nhật thông tin vận chuyển;
+
+|WoodCert Auction|
+:Chuyển fulfillment sang SHIPPED;
+
+|Bidder/Buyer|
+if (Phát sinh tranh chấp?) then ([Có])
+    :Tải ảnh bằng chứng bắt buộc;
+    :Mở hồ sơ tranh chấp;
+
+    |WoodCert Auction|
+    :Đánh dấu đơn hàng DISPUTED;
+
+    |Bidder/Buyer|
+    :Gửi phản hồi/văn bản hoặc ảnh;
+
+    |Seller|
+    :Gửi phản hồi/văn bản hoặc ảnh;
+
+    |Admin|
+    :Xem hồ sơ và đánh dấu đang xem xét;
+    :Ra quyết định toàn phần;
+
+    |WoodCert Auction|
+    if (Kết quả xử lý?) then ([Buyer thắng])
+        :Hoàn tiền cho Buyer;
+        :Hủy đơn và fulfillment;
+        :Đánh dấu sản phẩm RETURNED;
+    else ([Seller thắng])
+        :Hoàn tất đơn hàng;
+        :Giải ngân cho Seller;
+    endif
+    :Đóng hồ sơ tranh chấp;
+    stop
+else ([Không])
+    if (Buyer xác nhận đã nhận hàng?) then ([Có])
+        :Hoàn tất đơn hàng;
+        :Giải ngân cho Seller;
+        stop
+    else ([Chưa])
+        |WoodCert Auction|
+        :Scheduler chờ hết thời hạn\nbảo vệ giao hàng 168 giờ;
+        :Tự động hoàn tất đơn hàng;
+        :Giải ngân cho Seller;
+        stop
+    endif
+endif
+@enduml

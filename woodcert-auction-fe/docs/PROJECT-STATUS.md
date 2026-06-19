@@ -1,6 +1,6 @@
 # Project Status
 
-> Last updated: 2026-06-13 | By: Codex | Session: 404-and-bundle-optimization
+> Last updated: 2026-06-19 | By: Codex | Session: documentation-sync
 >
 > Update this file at the end of FE planning or implementation sessions.
 > Keep it concise and decision-useful.
@@ -38,7 +38,7 @@
 - [x] Seller product detail page and `RETURNED` sale status display
 - [x] Fulfillment API client and seller shipping confirmation UI on seller auction detail
 - [x] Admin revenue page wired to backend revenue APIs
-- [x] Automated FE unit test suite passes with 175 tests and 6 Playwright tests
+- [x] Automated FE unit test suite passes with 190 tests and 7 Playwright tests
 - [x] Order tabs use backend `status` filter and buyer/seller status counts
 - [x] Bidding room refetches detail, participation, and bid history after socket connect/reconnect
 - [x] Buyer can withdraw once from a `WAITING` auction, receive the full deposit refund, and cannot register again
@@ -52,7 +52,7 @@
 - [x] Blog remains static/mock content, not a CMS/API-backed feature
 - [x] Seller Portal v1: exact product KPIs, draft deletion, editable store name, action center, order detail, shipping address snapshots, revenue page, and seller auction realtime
 - [x] Shared auction STOMP subscription used by buyer bidding and seller monitoring, with 10-second seller polling fallback
-- [x] Frontend verification passes: typecheck, lint, 175 unit tests, 6 Playwright tests, and production build
+- [x] Frontend verification passes: typecheck, lint, 190 unit tests, 7 Playwright tests, and production build
 - [x] Production frontend Docker image and SPA nginx configuration added for same-origin API/WebSocket deployment
 
 ## In Progress
@@ -75,7 +75,7 @@
 - Seller auction detail consumes shared STOMP events immediately and retains 10-second polling for operational reconciliation.
 - Order status tabs must keep using backend `status` filters and status-count endpoints; do not reintroduce page-local filtering.
 - Cookie refresh/logout uses backend double-submit CSRF via `GET /auth/csrf` and `X-XSRF-TOKEN`.
-- Production build has no JavaScript chunk over 500 KB. Main entry is 410.76 KB (127.91 KB gzip), down from about 889 KB; the largest forced vendor chunk is 101.72 KB.
+- The 2026-06-19 production build has no JavaScript chunk over 500 KB. Main entry is 411.61 KB (128.11 KB gzip); the largest forced vendor chunk is 101.72 KB.
 
 ## Next Tasks
 
@@ -133,7 +133,7 @@
 
 ### Phase 5 - Hardening
 
-- [x] Automated tests: 175 unit tests and 6 Playwright tests
+- [x] Automated tests: 190 unit tests and 7 Playwright tests
 - [ ] Responsive polish
 - [x] Unit tests for server clock, reconnect callback, category slug mapping, order status API params/counts, fallback image, and seller appraisal route removal
 - [ ] Further unit tests for bid-history dedupe, countdown thresholds, bid form validation, and participation-driven action states

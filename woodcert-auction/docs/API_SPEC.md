@@ -3,7 +3,7 @@
 > All endpoints return `ApiResponse<T>` wrapper. Error responses created from `AppException` include nullable `errorCode` for machine-readable handling.
 > Update this file whenever endpoints change.
 >
-> Current implementation note (2026-06-11): auth, identity, media, catalog/appraisal, finance, auction, orders, fulfillment, disputes, admin operations, public certificate lookup, compact Flyway reset baseline, cookie-only refresh, CSRF protection, and server-time sync are implemented backend contracts.
+> Current implementation note (2026-06-19): auth, identity, media, catalog/appraisal, finance, auction, orders, fulfillment, disputes, admin operations, public certificate lookup, Flyway V1-V4, cookie-only refresh, CSRF protection, and server-time sync are implemented backend contracts.
 
 ---
 
@@ -1246,7 +1246,7 @@ Query Parameters:
 |-------|------|---------|-------------|
 | page | int | 1 | Page number |
 | size | int | 10 | Items per page |
-| status | string | WAITING,ACTIVE | Accepts `WAITING`, `ACTIVE`, `ENDED_SUCCESS`, or a comma-separated combination |
+| status | string | WAITING,ACTIVE | Accepts `WAITING`, `ACTIVE`, `ENDED_SUCCESS`, `ENDED_FAILED`, or a comma-separated combination |
 | material | string | null | Case-insensitive material filter against the persisted product/appraisal data |
 | categoryName | string | null | Exact category-name filter; unknown category returns an empty page |
 | priceMin | decimal | null | Minimum persisted `current_price` snapshot |
@@ -1298,10 +1298,15 @@ Success Response (200):
 }
 ```
 
+### GET /auctions/materials 🔓
+
+Returns the distinct material values used by publicly visible auction products. The source statuses
+include `WAITING`, `ACTIVE`, `ENDED_SUCCESS`, and `ENDED_FAILED`.
+
 ### GET /auctions/{id} 🔓
 
 Get public auction detail. `reservePrice` is intentionally hidden from the response.
-Public detail is available only for `WAITING`, `ACTIVE`, and `ENDED_SUCCESS` sessions. `CANCELED` and `ENDED_FAILED` return not found.
+Public detail is available for `WAITING`, `ACTIVE`, `ENDED_SUCCESS`, and `ENDED_FAILED` sessions. `CANCELED` returns not found.
 For `ACTIVE` sessions, `currentPrice` and `endTime` are read from Redis when available, with DB snapshot fallback.
 
 Success Response (200):
@@ -1349,6 +1354,18 @@ Success Response (200):
   "timestamp": "2026-03-28T10:00:00"
 }
 ```
+
+### GET /auctions/{id}/bids 🔓
+
+Returns up to `size` bid-history items for a publicly visible session. Default `size` is 20.
+Authenticated callers receive `mine = true` for their own persisted bids. Bidder identity is exposed
+only as a masked alias.
+
+### GET /auctions/{id}/my-participation 🔒
+
+Returns the current user's participation context, including registration/deposit state, whether the
+user is the current highest bidder, and the reason-driven `canRegister`, `canWithdraw`, and `canBid`
+flags used by the bidding UI.
 
 ### POST /auctions 🔒
 
@@ -1453,6 +1470,30 @@ Errors:
 - 403: current seller does not own the auction session
 - 404: auction session not found
 
+### GET /auctions/me/stats 🔒
+
+Returns seller auction counts grouped by every `AuctionSessionStatus`, including zero-count
+statuses.
+
+### GET /auctions/my-participations 🔒
+
+Returns the current buyer's auction participation history.
+
+Query parameters:
+
+- `page` (default 1);
+- `size` (default 10);
+- `outcome` (default `ALL`; supported filters: `ALL`, `WON`, `LOST`, `ACTIVE`, `PENDING`).
+
+### GET /auctions/my-participations/stats 🔒
+
+Returns buyer participation/outcome counters for the authenticated user.
+
+### GET /auctions/my-participations/{id} 🔒
+
+Returns buyer-specific auction detail, including personal highest bid, result/outcome information,
+and the linked order summary when an order exists.
+
 ### PATCH /auctions/{id}/cancel 🔒
 
 Seller cancels an auction session before it starts. This is a status transition (`WAITING -> CANCELED`), not a hard delete.
@@ -1525,13 +1566,15 @@ Errors:
 
 Place a bid on an ACTIVE auction.
 
-Note: This endpoint executes a Redis Lua Script for atomic validation. If successful, it broadcasts the new price via WebSocket and saves to MySQL asynchronously.
+This endpoint executes a Redis Lua script for atomic validation. If accepted, it broadcasts the new
+price immediately and then performs best-effort bid-audit persistence and MySQL snapshot
+synchronization. `bidTraceId`, rather than a database bid ID, identifies the accepted attempt.
 
 Request Body:
 
 ```json
 {
-  "sourceId": 205,
+  "auctionSessionId": 205,
   "bidAmount": 36000000.00
 }
 ```
@@ -1542,9 +1585,9 @@ Success Response (200):
 {
   "statusCode": 200,
   "data": {
-    "bidId": 5001,
+    "bidTraceId": "39e06f2e-520f-48c8-9d65-e2ccb23fd499",
+    "auctionSessionId": 205,
     "currentPrice": 36000000.00,
-    "highestBidderId": "uuid-buyer",
     "endTime": "2026-03-29T21:01:00"
   },
   "message": "Bid placed successfully",
@@ -1554,9 +1597,13 @@ Success Response (200):
 
 (Note: endTime may change if Anti-Sniper rule extends the auction by 60s)
 
-Errors:
+Errors include:
 
-- 400: Invalid price (lower than current + step), or Auction not ACTIVE.
+- auction is not `ACTIVE` or has already ended;
+- bidder is not a registered participant with a frozen deposit;
+- bidder is the product seller;
+- bidder is already the current highest bidder;
+- bid amount is lower than `currentPrice + stepPrice`.
 
 ## 10. Orders & Fulfillment
 
@@ -1679,9 +1726,14 @@ Request Body:
 
 ```json
 {
+  "deliveryMethod": "THIRD_PARTY",
+  "carrierName": "Viettel Post",
   "trackingCode": "VT123456789"
 }
 ```
+
+`THIRD_PARTY` requires both `carrierName` and `trackingCode`. `SELF_DELIVERY` does not require
+carrier information.
 
 ### PATCH /orders/{orderId}/fulfillment/receive 🔒
 
@@ -1690,7 +1742,7 @@ Buyer confirms receipt. Fulfillment status changes to `DELIVERED`, order status 
 Scheduler behavior:
 
 - `PENDING_PAYMENT` past deadline: order `CANCELED`, auction participant deposit `CONFISCATED`, product returns `AVAILABLE`, platform keeps 10% of deposit, seller receives 90%.
-- `SHIPPED` past auto-complete deadline: fulfillment `AUTO_COMPLETED`, order `COMPLETED`, seller payout released.
+- `SHIPPED` past the configured 168-hour auto-complete deadline: fulfillment `AUTO_COMPLETED`, order `COMPLETED`, seller payout released.
 - `DISPUTED` orders are skipped by fulfillment auto-complete until the dispute is canceled/rejected/resolved.
 
 ## 11. Disputes
@@ -1860,6 +1912,8 @@ Permission: `BAN_USER`. User management endpoints:
 - `GET /admin/users?role=&status=&query=&page=1&size=20` — filter by role (`ROLE_BIDDER`, `ROLE_SELLER`, `ROLE_APPRAISER`, `ROLE_ADMIN`), status (`ACTIVE`, `BANNED`, `UNVERIFIED`), and email/name keyword. Returns `PaginationResponse<AdminUserRes>`.
 - `PATCH /admin/users/{userId}/ban` — `ACTIVE` → `BANNED`. Blocked when banning yourself (`CANNOT_BAN_SELF`) or an admin account (`CANNOT_BAN_ADMIN`); only `ACTIVE` users can be banned.
 - `PATCH /admin/users/{userId}/unban` — `BANNED` → `ACTIVE`. Only `BANNED` users can be unbanned.
+- `PATCH /admin/users/{userId}/capabilities/{capability}/ban` — suspend `BUYER`, `SELLER`, or `APPRAISER` permissions without banning the whole account.
+- `PATCH /admin/users/{userId}/capabilities/{capability}/unban` — restore the selected capability.
 
 This is the single source for listing users; appraiser and other admin pages list via `GET /admin/users` with a `role` filter.
 
@@ -1873,6 +1927,41 @@ Permission: `MANAGE_APPRAISERS`. Admin appraiser provisioning endpoints:
 
 Account ban/unban remains under `/admin/users`. Listing appraisers uses `GET /admin/users?role=ROLE_APPRAISER`.
 
+### GET /admin/audit-logs 🔒
+
+Permission: `ADMIN_ACCESS`.
+
+Returns paginated admin audit records. Optional filters:
+
+- `actorId`;
+- `action`;
+- `targetType`;
+- `targetId`;
+- `from` and `to` ISO instants;
+- `page` and `size`.
+
+### GET /admin/revenue 🔒
+
+Permission: `VIEW_PLATFORM_REVENUE`.
+
+Returns paginated platform revenue transactions. Optional filters are `type`, `from`, `to`, and
+search query `q`.
+
+Revenue types:
+
+```text
+APPRAISAL_FEE | SALE_COMMISSION | FORFEITED_DEPOSIT_FEE
+```
+
+### GET /admin/revenue/stats 🔒
+
+Returns total revenue and amount/count groups by revenue type using the same optional filters.
+
+### GET /admin/revenue/export 🔒
+
+Streams the filtered revenue transactions as UTF-8 CSV and records a `REVENUE_EXPORTED` admin audit
+event.
+
 ### GET /certificates/{certificateCode} 🔓
 
 Public certificate lookup. A found record returns the stored `integrityHash` and certificate data; a missing code returns 404. The MVP hash is a SHA-256 integrity fingerprint, not a digital signature or blockchain proof. The response intentionally excludes internal appraiser notes and proof media.
@@ -1882,17 +1971,24 @@ Public certificate lookup. A found record returns the stored `integrityHash` and
 Client should subscribe to STOMP WebSocket channels for real-time updates:
 
 - Connect URL: ws://localhost:8080/ws-auction
-- Subscribe Topic: /topic/auctions/{sourceId}
+- Subscribe topic: `/topic/auctions/{auctionSessionId}`
 
 Message Payload Example (Sent by Server when a valid bid is placed):
 
 ```json
 {
   "type": "NEW_BID",
-  "sourceId": 205,
+  "auctionSessionId": 205,
+  "status": "ACTIVE",
   "currentPrice": 36000000.00,
-  "highestBidderId": "uuid-buyer",
-  "highestBidderName": "Nguyễn Văn A",
-  "endTime": "2026-03-29T21:01:00"
+  "highestBidderMaskedAlias": "3fa8****",
+  "endTime": "2026-03-29T21:01:00",
+  "bidTraceId": "39e06f2e-520f-48c8-9d65-e2ccb23fd499",
+  "bidAmount": 36000000.00,
+  "bidTime": "2026-03-29T20:59:45Z",
+  "extendedBySeconds": 60
 }
 ```
+
+`extendedBySeconds` is omitted when anti-sniper does not extend the session. Other event types are
+`SESSION_ACTIVATED` and `SESSION_ENDED`.

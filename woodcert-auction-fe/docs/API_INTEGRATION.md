@@ -1,6 +1,6 @@
 # API Integration
 
-Last updated: 2026-06-06
+Last updated: 2026-06-19
 
 This document tracks frontend usage of backend APIs. Active FE integrations use the shared `apiClient`; no feature should create ad hoc HTTP clients.
 
@@ -31,50 +31,57 @@ This document tracks frontend usage of backend APIs. Active FE integrations use 
 | --------------------- | ------------------------------------- | ----------------------------------------------- |
 | Categories            | `GET /categories`                     | Implemented                                     |
 | Auction list          | `GET /auctions`                       | Implemented on home and `/auctions`             |
+| Auction materials     | `GET /auctions/materials`             | Implemented as public filter data               |
 | Auction detail        | `GET /auctions/{id}`                  | Implemented on `/auctions/:id` and bidding room |
 | Participation context | `GET /auctions/{id}/my-participation` | Implemented                                     |
 | Bid history           | `GET /auctions/{id}/bids?size=20`     | Implemented                                     |
 
 ### Wallet and Buyer Runtime
 
-| Feature               | Endpoint                            | FE status                              |
-| --------------------- | ----------------------------------- | -------------------------------------- |
-| Header wallet balance | `GET /wallets/me`                   | Implemented through `useWalletBalance` |
-| Wallet page balance   | `GET /wallets/me`                   | Implemented                            |
-| Transactions          | `GET /wallets/me/transactions`      | Implemented                            |
-| VNPay deposit create  | `POST /wallets/me/deposit`          | Implemented                            |
-| VNPay deposit history | `GET /wallets/me/deposits`          | Implemented                            |
-| VNPay deposit status  | `GET /wallets/me/deposits/{txnRef}` | Implemented                            |
-| Auction registration  | `POST /auctions/{id}/register`      | Implemented                            |
-| Auction withdrawal    | `POST /auctions/{id}/withdraw`      | Implemented for `WAITING` sessions     |
-| Bid placement         | `POST /bids`                        | Implemented                            |
-| Server time sync      | `GET /system/time`                  | Implemented                            |
+| Feature               | Endpoint                                | FE status                              |
+| --------------------- | --------------------------------------- | -------------------------------------- |
+| Header wallet balance | `GET /wallets/me`                       | Implemented through `useWalletBalance` |
+| Wallet page balance   | `GET /wallets/me`                       | Implemented                            |
+| Transactions          | `GET /wallets/me/transactions`          | Implemented                            |
+| VNPay deposit create  | `POST /wallets/me/deposit`              | Implemented                            |
+| VNPay deposit history | `GET /wallets/me/deposits`              | Implemented                            |
+| VNPay deposit status  | `GET /wallets/me/deposits/{txnRef}`     | Implemented                            |
+| Auction registration  | `POST /auctions/{id}/register`          | Implemented                            |
+| Auction withdrawal    | `POST /auctions/{id}/withdraw`          | Implemented for `WAITING` sessions     |
+| Bid placement         | `POST /bids`                            | Implemented                            |
+| Server time sync      | `GET /system/time`                      | Implemented                            |
+| Buyer auction history | `GET /auctions/my-participations`       | Implemented on `/my-auctions`          |
+| Buyer auction stats   | `GET /auctions/my-participations/stats` | Implemented                            |
+| Buyer auction detail  | `GET /auctions/my-participations/{id}`  | Implemented                            |
 
 Wallet funding for buyer runtime must use the VNPay Sandbox deposit flow above. Do not add local wallet funding shortcuts.
 
 ### Orders, Fulfillment, and Disputes
 
-| Feature                | Endpoint                                       | FE status                        |
-| ---------------------- | ---------------------------------------------- | -------------------------------- |
-| Buyer order list       | `GET /orders/my-purchases?status=&page=&size=` | Implemented on `/orders`         |
-| Seller order list      | `GET /orders/my-sales?status=&page=&size=`     | Implemented on `/seller/orders`  |
-| Buyer order counts     | `GET /orders/my-purchases/status-counts`       | Implemented                      |
-| Seller order counts    | `GET /orders/my-sales/status-counts`           | Implemented                      |
-| Order detail           | `GET /orders/{id}`                             | Implemented through hooks        |
-| Pay order remainder    | `POST /orders/{id}/pay { addressId }`          | Implemented with address picker  |
-| Seller sales summary   | `GET /orders/my-sales/summary?range=`          | Implemented on `/seller/revenue` |
-| Seller ship order      | `PATCH /orders/{orderId}/fulfillment/ship`     | Implemented                      |
-| Buyer receive order    | `PATCH /orders/{orderId}/fulfillment/receive`  | Implemented                      |
-| Dispute upload intent  | `POST /disputes/evidence/upload-intent`        | Implemented                      |
-| Dispute upload confirm | `PUT /disputes/evidence/confirm`               | Implemented                      |
-| Open dispute           | `POST /orders/{orderId}/disputes`              | Implemented                      |
-| Current dispute        | `GET /orders/{orderId}/disputes/current`       | Implemented                      |
-| Dispute history        | `GET /orders/{orderId}/disputes`               | Implemented API/hook             |
-| Cancel dispute         | `PATCH /orders/{orderId}/disputes/{id}/cancel` | Implemented                      |
-| Admin dispute queue    | `GET /admin/disputes`                          | Implemented                      |
-| Admin dispute detail   | `GET /admin/disputes/{id}`                     | Implemented                      |
-| Admin mark review      | `PATCH /admin/disputes/{id}/review`            | Implemented                      |
-| Admin resolve dispute  | `PATCH /admin/disputes/{id}/resolve`           | Implemented                      |
+| Feature                | Endpoint                                        | FE status                        |
+| ---------------------- | ----------------------------------------------- | -------------------------------- |
+| Buyer order list       | `GET /orders/my-purchases?status=&page=&size=`  | Implemented on `/orders`         |
+| Seller order list      | `GET /orders/my-sales?status=&page=&size=`      | Implemented on `/seller/orders`  |
+| Buyer order counts     | `GET /orders/my-purchases/status-counts`        | Implemented                      |
+| Seller order counts    | `GET /orders/my-sales/status-counts`            | Implemented                      |
+| Order detail           | `GET /orders/{id}`                              | Implemented through hooks        |
+| Pay order remainder    | `POST /orders/{id}/pay { addressId }`           | Implemented with address picker  |
+| Seller sales summary   | `GET /orders/my-sales/summary?range=`           | Implemented on `/seller/revenue` |
+| Seller ship order      | `PATCH /orders/{orderId}/fulfillment/ship`      | Implemented                      |
+| Buyer receive order    | `PATCH /orders/{orderId}/fulfillment/receive`   | Implemented                      |
+| Dispute upload intent  | `POST /disputes/evidence/upload-intent`         | Implemented                      |
+| Dispute upload confirm | `PUT /disputes/evidence/confirm`                | Implemented                      |
+| Open dispute           | `POST /orders/{orderId}/disputes`               | Implemented                      |
+| Current dispute        | `GET /orders/{orderId}/disputes/current`        | Implemented                      |
+| Dispute history        | `GET /orders/{orderId}/disputes`                | Implemented API/hook             |
+| Dispute detail         | `GET /orders/{orderId}/disputes/{id}`           | Implemented for buyer and seller |
+| Participant message    | `POST /orders/{orderId}/disputes/{id}/messages` | Implemented                      |
+| Cancel dispute         | `PATCH /orders/{orderId}/disputes/{id}/cancel`  | Implemented                      |
+| Admin dispute queue    | `GET /admin/disputes`                           | Implemented                      |
+| Admin dispute detail   | `GET /admin/disputes/{id}`                      | Implemented                      |
+| Admin dispute message  | `POST /admin/disputes/{id}/messages`            | Implemented                      |
+| Admin mark review      | `PATCH /admin/disputes/{id}/review`             | Implemented                      |
+| Admin resolve dispute  | `PATCH /admin/disputes/{id}/resolve`            | Implemented                      |
 
 ### Seller Workflow
 
@@ -92,6 +99,8 @@ Wallet funding for buyer runtime must use the VNPay Sandbox deposit flow above. 
 | Product image upload intent | `POST /products/images/upload-intent`  | Implemented                            |
 | Product image confirm       | `PUT /products/images/confirm`         | Implemented                            |
 | Seller auction list         | `GET /auctions/me`                     | Implemented                            |
+| Seller auction statistics   | `GET /auctions/me/stats`               | Implemented                            |
+| Seller auction detail       | `GET /auctions/me/{id}`                | Implemented with STOMP reconciliation  |
 | Seller auction create       | `POST /auctions`                       | Implemented                            |
 | Seller auction cancel       | `PATCH /auctions/{id}/cancel`          | Implemented                            |
 
@@ -110,9 +119,13 @@ session behavior.
 
 | Feature                 | Endpoint                              | FE status                           |
 | ----------------------- | ------------------------------------- | ----------------------------------- |
-| Revenue dashboard       | `GET /admin/revenue/**`               | Implemented                         |
+| Revenue transactions    | `GET /admin/revenue`                  | Implemented                         |
+| Revenue statistics      | `GET /admin/revenue/stats`            | Implemented                         |
+| Revenue CSV export      | `GET /admin/revenue/export`           | Implemented                         |
 | Admin categories        | `/admin/categories` CRUD              | Implemented                         |
 | Admin appraisers        | `POST/PATCH /admin/appraisers/**`     | Create and capability ban/unban     |
+| Admin users             | `GET/PATCH /admin/users/**`           | List, account ban, capability ban   |
+| Admin audit logs        | `GET /admin/audit-logs`               | Implemented                         |
 | Public certificate page | `GET /certificates/{certificateCode}` | Implemented on `/certificates`      |
 | Address book            | `GET/POST /addresses`                 | Implemented on `/account/addresses` |
 
@@ -258,6 +271,7 @@ type BidBroadcastPayload = {
 - `["orders", "detail", orderId]`
 - `["disputes", "current", orderId]`
 - `["disputes", "history", orderId]`
+- `["disputes", "detail", orderId, disputeId]`
 - `["admin", "disputes", params]`
 - `["admin", "disputes", disputeId]`
 - `["catalog", "products", params]`

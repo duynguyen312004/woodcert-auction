@@ -2,7 +2,7 @@
 
 ## 1. Phạm vi và phương pháp khảo sát
 
-- Thời điểm khảo sát: ngày 15/06/2026.
+- Thời điểm khảo sát và đồng bộ gần nhất: ngày 19/06/2026.
 - Backend được khảo sát trong `woodcert-auction/`.
 - Frontend được khảo sát trong `woodcert-auction-fe/`.
 - Hạ tầng và quy trình phát hành được khảo sát từ `docker-compose.prod.yml`,
@@ -411,7 +411,9 @@ Căn cứ chính:
 - **Giới hạn:** chưa có upload video đóng gói.
 - **Kiểm thử:** test tại
   `woodcert-auction/src/test/java/com/woodcert/auction/feature/fulfillment/`.
-- **Mức độ chắc chắn:** Cao (Đã thống nhất sử dụng con số 168 giờ theo cấu hình code thực tế, tài liệu cũ ghi 72 giờ đã lỗi thời).
+- **Mức độ chắc chắn:** Cao (168 giờ là thời gian bảo vệ giao nhận theo cấu
+  hình hiện tại; 72 giờ là thời hạn thanh toán phần còn lại của order, không phải
+  thời gian tự hoàn tất fulfillment).
 - **Xác minh an toàn:** chạy test scheduler/service; trên local có thể điều chỉnh
   biến thời gian trong profile test.
 
@@ -609,9 +611,9 @@ validate toàn bộ mapping đã được kiểm chứng bằng
 `woodcert-auction/src/main/java/com/woodcert/auction/feature/**/entity/`,
 `woodcert-auction/src/test/java/com/woodcert/auction/integration/`.
 
-`database.sql` và `woodcert-auction/docs/DATABASE.md` chỉ nên dùng làm tài liệu
-tham khảo, không phải nguồn tạo schema. Nguồn chính vẫn là Flyway vì
-`spring.jpa.hibernate.ddl-auto=validate` và Flyway được bật trong
+`database.sql` là chỉ mục mô tả không thực thi; `woodcert-auction/docs/DATABASE.md`
+là bản tổng hợp kỹ thuật đã được đồng bộ để hỗ trợ tra cứu. Cả hai không thay thế
+nguồn tạo schema là Flyway, vì `spring.jpa.hibernate.ddl-auto=validate` và Flyway được bật trong
 `woodcert-auction/src/main/resources/application.yaml`.
 
 ## 9. Phối hợp Redis và MySQL trong đấu giá
@@ -768,13 +770,20 @@ Căn cứ:
 `woodcert-auction/src/main/java/com/woodcert/auction/feature/media/CONTEXT.md`,
 `woodcert-auction/src/main/java/com/woodcert/auction/feature/dispute/CONTEXT.md`.
 
-### 12.4 Chỉ tồn tại trong tài liệu hoặc đã lỗi thời
+### 12.4 Tài liệu kỹ thuật đã được đồng bộ
 
-- ADR-003 còn mô tả order, shipment và dispute là chưa triển khai.
-- ADR-004 còn mô tả fulfillment là planned và chưa liệt kê order/dispute.
-- Tài liệu database/architecture cũ còn dùng cửa sổ auto-complete 72 giờ.
-- FE implementation roadmap còn liệt kê buyer participation history và route
-  splitting là pending dù code hiện tại đã có.
+Ngày 19/06/2026, các tài liệu kỹ thuật chính đã được đối chiếu lại với Flyway,
+`application.yaml`, source và report kiểm thử hiện có:
+
+- ADR-003 phản ánh cơ chế quyết toán dựa trên wallet, order, fulfillment và
+  dispute đã triển khai; không mô tả một sổ cái escrow độc lập.
+- ADR-004 phản ánh modular monolith gồm tám module nghiệp vụ hiện hành.
+- Tài liệu database và architecture ghi đúng 34 bảng sau V4, ranh giới MySQL -
+  Redis, thời hạn thanh toán 72 giờ và thời gian tự hoàn tất fulfillment 168 giờ.
+- Tài liệu frontend ghi nhận buyer participation history, route splitting,
+  dispute conversation và các màn hình quản trị đã có trong code.
+- Tài liệu API và runtime invariant ghi nhận `ENDED_FAILED` được phép hiển thị
+  công khai theo `AuctionPolicy`.
 
 Căn cứ:
 `woodcert-auction/docs/decisions/ADR-003_escrow_wallet_auto_complete.md`,
@@ -797,26 +806,28 @@ Căn cứ:
 `woodcert-auction/src/main/java/com/woodcert/auction/feature/media/entity/MediaUsageType.java`,
 `woodcert-auction-fe/src/features/catalog/routes.tsx`.
 
-## 13. Mâu thuẫn và độ lệch tài liệu
+## 13. Kết quả đồng bộ tài liệu kỹ thuật
 
-| Vấn đề | Code/migration hiện tại | Tài liệu khác | Kết luận |
-|---|---|---|---|
-| Số bảng | 34 bảng sau V4 | `woodcert-auction/docs/DATABASE.md` ghi 33 | Dùng 34 |
-| Dispute conversation | Có `dispute_messages` và API message | Tài liệu database cũ chưa cập nhật đầy đủ | Migration V4 là nguồn thật |
-| Auto-complete | 168 giờ, scheduler mỗi 5 phút | Architecture/Database/ADR ghi 72 giờ | Hành vi code là 168 giờ |
-| Order/fulfillment/dispute | Đã có code, API, entity và test | ADR-003 nói chưa triển khai | ADR-003 đã lỗi thời |
-| Module backend | Có identity, media, catalog, finance, auction, order, fulfillment, dispute | ADR-004 chỉ liệt kê 5 module và nói fulfillment planned | ADR-004 cần cập nhật |
-| Tạo order | Settlement tự động gọi order source khi phiên thành công | `woodcert-auction/docs/DATABASE.md` ghi “winner confirms” | Code tạo tự động |
-| ENDED_FAILED public | `AuctionPolicy` cho phép filter/detail public | `AUCTION_RUNTIME_INVARIANTS.md` nói không public list/detail | Code và tài liệu runtime đang mâu thuẫn |
-| Số lượng test frontend | Có log/report cho frontend unit và Playwright đã chạy | Status ngày 13/06/2026 ghi số lượng cũ | Không chốt số lượng nếu chưa dùng report cuối cùng |
-| Số lượng test backend | Có report Surefire trong workspace và không ghi nhận lỗi kiểm thử | Tài liệu cũ ghi số lượng khác | Không chốt số lượng nếu chưa dùng report cuối cùng |
-| FE roadmap | Buyer history và route splitting đã có | `FE_IMPLEMENTATION.md` còn để pending/deferred | Roadmap cũ |
+| Vấn đề từng bị lệch | Trạng thái theo nguồn sự thật | Kết quả đồng bộ ngày 19/06/2026 |
+|---|---|---|
+| Số bảng | 34 bảng sau migration V4 | `DATABASE.md` và `database.sql` đã ghi đúng; Flyway vẫn là nguồn thực thi |
+| Dispute conversation | Có bảng `dispute_messages` và API hội thoại | Đã bổ sung vào tài liệu database, API và frontend |
+| Auto-complete | 168 giờ, scheduler quét mỗi 5 phút | Architecture, Database, ADR và status đã dùng 168 giờ; 72 giờ chỉ còn là thời hạn thanh toán order |
+| Order/fulfillment/dispute | Đã có code, API, entity và test | ADR-003 và tài liệu kiến trúc đã phản ánh trạng thái triển khai |
+| Module backend | Có tám module: identity, media, catalog, finance, auction, order, fulfillment, dispute | ADR-004 và Architecture đã được cập nhật |
+| Tạo order | Settlement tự động tạo order sau phiên thành công | Database và Architecture đã mô tả đúng luồng tự động |
+| `ENDED_FAILED` public | `AuctionPolicy` cho phép public list/detail | API specification và runtime invariant đã đồng bộ |
+| Kiểm thử backend | 394 test case trong 62 report Surefire hiện có, không có failure/error/skipped | Project Status và Help đã cập nhật số liệu có căn cứ |
+| Kiểm thử frontend | 190 test Vitest trong 55 file và 7 kịch bản Playwright đã chạy đạt | Project Status và Testing Strategy đã cập nhật |
+| FE roadmap | Buyer history, route splitting và dispute conversation đã có | `FE_IMPLEMENTATION.md` đã chuyển các nội dung này sang trạng thái hoàn thành |
 
-Căn cứ chi tiết nằm tại các file nêu trong từng hàng và kết quả test mục 14.
+Căn cứ chi tiết nằm tại các file nêu trong mục 12.4, evidence map và kết quả kiểm
+thử ở mục 14. Khi các tài liệu tóm tắt lệch với code trong tương lai, Flyway,
+`application.yaml`, source và report kiểm thử mới nhất tiếp tục được ưu tiên.
 
 ## 14. Tình trạng kiểm thử đã xác minh
 
-Các command đã chạy ngày 15/06/2026:
+Các command và report được đối chiếu gần nhất ngày 19/06/2026:
 
 ```powershell
 # Backend
@@ -832,11 +843,12 @@ pnpm test:e2e
 
 Kết quả:
 
-- Backend: có report Surefire trong workspace, không ghi nhận failure/error/skipped trong report hiện có.
+- Backend: 394 test case trong 62 report Surefire hiện có; không ghi nhận
+  failure, error hoặc skipped.
 - Các integration test MySQL/Flyway, Redis/Lua, runtime auction, security và
   production wiring đều chạy đạt bằng Testcontainers.
-- Frontend unit: Vitest đã chạy đạt theo log/report hiện có.
-- Playwright: e2e đã chạy đạt theo report hiện có.
+- Frontend unit: 190 test trong 55 file Vitest đã chạy đạt.
+- Playwright: 7 kịch bản e2e đã chạy đạt.
 - TypeScript typecheck, ESLint và production build đều đạt.
 
 Căn cứ:

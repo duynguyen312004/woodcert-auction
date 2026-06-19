@@ -1,7 +1,8 @@
 # Auction Runtime Invariants
 
 1. `ACTIVE` live price/end time are Redis-owned; terminal states are MySQL-owned.
-2. Public auction list defaults to `WAITING` and `ACTIVE`; `CANCELED` and `ENDED_FAILED` are not public list/detail states.
+2. Public auction list defaults to `WAITING` and `ACTIVE`; explicit public filters and detail also
+   allow `ENDED_SUCCESS` and `ENDED_FAILED`. `CANCELED` is not public.
 3. A product can have multiple historical sessions but only one open `WAITING` or `ACTIVE` session.
 4. Seller cannot register or bid in their own product auction.
 5. A participant can bid only while their deposit status is `FROZEN`.

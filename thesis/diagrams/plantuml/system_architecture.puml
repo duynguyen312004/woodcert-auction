@@ -1,0 +1,52 @@
+@startuml
+title Kiến trúc triển khai WoodCert Auction
+left to right direction
+
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam componentStyle rectangle
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam backgroundColor White
+
+actor "Người dùng\nBuyer / Seller /\nAppraiser / Admin" as User
+
+node "Ubuntu VPS" as VPS {
+  component "Nginx host\nTLS termination\nReverse proxy" as HostNginx
+
+  frame "Docker Compose network" {
+    component "Frontend container\nReact 19.2.1\nNginx static server\n127.0.0.1:3000" as Frontend
+    component "Backend container\nSpring Boot 3.5.15\nJava 17\nModular monolith\n127.0.0.1:8080" as Backend
+    database "MySQL 8.0\nDữ liệu quan hệ bền vững\nKhông publish cổng" as MySQL
+    database "Redis 7.4\nRuntime phiên ACTIVE\nAOF, không publish cổng" as Redis
+  }
+}
+
+cloud "Cloudinary\nLưu trữ và phân phối media" as Cloudinary
+cloud "VNPay Sandbox\nTrang thanh toán" as VNPay
+cloud "SMTP\nEmail xác thực/đặt lại mật khẩu" as SMTP
+
+User --> HostNginx : HTTPS
+HostNginx --> Frontend : / 
+HostNginx --> Backend : /api/*\n/ws-auction
+Backend --> MySQL : JPA / SQL
+Backend --> Redis : Redis protocol\nLua script
+Backend --> Cloudinary : Tạo upload intent,\nđọc metadata, dọn tài nguyên
+User --> Cloudinary : Upload trực tiếp\nbằng chữ ký tạm thời
+Backend --> SMTP : SMTP
+
+Backend --> User : URL thanh toán đã ký
+User --> VNPay : Chuyển hướng thanh toán
+VNPay --> HostNginx : Return / IPN
+
+note bottom of Backend
+  Các feature nằm trong cùng một tiến trình backend.
+  Một số ranh giới dùng port/interface, nhưng vẫn tồn tại
+  phụ thuộc trực tiếp giữa các feature.
+end note
+
+note bottom of MySQL
+  MySQL lưu hồ sơ bền vững và trạng thái kết thúc.
+  Redis là nguồn trạng thái runtime của phiên ACTIVE.
+end note
+@enduml

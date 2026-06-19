@@ -1,71 +1,105 @@
-# ADR-003: Escrow Wallet and Automated Settlement Flow
+# ADR-003: Wallet-Based Commercial Settlement
 
 ## Status
 
-Accepted. Partially implemented as of 2026-05-28.
-
-Implemented today:
-
-- Wallet balances and transaction audit logs.
-- VNPay deposit requests, IPN confirmation, signed Sandbox Return confirmation, and deposit history.
-- Idempotent wallet operations.
-- Auction registration deposit freeze.
-- Auction close refund/deduct settlement for frozen deposits.
-
-Not implemented yet:
-
-- Orders, shipments, disputes.
-- Buyer remaining-payment flow after winning.
-- Seller payout and platform fee deduction.
-- 72-hour delivery protection and auto-complete job.
+Accepted and implemented. Updated 2026-06-19.
 
 ## Context
 
-High-value wood-art auctions need escrow protection. A buyer should not pay directly to a seller before shipment, and a seller should not ship without payment confidence. The platform also needs a clear mechanism for deposit locking, final settlement, refunds, and future platform fees.
+WoodCert Auction needs to protect auction deposits, collect the winner's remaining payment, defer
+seller payout until completion, process overdue payment, and resolve disputes without applying the
+same financial mutation twice.
 
-## Options Considered
+The current system has no independent escrow ledger or separate escrow account table. Calling the
+implementation a complete escrow ledger would overstate the data model.
 
-### Option A: Direct Transfer
+## Options considered
 
-Buyer transfers money directly to seller.
+### Option A: Direct buyer-to-seller transfer
 
-Risk: the platform cannot reliably protect delivery, authenticity disputes, or payment completion.
+The buyer pays the seller outside the platform.
 
-### Option B: Manual Escrow By Admin
+Rejected because the platform cannot reliably enforce auction deposits, payment deadlines,
+commission, refunds, or dispute outcomes.
 
-Admins manually verify payment, delivery, and seller payout.
+### Option B: Manual admin settlement
 
-Risk: operationally expensive and hard to scale.
+Admins manually confirm every payment and payout.
 
-### Option C: In-System Escrow Wallet + Scheduled Settlement
+Rejected because it is operationally expensive and difficult to make idempotent.
 
-Users have wallets with `availableBalance` and `frozenBalance`. Auction participation freezes deposits. Future order fulfillment will hold remaining payment in system escrow and settle after delivery/dispute windows.
+### Option C: Wallet balances, idempotent operations, and order snapshots
+
+The platform manages available/frozen wallet balances, records every successful mutation, reserves a
+deterministic operation key, and stores commercial outcomes on the order.
+
+Chosen.
 
 ## Decision
 
-Use Option C.
+Implement commercial settlement using:
 
-Current backend scope implements the wallet and auction-deposit foundation. The order-backed escrow lifecycle is the Phase 4 target and must not be documented as already implemented until `feature/fulfillment` exists.
+- `wallets.available_balance`;
+- `wallets.frozen_balance`;
+- `wallet_transactions`;
+- `wallet_operations`;
+- `platform_revenue_transactions`;
+- order financial snapshot fields.
 
-## Target Lifecycle
+This design provides the required MVP safeguards but is not described as a standalone escrow ledger.
 
-- Deposit: user pays through VNPay. Real-money deployment uses IPN; the thesis Sandbox deployment may use the signed Return callback when merchant IPN registration is unavailable.
-- Auction join: backend moves `depositAmount` from available to frozen.
-- Auction close: losers are refunded; winner deposit is deducted.
-- Order payment: winner pays remaining amount into system escrow.
-- Shipment and delivery: seller ships; delivery starts a protection window.
-- Auto-complete: after 72 hours without dispute, backend releases seller proceeds and deducts platform fee.
-- Dispute: buyer evidence freezes settlement for admin review.
+## Implemented lifecycle
+
+1. VNPay Sandbox confirmation credits available wallet balance.
+2. Auction registration moves the deposit from available to frozen balance.
+3. Withdrawal, cancellation, or auction loss releases the frozen deposit.
+4. A winning deposit is captured and becomes the applied order deposit.
+5. The auction settlement creates one order using unique `(source_type, source_id)`.
+6. The winner has 72 hours by default to pay `finalPrice - depositAmount`.
+7. Payment snapshots the selected shipping address and creates pending fulfillment.
+8. The seller confirms shipment.
+9. Buyer receipt confirmation or the 168-hour fulfillment deadline completes the order.
+10. Completion credits seller payout and records platform commission.
+11. An active dispute prevents scheduler auto-completion.
+12. `BUYER_WINS` refunds deposit plus remaining payment.
+13. `SELLER_WINS` completes payout.
+
+## Financial rules
+
+Commission:
+
+- `finalPrice <= 50,000,000`: 5%;
+- `50,000,000 < finalPrice <= 200,000,000`: 4%;
+- `finalPrice > 200,000,000`: 3%.
+
+Overdue winner payment:
+
+- order becomes `CANCELED`;
+- participant deposit becomes `CONFISCATED`;
+- product returns to `AVAILABLE`;
+- platform receives 10% of the deposit by default;
+- seller receives 90% by default.
+
+## Reliability rules
+
+- Every balance mutation uses a deterministic operation key.
+- Reusing a completed operation is a no-op.
+- Stale pending operations are reconciled according to the configured timeout.
+- Wallet updates use optimistic locking.
+- Auction settlement and missing-order repair are retried by the scheduler.
 
 ## Consequences
 
 Positive:
 
-- Clear trust model for buyers and sellers.
-- Wallet audit log supports financial traceability.
-- Future fulfillment can build on existing wallet idempotency.
+- Financial mutations are auditable and idempotent.
+- Deposit, payment, payout, commission, and refund paths are explicit.
+- Commercial history remains stable through order snapshots.
 
-Negative:
+Limitations:
 
-- The platform holds financial liability once full escrow is implemented.
-- Settlement repair/monitoring is required for background-job and process-crash scenarios.
+- There is no double-entry ledger.
+- The platform wallet model still creates financial and operational responsibility.
+- Partial refunds are not implemented.
+- Real-money deployment requires a reviewed VNPay/IPN and accounting process beyond the thesis
+  Sandbox acceptance target.

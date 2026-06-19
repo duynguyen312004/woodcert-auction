@@ -1,6 +1,6 @@
 # Project Status
 
-> Last updated: 2026-06-13 | By: Codex | Session: 404-and-bundle-optimization
+> Last updated: 2026-06-19 | By: Codex | Session: documentation-sync
 >
 > AI: update this file at the end of every backend session when asked.
 > Follow this exact format. Keep it concise but decision-useful.
@@ -44,29 +44,33 @@
 - [x] Seller Portal v1 realtime contract: shared auction STOMP topic with 10-second REST reconciliation for operational views
 - [x] Order and dispute list mapping bulk-loads fulfillment/evidence data to avoid per-row N+1 queries
 - [x] VPS deploy artifacts: production Compose, backend/frontend images, health endpoint, Nginx proxy template, and deploy runbook
+- [x] Dispute conversation timeline with immutable participant/admin messages and message evidence
+- [x] Auction repair scheduler for terminal sessions with frozen deposits and successful sessions missing orders
+- [x] Backend architecture, database, API, and ADR documentation synchronized with Flyway V1-V4 and current runtime behavior
 
 ## In Progress
 
 - Manual browser acceptance with real SMTP, Cloudinary, and VNPay Sandbox credentials.
+- Responsive browser acceptance for public, buyer, seller, appraiser, and admin portals.
 
 ## Deferred Issues
 
 - Stored winner/loser notifications beyond the existing buyer participation history UI
 - Broader controller/RBAC integration coverage beyond the targeted cleanup tests
-- Repair job for rare close-time partial settlement after terminal auction DB commit
+- Operational alerting/runbook for failures that remain after automated settlement/order repair
 
 ## Warnings
 
-- Final backend verification on 2026-06-13: `mvn test` passed 382 tests across 60 report files, including Docker-backed production wiring, Flyway/MySQL, and Redis/Lua integration tests.
-- Final frontend verification on 2026-06-13: typecheck, lint, 175 unit tests, 6 Playwright tests, and production build passed.
-- Frontend custom 404 now preserves public, seller, appraiser, and admin layouts. Production build has no JavaScript chunk over 500 KB; main entry is 410.76 KB (127.91 KB gzip), down from about 889 KB.
+- Final backend verification on 2026-06-19: `mvn test` passed 394 tests across 62 report files, including Docker-backed production wiring, Flyway/MySQL, and Redis/Lua integration tests.
+- Final frontend verification on 2026-06-19: typecheck, lint, 190 unit tests, 7 Playwright tests, and production build passed.
+- Frontend custom 404 preserves public, seller, appraiser, and admin layouts. The 2026-06-19 production build has no JavaScript chunk over 500 KB; the main entry is 411.61 KB (128.11 KB gzip).
 - Dispute v1 has no partial refund; admin resolution is `SELLER_WINS` or `BUYER_WINS`.
 - Wallet balance for demo must come from VNPay Sandbox. Do not add local wallet funding shortcuts.
 - The thesis deployment uses VNPay Sandbox with `vnpay.confirm-on-return-enabled=true` because merchant IPN registration is unavailable. The signed Return callback still validates merchant code, amount and transaction status and is not a wallet shortcut. Real-money deployment must use IPN.
 
 ## Next Tasks
 
-1. Run the documented browser E2E checklist from a clean V1-V3 database.
+1. Run the documented browser E2E checklist from a clean V1-V4 database.
 2. Keep demo wallet funding strictly on VNPay Sandbox; do not add local wallet funding shortcuts.
 3. Keep Flyway as the schema strategy; do not reintroduce `data.sql` bootstrap.
 
@@ -135,7 +139,7 @@
 
 - [x] Order domain and source-adapter boundary
 - [x] Buyer/seller order APIs
-- [x] Escrow remainder payment, overdue cancellation, and forfeited deposit split
+- [x] Wallet-funded remaining payment, overdue cancellation, and forfeited deposit split
 - [x] Fulfillment shipment, buyer receive, and shipped auto-complete
 - [x] Seller payout and platform commission/revenue recording
 - [x] Dispute service/controller/resolution workflow

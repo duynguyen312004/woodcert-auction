@@ -1,60 +1,90 @@
 # ADR-004: Modular Monolith Package Structure
 
 ## Status
-Accepted. Current implemented feature packages are `identity`, `media`, `catalog`, `finance`, and `auction`; `fulfillment` remains planned.
+
+Accepted and implemented. Updated 2026-06-19.
 
 ## Context
-The platform has a complex business domain consisting of Identity Management, Catalog (Products & Appraisals), Escrow Finances, Real-time Auctions, and Order Fulfillment.
-We need an architectural pattern to organize the Spring Boot codebase that prevents "Spaghetti Code" while keeping deployment simple for the initial MVP launch.
 
-## Options Considered
+WoodCert Auction contains identity, media, catalog/appraisal, finance, realtime auction, order,
+fulfillment, and dispute workflows. The project needs clear ownership boundaries without the
+operational cost and distributed-transaction complexity of microservices.
 
-### Option A: Traditional Layered Architecture (Package-by-Layer)
-- Packages grouped by technical concern (`controllers/`, `services/`, `repositories/`, `entities/`).
-- **Risk:** Low cohesion, high coupling. Changing the "Auction" feature requires jumping across 5 different top-level folders. Classes easily bleed into each other's boundaries.
+## Options considered
+
+### Option A: Package by technical layer
+
+Top-level `controller`, `service`, `repository`, and `entity` packages.
+
+Rejected because one business change would span many unrelated top-level directories and feature
+ownership would be weak.
 
 ### Option B: Microservices
-- Split features into distinct deployable Spring Boot applications (e.g., `auth-service`, `auction-service`, `wallet-service`).
-- **Risk:** Over-engineering for an MVP. Requires complex infrastructure (Service Discovery, API Gateway, Distributed Transactions).
 
-### Option C: Modular Monolith / Package-by-Feature (CHOSEN)
-- Single deployable application (Monolith), but code is strictly partitioned by business domains (Features).
-- Each feature encapsulates its own APIs, Business Logic, and Data Access.
+Independently deployed identity, auction, finance, order, and other services.
+
+Rejected for the current scope because it would require service discovery or routing, distributed
+observability, network-failure handling, and cross-service transaction design.
+
+### Option C: Modular monolith, package by feature
+
+One Spring Boot process and one MySQL schema, partitioned into cohesive feature packages.
+
+Chosen.
 
 ## Decision
-**Option C** — Modular Monolith Architecture.
 
-## Implementation Design
-
-### 1. Folder Structure
+Use the following implemented package structure:
 
 ```text
 com.woodcert.auction/
-├── core/                   # Global shared concerns (Security, Exceptions, BaseEntity)
+├── core/
 └── feature/
-    ├── identity/           # User, Role, SellerProfile
-    ├── catalog/            # Product, AppraisalReport
-    ├── finance/            # Wallet, Transactions
-    ├── auction/            # AuctionSession, Bid
-    └── fulfillment/        # Order, Shipment, Dispute
+    ├── identity/
+    ├── media/
+    ├── catalog/
+    ├── finance/
+    ├── auction/
+    ├── order/
+    ├── fulfillment/
+    └── dispute/
 ```
 
-### 2. Strict Boundary Rules
+This is a modular monolith, not a microservices architecture.
 
-- **Encapsulation:** DTOs specific to a feature MUST reside inside that feature's package, not in a global dto/ folder.
-- **Access Modifiers:** Repositories and internal helper services should be package-private where possible to prevent other domains from bypassing the main Service interfaces.
-- **Cross-Domain Communication:**
-    - Direct calls: Allowed only via Service Interfaces (e.g., AuctionService calling WalletService.freezeFunds()).
-    - Event-Driven: For decoupled actions, use Spring @EventListener (e.g., OrderService listens to AuctionEndedEvent).
+## Ownership rules
+
+- `core` contains shared infrastructure and no feature business rules.
+- Each feature owns its controllers, DTOs, entities, repositories, and business services.
+- Controllers return DTOs, never JPA entities.
+- Cross-feature consumers should prefer service interfaces, query snapshots, or ports/adapters.
+- Order creation depends on `OrderSourceAdapter`; auction is the current source implementation.
+- Fulfillment exposes snapshots through `OrderFulfillmentPort`.
+- Dispute coordinates outcomes through order and fulfillment services rather than mutating finance
+  repositories.
+- New package cycles must not be introduced.
+
+## Current accepted technical debt
+
+- Some catalog flows still read identity repositories directly.
+- Some dispute entities retain direct order/fulfillment associations.
+- Order and fulfillment call each other through package-level ports and services inside the same
+  process.
+
+These are known modularity compromises, not evidence of separate services.
 
 ## Consequences
 
-### Positive
+Positive:
 
-- High Cohesion: Everything related to "Wallets" is in one folder. Extremely easy for developers to navigate and understand.
-- Refactor-Ready: If the Auction feature scales massively in the future, the feature/auction folder can be effortlessly extracted into a standalone Microservice because its boundaries are already defined.
-- Simple Deployment: Still runs as a single java -jar application.
+- Cohesive feature navigation.
+- One deployable artifact and simple local transactions.
+- Explicit ownership for the complete implemented commerce flow.
+- Selected boundaries can be refactored later if scale or organization requires it.
 
-### Negative
+Negative:
 
-- Discipline Required: Developers (and AI tools) must strictly adhere to the rules. If someone injects UserRepository directly into AuctionService instead of using UserService, the boundaries start to break down.
+- Package boundaries rely partly on engineering discipline.
+- A single database allows accidental cross-module access if rules are ignored.
+- Extraction into services would require deliberate redesign; package separation alone does not make
+  extraction effortless.
