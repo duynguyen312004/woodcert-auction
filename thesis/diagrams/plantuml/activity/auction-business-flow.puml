@@ -19,70 +19,74 @@ skinparam swimlane {
     TitleFontColor Black
 }
 
-|Seller|
+|Người bán (Seller)|
 start
 :Tạo sản phẩm nháp,\nbổ sung mô tả và ảnh;
-:Gửi yêu cầu kiểm định;
+:Gửi yêu cầu thẩm định;
 
 |WoodCert Auction|
-:Thu phí kiểm định;
+:Thu phí thẩm định;
 :Chuyển sản phẩm sang\nPENDING_APPRAISAL;
 
-|Seller|
-:Gửi hàng vật lý tới\nđơn vị kiểm định;
+|Người bán (Seller)|
+:Gửi hiện vật tới\nđơn vị thẩm định;
+note right
+  Việc gửi, tiếp nhận và kiểm tra
+  hiện vật diễn ra ngoài phần mềm.
+end note
 
-|Appraiser|
-:Nhận xử lý yêu cầu\n(claim có thời hạn);
-:Kiểm tra trực tiếp hàng hóa\nvà chụp ảnh tại hiện trường;
-:Lập báo cáo kiểm định;
+|Thẩm định viên (Appraiser)|
+:Tiếp nhận quyền xử lý\nyêu cầu có thời hạn;
+:Kiểm tra trực tiếp hiện vật;
+:Lập báo cáo thẩm định;
 note right
   Ảnh chứng minh có thể được
   tải lên nhưng không bắt buộc.
 end note
 
 |WoodCert Auction|
-:Tạo mã hồ sơ và dấu vân tay SHA-256;
-if (Kết quả xác thực?) then ([Đạt])
+:Tạo mã chứng thư điện tử và\nlưu mã băm SHA-256;
+if (Kết quả thẩm định\nđạt yêu cầu?) then ([Đạt])
     :Chuyển sản phẩm sang APPRAISED;
 else ([Không đạt])
     :Chuyển sản phẩm sang REJECTED;
-    |Seller|
+    |Người bán (Seller)|
     :Xem kết quả và lý do từ chối;
     stop
 endif
 
-|Seller|
-:Tạo phiên đấu giá từ\nsản phẩm APPRAISED;
+|Người bán (Seller)|
+:Tạo phiên đấu giá từ sản phẩm\nAPPRAISED và AVAILABLE;
 
 |WoodCert Auction|
 :Kiểm tra giá, tiền cọc,\nthời gian và xung đột phiên;
 :Lưu phiên WAITING;
-:Scheduler kích hoạt phiên ACTIVE;
+:Tác vụ nền theo lịch\nkích hoạt phiên ACTIVE;
 
-|Bidder/Buyer|
+|Người tham gia (Bidder)|
 :Đăng ký tham gia;
 
 |WoodCert Auction|
 :Kiểm tra điều kiện và\nphong tỏa tiền đặt cọc;
 
 while (Phiên ACTIVE và còn thời gian?) is ([Có])
-    |Bidder/Buyer|
-    :Gửi giá đặt qua REST API;
+    |Người tham gia (Bidder)|
+    :Gửi lượt đặt giá;
     |WoodCert Auction|
-    :Redis/Lua kiểm tra và\ncập nhật nguyên tử;
+    :Kiểm tra thời gian, tư cách\ntham gia và mức giá;
     if (Lượt đặt hợp lệ?) then ([Có])
-        :Broadcast NEW_BID;
-        :Lưu bid và snapshot MySQL\n(best-effort);
+        :Cập nhật giá hiện tại và thông báo\nkết quả lượt đặt giá;
+        :Gia hạn thời điểm kết thúc nếu lượt đặt giá\nthuộc cửa sổ chống đặt giá sát giờ;
     else ([Không])
         :Trả lỗi nghiệp vụ;
     endif
 endwhile ([Hết thời gian])
 
 |WoodCert Auction|
-:Lifecycle worker chốt\nENDED_SUCCESS hoặc ENDED_FAILED;
-if (ENDED_SUCCESS?) then ([Có])
+:Kết thúc phiên và\nxác định kết quả;
+if (Có người thắng hợp lệ?) then ([Có])
     :Quyết toán tiền cọc;
-    :Tạo đơn hàng PENDING_PAYMENT;
+    :Tạo đơn hàng chờ thanh toán;
 else ([Không])
     :Hoàn tiền cọc hợp lệ;
 endif

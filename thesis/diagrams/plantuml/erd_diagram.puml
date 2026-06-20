@@ -1,0 +1,144 @@
+@startuml
+!theme plain
+skinparam linetype ortho
+skinparam shadowing false
+skinparam defaultFontName "Arial"
+
+skinparam class {
+    BackgroundColor #FFFFFF
+    BorderColor #333333
+    ArrowColor #555555
+}
+
+entity "users" as users {
+    * id : bigint <<PK>>
+    --
+    * username : varchar
+    * email : varchar
+    * password_hash : varchar
+    * role : varchar
+}
+
+entity "wallets" as wallets {
+    * id : bigint <<PK>>
+    --
+    * user_id : bigint <<FK>>
+    * available_balance : decimal
+    * frozen_balance : decimal
+    * version : int
+}
+
+entity "wallet_transactions" as wallet_transactions {
+    * id : bigint <<PK>>
+    --
+    * wallet_id : bigint <<FK>>
+    * amount : decimal
+    * type : varchar
+    * status : varchar
+    * created_at : datetime
+}
+
+entity "products" as products {
+    * id : bigint <<PK>>
+    --
+    * seller_id : bigint <<FK>>
+    * title : varchar
+    * description : text
+    * status : varchar
+    * created_at : datetime
+}
+
+entity "appraisal_reports" as appraisal_reports {
+    * id : bigint <<PK>>
+    --
+    * product_id : bigint <<FK>>
+    * appraiser_id : bigint <<FK>>
+    * certificate_code : varchar
+    * integrity_hash : varchar
+    * verified_material : varchar
+    * estimated_value : decimal
+    * is_authentic : boolean
+    * appraised_at : datetime
+}
+
+entity "auction_sessions" as auction_sessions {
+    * id : bigint <<PK>>
+    --
+    * product_id : bigint <<FK>>
+    * starting_price : decimal
+    * step_percent : double
+    * current_price : decimal
+    * start_time : datetime
+    * end_time : datetime
+    * status : varchar
+    * version : int
+}
+
+entity "auction_participants" as auction_participants {
+    * id : bigint <<PK>>
+    --
+    * session_id : bigint <<FK>>
+    * user_id : bigint <<FK>>
+    * deposit_amount : decimal
+    * deposit_status : varchar
+    * registered_at : datetime
+}
+
+entity "bids" as bids {
+    * id : bigint <<PK>>
+    --
+    * session_id : bigint <<FK>>
+    * bidder_id : bigint <<FK>>
+    * amount : decimal
+    * placed_at : datetime
+}
+
+entity "orders" as orders {
+    * id : bigint <<PK>>
+    --
+    * session_id : bigint <<FK>>
+    * buyer_id : bigint <<FK>>
+    * seller_id : bigint <<FK>>
+    * amount : decimal
+    * status : varchar
+    * created_at : datetime
+}
+
+entity "order_fulfillments" as order_fulfillments {
+    * id : bigint <<PK>>
+    --
+    * order_id : bigint <<FK>>
+    * shipping_code : varchar
+    * carrier_name : varchar
+    * status : varchar
+    * updated_at : datetime
+}
+
+entity "dispute_cases" as dispute_cases {
+    * id : bigint <<PK>>
+    --
+    * order_id : bigint <<FK>>
+    * initiator_id : bigint <<FK>>
+    * title : varchar
+    * description : text
+    * status : varchar
+    * created_at : datetime
+}
+
+' Mối quan hệ giữa các bảng
+users ||--|| wallets
+wallets ||--o{ wallet_transactions
+users ||--o{ products : "owns"
+products ||--o| appraisal_reports
+users ||--o{ appraisal_reports : "appraises"
+products ||--o| auction_sessions
+auction_sessions ||--o{ auction_participants
+users ||--o{ auction_participants
+auction_sessions ||--o{ bids
+users ||--o{ bids : "places"
+auction_sessions ||--o| orders
+users ||--o{ orders : "buys"
+orders ||--|| order_fulfillments
+orders ||--o| dispute_cases
+
+@enduml

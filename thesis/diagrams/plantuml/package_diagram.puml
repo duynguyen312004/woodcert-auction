@@ -1,0 +1,90 @@
+@startuml
+skinparam handwritten false
+skinparam shadowing false
+skinparam defaultFontName "Arial"
+skinparam packageStyle rectangle
+
+skinparam package {
+    BackgroundColor #FFFFFF
+    BorderColor #333333
+    ArrowColor #555555
+    FontName "Arial"
+    FontSize 13
+}
+
+skinparam Note {
+    BackgroundColor #FFFFE0
+    BorderColor #555555
+}
+
+package "woodcert-auction (Backend Application)" {
+    
+    package "core (Shared Infrastructure)" #F9F9F9 {
+        package "security" as core_security {
+            note right: SecurityConfig\nJwtService
+        }
+        package "exception" as core_exception {
+            note right: GlobalExceptionHandler
+        }
+        package "websocket" as core_websocket {
+            note right: WebSocketConfig
+        }
+        package "config" as core_config
+    }
+
+    package "feature (Business Domains)" {
+        package "identity" as feat_identity {
+            note bottom: User, Role\nAuthService
+        }
+        package "media" as feat_media {
+            note bottom: CloudinaryService
+        }
+        package "catalog" as feat_catalog {
+            note bottom: Product, Category\nAppraisalReport
+        }
+        package "finance" as feat_finance {
+            note bottom: Wallet, Transaction\nVNPayService
+        }
+        package "auction" as feat_auction {
+            note bottom: AuctionSession\nAuctionParticipant\nBid
+        }
+        package "order" as feat_order {
+            note bottom: Order, OrderDetail
+        }
+        package "fulfillment" as feat_fulfillment {
+            note bottom: OrderFulfillment
+        }
+        package "dispute" as feat_dispute {
+            note bottom: DisputeCase
+        }
+    }
+}
+
+' Quy tắc phụ thuộc một chiều vào core
+feat_identity ..> core_security : <<use>>
+feat_identity ..> core_exception : <<use>>
+feat_media ..> core_exception : <<use>>
+feat_catalog ..> core_exception : <<use>>
+feat_finance ..> core_exception : <<use>>
+feat_auction ..> core_websocket : <<use>>
+feat_auction ..> core_exception : <<use>>
+feat_order ..> core_exception : <<use>>
+feat_fulfillment ..> core_exception : <<use>>
+feat_dispute ..> core_exception : <<use>>
+
+' Giao tiếp liên mô-đun qua Interface/Adapter
+feat_auction ..> feat_catalog : <<read>> Product
+feat_auction ..> feat_finance : <<freeze cọc>> Wallet
+feat_order ..> feat_auction : <<read>> AuctionSession
+feat_order ..> feat_finance : <<deduct cọc>> Wallet
+feat_fulfillment ..> feat_order : <<update status>> Order
+feat_dispute ..> feat_order : <<block payout>> Order
+
+note top of feat_auction
+  Giao tiếp với Order qua Adapter
+  **AuctionOrderSourceAdapter**
+  để giữ tính đóng gói
+end note
+feat_auction ..> feat_order : <<trigger order creation>>
+
+@enduml

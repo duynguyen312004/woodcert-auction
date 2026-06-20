@@ -9,14 +9,14 @@ skinparam defaultFontName Arial
 skinparam defaultFontSize 13
 skinparam backgroundColor White
 
-actor "Người dùng\nBuyer / Seller /\nAppraiser / Admin" as User
+actor "Người dùng\nBidder/Buyer, Seller,\nAppraiser, Admin" as User
 
 node "Ubuntu VPS" as VPS {
   component "Nginx host\nTLS termination\nReverse proxy" as HostNginx
 
   frame "Docker Compose network" {
-    component "Frontend container\nReact 19.2.1\nNginx static server\n127.0.0.1:3000" as Frontend
-    component "Backend container\nSpring Boot 3.5.15\nJava 17\nModular monolith\n127.0.0.1:8080" as Backend
+    component "Frontend container\nReact 19.2.1\nNginx static server\nHost bind: 127.0.0.1:3000 -> 80" as Frontend
+    component "Backend container\nSpring Boot 3.5.15\nJava 17\nModular monolith\nHost bind: 127.0.0.1:8080 -> 8080" as Backend
     database "MySQL 8.0\nDữ liệu quan hệ bền vững\nKhông publish cổng" as MySQL
     database "Redis 7.4\nRuntime phiên ACTIVE\nAOF, không publish cổng" as Redis
   }
@@ -27,7 +27,7 @@ cloud "VNPay Sandbox\nTrang thanh toán" as VNPay
 cloud "SMTP\nEmail xác thực/đặt lại mật khẩu" as SMTP
 
 User --> HostNginx : HTTPS
-HostNginx --> Frontend : / 
+HostNginx --> Frontend : /
 HostNginx --> Backend : /api/*\n/ws-auction
 Backend --> MySQL : JPA / SQL
 Backend --> Redis : Redis protocol\nLua script
@@ -37,7 +37,8 @@ Backend --> SMTP : SMTP
 
 Backend --> User : URL thanh toán đã ký
 User --> VNPay : Chuyển hướng thanh toán
-VNPay --> HostNginx : Return / IPN
+VNPay --> User : Chuyển hướng Return
+User --> HostNginx : GET /api/v1/wallets/vnpay/return
 
 note bottom of Backend
   Các feature nằm trong cùng một tiến trình backend.

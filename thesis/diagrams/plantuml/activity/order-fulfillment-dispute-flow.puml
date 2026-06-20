@@ -19,75 +19,78 @@ skinparam swimlane {
     TitleFontColor Black
 }
 
-|Bidder/Buyer|
+|Người mua (Buyer)|
 start
 :Chọn địa chỉ giao hàng;
 :Thanh toán phần tiền còn lại;
 
 |WoodCert Auction|
 if (Thanh toán đúng hạn?) then ([Có])
-    :Trừ tiền ví theo operation key;
+    :Ghi nhận thanh toán\nphần còn lại từ ví;
     :Chuyển đơn hàng sang PAID;
-    :Tạo fulfillment chờ giao hàng;
+    :Tạo thông tin giao nhận chờ\nNgười bán xác nhận;
 else ([Không])
-    :Scheduler hủy đơn quá hạn;
+    :Tác vụ nền theo lịch\nhủy đơn quá hạn;
     :Phân bổ tiền cọc theo chính sách;
     stop
 endif
 
-if (Có giao hàng trong 72 giờ?) then ([Có])
-    |Seller|
-    :Xác nhận giao hàng và\ncập nhật thông tin vận chuyển;
+|Người bán (Seller)|
+:Xác nhận đã gửi hoặc bàn giao\nvà cập nhật thông tin vận chuyển;
+
+|WoodCert Auction|
+if (Thao tác được thực hiện\ntrong 72 giờ?) then ([Có])
+    :Chuyển giao nhận sang SHIPPED;
 else ([Không (Quá hạn)])
-    |WoodCert Auction|
-    :Scheduler tự động hủy đơn;
-    :Hoàn trả toàn bộ tiền cọc và tiền hàng cho Buyer;
+    :Tác vụ nền theo lịch\ntự động hủy đơn;
+    :Hoàn trả tiền cọc và phần\nđã thanh toán cho Người mua;
     :Chuyển trạng thái sản phẩm sang AVAILABLE;
     stop
 endif
 
-|WoodCert Auction|
-:Chuyển fulfillment sang SHIPPED;
-
-|Bidder/Buyer|
+|Người mua (Buyer)|
 if (Phát sinh tranh chấp?) then ([Có])
-    :Tải ảnh bằng chứng bắt buộc;
+    :Tải ít nhất một ảnh bằng chứng;
     :Mở hồ sơ tranh chấp;
 
     |WoodCert Auction|
     :Đánh dấu đơn hàng DISPUTED;
 
-    |Bidder/Buyer|
-    :Gửi phản hồi/văn bản hoặc ảnh;
+    |Người mua (Buyer)|
+    :Gửi thông điệp và tệp\nbằng chứng nếu có;
 
-    |Seller|
-    :Gửi phản hồi/văn bản hoặc ảnh;
+    |Người bán (Seller)|
+    :Gửi thông điệp và tệp\nbằng chứng nếu có;
 
-    |Admin|
+    |Quản trị viên (Admin)|
     :Xem hồ sơ và đánh dấu đang xem xét;
-    :Ra quyết định toàn phần;
+    :Ra quyết định tranh chấp;
+    note right
+      Hệ thống hiện chưa hỗ trợ
+      hoàn tiền một phần.
+    end note
 
     |WoodCert Auction|
-    if (Kết quả xử lý?) then ([Buyer thắng])
-        :Hoàn tiền cho Buyer;
-        :Hủy đơn và fulfillment;
+    if (Kết quả giải quyết\ntranh chấp?) then ([Người mua thắng])
+        :Hoàn tiền cho Người mua;
+        :Hủy đơn và giao nhận;
         :Đánh dấu sản phẩm RETURNED;
-    else ([Seller thắng])
+    else ([Người bán thắng])
         :Hoàn tất đơn hàng;
-        :Giải ngân cho Seller;
+        :Giải ngân cho Người bán;
     endif
     :Đóng hồ sơ tranh chấp;
     stop
 else ([Không])
-    if (Buyer xác nhận đã nhận hàng?) then ([Có])
+    if (Người mua xác nhận\nđã nhận hàng?) then ([Có])
         :Hoàn tất đơn hàng;
-        :Giải ngân cho Seller;
+        :Giải ngân cho Người bán;
         stop
     else ([Chưa])
         |WoodCert Auction|
-        :Scheduler chờ hết thời hạn\nbảo vệ giao hàng 168 giờ;
+        :Chờ hết thời hạn\ntự hoàn tất 168 giờ;
         :Tự động hoàn tất đơn hàng;
-        :Giải ngân cho Seller;
+        :Giải ngân cho Người bán;
         stop
     endif
 endif

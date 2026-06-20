@@ -1,0 +1,69 @@
+@startuml
+skinparam handwritten false
+skinparam shadowing false
+skinparam defaultFontName "Arial"
+skinparam sequence {
+    ArrowColor #333333
+    ActorBorderColor #555555
+    LifeLineBorderColor #555555
+    LifeLineBackgroundColor #F9F9F9
+    ParticipantBorderColor #555555
+    ParticipantBackgroundColor #FFFFFF
+    ParticipantFontName "Arial"
+    ActorBackgroundColor #FFFFFF
+    ActorFontName "Arial"
+}
+
+participant "AuctionSessionScheduler" as Scheduler
+participant "AuctionSettlementService" as Settle
+participant "AuctionRedisService" as Redis
+participant "WalletService" as Wallet
+participant "AuctionOrderSourceAdapter" as Adapter
+participant "OrderService" as Order
+database "MySQL DB" as DB
+
+Scheduler -> Scheduler: Quét định kỳ (mỗi 5 giây)
+activate Scheduler
+note over Scheduler: Tìm các phiên ACTIVE\ncó endTime <= Now
+deactivate Scheduler
+
+Scheduler -> Settle: closeSession(sessionId) [REQUIRES_NEW Transaction]
+activate Settle
+
+Settle -> Redis: getSessionState(sessionId)
+activate Redis
+Redis --> Settle: RedisState (WinnerId, FinalPrice)
+deactivate Redis
+
+Settle -> DB: Cập nhật trạng thái phiên (ENDED_SUCCESS)
+activate DB
+DB --> Settle: Success
+deactivate DB
+
+Settle -> Wallet: Quyết toán cọc (winnerId, loserIds, sessionId)
+activate Wallet
+note over Wallet: 1. Khấu trừ cọc người thắng (DEDUCTED)\n2. Hoàn cọc cho tất cả người thua (REFUNDED)\n(Bảo vệ chống trùng lặp bằng operation_key)
+Wallet --> Settle: Success
+deactivate Wallet
+
+Settle -> Adapter: triggerOrderCreation(sessionId, winnerId, finalPrice)
+activate Adapter
+
+Adapter -> Order: createOrder(orderRequest)
+activate Order
+note over Order: Tạo đơn hàng mới\nGiá bán = Giá chốt - Tiền cọc đã capture
+Order --> Adapter: OrderCreated (orderId)
+deactivate Order
+
+Adapter --> Settle: Success
+deactivate Adapter
+
+Settle -> Redis: clearSessionCache(sessionId)
+activate Redis
+Redis --> Settle: Success
+deactivate Redis
+
+Settle --> Scheduler: Settle Completed
+deactivate Settle
+
+@enduml

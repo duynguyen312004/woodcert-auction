@@ -1,0 +1,116 @@
+@startuml
+skinparam handwritten false
+skinparam shadowing false
+skinparam defaultFontName "Arial"
+skinparam class {
+    BackgroundColor #FFFFFF
+    BorderColor #333333
+    ArrowColor #555555
+    FontName "Arial"
+    FontSize 12
+}
+
+class AuctionController {
+    + getAuctions(filter, pageable): ResponseEntity
+    + getAuctionDetail(id): ResponseEntity
+    + registerBidder(id): ResponseEntity
+    + withdrawRegistration(id): ResponseEntity
+    + placeBid(id, bidRequest): ResponseEntity
+}
+
+interface AuctionService {
+    + createSession(command): AuctionSession
+    + registerParticipant(sessionId, userId): void
+    + placeBid(sessionId, userId, amount): BidResult
+    + closeSession(sessionId): void
+}
+
+class AuctionServiceImpl {
+    - commandService: AuctionCommandService
+    - queryService: AuctionQueryService
+    - redisService: AuctionRedisService
+    - policy: AuctionPolicy
+    - settlementService: AuctionSettlementService
+}
+
+class AuctionCommandService {
+    - sessionRepository: AuctionSessionRepository
+    + create(command): AuctionSession
+    + updateStatus(id, status): void
+}
+
+class AuctionQueryService {
+    - sessionRepository: AuctionSessionRepository
+    - redisService: AuctionRedisService
+    + getById(id): AuctionSession
+    + listActiveSessions(): List
+}
+
+class AuctionRedisService {
+    - redisTemplate: RedisTemplate
+    + initializeSessionCache(session): void
+    + executeBidScript(sessionId, userId, amount): BidResult
+    + getSessionState(sessionId): RedisSessionState
+    + clearSessionCache(sessionId): void
+}
+
+class AuctionSettlementService {
+    - participantRepository: AuctionParticipantRepository
+    - walletService: WalletService
+    - orderAdapter: AuctionOrderSourceAdapter
+    + settleDeposits(sessionId): void
+}
+
+class AuctionPolicy {
+    + validateCreation(sessionConfig): void
+    + validateBid(currentPrice, bidAmount, stepPercent): void
+}
+
+interface AuctionSessionRepository {
+    + findByIdWithPessimisticLock(id): Optional
+    + findExpiredSessions(now): List
+}
+
+interface AuctionParticipantRepository {
+    + findBySessionIdAndUserId(sessionId, userId): Optional
+    + findLosersBySessionId(sessionId, winnerId): List
+}
+
+class AuctionSession {
+    - id: Long
+    - title: String
+    - startingPrice: BigDecimal
+    - stepPercent: Double
+    - currentPrice: BigDecimal
+    - startTime: LocalDateTime
+    - endTime: LocalDateTime
+    - status: AuctionStatus
+    - version: Integer
+}
+
+class AuctionParticipant {
+    - id: Long
+    - sessionId: Long
+    - userId: Long
+    - depositAmount: BigDecimal
+    - depositStatus: DepositStatus
+    - registeredAt: LocalDateTime
+}
+
+AuctionController ..> AuctionService : <<use>>
+AuctionService <|.. AuctionServiceImpl
+
+AuctionServiceImpl --> AuctionCommandService
+AuctionServiceImpl --> AuctionQueryService
+AuctionServiceImpl --> AuctionRedisService
+AuctionServiceImpl --> AuctionPolicy
+AuctionServiceImpl --> AuctionSettlementService
+
+AuctionCommandService --> AuctionSessionRepository
+AuctionQueryService --> AuctionSessionRepository
+AuctionSettlementService --> AuctionParticipantRepository
+
+AuctionSessionRepository ..> AuctionSession : <<manages>>
+AuctionParticipantRepository ..> AuctionParticipant : <<manages>>
+
+@enduml

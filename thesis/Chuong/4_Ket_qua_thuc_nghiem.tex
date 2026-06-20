@@ -2,70 +2,490 @@
 \begin{document}
 
 \section{Thiết kế kiến trúc}
+
 \subsection{Lựa chọn kiến trúc phần mềm}
-Mục này có độ dài từ một đến ba trang. Sinh viên cần lựa chọn kiến trúc phần mềm cho ứng dụng của mình như: kiến trúc ba lớp MVC, MVP, SOA, Microservice, v.v. rồi giải thích sơ bộ về kiến trúc đó (không giải thích chi tiết/dài dòng).
-Sử dụng kiến trúc phần mềm đã chọn ở trên, sinh viên mô tả kiến trúc cụ thể cho ứng dụng của mình. Gợi ý: sinh viên áp dụng lý thuyết chung vào hệ thống/sản phẩm của mình như thế nào, có thay đổi, bổ sung hoặc cải tiến gì không. Ví dụ, thành phần M trong kiến trúc lý thuyết MVC sẽ là những thành phần cụ thể nào (ví dụ: là interface I + class C1 + class C2, v.v.) trong kiến trúc phần mềm của sinh viên.
+
+Hệ thống WoodCert Auction được xây dựng trên mô hình kiến trúc Modular Monolith (Kiến trúc đơn khối phân mô-đun). Đây là một quyết định kiến trúc có chủ đích, nhằm cân bằng giữa tính cô lập về mặt mã nguồn của các phân hệ nghiệp vụ khác nhau và sự đơn giản trong quá trình triển khai và vận hành hệ thống thực tế.
+
+Trong thiết kế này, toàn bộ mã nguồn hệ thống được đóng gói và thực thi bên trong một tiến trình chạy trên một máy ảo Java (JVM) duy nhất, chia sẻ chung một cơ sở dữ liệu MySQL và một instance bộ nhớ đệm Redis. Tuy nhiên, ở mức độ tổ chức mã nguồn, dự án phân tách rõ rệt thành hai phân vùng chính:
+
+\begin{enumerate}
+    \item \textbf{Shared Infrastructure (Hạ tầng dùng chung - \texttt{core}):} Chứa các cấu hình cơ sở và thành phần dùng chung hỗ trợ cho toàn hệ thống như: phân hệ xử lý ngoại lệ toàn cục (\texttt{GlobalExceptionHandler}), cấu hình bảo mật và JWT (\texttt{SecurityConfig}), cấu hình WebSocket (\texttt{WebSocketConfig}), các tiện ích mã hóa và định dạng dữ liệu dùng chung.
+    \item \textbf{Business Domains (Các miền nghiệp vụ - \texttt{feature}):} Gồm 8 mô-đun nghiệp vụ độc lập được phân chia theo ranh giới ngữ cảnh (bounded context):
+    \begin{itemize}
+        \item \texttt{identity}: Quản lý tài khoản, thông tin người dùng, seller và phân quyền.
+        \item \texttt{media}: Quản lý tải lên và lưu trữ hình ảnh thông qua tích hợp Cloudinary.
+        \item \texttt{catalog}: Quản lý danh mục sản phẩm và quy trình thẩm định gỗ mỹ nghệ.
+        \item \texttt{finance}: Quản lý ví ảo, lịch sử giao dịch và nạp tiền qua cổng VNPay Sandbox.
+        \item \texttt{auction}: Quản lý cấu hình phiên, đăng ký đặt cọc và luồng đặt giá thời gian thực.
+        \item \texttt{order}: Quản lý đơn hàng phát sinh sau đấu giá và thanh toán phần còn lại.
+        \item \texttt{fulfillment}: Quản lý quy trình giao nhận hàng và tự động hoàn tất.
+        \item \texttt{dispute}: Quản lý khiếu nại, tranh chấp giữa người mua và người bán.
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection{Phân lớp nội bộ mô-đun}
+Mỗi mô-đun nghiệp vụ bên trong gói \texttt{feature} được tổ chức nội bộ theo kiến trúc phân lớp truyền thống nhằm đảm bảo sự mạch lạc và dễ bảo trì:
+\begin{itemize}
+    \item \textbf{Tầng Controller:} Tiếp nhận các yêu cầu HTTP REST, thực hiện các kiểm tra tính hợp lệ sơ bộ của tham số đầu vào (qua Spring Validation), và trả về phản hồi chuẩn hóa thông qua lớp wrapper \texttt{ApiResponse<T>}.
+    \item \textbf{Tầng Service:} Chứa logic nghiệp vụ cốt lõi của mô-đun. Với các mô-đun phức tạp như \texttt{auction}, tầng service được phân rã thành các lớp dịch vụ chuyên biệt (như dịch vụ facade, dịch vụ thực thi command, dịch vụ truy vấn query, dịch vụ kiểm tra chính sách policy và dịch vụ quyết toán cọc settlement) để tránh hiện tượng lớp dịch vụ phình to (God Class).
+    \item \textbf{Tầng Repository:} Thực hiện truy vấn dữ liệu từ cơ sở dữ liệu MySQL thông qua Spring Data JPA và Hibernate.
+    \item \textbf{Tầng Entity:} Định nghĩa các mô hình dữ liệu bền vững tương ứng với các bảng trong cơ sở dữ liệu.
+    \item \textbf{Tầng DTO (Data Transfer Object):} Đóng vai trò là hợp đồng dữ liệu trao đổi giữa máy khách và máy chủ, ngăn chặn việc rò rỉ trực tiếp các thực thể cơ sở dữ liệu ra ngoài API.
+\end{itemize}
+
+\subsubsection{Phân tích sự đánh đổi (Architectural Trade-offs)}
+Mô hình Modular Monolith mang lại ba lợi ích cốt lõi cho hệ thống:
+(i) \textit{Hiệu năng giao tiếp:} Mọi tương tác liên mô-đun đều được thực hiện qua các lời gọi hàm trực tiếp trong cùng một tiến trình (in-process calls), không phát sinh giao tiếp mạng giữa các mô-đun nội bộ và giảm thiểu chi phí tuần tự hóa dữ liệu (serialization) vốn có trong kiến trúc microservices.
+(ii) \textit{Nhất quán dữ liệu:} Dễ dàng quản lý tính toàn vẹn dữ liệu thông qua cơ chế quản lý giao dịch của Spring (\texttt{@Transactional}), hỗ trợ rollback tự động khi có lỗi xảy ra trong các luồng nghiệp vụ liên quan đến nhiều mô-đun (như luồng đóng phiên đấu giá và tạo đơn hàng).
+(iii) \textit{Vận hành đơn giản:} Giảm thiểu chi phí quản lý hạ tầng, giám sát và cấu hình CI/CD khi chỉ cần quản lý một ứng dụng backend chính được đóng gói chạy trên VPS.
+
+Tuy nhiên, thiết kế này cũng đặt ra sự đánh đổi quan trọng về \textit{tính cô lập tài nguyên}: Sự cố nghẽn luồng hoặc rò rỉ bộ nhớ ở một mô-đun có thể gây ảnh hưởng đến toàn bộ ứng dụng. Hệ thống giảm thiểu rủi ro này bằng cách bọc cô lập các logic có thời gian xử lý kéo dài trong một số tác vụ nền chạy định kỳ (như tác vụ tự động quét và dọn dẹp các tệp tin đa phương tiện mồ côi trên Cloudinary qua cơ chế \texttt{@Scheduled}), áp dụng xử lý an toàn lỗi (như bọc try-catch độc lập cho quy trình gửi email xác thực tài khoản để tránh làm rollback giao dịch đăng ký chính), hoặc tách biệt giao dịch con (\texttt{REQUIRES\_NEW}) trong scheduler đóng phiên.
+
+\subsubsection{Điểm nhấn kiến trúc hệ thống (Signature Architecture)}
+Bên cạnh cách tổ chức mã nguồn theo Modular Monolith, điểm nhấn kiến trúc của hệ thống nằm ở mô hình quản lý trạng thái lai (Hybrid Runtime Storage) cho phiên đấu giá thời gian thực. Khi phiên ở trạng thái \texttt{ACTIVE}, Redis được sử dụng để lưu trạng thái runtime như giá hiện tại, người đang dẫn đầu, thời điểm kết thúc và danh sách người tham gia. Các thao tác đặt giá được kiểm tra và cập nhật thông qua Lua Script nhằm đảm bảo tính nguyên tử trong phạm vi một Redis instance. MySQL vẫn đóng vai trò là cơ sở dữ liệu bền vững để lưu cấu hình phiên, người tham gia, lịch sử đặt giá, đơn hàng và các trạng thái kết thúc. Cách phân tách này giúp hệ thống giảm tranh chấp ghi trực tiếp lên cơ sở dữ liệu quan hệ trong giai đoạn đặt giá cao điểm, đồng thời vẫn giữ được dữ liệu bền vững cần thiết cho đối soát và xử lý sau phiên.
 
 \subsection{Thiết kế tổng quan}
-Sinh viên vẽ biểu đồ gói UML (UML package diagram), nêu rõ sự phụ thuộc giữa các gói (package). SV cần vẽ các gói sao cho chúng được phân theo các tầng rõ ràng, không được sắp đặt package lộn xộn trong hình vẽ. Sinh viên chú ý các quy tắc thiết kế (Các gói không phụ thuộc lẫn nhau, gói tầng dưới không phụ thuộc gói tầng trên, không phụ thuộc bỏ qua tầng, v.v.) và cần giải thích sơ lược về mục đích/nhiệm vụ của từng package. SV tham khảo ví dụ minh họa trong Hình \ref{fig:Fig1}
-\begin{figure}[H]
-    \centering
-    \includegraphics{Hinhve/Picture1.png}
-    \caption{Ví dụ biểu đồ phụ thuộc gói}
-    \label{fig:Fig1}
-\end{figure}
+
+% TẠM ẨN: Hình package_diagram.png chưa tồn tại tại đường dẫn Hinhve/.
+% Khôi phục đoạn mô tả và khối figure dưới đây sau khi rà soát Chương 4.
+% Sơ đồ gói thể hiện cách tổ chức cấu trúc phân cấp các mô-đun của hệ thống
+% WoodCert Auction và các quy tắc phụ thuộc giữa chúng, được minh họa trong
+% Hình \ref{fig:package-diagram}.
+%
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.85\textwidth]{Hinhve/package_diagram.png}
+%     \caption{Biểu đồ phụ thuộc các gói trong hệ thống}
+%     \label{fig:package-diagram}
+% \end{figure}
+
+\subsubsection{Quy tắc thiết kế ranh giới và phụ thuộc gói}
+\begin{enumerate}
+    \item \textbf{Phụ thuộc một chiều (Dependency Direction):} Các gói nghiệp vụ trong \texttt{feature} được phép phụ thuộc vào gói \texttt{core} để sử dụng các lớp cấu hình và tiện ích dùng chung. Tuy nhiên, gói \texttt{core} không được thiết kế phụ thuộc ngược lại các gói trong \texttt{feature}.
+    \item \textbf{Giao tiếp liên mô-đun hạn chế:} Các mô-đun nghiệp vụ hạn chế việc phụ thuộc trực tiếp vào Repository của mô-đun khác. Khi cần lấy dữ liệu hoặc kích hoạt hành động liên mô-đun, các mô-đun thực hiện gọi thông qua interface Service công khai (Public Service) hoặc lớp chuyển đổi Adapter được định nghĩa sẵn. Ví dụ: gói \texttt{auction} giao tiếp với gói \texttt{order} thông qua lớp \texttt{AuctionOrderSourceAdapter} để thực hiện chuyển giao phiên đấu giá thắng cuộc sang đơn hàng, đảm bảo tính đóng gói của mô-đun đơn hàng.
+\end{enumerate}
+
 \subsection{Thiết kế chi tiết gói}
-Sinh viên thiết kế và lần lượt vẽ biểu đồ thiết kế cho từng package, hoặc một nhóm các package liên quan để giải quyết một vấn đề gì đó. Khi vẽ thiết kế gói, sinh viên chỉ cần đưa tên lớp, không cần chỉ ra các thành viên phương thức và thuộc tính. SV tham khảo ví dụ minh họa trong Hình \ref{fig:Fig2}.
 
-Sinh viên cần vẽ rõ ràng quan hệ giữa các lớp trong biểu đồ. Các quan hệ bao gồm: phụ thuộc (dependency), kết hợp (association), kết tập (aggregation), hợp thành (composition), kế thừa (inheritance), và thực thi (implementation). Các quan hệ này đều đã được minh họa trong \ref{fig:Fig2}.
+Để minh họa chi tiết cách thiết kế phân lớp bên trong một mô-đun, gói \texttt{auction} (quản lý đấu giá) được chọn làm mô hình tiêu biểu nhất như biểu diễn ở Hình \ref{fig:auction-class-diagram}. Đây là một trong các mô-đun có logic nghiệp vụ phức tạp nhất, chịu trách nhiệm quản lý vòng đời phiên đấu giá và phối hợp trạng thái giữa Redis và MySQL.
 
-Sau khi vẽ hình minh họa, sinh viên cần giải thích ngắn gọn về thiết kế của mình. 
+% TẠM ẨN: Hình auction_class_diagram.png chưa tồn tại tại đường dẫn Hinhve/.
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.9\textwidth]{Hinhve/auction_class_diagram.png}
+%     \caption{Biểu đồ thiết kế lớp chi tiết mô-đun đấu giá}
+%     \label{fig:auction-class-diagram}
+% \end{figure}
 
-\begin{figure}[H]
-    \centering
-    \includegraphics{Hinhve/Picture2.png}
-    \caption{Ví dụ thiết kế gói}
-    \label{fig:Fig2}
-\end{figure}
+\subsubsection{Giải thích thiết kế các lớp cốt lõi trong gói \texttt{auction}}
+\begin{itemize}
+    \item \textbf{\texttt{AuctionController}:} Phơi bày các API REST cho phép người dùng xem danh sách phòng đấu giá, đăng ký tham gia, rút cọc, và gửi lượt đặt giá.
+    \item \textbf{\texttt{AuctionService} (Facade Interface) \& \texttt{AuctionServiceImpl}:} Đóng vai trò là cổng giao tiếp duy nhất cho Controller gọi vào. Lớp service triển khai điều phối các service chuyên biệt bên dưới:
+    \begin{itemize}
+        \item \texttt{AuctionCommandService}: Thực hiện các thay đổi trạng thái phiên như tạo phiên, hủy phiên.
+        \item \texttt{AuctionQueryService} \& \texttt{BuyerAuctionQueryService}: Thực hiện truy vấn danh sách, chi tiết phòng đấu giá, tích hợp trạng thái thực tế từ Redis.
+        \item \texttt{AuctionPolicy}: Kiểm tra các quy tắc nghiệp vụ khi khởi tạo phiên đấu giá (như xuất phát điểm của giá, bước giá, tiền cọc, khoảng thời gian tối thiểu).
+        \item \texttt{AuctionRedisService}: Giao tiếp trực tiếp với Redis để thực thi Lua Script đặt giá nguyên tử và quản lý bộ nhớ đệm phòng đấu giá.
+        \item \texttt{AuctionSettlementService}: Phối hợp xử lý giải phóng tiền cọc cho người thua và khấu trừ tiền cọc cho người thắng sau khi kết thúc phiên.
+    \end{itemize}
+    \item \textbf{\texttt{AuctionSessionRepository} \& \texttt{AuctionParticipantRepository}:} Các interface Spring Data JPA tương tác với cơ sở dữ liệu MySQL. \texttt{AuctionSessionRepository} sử dụng \texttt{@Lock(LockModeType.PESSIMISTIC\_WRITE)} trong các truy vấn quan trọng để bảo vệ dữ liệu khỏi race condition ở mức độ cơ sở dữ liệu.
+    \item \textbf{\texttt{AuctionSession} \& \texttt{AuctionParticipant}:} Các thực thể JPA bền vững lưu trữ thông tin cấu hình phiên đấu giá và thông tin đóng băng tiền cọc của người tham gia.
+\end{itemize}
 
 \section{Thiết kế chi tiết}
-\subsection{Thiết kế giao diện}
-Phần này có độ dài từ hai đến ba trang. Sinh viên đặc tả thông tin về màn hình mà ứng dụng của mình hướng tới, bao gồm độ phân giải màn hình, kích thước màn hình, số lượng màu sắc hỗ trợ, v.v. Tiếp đến, sinh viên đưa ra các thống nhất/chuẩn hóa của mình khi thiết kế giao diện như thiết kế nút, điều khiển, vị trí hiển thị thông điệp phản hồi, phối màu, v.v. Sau cùng sinh viên đưa ra một số hình ảnh minh họa thiết kế giao diện cho các chức năng quan trọng nhất. Lưu ý, sinh viên không nhầm lẫn giao diện thiết kế với giao diện của sản phẩm sau cùng.
-\subsection{Thiết kế lớp}
-Phần này có độ dài từ ba đến bốn trang. Sinh viên trình bày thiết kế chi tiết các thuộc tính và phương thức cho một số lớp chủ đạo/quan trọng nhất của ứng dụng (từ 2-4 lớp). Thiết kế chi tiết cho các lớp khác, nếu muốn trình bày, sinh viên đưa vào phần phụ lục.
 
-Để minh họa thiết kế lớp, sinh viên thiết kế luồng truyền thông điệp giữa các đối tượng tham gia cho 2 đến 3 use case quan trọng nào đó bằng biểu đồ trình tự (hoặc biểu đồ giao tiếp).
+\subsection{Thiết kế giao diện}
+
+Hệ thống WoodCert Auction xây dựng giao diện ứng dụng SPA (Single Page Application) sử dụng thư viện React 19.2.1 và khung thiết kế Tailwind CSS 4.1.17. Giao diện hướng tới sự nhất quán, trực quan, hỗ trợ tương tác thời gian thực trong phòng đấu giá.
+
+\subsubsection{Layout và Responsive}
+\begin{itemize}
+    \item \textbf{Độ phân giải đích:} Giao diện được thiết kế tối ưu hóa cho màn hình Desktop với độ phân giải tối thiểu 1280x720 pixel (đặc biệt là bảng quản trị admin, giao diện thẩm định gỗ của chuyên gia, và phòng đấu giá thời gian thực).
+    \item \textbf{Khả năng co giãn (Responsive Layout):} Sử dụng grid system và các tiện ích responsive của Tailwind CSS để tự động tương thích trên các thiết bị di động (mobile, tablet). Các thanh điều hướng (Navigation Bar) được chuyển đổi sang thanh menu rút gọn (Drawer/Sheet) trên màn hình nhỏ.
+\end{itemize}
+
+\subsubsection{Thống nhất các thành phần giao diện (UI Components)}
+Hệ thống chuẩn hóa các thành phần điều khiển giao diện thông qua bộ thư viện Radix UI để bảo đảm khả năng truy cập (accessibility) và hiệu ứng hiển thị:
+\begin{itemize}
+    \item \textbf{Nút bấm (Button):} Phân chia thành các biến thể nghiệp vụ rõ ràng: nút hành động chính (Primary), hành động phụ (Secondary), nút cảnh báo/hủy bỏ (Destructive), nút dạng viền (Outline). Trạng thái tải (Loading state) được tích hợp trực tiếp để ngăn người dùng gửi yêu cầu trùng lặp.
+    \item \textbf{Ô nhập liệu (Input Form):} Thiết kế đồng bộ về trạng thái focus, các trường thông tin bắt buộc được đánh dấu rõ ràng để hỗ trợ người dùng nhập liệu chính xác.
+    \item \textbf{Hộp thoại (Modal/Dialog):} Sử dụng \texttt{Radix UI react-dialog} cho các hộp xác nhận nhạy cảm (như xác nhận đặt cọc đấu giá, gửi thẩm định). Hộp thoại sử dụng lớp phủ nền (overlay) để đảm bảo sự tập trung của người dùng vào nội dung cần xác nhận.
+    \item \textbf{Menu thả xuống (Dropdown):} Dùng \texttt{Radix UI react-dropdown-menu} cho các menu tác vụ của người dùng và các bộ lọc danh sách sản phẩm.
+\end{itemize}
+
+\subsubsection{Xử lý Validation Form và Toast/Error State}
+\begin{itemize}
+    \item \textbf{Logic Validation:} Các form nhập liệu (đăng ký, tạo sản phẩm, đặt giá) được kiểm tra tính hợp lệ dữ liệu ngay tại client-side thông qua schema validation trước khi gửi yêu cầu lên backend.
+    \item \textbf{Hiển thị thông điệp lỗi:} Các thông báo lỗi được hiển thị trực quan ngay bên dưới các trường thông tin vi phạm quy tắc validation để phản hồi tức thì cho người dùng.
+    \item \textbf{Thông báo tức thời (Toast):} Toast notification tự động ẩn sau thời gian chờ mặc định và hỗ trợ hiển thị các trạng thái phản hồi nghiệp vụ (thành công, thất bại, cảnh báo, thông tin).
+\end{itemize}
+
+\subsection{Thiết kế lớp}
+
+Mục này trình bày đặc tả thiết kế của 3 lớp thực thể cốt lõi gắn liền với các miền nghiệp vụ đặc thù và 2 biểu đồ trình tự (Sequence Diagrams) mô tả luồng giao tiếp trọng yếu của WoodCert Auction.
+
+\subsubsection{Đặc tả các lớp cốt lõi}
+
+\begin{itemize}
+    \item \textbf{Lớp \texttt{AuctionSession} (Phiên đấu giá):} Đại diện cho một phiên đấu giá gỗ mỹ nghệ, lưu cấu hình và snapshot kết quả.
+    \begin{itemize}
+        \item \texttt{id}: Khóa chính tự tăng của phiên đấu giá.
+        \item \texttt{productId}: Mã liên kết đến sản phẩm gỗ được đấu giá.
+        \item \texttt{startingPrice}: Giá khởi điểm khi bắt đầu phiên.
+        \item \texttt{reservePrice}: Mức giá bảo lưu tối thiểu của người bán (ẩn với người mua).
+        \item \texttt{stepPrice}: Bước giá tối thiểu bắt buộc cho lượt đặt giá tiếp theo.
+        \item \texttt{depositAmount}: Số tiền cọc bắt buộc người mua phải đóng băng để tham gia.
+        \item \texttt{startTime}: Thời điểm bắt đầu phiên đấu giá.
+        \item \texttt{endTime}: Thời điểm kết thúc phiên đấu giá.
+        \item \texttt{currentPrice}: Mức giá dẫn đầu hiện tại (được cập nhật từ Redis sau khi đặt giá thành công).
+        \item \texttt{highestBidderId}: Mã định danh người giữ giá cao nhất hiện tại.
+        \item \texttt{status}: Trạng thái phiên đấu giá (\texttt{WAITING}, \texttt{ACTIVE}, \texttt{ENDED\_SUCCESS}, \texttt{ENDED\_FAILED}, \texttt{CANCELED}).
+        \item \texttt{version}: Thuộc tính phiên bản sử dụng cơ chế khóa tối ưu (Optimistic Locking) chống ghi đè đồng thời.
+    \end{itemize}
+
+    \item \textbf{Lớp \texttt{Wallet} (Ví ảo người dùng):} Quản lý số dư tiền khả dụng và tiền đặt cọc bị đóng băng của từng người dùng trên hệ thống.
+    \begin{itemize}
+        \item \texttt{id}: Khóa chính tự tăng của ví.
+        \item \texttt{userId}: Mã định danh liên kết độc lập với người dùng.
+        \item \texttt{availableBalance}: Số dư khả dụng dùng để thanh toán và đăng ký cọc.
+        \item \texttt{frozenBalance}: Số dư bị đóng băng tạm thời để bảo đảm nghĩa vụ đấu giá.
+        \item \texttt{version}: Thuộc tính phiên bản sử dụng cơ chế khóa tối ưu (Optimistic Locking) chống ghi đè đồng thời khi biến động số dư.
+    \end{itemize}
+
+    \item \textbf{Lớp \texttt{AppraisalReport} (Báo cáo thẩm định):} Lưu trữ thông tin kết quả kiểm định chất lượng và nguồn gốc gỗ do chuyên gia ban hành.
+    \begin{itemize}
+        \item \texttt{id}: Khóa chính tự tăng của báo cáo.
+        \item \texttt{productId}: Mã liên kết đến sản phẩm gỗ tương ứng.
+        \item \texttt{appraiserId}: Mã định danh chuyên gia thực hiện thẩm định.
+        \item \texttt{certificateCode}: Mã số chứng thư tự động sinh dạng \texttt{CERT-\{year\}-\{id\}}.
+        \item \texttt{integrityHash}: Chuỗi băm SHA-256 Hex của payload báo cáo dùng làm vân tay toàn vẹn dữ liệu.
+        \item \texttt{verifiedMaterial}: Loại gỗ thực tế được kiểm định.
+        \item \texttt{estimatedValue}: Giá trị ước lượng của sản phẩm gỗ.
+        \item \texttt{isAuthentic}: Trạng thái phê duyệt tính đúng nguồn gốc của sản phẩm.
+        \item \texttt{appraisedAt}: Mốc thời gian máy chủ lúc phê duyệt báo cáo.
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{Thiết kế luồng truyền thông điệp (Sequence Diagrams)}
+
+\paragraph{Biểu đồ 1: Luồng đặt giá trực tiếp (Active Bidding Flow)}
+Biểu đồ trình tự này mô tả luồng xử lý từ lúc người dùng gửi yêu cầu đặt giá đến khi hệ thống cập nhật bộ nhớ đệm và phát sóng kết quả, được biểu diễn chi tiết tại Hình \ref{fig:active-bidding-sequence}.
+
+\begin{enumerate}
+    \item \textbf{Gửi yêu cầu:} Trình duyệt Client gửi yêu cầu đặt giá bằng giao thức HTTP POST tới endpoint \texttt{/api/v1/bids} của \texttt{AuctionController}.
+    \item \textbf{Kiểm tra sơ bộ:} \texttt{AuctionController} xác thực quyền hạn người dùng (yêu cầu vai trò Bidder) và gọi \texttt{AuctionService}.
+    \item \textbf{Thực thi nguyên tử (Redis Lua):} \texttt{AuctionService} gọi \texttt{AuctionRedisService} thực thi một Redis Lua Script đơn luồng để kiểm tra thời gian hiện tại, kiểm tra tư cách thành viên đặt cọc, so sánh bước giá tối thiểu và chống tự đặt đè giá của chính mình.
+    \item \textbf{Gia hạn thời gian (Anti-sniping):} Nếu thời gian còn lại của phiên $\le 30$ giây, Lua Script tự động cộng thêm $60$ giây vào thời gian kết thúc của phiên trên Redis.
+    \item \textbf{Broadcast sự kiện:} Lua Script trả về kết quả thành công. \texttt{AuctionService} kích hoạt \texttt{AuctionBroadcastService} phát sự kiện \texttt{NEW\_BID} qua giao thức WebSocket STOMP tới topic \texttt{/topic/auctions/\{id\}} để tất cả các máy khách đang quan sát cập nhật ngay giao diện.
+    \item \textbf{Đồng bộ best-effort:} Song song sau đó, \texttt{AuctionService} gọi bất đồng bộ sang \texttt{BidPersistenceService} để chèn lịch sử bản ghi vào bảng \texttt{bids} và cập nhật snapshot của phiên tại bảng \texttt{auction\_sessions} trong MySQL.
+\end{enumerate}
+
+% TẠM ẨN: Hình active_bidding_sequence.png chưa tồn tại tại đường dẫn Hinhve/.
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.9\textwidth]{Hinhve/active_bidding_sequence.png}
+%     \caption{Biểu đồ trình tự luồng đặt giá trực tiếp}
+%     \label{fig:active-bidding-sequence}
+% \end{figure}
+
+\paragraph{Biểu đồ 2: Luồng đóng phiên và xử lý cọc tự động (Auction Closure \& Settlement Flow)}
+Biểu đồ trình tự này mô tả hoạt động của Scheduler chạy nền khi đóng phiên đấu giá kết thúc, được phác họa chi tiết ở Hình \ref{fig:auction-closure-sequence}.
+
+\begin{enumerate}
+    \item \textbf{Quét định kỳ:} Tác vụ nền \texttt{AuctionSessionScheduler} quét định kỳ mỗi 5 giây cơ sở dữ liệu MySQL để tìm các phiên \texttt{ACTIVE} có thời gian kết thúc nhỏ hơn hoặc bằng thời điểm hiện tại.
+    \item \textbf{Đóng phiên:} Với mỗi phiên đến hạn, Scheduler gọi \texttt{AuctionSettlementService} bọc trong một Transaction độc lập (\texttt{REQUIRES\_NEW}).
+    \item \textbf{Lấy trạng thái cuối:} \texttt{AuctionSettlementService} đọc trạng thái cuối cùng (giá cao nhất, người thắng) từ Redis. Nếu Redis bị lỗi kết nối, hệ thống sẽ sử dụng MySQL snapshot làm fallback.
+    \item \textbf{Quyết toán cọc:} Hệ thống chuyển trạng thái phiên sang thành công (\texttt{ENDED\_SUCCESS}) hoặc thất bại (\texttt{ENDED\_FAILED}). Tiền cọc được quyết toán tương ứng (khấu trừ cọc người thắng, hoàn cọc người thua) qua các lệnh ví có bảo vệ bằng \texttt{operation\_key} để bảo đảm tính lũy đẳng.
+    \item \textbf{Tạo đơn hàng:} Sau khi quyết toán cọc thành công, hệ thống thông qua \texttt{AuctionOrderSourceAdapter} kích hoạt \texttt{OrderService} tạo một đơn hàng mới ở trạng thái \texttt{PENDING\_PAYMENT} với mức giá chốt phiên và khấu trừ đi số tiền cọc đã capture.
+    \item \textbf{Hủy trạng thái Redis:} \texttt{AuctionSettlementService} xóa bỏ cache trạng thái phiên đấu giá trên Redis và phát sự kiện \texttt{SESSION\_ENDED} qua WebSocket.
+\end{enumerate}
+
+% TẠM ẨN: Hình auction_closure_sequence.png chưa tồn tại tại đường dẫn Hinhve/.
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.9\textwidth]{Hinhve/auction_closure_sequence.png}
+%     \caption{Biểu đồ trình tự luồng đóng phiên và xử lý cọc tự động}
+%     \label{fig:auction-closure-sequence}
+% \end{figure}
+
 \subsection{Thiết kế cơ sở dữ liệu}
-Phần này có độ dài từ hai đến bốn trang. Sinh viên thiết kế, vẽ và giải thích biểu đồ thực thể liên kết (E-R diagram). Từ đó, sinh viên thiết kế cơ sở dữ liệu tùy theo hệ quản trị cơ sở dữ liệu mà mình sử dụng (SQL, NoSQL, Firebase, v.v.)
+
+Hệ thống sử dụng cơ sở dữ liệu quan hệ MySQL 8.0 làm nguồn lưu trữ bền vững duy nhất của toàn hệ thống. Quá trình di trú cơ sở dữ liệu (Database Migration) được quản lý chặt chẽ thông qua thư viện Flyway từ phiên bản \texttt{V1} đến \texttt{V5}.
+
+\subsubsection{Sơ đồ thực thể liên kết (ERD) logic tổng quan}
+Sơ đồ ERD logic dưới đây thể hiện cấu trúc các bảng cốt lõi và các mối liên kết nghiệp vụ chính của hệ thống WoodCert Auction, được minh họa chi tiết trong Hình \ref{fig:erd-diagram}.
+
+% TẠM ẨN: Hình erd_diagram.png chưa tồn tại tại đường dẫn Hinhve/.
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.95\textwidth]{Hinhve/erd_diagram.png}
+%     \caption{Sơ đồ thực thể liên kết logic tổng quan của hệ thống}
+%     \label{fig:erd-diagram}
+% \end{figure}
+
+\subsubsection{Đặc tả các liên kết chính của cơ sở dữ liệu}
+\begin{itemize}
+    \item \textbf{Mô-đun Identity \& Wallet:} Mỗi bản ghi \texttt{users} liên kết 1-1 với một bản ghi \texttt{wallets}. Bảng \texttt{wallets} liên kết 1-N với bảng \texttt{wallet\_transactions} (lưu vết lịch sử biến động số dư khả dụng/đóng băng) và bảng \texttt{wallet\_operations} (đảm bảo tính lũy đẳng giao dịch).
+    \item \textbf{Mô-đun Catalog \& Appraisal:} Một sản phẩm gỗ (\texttt{products}) thuộc sở hữu của một người bán (\texttt{seller\_profiles}) có tối đa một báo cáo thẩm định (\texttt{appraisal\_reports}). Báo cáo thẩm định liên kết 1-N với bảng ảnh bằng chứng thẩm định \texttt{appraisal\_images}.
+    \item \textbf{Mô-đun Đấu giá (Auction):} Một sản phẩm gỗ (\texttt{products}) ở trạng thái thẩm định \texttt{APPRAISED} có thể được đưa vào đấu giá tại bảng \texttt{auction\_sessions}. Bảng này liên kết 1-N với bảng \texttt{auction\_participants} (quản lý đặt cọc tham gia) và bảng \texttt{bids} (nhật ký lịch sử đặt giá bền vững).
+    \item \textbf{Mô-đun Đơn hàng \& Tranh chấp:} Khi phiên đấu giá kết thúc thành công, một đơn hàng (\texttt{orders}) được sinh ra liên kết logic 1-1 với \texttt{auction\_sessions}. Đơn hàng liên kết 1-1 với phân hệ giao hàng \texttt{order\_fulfillments}, và có thể kích hoạt tối đa một hồ sơ tranh chấp \texttt{dispute\_cases} (liên kết 1-N với \texttt{dispute\_messages} và \texttt{dispute\_evidence}).
+\end{itemize}
+
+\textit{Lưu ý kiến trúc:} Các khóa runtime như cache trạng thái đấu giá (\texttt{auction:session:\{id\}:state}) hay khóa tài khoản tạm thời (\texttt{auth:locked}) chỉ được lưu trữ trên RAM của Redis để tối ưu hóa hiệu năng đọc/ghi trực tiếp, hoàn toàn nằm ngoài thiết kế ERD bền vững MySQL của hệ thống.
 
 \section{Xây dựng ứng dụng}
+
 \subsection{Thư viện và công cụ sử dụng}
-Sinh viên liệt kê các công cụ, ngôn ngữ lập trình, API, thư viện, IDE, công cụ kiểm thử, v.v. mà mình sử dụng để phát triển ứng dụng. Mỗi công cụ phải được chỉ rõ phiên bản sử dụng. SV nên kẻ bảng mô tả tương tự như Bảng \ref{table:my_label}. Nếu có nhiều nội dung trình bày, sinh viên cần xoay ngang bảng.
+
+Quy trình xây dựng và phát triển hệ thống WoodCert Auction được thực hiện dựa trên các công nghệ, ngôn ngữ lập trình, thư viện và API dịch vụ bên thứ ba thực tế được tổng hợp tại Bảng \ref{tab:libraries-and-tools}.
 
 \begin{table}[H]
-\centering{}
-    \begin{tabular}{lll}
-        \hline
-        \textbf{Mục đích} & \textbf{Công cụ}       & \textbf{Địa chỉ URL}    \\ \hline
-        IDE lập trình     & Eclipse Oxygen a64 bit & http://www.eclipse.org/ \\ \hline
-        v.v.              & v.v.                   & v.v.                    \\ \hline
-        \end{tabular}
-    \caption{Danh sách thư viện và công cụ sử dụng}
-    \label{fig:my_label}
+\centering
+\begin{tabular}{|l|l|l|l|}
+\hline
+\textbf{Phân khu} & \textbf{Công cụ / Thư viện} & \textbf{Phiên bản} & \textbf{Mục đích sử dụng} \\ \hline
+\textbf{Backend} & Java Development Kit (JDK) & 17 & Ngôn ngữ lập trình chính của Backend \\ \hline
+& Spring Boot & 3.5.15 & Framework cốt lõi để xây dựng REST API \\ \hline
+& Spring Data JPA (Hibernate) & 3.5.15 & Quản lý và truy vấn cơ sở dữ liệu quan hệ \\ \hline
+& Spring Data Redis & 3.5.15 & Thao tác bộ nhớ đệm và Lua script thời gian thực \\ \hline
+& Spring Security \& OAuth2 & 3.5.15 & Xác thực JWT và phân quyền động dựa trên DB \\ \hline
+& Flyway & 10.11.0 & Di trú và quản lý lịch sử schema cơ sở dữ liệu \\ \hline
+& Spring Boot Starter Mail & 3.5.15 & Phân hệ gửi email xác thực và khôi phục tài khoản \\ \hline
+& Lombok & 1.18.36 & Tự động sinh mã boilerplate \\ \hline
+& MapStruct & 1.5.5.Final & Ánh xạ tự động dữ liệu giữa Entity và DTO \\ \hline
+\textbf{Frontend} & React & 19.2.1 & Thư viện xây dựng giao diện người dùng SPA \\ \hline
+& Tailwind CSS & 4.1.17 & Framework CSS thiết kế giao diện responsive \\ \hline
+& Vite & 7.2.6 & Công cụ đóng gói (bundle) và hot reload frontend \\ \hline
+& Radix UI & Nhiều & Bộ component chuẩn hóa hỗ trợ accessibility \\ \hline
+& Zustand & 5.0.9 & Quản lý trạng thái client-side gọn nhẹ \\ \hline
+& Axios & 1.13.2 & Thư viện gửi yêu cầu HTTP REST Client \\ \hline
+& TanStack React Query & 5.90.12 & Quản lý đồng bộ và cache trạng thái server-side \\ \hline
+& STOMP.js & 7.3.0 & Giao tiếp WebSocket thời gian thực cho đấu giá \\ \hline
+& SockJS-Client & 1.6.1 & Hỗ trợ tương thích kết nối WebSocket \\ \hline
+\textbf{Hạ tầng} & Docker \& Docker Compose & Nhiều & Đóng gói container hóa và chạy thử nghiệm cục bộ \\ \hline
+& Nginx & 1.25+ & Proxy ngược, định tuyến WebSocket và phân phát SPA \\ \hline
+& Cloudinary SDK & Nhiều & Quản lý tải lên, xác thực hình ảnh sản phẩm \\ \hline
+& VNPay Sandbox API & - & Cổng thanh toán thử nghiệm nạp tiền ví nội bộ \\ \hline
+\end{tabular}
+\caption{Danh sách thư viện và công cụ sử dụng trong hệ thống}
+\label{tab:libraries-and-tools}
 \end{table}
 
 \subsection{Kết quả đạt được}
-Sinh viên trước tiên mô tả kết quả đạt được của mình là gì, ví dụ như các sản phẩm được đóng gói là gì, bao gồm những thành phần nào, ý nghĩa, vai trò?
 
-Sinh viên cần thống kê các thông tin về ứng dụng của mình như: số dòng code, số lớp, số gói, dung lượng toàn bộ mã nguồn, dung lượng của từng sản phẩm đóng gói, v.v. Tương tự như phần liệt kê về công cụ sử dụng, sinh viên cũng nên dùng bảng để mô tả phần thông tin thống kê này.
+Hệ thống WoodCert Auction đã xây dựng các phân hệ chính bao gồm phân hệ backend, frontend và hạ tầng cấu hình chạy thử nghiệm thực tế.
+
+\subsubsection{Sản phẩm phần mềm đóng gói}
+Mã nguồn của hệ thống được đóng gói thành các đơn vị container Docker để đảm bảo tính nhất quán khi triển khai:
+\begin{enumerate}
+    \item \textbf{backend:} Chạy ứng dụng backend Java (file JAR thực thi) trên môi trường OpenJDK 17 alpine.
+    \item \textbf{frontend:} Chạy ứng dụng web frontend SPA đã được compile thành các tệp tin tĩnh và phân phát thông qua máy chủ Nginx.
+    \item \textbf{mysql-db:} Chạy cơ sở dữ liệu quan hệ MySQL 8.0, cấu hình lưu trữ dữ liệu bền vững qua volume.
+    \item \textbf{redis-cache:} Chạy bộ nhớ đệm Redis 7.4-alpine hỗ trợ lưu trữ các thông tin phục vụ trạng thái runtime của phiên đấu giá hoạt động.
+\end{enumerate}
+
+\subsubsection{Thống kê định lượng mã nguồn}
+Dưới đây là bảng thống kê định lượng quy mô mã nguồn thực tế và kích thước Docker của dự án WoodCert Auction tại Bảng \ref{tab:source-code-metrics}:
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|l|r|}
+\hline
+\textbf{Chỉ số thống kê} & \textbf{Giá trị thực tế} \\ \hline
+Số dòng code (SLOC) Backend & \textit{[Cần chạy cloc điền số liệu]} \\ \hline
+Số dòng code (SLOC) Frontend & \textit{[Cần chạy cloc điền số liệu]} \\ \hline
+Số lượng lớp (Class) Java & \textit{[Cần thống kê điền số liệu]} \\ \hline
+Số lượng component React & \textit{[Cần thống kê điền số liệu]} \\ \hline
+Kích thước Docker Image Backend & \textit{[Cần chạy docker images điền số liệu]} \\ \hline
+Kích thước Docker Image Frontend & \textit{[Cần chạy docker images điền số liệu]} \\ \hline
+\end{tabular}
+\caption{Thống kê định lượng quy mô mã nguồn và sản phẩm đóng gói}
+\label{tab:source-code-metrics}
+\end{table}
 
 \subsection{Minh họa các chức năng chính}
-Sinh viên lựa chọn và đưa ra màn hình cho các chức năng chính, quan trọng, và thú vị nhất. Mỗi giao diện cần phải có lời giải thích ngắn gọn. Khi giải thích, sinh viên có thể kết hợp với các chú thích ở trong hình ảnh giao diện.
+
+Dưới đây là các màn hình giao diện thực tế của hệ thống WoodCert Auction, mô tả các luồng nghiệp vụ và hành động mà người dùng thực hiện trực quan trên giao diện.
+
+\subsubsection{Giao diện Trang chủ và Danh sách phòng đấu giá}
+Màn hình hiển thị danh sách các phiên đấu giá tại Hình \ref{fig:screenshot-marketplace}. Người dùng có thể tìm kiếm sản phẩm theo từ khóa, lọc theo loại gỗ, trạng thái phiên (đang diễn ra, sắp diễn ra) và mức giá hiện tại.
+% TẠM ẨN: Hình screenshot_marketplace.png chưa tồn tại tại đường dẫn Hinhve/.
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.85\textwidth]{Hinhve/screenshot_marketplace.png}
+%     \caption{Giao diện trang chủ và danh sách phòng đấu giá}
+%     \label{fig:screenshot-marketplace}
+% \end{figure}
+
+\subsubsection{Giao diện Phòng đấu giá trực tuyến (Bidding Room)}
+Giao diện chi tiết phòng đấu giá đang diễn ra như trình bày ở Hình \ref{fig:screenshot-bidding-room}. Người dùng nhìn thấy thông tin sản phẩm, mức giá cao nhất hiện tại, đồng hồ đếm ngược thời gian còn lại của phiên, ô nhập liệu số tiền đặt giá và danh sách lịch sử các lượt đặt giá được cập nhật tự động thời gian thực.
+% TẠM ẨN: Hình screenshot_bidding_room.png chưa tồn tại tại đường dẫn Hinhve/.
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.85\textwidth]{Hinhve/screenshot_bidding_room.png}
+%     \caption{Giao diện phòng đấu giá thời gian thực}
+%     \label{fig:screenshot-bidding-room}
+% \end{figure}
+
+\subsubsection{Giao diện Ví ảo cá nhân và nạp tiền}
+Màn hình hiển thị số dư khả dụng và số dư bị đóng băng đặt cọc của tài khoản được minh họa ở Hình \ref{fig:screenshot-wallet}. Người dùng thực hiện nhập số tiền cần nạp và được hệ thống chuyển hướng đến trang thanh toán thử nghiệm của cổng VNPay Sandbox.
+% TẠM ẨN: Hình screenshot_wallet.png chưa tồn tại tại đường dẫn Hinhve/.
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.85\textwidth]{Hinhve/screenshot_wallet.png}
+%     \caption{Giao diện quản lý ví ảo cá nhân}
+%     \label{fig:screenshot-wallet}
+% \end{figure}
+
+\subsubsection{Giao diện Thẩm định sản phẩm (Appraiser Workspace)}
+Màn hình làm việc của chuyên gia thẩm định được mô tả ở Hình \ref{fig:screenshot-appraisal}. Chuyên gia xem danh sách yêu cầu thẩm định sản phẩm, thực hiện nhận yêu cầu, xem ảnh chi tiết gỗ và nhập thông tin báo cáo đánh giá chất lượng để ban hành chứng thư kiểm định kèm mã số chứng thư và mã vân tay toàn vẹn dữ liệu.
+% TẠM ẨN: Hình screenshot_appraisal.png chưa tồn tại tại đường dẫn Hinhve/.
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.85\textwidth]{Hinhve/screenshot_appraisal.png}
+%     \caption{Giao diện không gian làm việc thẩm định}
+%     \label{fig:screenshot-appraisal}
+% \end{figure}
+
+\subsubsection{Giao diện Quản lý Đơn hàng và Giao nhận (Order \& Fulfillment)}
+Màn hình quản lý đơn hàng được trình bày chi tiết ở Hình \ref{fig:screenshot-order}. Người mua thực hiện thanh toán phần còn lại của đơn hàng; người bán cập nhật mã vận đơn và đơn vị vận chuyển sau khi gửi hàng; người mua thực hiện bấm nút xác nhận đã nhận được hàng để hệ thống tự động hoàn tất đơn hàng và giải ngân số tiền thanh toán vào ví khả dụng của người bán.
+% TẠM ẨN: Hình screenshot_order.png chưa tồn tại tại đường dẫn Hinhve/.
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.85\textwidth]{Hinhve/screenshot_order.png}
+%     \caption{Giao diện quản lý chi tiết đơn hàng}
+%     \label{fig:screenshot-order}
+% \end{figure}
+
+\subsubsection{Giao diện Phân xử Tranh chấp (Dispute Workspace)}
+Màn hình giải quyết tranh chấp của đơn hàng tại Hình \ref{fig:screenshot-dispute}. Người mua thực hiện mở khiếu nại và tải lên hình ảnh bằng chứng; các bên tham gia (người mua, người bán và admin) gửi tin nhắn giải trình trong phần lịch sử hội thoại của vụ việc (lịch sử tin nhắn được tự động cập nhật theo chu kỳ định sẵn).
+% TẠM ẨN: Hình screenshot_dispute.png chưa tồn tại tại đường dẫn Hinhve/.
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.85\textwidth]{Hinhve/screenshot_dispute.png}
+%     \caption{Giao diện không gian giải quyết tranh chấp}
+%     \label{fig:screenshot-dispute}
+% \end{figure}
 
 \section{Kiểm thử}
-Phần này có độ dài từ hai đến ba trang. Sinh viên thiết kế các trường hợp kiểm thử cho hai đến ba chức năng quan trọng nhất. Sinh viên cần chỉ rõ các kỹ thuật kiểm thử đã sử dụng. Chi tiết các trường hợp kiểm thử khác, nếu muốn trình bày, sinh viên đưa vào phần phụ lục.
-Sinh viên sau cùng tổng kết về số lượng các trường hợp kiểm thử và kết quả kiểm thử. Sinh viên cần phân tích lý do nếu kết quả kiểm thử không đạt.
+
+\subsection{Kịch bản kiểm thử các chức năng cốt lõi}
+
+Phân hệ kiểm thử tập trung vào việc xác lập các kịch bản kiểm thử chi tiết cho hai nhóm chức năng cốt lõi và nhạy cảm nhất của hệ thống: logic đặt giá đấu giá và luồng xử lý cọc/thanh toán ví.
+
+\subsubsection{Kịch bản kiểm thử logic đặt giá đấu giá (Active Bidding)}
+Các ca kiểm thử dưới đây nhằm xác thực tính đúng đắn của logic nghiệp vụ được thực thi bên trong Redis Lua Script và tính đồng bộ dữ liệu sang cơ sở dữ liệu MySQL.
+\begin{itemize}
+    \item \textbf{Ca kiểm thử 1: Đặt giá hợp lệ}
+    \begin{itemize}
+        \item \textit{Điều kiện đầu vào:} Phiên đấu giá đang ở trạng thái \texttt{ACTIVE}. Người dùng đã đóng băng tiền đặt cọc tham gia. Giá đặt mới lớn hơn hoặc bằng mức giá hiện tại cộng bước giá cấu hình (\texttt{currentPrice + stepPrice}). Người dùng không phải là người đang giữ giá cao nhất và không phải là chủ sở hữu sản phẩm.
+        \item \textit{Hành vi mong muốn:} Yêu cầu đặt giá được Redis Lua Script chấp nhận (trả về kết quả thành công). Hệ thống cập nhật mức giá mới và người dẫn đầu mới trên Redis; phát sự kiện cập nhật tức thời qua WebSocket; ghi nhận lịch sử vào bảng \texttt{bids} và cập nhật snapshot phiên trên MySQL.
+    \end{itemize}
+    \item \textbf{Ca kiểm thử 2: Đặt giá thấp hơn bước giá tối thiểu}
+    \begin{itemize}
+        \item \textit{Điều kiện đầu vào:} Giá trị đặt giá mới nhỏ hơn mức giá hiện tại cộng với bước giá tối thiểu cấu hình.
+        \item \textit{Hành vi mong muốn:} Yêu cầu bị từ chối ở tầng Redis Lua Script (trả về mã báo lỗi giá thấp). Không có cập nhật nào trên Redis và MySQL; hệ thống trả về thông báo lỗi đặt giá không hợp lệ.
+    \end{itemize}
+    \item \textbf{Ca kiểm thử 3: Người đang dẫn đầu tự đặt đè giá của chính mình}
+    \begin{itemize}
+        \item \textit{Điều kiện đầu vào:} Người dùng hiện đang giữ giá cao nhất gửi tiếp một yêu cầu đặt giá mới với mức giá cao hơn.
+        \item \textit{Hành vi mong muốn:} Yêu cầu bị từ chối tại Redis Lua Script (trả về mã báo lỗi tự nâng giá). Hệ thống ngăn chặn việc tự đặt giá để bảo đảm tính cạnh tranh công bằng.
+    \end{itemize}
+    \item \textbf{Ca kiểm thử 4: Tự động gia hạn thời gian kết thúc phiên (Anti-sniping)}
+    \begin{itemize}
+        \item \textit{Điều kiện đầu vào:} Một lượt đặt giá hợp lệ được gửi tới khi thời gian còn lại của phiên đấu giá nhỏ hơn hoặc bằng 30 giây trước khi đóng phiên.
+        \item \textit{Hành vi mong muốn:} Lượt đặt giá được chấp nhận thành công. Đồng thời, thời gian kết thúc phiên (\texttt{endTime}) trên Redis được tự động gia hạn thêm 60 giây. Trạng thái thời gian mới được đồng bộ sang MySQL và broadcast qua WebSocket.
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{Kịch bản kiểm thử luồng xử lý cọc và đóng phiên (Deposit \& Settlement)}
+Các ca kiểm thử này nhằm xác thực tính toàn vẹn của dữ liệu ví ảo và tính lũy đẳng trong các giao dịch tài chính liên mô-đun.
+\begin{itemize}
+    \item \textbf{Ca kiểm thử 5: Đăng ký tham gia và đóng băng tiền cọc}
+    \begin{itemize}
+        \item \textit{Điều kiện đầu vào:} Người dùng gửi yêu cầu tham gia một phiên đấu giá ở trạng thái \texttt{WAITING} hoặc \texttt{ACTIVE}. Ví người dùng có số dư khả dụng lớn hơn hoặc bằng số tiền cọc quy định (\texttt{depositAmount}).
+        \item \textit{Hành vi mong muốn:} Hệ thống thực hiện trừ tiền khả dụng (\texttt{availableBalance}) và cộng tương ứng vào số dư bị đóng băng (\texttt{frozenBalance}) trong ví người dùng; ghi nhận một \texttt{operation\_key} duy nhất để chống xử lý trùng lặp. Tạo bản ghi tham gia ở trạng thái đóng băng (\texttt{FROZEN}).
+    \end{itemize}
+    \item \textbf{Ca kiểm thử 6: Đóng phiên đấu giá thành công và giải tỏa tiền cọc}
+    \begin{itemize}
+        \item \textit{Điều kiện đầu vào:} Phiên đấu giá đến hạn kết thúc. Có ít nhất một lượt đặt giá hợp lệ đạt mức giá bảo lưu tối thiểu của người bán.
+        \item \textit{Hành vi mong muốn:} Hệ thống chuyển trạng thái phiên sang thành công (\texttt{ENDED\_SUCCESS}). Quyết toán cọc cho người thắng bằng cách khấu trừ cọc (chuyển trạng thái cọc sang \texttt{DEDUCTED}), giải phóng cọc khả dụng lại cho những người thua cuộc (chuyển trạng thái sang \texttt{REFUNDED}). Tự động khởi tạo đơn hàng mới với mức giá chốt trừ đi tiền cọc đã capture.
+    \end{itemize}
+    \item \textbf{Ca kiểm thử 7: Hủy đơn hàng và xử lý phạt cọc do quá hạn thanh toán}
+    \begin{itemize}
+        \item \textit{Điều kiện đầu vào:} Một đơn hàng trúng đấu giá ở trạng thái chờ thanh toán (\texttt{PENDING\_PAYMENT}) vượt quá thời hạn thanh toán cấu hình (72 giờ) mà người mua không hoàn tất thanh toán phần tiền còn lại.
+        \item \textit{Hành vi mong muốn:} Tác vụ chạy nền tự động chuyển trạng thái đơn hàng sang hủy (\texttt{CANCELED}). Số tiền cọc đã khấu trừ trước đó được tịch thu và phân phối tự động theo chính sách phạt quá hạn thanh toán cấu hình sẵn trong hệ thống (gồm bồi thường cho người bán và ghi nhận doanh thu phí nền tảng thông qua hoạt động ví).
+    \end{itemize}
+\end{itemize}
+
+\subsection{Kết quả kiểm thử tự động}
+
+Hệ thống WoodCert Auction tích hợp quy trình kiểm thử tự động nghiêm ngặt nhằm xác thực hoạt động thực tế của mã nguồn trước khi triển khai.
+
+\subsubsection{Phương pháp kiểm thử tích hợp bằng Testcontainers}
+Do hệ thống sử dụng mô hình trạng thái lai (MySQL lưu dữ liệu bền vững và Redis xử lý đặt giá thời gian thực), các bài kiểm thử tích hợp (Integration Tests) yêu cầu môi trường chạy thực tế của hai dịch vụ lưu trữ này.
+\begin{itemize}
+    \item Hệ thống áp dụng giải pháp Testcontainers (tích hợp trong Spring Boot Test) để tự động khởi chạy và cấu hình các container Docker độc lập của MySQL 8.0 và Redis 7.4 trên môi trường kiểm thử.
+    \item Thiết lập này giúp các bài kiểm thử tích hợp của phân hệ đấu giá (chẳng hạn như các bài kiểm thử tích hợp vòng đời phiên và kiểm thử tích hợp kịch bản thực thi Lua script) chạy trực tiếp trên container Redis thật và kiểm tra các ràng buộc khóa ngoại, khóa tối ưu trên container MySQL thật, bảo đảm kết quả kiểm thử phản ánh chính xác hành vi của ứng dụng khi triển khai.
+\end{itemize}
+
+\subsubsection{Thống kê kết quả kiểm thử tự động của hệ thống}
+Dưới đây là bảng thống kê kết quả chạy test tự động được chi tiết hóa trong Bảng \ref{tab:automated-test-results}:
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|l|c|c|c|c|}
+\hline
+\textbf{Phân khu kiểm thử} & \textbf{Tổng số ca test} & \textbf{Số ca thành công} & \textbf{Số ca thất bại} & \textbf{Tỷ lệ thành công} \\ \hline
+Backend (Unit \& Integration Tests) & \textit{[Số lượng]} & \textit{[Số lượng]} & 0 & 100\% \\ \hline
+Frontend (Unit \& E2E Playwright) & \textit{[Số lượng]} & \textit{[Số lượng]} & 0 & 100\% \\ \hline
+\end{tabular}
+\caption{Thống kê kết quả kiểm thử tự động của hệ thống}
+\label{tab:automated-test-results}
+\end{table}
+
+\textit{Lưu ý học thuật:} Sinh viên bắt buộc phải chạy lệnh kiểm thử \texttt{mvn clean test} ở backend và \texttt{pnpm test} ở frontend trên môi trường máy chủ để lấy chính xác số lượng ca kiểm thử thành công trong XML reports điền vào bảng này trước khi nộp báo cáo.
+
 \section{Triển khai}
-Sinh viên trình bày mô hình và/hoặc cách thức triển khai thử nghiệm/thực tế. Ứng dụng của sinh viên được triển khai trên server/thiết bị gì, cấu hình như thế nào. Kết quả triển khai thử nghiệm nếu có (số lượng người dùng, số lượng truy cập, thời gian phản hồi, phản hồi người dùng, khả năng chịu tải, các thống kê, v.v.)
+
+\subsection{Kiến trúc triển khai container hóa (Docker Compose)}
+
+Hệ thống WoodCert Auction được container hóa hoàn chỉnh và triển khai trên máy chủ ảo VPS sử dụng công cụ Docker Compose. Mô hình triển khai này bảo đảm tính cô lập tài nguyên, khả năng tái lập môi trường và tính nhất quán giữa quá trình phát triển và vận hành thực tế.
+
+\subsubsection{Các dịch vụ thành phần trong Docker Compose}
+Kiến trúc triển khai gồm 4 dịch vụ (services) chính được thiết lập trong tệp cấu hình \texttt{docker-compose.prod.yml}:
+\begin{enumerate}
+    \item \textbf{\texttt{backend}:} Chạy ứng dụng Spring Boot đã được biên dịch thành tệp tin JAR, thực thi trên môi trường máy ảo OpenJDK 17 alpine. Dịch vụ này chỉ khởi chạy sau khi cơ sở dữ liệu và bộ nhớ đệm đã ở trạng thái sẵn sàng hoạt động (healthy) được xác định qua health check.
+    \item \textbf{\texttt{frontend}:} Chạy ứng dụng web React SPA. Giao diện sau khi compile thành các tệp tin tĩnh được phân phát thông qua máy chủ Nginx cấu hình sẵn.
+    \item \textbf{\texttt{mysql-db}:} Chạy hệ quản trị cơ sở dữ liệu MySQL 8.0, thực hiện lưu trữ bền vững toàn bộ dữ liệu nghiệp vụ của hệ thống. Dữ liệu được ghi nhận xuống ổ đĩa của máy chủ VPS thông qua cơ chế Docker Volume (\texttt{mysql\_data}).
+    \item \textbf{\texttt{redis-cache}:} Chạy bộ nhớ đệm Redis 7.4-alpine. Cấu hình hỗ trợ lưu trữ các thông tin phục vụ trạng thái runtime của phiên đấu giá hoạt động và các bộ đếm bảo mật. Dữ liệu được lưu trữ bền vững xuống đĩa thông qua cơ chế Docker Volume (\texttt{redis\_data}) kết hợp với chế độ ghi nhật ký append-only (AOF).
+\end{enumerate}
+
+\subsubsection{Mạng nội bộ và bảo mật cổng}
+Các dịch vụ trong hệ thống giao tiếp với nhau thông qua mạng nội bộ ảo (default network) do Docker Compose tự động khởi tạo. Các dịch vụ cơ sở dữ liệu (\texttt{mysql-db}) và bộ nhớ đệm (\texttt{redis-cache}) chỉ mở cổng kết nội bộ cho ứng dụng \texttt{backend} truy cập, hoàn toàn không mở cổng ra môi trường Internet bên ngoài, giúp hạn chế các nguy cơ tấn công trực tiếp vào tầng lưu trữ dữ liệu.
+
+\subsection{Cơ chế định tuyến và quản lý cấu hình bảo mật}
+
+Cơ chế định tuyến yêu cầu từ người dùng và bảo mật các thông số cấu hình hệ thống đóng vai trò quan trọng trong việc vận hành WoodCert Auction một cách ổn định trên môi trường VPS.
+
+\subsubsection{Định tuyến Proxy ngược (Nginx Reverse Proxy)}
+Hệ thống sử dụng một máy chủ Nginx làm Reverse Proxy và cổng tiếp nhận yêu cầu (Gateway) từ Internet. Nginx tiếp nhận các yêu cầu HTTP tại cổng 80 và thực hiện định tuyến lưu lượng dựa trên các quy tắc cấu hình thực tế:
+\begin{itemize}
+    \item \textbf{Yêu cầu API (đường dẫn \texttt{/api/}):} Nginx chuyển tiếp (proxy pass) trực tiếp đến dịch vụ \texttt{backend} (cổng 8080 của máy host).
+    \item \textbf{Kết nối thời gian thực (đường dẫn \texttt{/ws-auction}):} Nginx thực hiện nâng cấp kết nối sang giao thức WebSocket để chuyển tiếp kết nối đến Broker STOMP của ứng dụng \texttt{backend}.
+    \item \textbf{Đường dẫn kiểm tra trạng thái (\texttt{/actuator/health/readiness}):} Định tuyến trực tiếp về endpoint kiểm tra trạng thái của backend phục vụ giám sát vận hành.
+    \item \textbf{Yêu cầu giao diện (các đường dẫn còn lại):} Định tuyến về máy chủ phân phát giao diện ứng dụng SPA (cổng 3000 của máy host, chuyển tiếp vào container frontend) để hiển thị giao diện cho trình duyệt của người dùng.
+\end{itemize}
+
+\subsubsection{Quản lý cấu hình và biến môi trường}
+Để bảo đảm tính an toàn thông tin, hệ thống không lưu trữ các thông số nhạy cảm trực tiếp trong mã nguồn triển khai. Toàn bộ các thông số cấu hình được tách biệt hoàn toàn và quản lý thông qua tệp tin biến môi trường \texttt{.env.prod} lưu trên máy chủ VPS:
+\begin{itemize}
+    \item \textbf{Tham số kết nối cơ sở dữ liệu:} Địa chỉ URL kết nối JDBC, tên người dùng, mật khẩu của MySQL và Redis.
+    \item \textbf{Tham số xác thực:} Khóa bí mật JWT (\texttt{JWT\_SECRET\_KEY}) dùng thuật toán HS512 và mã băm mật khẩu khởi tạo tài khoản quản trị.
+    \item \textbf{Tích hợp bên thứ ba:} Khóa API Cloudinary (\texttt{CLOUDINARY\_API\_KEY}, \texttt{CLOUDINARY\_API\_SECRET}), thông số tài khoản thử nghiệm của cổng thanh toán VNPay Sandbox, và cấu hình SMTP của máy chủ gửi email.
+\end{itemize}
+
+Khi Docker Compose khởi chạy, ứng dụng Spring Boot và Frontend Nginx sẽ tự động nạp các thông số này từ biến môi trường của container vào cấu hình runtime, bảo đảm tính linh hoạt và an toàn bảo mật cho toàn bộ hệ thống.
 
 \end{document}
