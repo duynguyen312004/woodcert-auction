@@ -1,0 +1,63 @@
+@startuml
+!include chapter-4-style.puml
+title Trình tự thanh toán, giao nhận và tranh chấp
+autonumber
+
+actor "Buyer" as Buyer
+actor "Seller" as Seller
+actor "Admin" as Admin
+participant "OrderService" as Order
+participant "WalletService" as Wallet
+participant "FulfillmentService" as Fulfillment
+participant "FulfillmentScheduler" as Scheduler
+participant "DisputeService" as Dispute
+database "MySQL" as MySQL
+
+Buyer -> Order : payRemainder(orderId, addressId)
+Order -> MySQL : kiểm tra ownership, trạng thái, deadline
+Order -> Wallet : payOrder(remainingAmount)
+Wallet -> MySQL : trừ available balance
+Order -> MySQL : order = PAID\nlưu snapshot địa chỉ
+Order -> Fulfillment : tạo PENDING_SHIPMENT\nshipment deadline 72 giờ
+
+alt Seller giao trước deadline
+  Seller -> Fulfillment : ship(deliveryMethod, carrier, tracking)
+  Fulfillment -> MySQL : fulfillment = SHIPPED\norder = FULFILLING\nauto-complete +168 giờ
+
+  alt Buyer xác nhận đã nhận
+    Buyer -> Fulfillment : receive()
+    Fulfillment -> Order : completeOrder()
+    Order -> Wallet : creditSellerPayout()
+    Order -> MySQL : order = COMPLETED
+  else Buyer mở tranh chấp
+    Buyer -> Dispute : openDispute(evidence)
+    Dispute -> MySQL : dispute = OPEN\norder = DISPUTED
+    Admin -> Dispute : markUnderReview()
+    Admin -> Dispute : resolve(SELLER_WINS | BUYER_WINS)
+
+    alt SELLER_WINS
+      Dispute -> Order : hoàn tất order
+      Order -> Wallet : payout seller
+    else BUYER_WINS
+      Dispute -> Order : hoàn toàn bộ giá chốt
+      Order -> Wallet : refund buyer
+      Dispute -> Fulfillment : hủy fulfillment
+      Order -> MySQL : product = RETURNED
+    end
+  else Không thao tác đến auto-complete deadline
+    Scheduler -> Fulfillment : complete overdue SHIPPED
+    Fulfillment -> Order : completeOrder()
+    Order -> Wallet : payout seller
+  end
+else Seller quá hạn giao
+  Scheduler -> Fulfillment : cancel overdue PENDING_SHIPMENT
+  Fulfillment -> Order : hủy order
+  Order -> Wallet : hoàn toàn bộ giá chốt
+  Order -> MySQL : product = AVAILABLE
+end
+
+note over Buyer,MySQL
+Nếu buyer không thanh toán trong 72 giờ, OrderPaymentScheduler
+hủy order và phân bổ cọc bị tịch thu theo cấu hình 90%/10%.
+end note
+@enduml

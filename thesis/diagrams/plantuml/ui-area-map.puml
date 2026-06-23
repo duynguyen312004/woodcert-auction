@@ -1,0 +1,53 @@
+@startuml
+!include chapter-4-style.puml
+top to bottom direction
+skinparam defaultFontSize 13
+skinparam nodesep 24
+skinparam ranksep 28
+
+rectangle "React SPA\nKhởi tạo ứng dụng và router" as App #E8EEF3
+rectangle "Định tuyến và kiểm soát truy cập\nRoute guard theo vai trò/capability" as Routing #EEF4F8
+
+package "Các khu vực giao diện" as Areas {
+  together {
+    component "PublicLayout\nTrang chủ, danh sách,\nchi tiết và chứng thư" as Public
+    component "Buyer/Account routes\nHồ sơ, ví, phiên tham gia\nvà đơn mua" as Buyer
+  }
+  together {
+    component "SellerLayout\nSản phẩm, phiên\nvà đơn bán" as Seller
+    component "AppraiserLayout\nHàng chờ và\nbáo cáo thẩm định" as Appraiser
+  }
+  together {
+    component "AdminLayout\nTài khoản, quyền\nvà tranh chấp" as Admin
+    component "BiddingRoomPage\nToàn màn hình và\ntrạng thái thời gian thực" as Bidding #FFF4D6
+  }
+
+  Public -[hidden]right-> Buyer
+  Public -[hidden]down-> Seller
+  Buyer -[hidden]down-> Appraiser
+  Seller -[hidden]right-> Appraiser
+  Seller -[hidden]down-> Admin
+  Appraiser -[hidden]down-> Bidding
+  Admin -[hidden]right-> Bidding
+}
+
+package "Quản lý dữ liệu và tích hợp" as DataLayer {
+  component "TanStack Query\nDữ liệu từ máy chủ" as Query
+  component "API client\nGắn access token;\nrefresh qua HttpOnly cookie" as Api
+  component "Zustand\nTrạng thái xác thực\ntrong bộ nhớ" as Store
+  component "STOMP/SockJS\nSự kiện đấu giá\nthời gian thực" as Realtime
+
+  Query -down-> Api
+  Api -down-> Store
+  Query -[hidden]right-> Realtime
+  Realtime -[hidden]down-> Store
+}
+
+App -down-> Routing
+Routing -down-> Areas
+Areas -down-> DataLayer : truy vấn và cập nhật
+Admin -[hidden]down-> Query
+Bidding -[hidden]down-> Realtime
+Bidding ..> Realtime : đăng ký nhận sự kiện
+Realtime ..> Query : cập nhật cache;\nrefetch khi kết nối lại
+@enduml

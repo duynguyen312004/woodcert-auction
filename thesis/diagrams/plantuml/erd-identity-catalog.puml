@@ -1,0 +1,111 @@
+@startuml
+!include chapter-4-style.puml
+title ERD rút gọn: định danh, media và catalog
+left to right direction
+hide methods
+hide stereotypes
+skinparam linetype ortho
+
+entity "permissions" as permissions {
+  *id : INT <<PK>>
+  --
+  name : VARCHAR <<UQ>>
+}
+entity "roles" as roles {
+  *id : INT <<PK>>
+  --
+  name : VARCHAR <<UQ>>
+}
+entity "role_permissions" as role_permissions {
+  *role_id : INT <<PK,FK>>
+  *permission_id : INT <<PK,FK>>
+}
+entity "users" as users {
+  *id : VARCHAR(36) <<PK>>
+  --
+  email : VARCHAR <<UQ>>
+  phone_number : VARCHAR <<UQ,nullable>>
+  avatar_media_id : BIGINT <<FK,nullable>>
+  status : VARCHAR
+}
+entity "user_roles" as user_roles {
+  *user_id : VARCHAR(36) <<PK,FK>>
+  *role_id : INT <<PK,FK>>
+}
+entity "seller_profiles" as seller_profiles {
+  *user_id : VARCHAR(36) <<PK,FK>>
+  --
+  identity_card_number : VARCHAR <<UQ>>
+}
+entity "addresses" as addresses {
+  *id : BIGINT <<PK>>
+  --
+  user_id : VARCHAR(36) <<FK>>
+  province_code : VARCHAR(20) <<FK,nullable>>
+  district_code : VARCHAR(20) <<FK,nullable>>
+  ward_code : VARCHAR(20) <<FK,nullable>>
+}
+entity "media_assets" as media_assets {
+  *id : BIGINT <<PK>>
+  --
+  owner_user_id : VARCHAR(36) <<FK>>
+  asset_id : VARCHAR <<UQ,nullable>>
+  public_id : VARCHAR <<UQ,nullable>>
+  status : VARCHAR
+}
+entity "categories" as categories {
+  *id : INT <<PK>>
+  --
+  parent_id : INT <<FK,nullable>>
+  name : VARCHAR <<UQ>>
+  slug : VARCHAR <<UQ>>
+}
+entity "products" as products {
+  *id : BIGINT <<PK>>
+  --
+  seller_id : VARCHAR(36) <<FK>>
+  category_id : INT <<FK>>
+  status : VARCHAR
+  sale_status : VARCHAR
+}
+entity "product_images" as product_images {
+  *id : BIGINT <<PK>>
+  --
+  product_id : BIGINT <<FK>>
+  media_id : BIGINT <<FK>>
+  is_primary : BOOLEAN
+}
+entity "appraisal_reports" as appraisal_reports {
+  *id : BIGINT <<PK>>
+  --
+  product_id : BIGINT <<FK,UQ>>
+  appraiser_id : VARCHAR(36) <<FK>>
+  certificate_code : VARCHAR <<UQ>>
+  integrity_hash : VARCHAR
+  is_authentic : BOOLEAN
+}
+entity "appraisal_images" as appraisal_images {
+  *id : BIGINT <<PK>>
+  --
+  appraisal_report_id : BIGINT <<FK>>
+  media_id : BIGINT <<FK>>
+}
+
+roles ||--o{ role_permissions
+permissions ||--o{ role_permissions
+users ||--o{ user_roles
+roles ||--o{ user_roles
+users ||--o| seller_profiles
+users ||--o{ addresses
+users ||--o{ media_assets : owns
+media_assets |o--o{ users : avatar
+categories |o--o{ categories : parent
+users ||--o{ products : seller
+categories ||--o{ products
+products ||--o{ product_images
+media_assets ||--o{ product_images
+products ||--o| appraisal_reports
+users ||--o{ appraisal_reports : appraiser
+appraisal_reports ||--o{ appraisal_images
+media_assets ||--o{ appraisal_images
+@enduml

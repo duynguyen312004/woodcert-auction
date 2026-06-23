@@ -1,0 +1,63 @@
+@startuml
+!include chapter-4-style.puml
+title Quy trình kiểm tra và triển khai production
+
+start
+:Push hoặc pull request vào main;
+
+fork
+  :Backend\nMaven test;
+fork again
+  :Frontend\nlint, typecheck,\nunit test, build;
+fork again
+  :Playwright E2E\ntrên Chromium;
+fork again
+  :Validate script,\nShellCheck và Compose;
+fork again
+  :Build thử hai Docker image;
+end fork
+
+if (Toàn bộ CI đạt?) then (Có)
+  :CI gate thành công;
+else (Không)
+  :Dừng pipeline;
+  stop
+endif
+
+:Xác định target SHA thuộc origin/main;
+:Build và đẩy image backend/frontend\nvới tag full commit SHA;
+:Tạo provenance và SBOM;
+:Kết nối VPS bằng SSH;
+
+if (Guard triển khai đạt?) then (Có)
+  note right
+  User deploy, worktree sạch,
+  file lock, dung lượng đĩa,
+  image revision và phiên ACTIVE.
+  end note
+else (Không)
+  :Từ chối triển khai;
+  stop
+endif
+
+:Backup MySQL và xác minh file backup;
+:Cập nhật image SHA trong compose override;
+:docker compose up -d --no-build;
+:Chờ bốn service healthy;
+:Kiểm tra frontend, readiness,\ndomain public, Flyway và shipment deadline;
+
+if (Xác minh sau deploy đạt?) then (Có)
+  :Ghi nhận SHA triển khai thành công;
+  stop
+else (Không)
+  :Khôi phục image backend/frontend trước đó;
+  :Chạy lại toàn bộ kiểm tra runtime;
+  if (Rollback healthy?) then (Có)
+    :Ghi nhận rollback;
+    stop
+  else (Không)
+    :Báo lỗi nghiêm trọng để xử lý thủ công;
+    stop
+  endif
+endif
+@enduml

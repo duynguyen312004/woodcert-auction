@@ -1,69 +1,60 @@
 @startuml
-skinparam handwritten false
-skinparam shadowing false
-skinparam defaultFontName "Arial"
-skinparam sequence {
-    ArrowColor #333333
-    ActorBorderColor #555555
-    LifeLineBorderColor #555555
-    LifeLineBackgroundColor #F9F9F9
-    ParticipantBorderColor #555555
-    ParticipantBackgroundColor #FFFFFF
-    ParticipantFontName "Arial"
-    ActorBackgroundColor #FFFFFF
-    ActorFontName "Arial"
-}
+!include chapter-4-style.puml
+title Trình tự đóng phiên, quyết toán cọc và tạo đơn
+autonumber
 
 participant "AuctionSessionScheduler" as Scheduler
-participant "AuctionSettlementService" as Settle
+participant "AuctionSessionLifecycleWorker" as Worker
 participant "AuctionRedisService" as Redis
+database "MySQL" as MySQL
+participant "AuctionSettlementService" as Settlement
+participant "ParticipantSettlementService" as ParticipantSettlement
 participant "WalletService" as Wallet
-participant "AuctionOrderSourceAdapter" as Adapter
 participant "OrderService" as Order
-database "MySQL DB" as DB
+participant "AuctionBroadcastService" as Broadcast
 
-Scheduler -> Scheduler: Quét định kỳ (mỗi 5 giây)
-activate Scheduler
-note over Scheduler: Tìm các phiên ACTIVE\ncó endTime <= Now
-deactivate Scheduler
+Scheduler -> MySQL : tìm session ACTIVE đến hạn
+MySQL --> Scheduler : danh sách sessionId
 
-Scheduler -> Settle: closeSession(sessionId) [REQUIRES_NEW Transaction]
-activate Settle
+loop Mỗi sessionId
+  Scheduler -> Worker : finalizeDueSession(id, now)
+  Worker -> MySQL : khóa AuctionSession FOR UPDATE
+  Worker -> Redis : getSessionState(id)
 
-Settle -> Redis: getSessionState(sessionId)
-activate Redis
-Redis --> Settle: RedisState (WinnerId, FinalPrice)
-deactivate Redis
+  alt Redis endTime còn ở tương lai
+    Redis --> Worker : snapshot đã được gia hạn
+    Worker -> MySQL : đồng bộ snapshot và giữ ACTIVE
+    Worker --> Scheduler : Optional.empty()
+  else Đã đến hạn
+    alt Có state Redis
+      Redis --> Worker : giá, bidder, traceId, endTime
+    else Mất state Redis
+      Redis --> Worker : rỗng
+      Worker -> MySQL : đọc snapshot và bid VALID cao nhất
+    end
+    Worker -> MySQL : commit ENDED_SUCCESS hoặc ENDED_FAILED\nvà trạng thái bán của sản phẩm
+    Worker --> Scheduler : CloseResult
 
-Settle -> DB: Cập nhật trạng thái phiên (ENDED_SUCCESS)
-activate DB
-DB --> Settle: Success
-deactivate DB
+    Scheduler -> Settlement : settleFinalizedSession(result)
+    Settlement -> MySQL : lấy participant còn FROZEN
+    loop Từng participant
+      Settlement -> ParticipantSettlement : settleOneParticipant(id, result)
+      ParticipantSettlement -> Wallet : capture cọc winner\nhoặc release cọc loser
+      Wallet -> MySQL : transaction độc lập
+    end
 
-Settle -> Wallet: Quyết toán cọc (winnerId, loserIds, sessionId)
-activate Wallet
-note over Wallet: 1. Khấu trừ cọc người thắng (DEDUCTED)\n2. Hoàn cọc cho tất cả người thua (REFUNDED)\n(Bảo vệ chống trùng lặp bằng operation_key)
-Wallet --> Settle: Success
-deactivate Wallet
+    alt Phiên thành công và không còn FROZEN
+      Settlement -> Order : createFromSource(AUCTION, sessionId)
+      Order -> MySQL : tạo duy nhất order PENDING_PAYMENT
+    end
 
-Settle -> Adapter: triggerOrderCreation(sessionId, winnerId, finalPrice)
-activate Adapter
+    Settlement -> Redis : dọn state theo best-effort
+    Scheduler -> Broadcast : SESSION_ENDED
+  end
+end
 
-Adapter -> Order: createOrder(orderRequest)
-activate Order
-note over Order: Tạo đơn hàng mới\nGiá bán = Giá chốt - Tiền cọc đã capture
-Order --> Adapter: OrderCreated (orderId)
-deactivate Order
-
-Adapter --> Settle: Success
-deactivate Adapter
-
-Settle -> Redis: clearSessionCache(sessionId)
-activate Redis
-Redis --> Settle: Success
-deactivate Redis
-
-Settle --> Scheduler: Settle Completed
-deactivate Settle
-
+note over Scheduler,Order
+Scheduler sửa chữa chạy định kỳ để xử lý participant còn sót
+hoặc tạo lại order nếu bước hậu phiên trước đó thất bại.
+end note
 @enduml

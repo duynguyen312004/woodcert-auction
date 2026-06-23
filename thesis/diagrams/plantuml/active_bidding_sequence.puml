@@ -1,53 +1,55 @@
 @startuml
-skinparam handwritten false
-skinparam shadowing false
-skinparam defaultFontName "Arial"
-skinparam sequence {
-    ArrowColor #333333
-    ActorBorderColor #555555
-    LifeLineBorderColor #555555
-    LifeLineBackgroundColor #F9F9F9
-    ParticipantBorderColor #555555
-    ParticipantBackgroundColor #FFFFFF
-    ParticipantFontName "Arial"
-    ActorBackgroundColor #FFFFFF
-    ActorFontName "Arial"
-}
+!include chapter-4-style.puml
+title Trình tự đặt giá trong phiên ACTIVE
+autonumber
 
-actor "Bidder (Client)" as Client
-participant "AuctionController" as Controller
-participant "AuctionServiceImpl" as Service
-participant "AuctionRedisService" as Redis
+actor "Người đặt giá" as Bidder
+participant "BidController" as Controller
+participant "BidServiceImpl" as Service
+database "MySQL" as MySQL
+participant "Redis Lua" as Lua
 participant "AuctionBroadcastService" as Broadcast
-database "MySQL DB" as DB
+participant "BidPersistenceService" as Persist
+participant "STOMP clients" as Clients
 
-Client -> Controller: POST /api/v1/bids {sessionId, amount}
-activate Controller
+Bidder -> Controller : POST /api/v1/bids
+Controller -> Service : placeBid(userId, request)
+Service -> MySQL : đọc AuctionSession và Product
+MySQL --> Service : trạng thái, seller, cấu hình
 
-Controller -> Service: placeBid(sessionId, userId, amount)
-activate Service
+alt Phiên không ACTIVE hoặc bidder là seller
+  Service --> Controller : lỗi nghiệp vụ
+  Controller --> Bidder : 4xx
+else Qua kiểm tra sơ bộ
+  Service -> Lua : execute(stateKey, biddersKey,\namount, now, anti-sniper, traceId)
 
-Service -> Redis: executeBidScript(sessionId, userId, amount)
-activate Redis
-note over Redis: Chạy Lua Script nguyên tử:\n1. Check trạng thái ACTIVE\n2. Check cọc (FROZEN)\n3. Check amount > currentPrice + step\n4. Check userId != currentWinnerId\n5. Tự động gia hạn 60s nếu còn <= 30s
-Redis --> Service: BidResult (Success, NewPrice, EndTime)
-deactivate Redis
+  alt LOW / ENDED / NOT_REGISTERED / SELF_BID
+    Lua --> Service : mã từ chối
+    opt LOW hoặc ENDED
+      Service -> Persist : cố gắng lưu bid bị từ chối
+    end
+    Service --> Controller : ánh xạ lỗi nghiệp vụ
+    Controller --> Bidder : 4xx
+  else OK
+    Lua --> Service : newPrice, newEndTime, extendedBy
+    opt Có gia hạn anti-sniper
+      Service -> Lua : kéo dài TTL theo end time mới
+    end
+    Service -> Broadcast : broadcastNewBid(...)
+    Broadcast -> Clients : NEW_BID
 
-Service -> Broadcast: broadcastBidSuccess(sessionId, newPrice, endTime)
-activate Broadcast
-Broadcast -> Client: WebSocket STOMP [/topic/auctions/{id}] (NEW_BID event)
-deactivate Broadcast
+    group Ghi MySQL best-effort
+      Service -> Persist : saveBid(..., VALID)
+      Persist -> MySQL : transaction REQUIRES_NEW
+      Service -> MySQL : updateRuntimeSnapshotIfNotStale(...)
+      note right of Service
+      Lỗi ở từng bước được ghi log;
+      không đảo ngược bid Redis đã chấp nhận.
+      end note
+    end
 
-Service -[#blue]> DB: asyncPersistBid(bidRecord)
-note right: Chạy bất đồng bộ để tránh\nblocking luồng WebSocket
-activate DB
-DB --> Service: Success
-deactivate DB
-
-Service --> Controller: BidResult (Success)
-deactivate Service
-
-Controller --> Client: 200 OK (ApiResponse)
-deactivate Controller
-
+    Service --> Controller : traceId, newPrice, newEndTime
+    Controller --> Bidder : 200 OK
+  end
+end
 @enduml

@@ -1,53 +1,70 @@
 @startuml
-title Kiến trúc triển khai WoodCert Auction
-left to right direction
+!include chapter-4-style.puml
+title Kiến trúc thành phần tổng quan của WoodCert Auction
+top to bottom direction
 
-skinparam shadowing false
-skinparam roundcorner 8
-skinparam componentStyle rectangle
-skinparam defaultFontName Arial
-skinparam defaultFontSize 13
-skinparam backgroundColor White
+actor "Người dùng" as User
+rectangle "Trình duyệt" as Browser {
+  component "React SPA" as SPA
+  component "STOMP/SockJS client" as WsClient
+}
 
-actor "Người dùng\nBidder/Buyer, Seller,\nAppraiser, Admin" as User
+component "Nginx production\nHTTPS và định tuyến" as HostNginx #E8EEF3
 
-node "Ubuntu VPS" as VPS {
-  component "Nginx host\nTLS termination\nReverse proxy" as HostNginx
-
-  frame "Docker Compose network" {
-    component "Frontend container\nReact 19.2.1\nNginx static server\nHost bind: 127.0.0.1:3000 -> 80" as Frontend
-    component "Backend container\nSpring Boot 3.5.15\nJava 17\nModular monolith\nHost bind: 127.0.0.1:8080 -> 8080" as Backend
-    database "MySQL 8.0\nDữ liệu quan hệ bền vững\nKhông publish cổng" as MySQL
-    database "Redis 7.4\nRuntime phiên ACTIVE\nAOF, không publish cổng" as Redis
+together {
+  component "Nginx frontend\nTệp tĩnh và SPA fallback" as FrontNginx
+  rectangle "Backend Spring Boot\nĐơn khối phân mô-đun" as Backend #F7F2E8 {
+    component "REST API và Security" as Rest
+    component "8 mô-đun nghiệp vụ" as Features
+    component "Scheduler và\nSTOMP simple broker" as Runtime
   }
 }
 
-cloud "Cloudinary\nLưu trữ và phân phối media" as Cloudinary
-cloud "VNPay Sandbox\nTrang thanh toán" as VNPay
-cloud "SMTP\nEmail xác thực/đặt lại mật khẩu" as SMTP
+together {
+  database "MySQL 8\nDữ liệu bền vững,\ntrạng thái terminal" as MySQL
+  database "Redis 7.4\nRuntime phiên ACTIVE,\nLua nguyên tử" as Redis
+}
 
-User --> HostNginx : HTTPS
-HostNginx --> Frontend : /
-HostNginx --> Backend : /api/*\n/ws-auction
-Backend --> MySQL : JPA / SQL
-Backend --> Redis : Redis protocol\nLua script
-Backend --> Cloudinary : Tạo upload intent,\nđọc metadata, dọn tài nguyên
-User --> Cloudinary : Upload trực tiếp\nbằng chữ ký tạm thời
-Backend --> SMTP : SMTP
+together {
+  cloud "Cloudinary\nMedia" as Cloudinary
+  cloud "VNPay Sandbox\nNạp tiền thử nghiệm" as VNPay
+  cloud "SMTP\nEmail hệ thống" as SMTP
+}
 
-Backend --> User : URL thanh toán đã ký
-User --> VNPay : Chuyển hướng thanh toán
-VNPay --> User : Chuyển hướng Return
-User --> HostNginx : GET /api/v1/wallets/vnpay/return
+User --> Browser
+Browser --> HostNginx : HTTPS
+HostNginx --> FrontNginx : /
+HostNginx --> Rest : /api/v1
+HostNginx --> Runtime : /ws-auction
+FrontNginx --> SPA : index.html, assets
 
-note bottom of Backend
-  Các feature nằm trong cùng một tiến trình backend.
-  Một số ranh giới dùng port/interface, nhưng vẫn tồn tại
-  phụ thuộc trực tiếp giữa các feature.
+Rest --> Features
+Runtime --> Features : scheduler
+Features --> Runtime : sự kiện STOMP
+Runtime --> WsClient : NEW_BID,\nSESSION_ENDED
+
+Features --> MySQL : JPA / SQL
+Features --> Redis : Redis protocol / Lua
+Features --> Cloudinary : ký upload,\nxác minh media
+Features --> VNPay : tạo URL,\nxác minh phản hồi
+Features --> SMTP : gửi email
+
+SPA ..> Cloudinary : upload trực tiếp
+SPA ..> VNPay : redirect
+
+HostNginx -[hidden]down-> FrontNginx
+FrontNginx -[hidden]right-> Backend
+MySQL -[hidden]right-> Redis
+Cloudinary -[hidden]right-> VNPay
+VNPay -[hidden]right-> SMTP
+
+note right of Backend
+Các mô-đun nằm trong cùng một tiến trình Java.
+Không có giao tiếp mạng nội bộ giữa các mô-đun.
 end note
 
-note bottom of MySQL
-  MySQL lưu hồ sơ bền vững và trạng thái kết thúc.
-  Redis là nguồn trạng thái runtime của phiên ACTIVE.
+note bottom of Redis
+Redis là nguồn trạng thái runtime khi phiên ACTIVE;
+MySQL quản lý dữ liệu bền vững và trạng thái kết thúc.
 end note
 @enduml

@@ -1,0 +1,104 @@
+' Shared visual style for Chapter 4 diagrams.
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 12
+skinparam defaultFontColor #1F2933
+skinparam ArrowColor #46525E
+skinparam ArrowThickness 1
+skinparam packageStyle rectangle
+skinparam componentStyle rectangle
+skinparam nodesep 35
+skinparam ranksep 40
+
+skinparam title {
+  FontName "Arial"
+  FontSize 16
+  FontStyle bold
+  FontColor #243746
+}
+
+skinparam package {
+  BackgroundColor #F8FAFB
+  BorderColor #60717E
+  FontColor #243746
+}
+
+skinparam component {
+  BackgroundColor #F8FAFB
+  BorderColor #60717E
+  FontColor #243746
+}
+
+skinparam rectangle {
+  BackgroundColor #F8FAFB
+  BorderColor #60717E
+  FontColor #243746
+}
+
+skinparam node {
+  BackgroundColor #F8FAFB
+  BorderColor #60717E
+  FontColor #243746
+}
+
+skinparam database {
+  BackgroundColor #EAF4EE
+  BorderColor #4F7461
+  FontColor #264936
+}
+
+skinparam cloud {
+  BackgroundColor #F4F1EA
+  BorderColor #7A6D55
+  FontColor #4B4234
+}
+
+skinparam actor {
+  BackgroundColor #FFFFFF
+  BorderColor #46525E
+  FontColor #243746
+}
+
+skinparam class {
+  BackgroundColor #F8FAFB
+  BorderColor #60717E
+  FontColor #243746
+  AttributeFontColor #33424F
+}
+
+skinparam note {
+  BackgroundColor #FFF9E8
+  BorderColor #A58B4E
+  FontColor #4B4234
+}
+
+skinparam sequence {
+  ArrowColor #46525E
+  ActorBorderColor #46525E
+  ActorBackgroundColor #FFFFFF
+  LifeLineBorderColor #77838C
+  LifeLineBackgroundColor #FFFFFF
+  ParticipantBorderColor #60717E
+  ParticipantBackgroundColor #F8FAFB
+  GroupBorderColor #77838C
+  GroupBackgroundColor #F7F8F9
+  BoxBorderColor #77838C
+  BoxBackgroundColor #F7F8F9
+}
+
+skinparam activity {
+  BackgroundColor #F8FAFB
+  BorderColor #60717E
+  DiamondBackgroundColor #FFF9E8
+  DiamondBorderColor #A58B4E
+  StartColor #4F7461
+  EndColor #8C4F45
+}
+
+skinparam swimlane {
+  BorderColor #77838C
+  TitleBackgroundColor #E8EEF3
+  TitleFontColor #243746
+}

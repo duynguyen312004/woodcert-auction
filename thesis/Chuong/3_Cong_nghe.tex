@@ -1,7 +1,7 @@
 \documentclass[../DoAn.tex]{subfiles}
 \begin{document}
 
-Chương này trình bày các công nghệ được sử dụng trong WoodCert Auction, vai trò của chúng đối với yêu cầu ở Chương 2 và lý do lựa chọn. Phiên bản được đối chiếu từ tệp khai báo phụ thuộc và cấu hình hiện hành; nội dung chương không được xem là kết quả đo hiệu năng của hệ thống.
+Chương này trình bày các công nghệ được sử dụng trong WoodCert Auction, vai trò của chúng đối với yêu cầu ở Chương~\ref{chapter:Related_works} và lý do lựa chọn. Phiên bản được đối chiếu từ tệp khai báo phụ thuộc và cấu hình hiện hành; nội dung chương không được xem là kết quả đo hiệu năng của hệ thống.
 
 \section{Tổng quan lựa chọn công nghệ}
 
@@ -14,7 +14,7 @@ Kiến trúc này phù hợp với phạm vi đồ án vì chỉ cần một đ�
     \includegraphics[width=0.92\linewidth,keepaspectratio]{chapter-3/system_architecture.pdf}
     \caption{Kiến trúc triển khai của hệ thống WoodCert Auction}
     \label{fig:chapter3-system-architecture}
-    \caption*{\textit{Nguồn: Sinh viên tổng hợp từ cấu hình và mã nguồn hệ thống}}
+    \caption*{\textit{Nguồn: Tổng hợp từ cấu hình và mã nguồn hệ thống.}}
 \end{figure}
 
 Hình~\ref{fig:chapter3-system-architecture} thể hiện Nginx tiếp nhận HTTPS và chuyển tiếp yêu cầu tới các cổng loopback của hai ứng dụng. MySQL và Redis chỉ giao tiếp trong mạng Docker Compose, không công bố cổng ra Internet. Trình duyệt tải tệp trực tiếp lên Cloudinary bằng thông tin có chữ ký tạm thời. Với VNPay Sandbox, trình duyệt được chuyển hướng tới trang thanh toán và quay lại điểm cuối Return của hệ thống sau khi hoàn tất.
@@ -51,6 +51,8 @@ Lượt đặt giá được gửi qua REST API. Sau khi Redis chấp nhận, ph
 
 WebSocket cung cấp kênh truyền hai chiều trên kết nối lâu dài theo RFC 6455 \cite{rfc6455}. STOMP tổ chức đăng ký nhận sự kiện theo chủ đề (topic), còn SockJS cung cấp phương án dự phòng khi không thiết lập được WebSocket trực tiếp \cite{springwebsocketdocs}. Kênh hiện hành chỉ phát sự kiện tới trình duyệt theo dõi; lệnh đặt giá không được gửi qua STOMP.
 
+Bảng~\ref{tab:chapter3-storage-responsibility} phân biệt dữ liệu và trách nhiệm của MySQL, Redis cùng tác vụ nền trong vòng đời phiên đấu giá.
+
 \begin{table}[htbp]
     \centering
     \caption{Phân chia trách nhiệm giữa MySQL, Redis và tác vụ nền}
@@ -76,7 +78,7 @@ VNPay Sandbox được dùng cho luồng nạp tiền thử nghiệm. Phía máy
 
 \section{Công nghệ phía giao diện}
 
-\subsection{React 19.2.1, TypeScript 5.9.3 và Vite 7.2.6}
+\subsection{React 19.2.6, TypeScript 5.9.3 và Vite 7.3.3}
 
 React xây dựng giao diện theo thành phần và cơ chế kết xuất khai báo \cite{reactdocs}. TypeScript bổ sung kiểm tra kiểu tĩnh cho JavaScript \cite{bierman2014typescript}; Vite cung cấp máy chủ phát triển, thay thế mô-đun nhanh và quy trình đóng gói ứng dụng \cite{vitedocs}. Ba công nghệ này được dùng để xây dựng SPA cho khu vực công khai và các khu vực chức năng dành cho người tham gia/người mua, người bán, thẩm định viên và quản trị viên.
 
@@ -130,7 +132,7 @@ Bảng~\ref{tab:chapter3-technology-comparison} tổng hợp các phương án t
 
 \section{Tổng kết chương}
 
-Chương 3 đã trình bày các nền tảng tạo nên WoodCert Auction và lý do lựa chọn trong phạm vi đồ án. Spring Boot và MySQL quản lý logic cùng dữ liệu bền vững; Redis và Lua xử lý trạng thái phiên \texttt{ACTIVE}; WebSocket/STOMP phân phối sự kiện; React và các thư viện liên quan tổ chức SPA; Cloudinary, VNPay Sandbox và SMTP hỗ trợ tích hợp ngoài; Docker, Nginx và GitHub Actions hỗ trợ triển khai có kiểm soát. Các công nghệ này là cơ sở cho phần phân tích thiết kế, triển khai và đánh giá ở Chương 4.
+Chương~\ref{chapter:Methodology} đã trình bày các nền tảng tạo nên WoodCert Auction và lý do lựa chọn trong phạm vi đồ án. Spring Boot và MySQL quản lý logic cùng dữ liệu bền vững; Redis và Lua xử lý trạng thái phiên \texttt{ACTIVE}; WebSocket/STOMP phân phối sự kiện; React và các thư viện liên quan tổ chức SPA; Cloudinary, VNPay Sandbox và SMTP hỗ trợ tích hợp ngoài; Docker, Nginx và GitHub Actions hỗ trợ triển khai có kiểm soát. Các công nghệ này là cơ sở cho phần phân tích thiết kế, triển khai và đánh giá ở Chương~\ref{chapter:Experiment}.
 
 \FloatBarrier
 \end{document}

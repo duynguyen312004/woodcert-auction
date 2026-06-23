@@ -1,90 +1,65 @@
 @startuml
-skinparam handwritten false
-skinparam shadowing false
-skinparam defaultFontName "Arial"
-skinparam packageStyle rectangle
+!include chapter-4-style.puml
+title Phụ thuộc gói nghiệp vụ mức cao trong backend
+top to bottom direction
 
-skinparam package {
-    BackgroundColor #FFFFFF
-    BorderColor #333333
-    ArrowColor #555555
-    FontName "Arial"
-    FontSize 13
+package "core\nHạ tầng dùng chung" as core #E8EEF3
+
+together {
+  package "dispute" as dispute
+  package "fulfillment" as fulfillment
+}
+package "order" as order
+package "auction" as auction #FFF4D6
+together {
+  package "catalog" as catalog
+  package "finance" as finance
+}
+together {
+  package "identity" as identity
+  package "media" as media
 }
 
-skinparam Note {
-    BackgroundColor #FFFFE0
-    BorderColor #555555
-}
+dispute --> order
+dispute -[#4F7461,dashed]-> fulfillment : port
 
-package "woodcert-auction (Backend Application)" {
-    
-    package "core (Shared Infrastructure)" #F9F9F9 {
-        package "security" as core_security {
-            note right: SecurityConfig\nJwtService
-        }
-        package "exception" as core_exception {
-            note right: GlobalExceptionHandler
-        }
-        package "websocket" as core_websocket {
-            note right: WebSocketConfig
-        }
-        package "config" as core_config
-    }
+fulfillment --> order
+fulfillment -[#4F7461,dashed]-> dispute : port
 
-    package "feature (Business Domains)" {
-        package "identity" as feat_identity {
-            note bottom: User, Role\nAuthService
-        }
-        package "media" as feat_media {
-            note bottom: CloudinaryService
-        }
-        package "catalog" as feat_catalog {
-            note bottom: Product, Category\nAppraisalReport
-        }
-        package "finance" as feat_finance {
-            note bottom: Wallet, Transaction\nVNPayService
-        }
-        package "auction" as feat_auction {
-            note bottom: AuctionSession\nAuctionParticipant\nBid
-        }
-        package "order" as feat_order {
-            note bottom: Order, OrderDetail
-        }
-        package "fulfillment" as feat_fulfillment {
-            note bottom: OrderFulfillment
-        }
-        package "dispute" as feat_dispute {
-            note bottom: DisputeCase
-        }
-    }
-}
+order --> finance
+order --> identity
 
-' Quy tắc phụ thuộc một chiều vào core
-feat_identity ..> core_security : <<use>>
-feat_identity ..> core_exception : <<use>>
-feat_media ..> core_exception : <<use>>
-feat_catalog ..> core_exception : <<use>>
-feat_finance ..> core_exception : <<use>>
-feat_auction ..> core_websocket : <<use>>
-feat_auction ..> core_exception : <<use>>
-feat_order ..> core_exception : <<use>>
-feat_fulfillment ..> core_exception : <<use>>
-feat_dispute ..> core_exception : <<use>>
+auction --> catalog
+auction --> finance
+auction --> identity
+auction -[#4F7461,dashed]-> order : nguồn tạo đơn
 
-' Giao tiếp liên mô-đun qua Interface/Adapter
-feat_auction ..> feat_catalog : <<read>> Product
-feat_auction ..> feat_finance : <<freeze cọc>> Wallet
-feat_order ..> feat_auction : <<read>> AuctionSession
-feat_order ..> feat_finance : <<deduct cọc>> Wallet
-feat_fulfillment ..> feat_order : <<update status>> Order
-feat_dispute ..> feat_order : <<block payout>> Order
+catalog --> identity
+catalog --> media
+catalog --> finance
 
-note top of feat_auction
-  Giao tiếp với Order qua Adapter
-  **AuctionOrderSourceAdapter**
-  để giữ tính đóng gói
+core -[#8C4F45,dashed]-> identity : bảo mật đọc user/quyền
+
+dispute -[hidden]right-> fulfillment
+dispute -[hidden]down-> order
+fulfillment -[hidden]down-> order
+order -[hidden]down-> auction
+auction -[hidden]down-> catalog
+auction -[hidden]down-> finance
+catalog -[hidden]right-> finance
+catalog -[hidden]down-> identity
+finance -[hidden]down-> media
+identity -[hidden]right-> media
+media -[hidden]down-> core
+
+note left of core
+Mọi feature đều sử dụng cấu hình, exception,
+security hoặc tiện ích trong core.
 end note
-feat_auction ..> feat_order : <<trigger order creation>>
 
+note right of auction
+Mũi tên chỉ thể hiện các phụ thuộc tiêu biểu
+để giữ hình đọc được trên A4. Đây không phải
+giao tiếp mạng giữa các dịch vụ.
+end note
 @enduml

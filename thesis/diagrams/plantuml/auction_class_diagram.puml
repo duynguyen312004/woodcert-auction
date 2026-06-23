@@ -1,116 +1,102 @@
 @startuml
-skinparam handwritten false
-skinparam shadowing false
-skinparam defaultFontName "Arial"
-skinparam class {
-    BackgroundColor #FFFFFF
-    BorderColor #333333
-    ArrowColor #555555
-    FontName "Arial"
-    FontSize 12
+!include chapter-4-style.puml
+title Thiết kế rút gọn của mô-đun auction
+left to right direction
+hide empty members
+
+package "API" {
+  class AuctionController
+  class BidController
 }
 
-class AuctionController {
-    + getAuctions(filter, pageable): ResponseEntity
-    + getAuctionDetail(id): ResponseEntity
-    + registerBidder(id): ResponseEntity
-    + withdrawRegistration(id): ResponseEntity
-    + placeBid(id, bidRequest): ResponseEntity
+package "Quản lý phiên" {
+  interface AuctionService
+  class AuctionServiceImpl
+  class AuctionCommandService
+  class AuctionQueryService
+  class AuctionPolicy
 }
 
-interface AuctionService {
-    + createSession(command): AuctionSession
-    + registerParticipant(sessionId, userId): void
-    + placeBid(sessionId, userId, amount): BidResult
-    + closeSession(sessionId): void
+package "Đặt giá runtime" {
+  interface BidService
+  class BidServiceImpl {
+    +placeBid(bidderId, request)
+  }
+  class BidLuaScript
+  class AuctionRedisService
+  class AuctionBroadcastService
+  class BidPersistenceService
 }
 
-class AuctionServiceImpl {
-    - commandService: AuctionCommandService
-    - queryService: AuctionQueryService
-    - redisService: AuctionRedisService
-    - policy: AuctionPolicy
-    - settlementService: AuctionSettlementService
+package "Vòng đời và quyết toán" {
+  class AuctionSessionScheduler {
+    +activateDueSessions()
+    +closeDueSessions()
+    +repairFinalizedSessionsWithFrozenDeposits()
+  }
+  class AuctionSessionLifecycleWorker {
+    +activateDueSession(id, now)
+    +finalizeDueSession(id, now)
+  }
+  class AuctionSettlementService
+  class AuctionParticipantSettlementService
+  class AuctionOrderSourceAdapter
 }
 
-class AuctionCommandService {
-    - sessionRepository: AuctionSessionRepository
-    + create(command): AuctionSession
-    + updateStatus(id, status): void
+package "Dữ liệu" {
+  class AuctionSession
+  class AuctionParticipant
+  class Bid
+  interface AuctionSessionRepository
+  interface AuctionParticipantRepository
+  interface BidRepository
 }
 
-class AuctionQueryService {
-    - sessionRepository: AuctionSessionRepository
-    - redisService: AuctionRedisService
-    + getById(id): AuctionSession
-    + listActiveSessions(): List
+package "Mô-đun khác" {
+  interface WalletService
+  interface OrderService
+  class Product
 }
 
-class AuctionRedisService {
-    - redisTemplate: RedisTemplate
-    + initializeSessionCache(session): void
-    + executeBidScript(sessionId, userId, amount): BidResult
-    + getSessionState(sessionId): RedisSessionState
-    + clearSessionCache(sessionId): void
-}
-
-class AuctionSettlementService {
-    - participantRepository: AuctionParticipantRepository
-    - walletService: WalletService
-    - orderAdapter: AuctionOrderSourceAdapter
-    + settleDeposits(sessionId): void
-}
-
-class AuctionPolicy {
-    + validateCreation(sessionConfig): void
-    + validateBid(currentPrice, bidAmount, stepPercent): void
-}
-
-interface AuctionSessionRepository {
-    + findByIdWithPessimisticLock(id): Optional
-    + findExpiredSessions(now): List
-}
-
-interface AuctionParticipantRepository {
-    + findBySessionIdAndUserId(sessionId, userId): Optional
-    + findLosersBySessionId(sessionId, winnerId): List
-}
-
-class AuctionSession {
-    - id: Long
-    - title: String
-    - startingPrice: BigDecimal
-    - stepPercent: Double
-    - currentPrice: BigDecimal
-    - startTime: LocalDateTime
-    - endTime: LocalDateTime
-    - status: AuctionStatus
-    - version: Integer
-}
-
-class AuctionParticipant {
-    - id: Long
-    - sessionId: Long
-    - userId: Long
-    - depositAmount: BigDecimal
-    - depositStatus: DepositStatus
-    - registeredAt: LocalDateTime
-}
-
-AuctionController ..> AuctionService : <<use>>
+AuctionController --> AuctionService
 AuctionService <|.. AuctionServiceImpl
-
 AuctionServiceImpl --> AuctionCommandService
 AuctionServiceImpl --> AuctionQueryService
-AuctionServiceImpl --> AuctionRedisService
-AuctionServiceImpl --> AuctionPolicy
-AuctionServiceImpl --> AuctionSettlementService
+AuctionCommandService --> AuctionPolicy
 
-AuctionCommandService --> AuctionSessionRepository
-AuctionQueryService --> AuctionSessionRepository
+BidController --> BidService
+BidService <|.. BidServiceImpl
+BidServiceImpl --> AuctionSessionRepository
+BidServiceImpl --> BidLuaScript
+BidServiceImpl --> AuctionRedisService
+BidServiceImpl --> AuctionBroadcastService
+BidServiceImpl --> BidPersistenceService
+
+AuctionSessionScheduler --> AuctionSessionLifecycleWorker
+AuctionSessionScheduler --> AuctionSettlementService
+AuctionSessionLifecycleWorker --> AuctionSessionRepository
+AuctionSessionLifecycleWorker --> BidRepository
+AuctionSessionLifecycleWorker --> AuctionRedisService
 AuctionSettlementService --> AuctionParticipantRepository
+AuctionSettlementService --> AuctionParticipantSettlementService
+AuctionSettlementService --> OrderService
+AuctionParticipantSettlementService --> WalletService
+AuctionOrderSourceAdapter ..> OrderService
 
-AuctionSessionRepository ..> AuctionSession : <<manages>>
-AuctionParticipantRepository ..> AuctionParticipant : <<manages>>
+AuctionSessionRepository ..> AuctionSession
+AuctionParticipantRepository ..> AuctionParticipant
+BidRepository ..> Bid
+AuctionSession --> Product
+AuctionParticipant --> AuctionSession
+Bid --> AuctionSession
 
+note bottom of BidServiceImpl
+Redis/Lua là ranh giới chấp nhận bid.
+Lưu Bid và đồng bộ snapshot MySQL là best-effort.
+end note
+
+note bottom of AuctionSessionLifecycleWorker
+Chốt trạng thái terminal trước;
+quyết toán participant được điều phối sau commit.
+end note
 @enduml

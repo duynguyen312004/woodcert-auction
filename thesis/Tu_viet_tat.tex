@@ -1,34 +1,189 @@
-%\makeglossaries
 \makenoidxglossaries
 
-% Danh mục thuật ngữ và từ viết tắt
-\newglossaryentry{iaas}{
+% Danh mục thuật ngữ và từ viết tắt sử dụng trong báo cáo
+\newglossaryentry{acid}{
     type=\acronymtype,
-    name={IaaS},
-    description={Dịch vụ hạ tầng},
-    first={Dịch vụ hạ tầng (Infrastructure  as  a  Service - IaaS)}
+    name={ACID},
+    sort={ACID},
+    description={Bốn thuộc tính của giao dịch cơ sở dữ liệu: tính nguyên tử, nhất quán, cô lập và bền vững (Atomicity, Consistency, Isolation, Durability)}
 }
-\newglossaryentry{API}{
+\newglossaryentry{aof}{
+    type=\acronymtype,
+    name={AOF},
+    sort={AOF},
+    description={Tệp nhật ký ghi nối tiếp của Redis (Append Only File)}
+}
+\newglossaryentry{api}{
     type=\acronymtype,
     name={API},
-    description={Giao diện lập trình ứng dụng (Application Programming Interface)},
-    first={API}
+    sort={API},
+    description={Giao diện lập trình ứng dụng (Application Programming Interface)}
 }
-\newglossaryentry{EUD}{
+\newglossaryentry{cdn}{
     type=\acronymtype,
-    name={EUD},
-    description={Phát triển ứng dụng người dùng cuối(End-User Development)},
-    first={End-User Development}
+    name={CDN},
+    sort={CDN},
+    description={Mạng phân phối nội dung (Content Delivery Network)}
 }
-\newglossaryentry{GWT}{
+\newglossaryentry{cicd}{
     type=\acronymtype,
-    name={GWT},
-    description={Công cụ lập trình Javascript bằng Java của Google (Google Web Toolkit)},
-    first={Công cụ lập trình Javascript bằng Java của Google (Google Web Toolkit}
+    name={CI/CD},
+    sort={CI CD},
+    description={Tích hợp liên tục và triển khai liên tục (Continuous Integration/Continuous Deployment)}
 }
-\newglossaryentry{HTML}{
+\newglossaryentry{csrf}{
     type=\acronymtype,
-    name={HTML},
-    description={Ngôn ngữ đánh dấu siêu văn bản (HyperText Markup Language)},
-    first={Dịch vụ hạ tầng (Infrastructure  as  a  Service - IaaS)}
+    name={CSRF},
+    sort={CSRF},
+    description={Tấn công giả mạo yêu cầu liên trang (Cross-Site Request Forgery)}
+}
+\newglossaryentry{dto}{
+    type=\acronymtype,
+    name={DTO},
+    sort={DTO},
+    description={Đối tượng truyền dữ liệu (Data Transfer Object)}
+}
+\newglossaryentry{e2e}{
+    type=\acronymtype,
+    name={E2E},
+    sort={E2E},
+    description={Kiểm thử đầu cuối (End-to-End Testing)}
+}
+\newglossaryentry{erd}{
+    type=\acronymtype,
+    name={ERD},
+    sort={ERD},
+    description={Biểu đồ thực thể--liên kết (Entity--Relationship Diagram)}
+}
+\newglossaryentry{ghcr}{
+    type=\acronymtype,
+    name={GHCR},
+    sort={GHCR},
+    description={Kho lưu trữ image container của GitHub (GitHub Container Registry)}
+}
+\newglossaryentry{http}{
+    type=\acronymtype,
+    name={HTTP},
+    sort={HTTP},
+    description={Giao thức truyền siêu văn bản (Hypertext Transfer Protocol)}
+}
+\newglossaryentry{hmac}{
+    type=\acronymtype,
+    name={HMAC},
+    sort={HMAC},
+    description={Mã xác thực thông điệp dựa trên hàm băm (Hash-based Message Authentication Code)}
+}
+\newglossaryentry{https}{
+    type=\acronymtype,
+    name={HTTPS},
+    sort={HTTPS},
+    description={HTTP được bảo vệ bằng TLS (HTTP Secure)}
+}
+\newglossaryentry{jpa}{
+    type=\acronymtype,
+    name={JPA},
+    sort={JPA},
+    description={Đặc tả lưu trữ dữ liệu quan hệ của Java (Java Persistence API)}
+}
+\newglossaryentry{json}{
+    type=\acronymtype,
+    name={JSON},
+    sort={JSON},
+    description={Định dạng trao đổi dữ liệu dạng văn bản (JavaScript Object Notation)}
+}
+\newglossaryentry{jwt}{
+    type=\acronymtype,
+    name={JWT},
+    sort={JWT},
+    description={Chuẩn biểu diễn tập thông tin xác nhận dạng JSON (JSON Web Token)}
+}
+\newglossaryentry{rest}{
+    type=\acronymtype,
+    name={REST},
+    sort={REST},
+    description={Phong cách kiến trúc cho dịch vụ web (Representational State Transfer)}
+}
+\newglossaryentry{rfc}{
+    type=\acronymtype,
+    name={RFC},
+    sort={RFC},
+    description={Tài liệu tiêu chuẩn hoặc đề xuất kỹ thuật Internet (Request for Comments)}
+}
+\newglossaryentry{sbom}{
+    type=\acronymtype,
+    name={SBOM},
+    sort={SBOM},
+    description={Danh mục thành phần phần mềm (Software Bill of Materials)}
+}
+\newglossaryentry{sha256}{
+    type=\acronymtype,
+    name={SHA-256},
+    sort={SHA 256},
+    description={Thuật toán băm an toàn tạo giá trị 256 bit (Secure Hash Algorithm 256-bit)}
+}
+\newglossaryentry{smtp}{
+    type=\acronymtype,
+    name={SMTP},
+    sort={SMTP},
+    description={Giao thức truyền thư điện tử đơn giản (Simple Mail Transfer Protocol)}
+}
+\newglossaryentry{spa}{
+    type=\acronymtype,
+    name={SPA},
+    sort={SPA},
+    description={Ứng dụng trang đơn (Single Page Application)}
+}
+\newglossaryentry{ssh}{
+    type=\acronymtype,
+    name={SSH},
+    sort={SSH},
+    description={Giao thức truy cập từ xa an toàn (Secure Shell)}
+}
+\newglossaryentry{stomp}{
+    type=\acronymtype,
+    name={STOMP},
+    sort={STOMP},
+    description={Giao thức nhắn tin văn bản đơn giản (Simple Text Oriented Messaging Protocol)}
+}
+\newglossaryentry{tls}{
+    type=\acronymtype,
+    name={TLS},
+    sort={TLS},
+    description={Bảo mật tầng truyền tải (Transport Layer Security)}
+}
+\newglossaryentry{ttl}{
+    type=\acronymtype,
+    name={TTL},
+    sort={TTL},
+    description={Thời gian tồn tại của dữ liệu hoặc bản ghi (Time To Live)}
+}
+\newglossaryentry{url}{
+    type=\acronymtype,
+    name={URL},
+    sort={URL},
+    description={Địa chỉ định vị tài nguyên thống nhất (Uniform Resource Locator)}
+}
+\newglossaryentry{uuid}{
+    type=\acronymtype,
+    name={UUID},
+    sort={UUID},
+    description={Định danh duy nhất phổ quát (Universally Unique Identifier)}
+}
+\newglossaryentry{vps}{
+    type=\acronymtype,
+    name={VPS},
+    sort={VPS},
+    description={Máy chủ riêng ảo (Virtual Private Server)}
+}
+\newglossaryentry{websocket}{
+    type=\acronymtype,
+    name={WebSocket},
+    sort={WebSocket},
+    description={Giao thức truyền thông hai chiều trên một kết nối lâu dài}
+}
+\newglossaryentry{xml}{
+    type=\acronymtype,
+    name={XML},
+    sort={XML},
+    description={Ngôn ngữ đánh dấu mở rộng (Extensible Markup Language)}
 }

@@ -1,56 +1,75 @@
 \documentclass[../DoAn.tex]{subfiles}
 \begin{document}
 
-Lưu ý: \textbf{Trước khi viết ĐATN, sinh viên cần đọc kỹ hướng dẫn và quy định chi tiết} về cách viết ĐATN trong Phụ lục A. Sinh viên tuân theo mẫu tài liệu này để viết báo cáo đồ án tốt nghiệp, vì tài liệu này đã được căn chỉnh, chỉnh sửa theo đúng chuẩn báo cáo kỹ thuật đồ án tốt nghiệp (ISO 7144:1986). Sinh viên viết trực tiếp vào file này, chỉ chỉnh sửa nội dung, và không viết trên file mới.
-
-\textbf{Khi đóng quyển ĐATN}, sinh viên cần lưu ý tuân thủ hướng dẫn ở phụ lục A.9
-
-\textbf{SV cần đặc biệt lưu ý cách hành văn}. Mỗi đoạn văn không được quá dài và cần có ý tứ rõ ràng, bao gồm duy nhất một ý chính và các ý phân tích bổ trợ để làm rõ hơn ý chính. Các câu văn trong đoạn phải đầy đủ chủ ngữ vị ngữ, cùng hướng đến chủ đề chung. Câu sau phải liên kết với câu trước, đoạn sau liên kết với đoạn trước. Trong văn phong khoa học, sinh viên không được dùng từ trong văn nói, không dùng các từ phóng đại, thái quá, các từ thiếu khách quan, thiên về cảm xúc, về quan điểm cá nhân như “tuyệt vời”, “cực hay”, “cực kỳ hữu ích”, v.v. Các câu văn cần được tối ưu hóa, đảm bảo rất khó để thể thêm hoặc bớt đi được dù chỉ một từ. Cách diễn đạt cần ngắn gọn, súc tích, không dài dòng.
-
-Mẫu ĐATN này được thiết kế phù hợp nhất với đa số các đề tài xây dựng phần mềm ứng dụng. Với các dạng đề tài khác (giải pháp, nghiên cứu, phần mềm đặc thù, v.v.), sinh viên dựa trên cấu trúc và hướng dẫn của báo cáo này để đề xuất và trao đổi với giáo viên hướng dẫn để thiết kế khung báo cáo đồ án cho phù hợp. Sinh viên lưu ý \textbf{trong mọi trường hợp, SV luôn phải sử dụng định dạng báo cáo này, và phải đọc kỹ toàn bộ các hướng dẫn từ đầu tới cuối.} Các hướng dẫn không chỉ áp dụng riêng cho đề tài ứng dụng, mà còn phù hợp với các dạng đề tài khác. Ngoài ra, trong mẫu ĐATN này đã được tích hợp một số hướng dẫn dành riêng cho đề tài nghiên cứu.
-
-Chương 1 có độ dài từ 3 đến 6 trang với các nội dung sau đây
-
 \section{Đặt vấn đề}
 \label{section:1.1}
-Khi đặt vấn đề, sinh viên cần làm nổi bật mức độ cấp thiết, tầm quan trọng và/hoặc quy mô của bài toán của mình.
 
-Gợi ý cách trình bày cho sinh viên: Xuất phát từ tình hình thực tế gì, dẫn đến vấn đề hoặc bài toán gì. Vấn đề hoặc bài toán đó, nếu được giải quyết, đem lại lợi ích gì, cho những ai, còn có thể được áp dụng vào các lĩnh vực khác nữa không. Sinh viên cần lưu ý phần này chỉ trình bày vấn đề, tuyệt đối không trình bày giải pháp.
+Giao dịch sản phẩm gỗ mỹ nghệ trực tuyến đặt ra yêu cầu cao hơn so với việc đăng bán một hàng hóa thông thường. Giá trị của sản phẩm không chỉ phụ thuộc vào hình ảnh và mô tả do người bán cung cấp, mà còn liên quan đến loại vật liệu, đặc điểm hiện vật, mức định giá và kết luận chuyên môn. Khi người mua không thể trực tiếp kiểm tra sản phẩm trước giao dịch, sự thiếu nhất quán giữa thông tin công bố và tình trạng thực tế có thể ảnh hưởng tới quyết định tham gia, mức giá đặt và khả năng hoàn tất giao dịch.
+
+Đấu giá trực tuyến làm cho bài toán trở nên phức tạp hơn vì hệ thống phải đồng thời quản lý thông tin sản phẩm và trạng thái phiên thay đổi theo thời gian. Người tham gia cần biết rõ điều kiện của phiên, giá hiện tại, bước giá và thời điểm kết thúc. Mỗi lượt đặt giá phải được kiểm tra dựa trên cùng một trạng thái hợp lệ, đặc biệt khi nhiều yêu cầu có thể xuất hiện trong khoảng thời gian ngắn. Kết quả cũng cần được cập nhật kịp thời cho những người đang theo dõi mà không yêu cầu tải lại trang. Nếu chỉ tập trung vào giao diện trả giá mà thiếu kiểm soát tư cách tham gia, tiền cọc và thời hạn phiên, kết quả đấu giá có thể không đủ cơ sở để chuyển thành một giao dịch thực tế.
+
+Phiên đấu giá kết thúc không đồng nghĩa toàn bộ nghiệp vụ đã hoàn thành. Người thắng còn phải thanh toán phần tiền còn lại; người bán phải xác nhận gửi hoặc bàn giao hàng; người mua cần có khả năng xác nhận đã nhận sản phẩm hoặc phản ánh vấn đề. Hệ thống đồng thời phải quản lý tiền cọc của người tham gia, hoàn cọc cho người không thắng, khấu trừ cọc của người thắng và chỉ ghi nhận khoản chi trả cho người bán khi điều kiện nghiệp vụ được đáp ứng. Những bước này diễn ra ở các thời điểm khác nhau và có thể được tiến trình nền thực hiện lại, do đó việc ngăn thay đổi số dư trùng lặp và duy trì trạng thái nhất quán là yêu cầu quan trọng.
+
+Tranh chấp là một phần cần được tính đến ngay trong vòng đời giao dịch. Khi sản phẩm không đúng mô tả, có hư hỏng hoặc phát sinh sự cố giao nhận, các bên cần một hồ sơ tập trung để cung cấp bằng chứng, trao đổi và nhận quyết định xử lý. Nếu thông tin thẩm định, kết quả đấu giá, thanh toán, giao nhận và tranh chấp nằm ở các quy trình rời rạc, việc truy vết sự kiện và xác định trách nhiệm sẽ khó khăn hơn.
+
+Từ các vấn đề trên, bài toán đặt ra là xây dựng một hệ thống web kết nối được toàn bộ chuỗi nghiệp vụ: quản lý sản phẩm, thẩm định và công bố thông tin tham chiếu trước đấu giá; tổ chức phiên và đặt giá trực tuyến; quản lý tiền cọc và thanh toán; theo dõi giao nhận; xử lý tranh chấp sau giao dịch. Hệ thống cần làm rõ ranh giới giữa hoạt động chuyên môn diễn ra ngoài phần mềm với dữ liệu và trạng thái được phần mềm quản lý, đồng thời phải phản ánh trung thực mức bảo đảm của từng cơ chế kỹ thuật.
 
 \section{Mục tiêu và phạm vi đề tài}
 \label{section:1.2}
-Sinh viên trước tiên cần trình bày tổng quan các kết quả của các nghiên cứu hiện nay cho bài toán giới thiệu ở phần \ref{section:1.1} (đối với đề tài nghiên cứu), hoặc về các sản phẩm hiện tại/về nhu cầu của người dùng (đối với đề tài ứng dụng). Tiếp đến, sinh viên tiến hành so sánh và đánh giá tổng quan các sản phẩm/nghiên cứu này.
 
-Dựa trên các phân tích và đánh giá ở trên, sinh viên khái quát lại các hạn chế hiện tại đang gặp phải. Trên cơ sở đó, sinh viên sẽ hướng tới giải quyết vấn đề cụ thể gì, khắc phục hạn chế gì, phát triển phần mềm \textbf{có các chức năng chính gì}, tạo nên đột phá gì, v.v.
+Các nền tảng đấu giá hiện có tiếp cận bài toán theo những phạm vi khác nhau. eBay cung cấp hình thức đặt giá, nghĩa vụ mua của người thắng và cơ chế bảo vệ giao dịch; chương trình Authenticity Guarantee chỉ áp dụng cho một số nhóm hàng đủ điều kiện \cite{ebay-bidding,ebay-authenticity-guarantee,ebay-money-back-guarantee}. Catawiki kết hợp đấu giá với quá trình chuyên gia xem xét đối tượng, các hình thức đặt giá và chính sách bảo vệ người mua \cite{catawiki-experts,catawiki-bid-types,catawiki-safe-secure}. Lạc Việt Auction tập trung vào quy trình đấu giá tài sản trực tuyến, đăng ký tham gia, tiền đặt trước và quy chế của từng cuộc đấu giá \cite{lacviet-user-guide,lacviet-auction-regulation}. Các mô hình này cho thấy đấu giá trực tuyến cần phối hợp công bố thông tin, điều kiện tham gia và xử lý sau giao dịch, nhưng không nền tảng nào trong phạm vi khảo sát được xem là mẫu triển khai nguyên trạng cho quy trình sản phẩm gỗ mỹ nghệ của đề tài. Phân tích chi tiết được trình bày tại Chương~\ref{chapter:Related_works}.
 
-Trong phần này, sinh viên lưu ý chỉ trình bày tổng quan, không đi vào chi tiết của vấn đề hoặc giải pháp. Nội dung chi tiết sẽ được trình bày trong các chương tiếp theo, đặc biệt là trong Chương 5.
+Mục tiêu tổng quát của đề tài là phân tích, thiết kế và xây dựng WoodCert Auction, một hệ thống web hỗ trợ quản lý thẩm định và đấu giá sản phẩm gỗ trực tuyến. Hệ thống hướng tới việc đặt dữ liệu sản phẩm, kết quả thẩm định, phiên đấu giá và quá trình thực hiện giao dịch trong cùng một chuỗi trạng thái có thể truy vết. Đây là sản phẩm phục vụ học tập, nghiên cứu và kiểm chứng giải pháp kỹ thuật trong phạm vi đồ án; hệ thống không được định vị như một tổ chức thẩm định độc lập, một cổng thanh toán thương mại hoàn chỉnh hoặc một đơn vị vận chuyển.
+
+Đối với giai đoạn trước đấu giá, đề tài đặt mục tiêu hỗ trợ người bán tạo và quản lý sản phẩm, gửi yêu cầu thẩm định và theo dõi trạng thái xử lý. Thẩm định viên có thể tiếp nhận hồ sơ, lập báo cáo và đưa ra kết luận. Chỉ sản phẩm đáp ứng điều kiện nghiệp vụ mới được sử dụng để tạo phiên đấu giá. Chứng thư điện tử lưu mã hồ sơ cùng dấu vân tay SHA-256 tham chiếu của dữ liệu cốt lõi; giá trị này phục vụ truy vết, không được xem là chữ ký số hoặc bằng chứng chống chối bỏ.
+
+Đối với giai đoạn đấu giá, hệ thống cần cho phép công bố phiên, đăng ký tham gia, phong tỏa tiền cọc và đặt giá theo thời gian thực. Mỗi lượt đặt giá phải được kiểm tra về thời gian, tư cách tham gia, người đang dẫn đầu và bước giá. Khi phiên kết thúc, hệ thống xác định kết quả, quyết toán tiền cọc và tạo đơn hàng nếu có người thắng hợp lệ.
+
+Đối với giai đoạn sau đấu giá, đề tài bao gồm thanh toán phần tiền còn lại, ghi nhận việc người bán xác nhận gửi hoặc bàn giao hàng, xác nhận nhận hàng, tự động xử lý các mốc quá hạn và giải quyết tranh chấp kèm bằng chứng. Các vai trò khách truy cập, người tham gia/người mua, người bán, thẩm định viên và quản trị viên được phân quyền theo trách nhiệm. Phân hệ quản trị hỗ trợ quản lý người dùng, danh mục, năng lực tài khoản, doanh thu, nhật ký quản trị và hồ sơ tranh chấp.
+
+Bảng~\ref{tab:chapter1-scope} tóm tắt ranh giới của đề tài. Việc phân biệt nội dung trong, ngoài và chưa thuộc phạm vi giúp tránh mô tả hoạt động vật lý hoặc chức năng dự kiến như kết quả đã được phần mềm thực hiện.
+
+\begin{table}[H]
+\centering
+\small
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{|>{\raggedright\arraybackslash}p{0.20\linewidth}|
+                >{\raggedright\arraybackslash}p{0.70\linewidth}|}
+\hline
+\textbf{Nhóm phạm vi} & \textbf{Nội dung} \\ \hline
+Trong phạm vi &
+Tài khoản và phân quyền; sản phẩm và hình ảnh; thẩm định, chứng thư và dấu vân tay tham chiếu; ví, nạp tiền thử nghiệm và tiền cọc; phiên đấu giá, đặt giá thời gian thực và quyết toán; đơn hàng, giao nhận, tranh chấp; quản trị, kiểm thử và triển khai production. \\ \hline
+Hoạt động ngoài phần mềm &
+Vận chuyển hiện vật tới nơi thẩm định; đánh giá chuyên môn trực tiếp; vận chuyển hàng hóa thực tế; xác minh danh tính pháp lý và xử lý khiếu nại ngoài quy trình số của hệ thống. \\ \hline
+Chưa thuộc phiên bản hiện tại &
+Trung tâm thông báo lưu bền; hoàn tiền một phần khi phân xử; tích hợp API của đơn vị vận chuyển; quy trình video đóng gói hoàn chỉnh; rút tiền và đối soát ngân hàng; sổ cái escrow độc lập. \\ \hline
+Giới hạn đánh giá &
+Chưa công bố benchmark tải, thông lượng, độ trễ p95 hoặc tỷ lệ availability; kết quả kiểm thử chỉ chứng minh các hành vi trong phạm vi bộ test và môi trường đã nêu. \\ \hline
+\end{tabular}
+\caption{Phạm vi của đề tài WoodCert Auction}
+\label{tab:chapter1-scope}
+\end{table}
+
+Phạm vi trên giúp đề tài tập trung vào chuỗi nghiệp vụ cốt lõi thay vì mở rộng sang các dịch vụ cần hạ tầng pháp lý hoặc đối tác thương mại độc lập. Những chức năng chưa hoàn thiện được trình bày như giới hạn và hướng phát triển, không được xem là kết quả đã đạt được.
 
 \section{Định hướng giải pháp}
 \label{section:1.3}
-Từ việc xác định rõ nhiệm vụ cần giải quyết ở phần \ref{section:1.2}, sinh viên đề xuất định hướng giải pháp của mình theo trình tự sau: (i) Sinh viên trước tiên trình bày sẽ giải quyết vấn đề theo định hướng, phương pháp, thuật toán, kỹ thuật, hay công nghệ nào; Tiếp theo, (ii) sinh viên mô tả ngắn gọn giải pháp của mình là gì (khi đi theo định hướng/phương pháp nêu trên); và sau cùng, (iii) sinh viên trình bày đóng góp chính của đồ án là gì, kết quả đạt được là gì.
 
-Sinh viên lưu ý không giải thích hoặc phân tích chi tiết công nghệ/thuật toán trong phần này. Sinh viên chỉ cần nêu tên định hướng công nghệ/thuật toán, mô tả ngắn gọn trong một đến hai câu và giải thích nhanh lý do lựa chọn.
+WoodCert Auction được định hướng như một ứng dụng web gồm frontend dạng ứng dụng trang đơn và backend đơn khối phân mô-đun. Frontend cung cấp các không gian sử dụng theo vai trò và phòng đặt giá thời gian thực. Backend được chia theo các miền tài khoản, media, sản phẩm, tài chính, đấu giá, đơn hàng, giao nhận và tranh chấp nhưng vẫn được đóng gói thành một đơn vị triển khai. Cách tổ chức này phù hợp với phạm vi đồ án và cho phép các nghiệp vụ liên quan phối hợp trong cùng ứng dụng, đồng thời tránh chi phí vận hành của nhiều dịch vụ độc lập.
+
+MySQL được sử dụng cho dữ liệu bền vững và các trạng thái nghiệp vụ cần quan hệ, ràng buộc cùng khả năng truy vấn lâu dài. Redis giữ trạng thái thay đổi nhanh của phiên đang hoạt động. Một Lua script thực hiện nguyên tử việc kiểm tra và cập nhật lượt đặt giá trong Redis; WebSocket/STOMP phân phối sự kiện tới trình duyệt. MySQL tiếp tục lưu cấu hình phiên, người tham gia, lịch sử được ghi thành công, bản chụp trạng thái và kết quả kết thúc. Việc phân vai này ưu tiên đường xử lý thời gian thực nhưng không tạo giao dịch ACID xuyên Redis và MySQL; giới hạn và đường phục hồi được phân tích ở các chương sau.
+
+Đối với nghiệp vụ tài chính, giải pháp sử dụng số dư khả dụng, số dư đóng băng, lịch sử giao dịch và khóa thao tác nghiệp vụ để ngăn một lệnh bị thực hiện lặp. Khóa lạc quan hỗ trợ phát hiện cập nhật cạnh tranh trên ví. Các tác vụ nền quản lý việc mở và đóng phiên, quyết toán tiền cọc, xử lý quá hạn thanh toán, quá hạn xác nhận gửi hàng và tự động hoàn tất giao dịch. Mô hình này không được mô tả là một sổ cái escrow độc lập.
+
+Quy trình thẩm định được kiểm soát bằng trạng thái sản phẩm và quyền của thẩm định viên. Khi báo cáo được hoàn tất, hệ thống tạo mã chứng thư và lưu dấu vân tay SHA-256 từ dữ liệu cốt lõi theo một quy ước xác định. Giải pháp tạo cơ sở tham chiếu và truy vết trong phạm vi ứng dụng, nhưng không thay thế kết luận chuyên môn, chữ ký số hoặc hạ tầng khóa công khai.
+
+Về nền tảng triển khai, backend sử dụng Java và Spring Boot; frontend sử dụng React và TypeScript; ảnh được tích hợp với Cloudinary; VNPay Sandbox phục vụ luồng nạp tiền thử nghiệm. Hệ thống được đóng gói bằng Docker, phân phát qua Nginx và sử dụng quy trình tích hợp, triển khai liên tục để chạy kiểm thử, kiểm tra build và triển khai image theo phiên bản mã nguồn.
+
+Ba đóng góp kỹ thuật được tập trung làm rõ trong đồ án gồm: phối hợp Redis và MySQL cho trạng thái đấu giá thời gian thực; xử lý ví, tiền cọc và tác vụ tài chính có khả năng chạy lại an toàn; kiểm soát quy trình thẩm định kết hợp dấu vân tay tham chiếu của chứng thư. Hệ thống đã được xây dựng, kiểm thử tự động và triển khai trên môi trường production. Kết quả này chứng minh các luồng cốt lõi có thể vận hành trong phạm vi đã xác định, nhưng không được suy rộng thành chứng nhận an toàn, kiểm toán tài chính hoặc kết quả đo tải.
 
 \section{Bố cục đồ án}
 \label{section:1.4}
-Phần còn lại của báo cáo đồ án tốt nghiệp này được tổ chức như sau. 
 
-Chương 2 trình bày về v.v. 
-
-Trong Chương 3, em/tôi giới thiệu về v.v.
-
-\textbf{Chú ý:} Sinh viên cần viết mô tả thành đoạn văn đầy đủ về nội dung chương. Tuyệt đối không viết ý hay gạch đầu dòng. Chương 1 không cần mô tả trong phần này. 
-
-Ví dụ tham khảo mô tả chương trong phần bố cục đồ án tốt nghiệp: Chương *** trình bày đóng góp chính của đồ án, đó là một nền tảng ABC cho phép khai phá và tích hợp nhiều nguồn dữ liệu, trong đó mỗi nguồn dữ liệu lại có định dạng đặc thù riêng. Nền tảng ABC được phát triển dựa trên khái niệm DEF, là các module ngữ nghĩa trợ giúp người dùng tìm kiếm, tích hợp và hiển thị trực quan dữ liệu theo mô hình cộng tác và mô hình phân tán.
-
-\textbf{Chú ý:} Trong phần nội dung chính, mỗi chương của đồ án nên có phần Tổng quan và Kết chương. Hai phần này đều có định dạng văn bản “Normal”, sinh viên không cần tạo định dạng riêng, ví dụ như không in đậm/in nghiêng, không đóng khung, v.v. 
-
-Trong phần Tổng quan của chương N, sinh viên nên có sự liên kết với chương N-1 rồi trình bày sơ qua lý do có mặt của chương N và sự cần thiết của chương này trong đồ án. Sau đó giới thiệu những vấn đề sẽ trình bày trong chương này là gì, trong các đề mục lớn nào.
-
-Ví dụ về phần Tổng quan: Chương 3 đã thảo luận về nguồn gốc ra đời, cơ sở lý thuyết và các nhiệm vụ chính của bài toán tích hợp dữ liệu. Chương 4 này sẽ trình bày chi tiết các công cụ tích hợp dữ liệu theo hướng tiếp cận “mashup”. Với mục đích và phạm vi của đề tài, sáu nhóm công cụ tích hợp dữ liệu chính được trình bày bao gồm: (i) nhóm công cụ ABC trong phần 4.1, (ii) nhóm công cụ DEF trong phần 4.2, nhóm công cụ GHK trong phần 4.3, v.v.
-
-Trong phần Kết chương, sinh viên đưa ra một số kết luận quan trọng của chương. Những vấn đề mở ra trong Tổng quan cần được tóm tắt lại nội dung và cách giải quyết/thực hiện như thế nào. Sinh viên lưu ý không viết Kết chương giống hệt Tổng quan. Sau khi đọc phần Kết chương, người đọc sẽ nắm được sơ bộ nội dung và giải pháp cho các vấn đề đã trình bày trong chương. Trong Kết chương, Sinh viên nên có thêm câu liên kết tới chương tiếp theo.
-
-Ví dụ về phần Kết chương: Chương này đã phân tích chi tiết sáu nhóm công cụ tích hợp dữ liệu. Nhóm công cụ ABC và DEF thích hợp với những bài toán tích hợp dữ liệu phạm vi nhỏ. Trong khi đó, nhóm công cụ GHK lại chứng tỏ thế mạnh của mình với những bài toán cần độ chính xác cao, v.v. Từ kết quả nghiên cứu và phân tích về sáu nhóm công cụ tích hợp dữ liệu này, tôi đã thực hiện phát triển phần mềm tự động bóc tách và tích hợp dữ liệu sử dụng nhóm công cụ GHK. Phần này được trình bày trong chương tiếp theo – Chương 5.
+Báo cáo còn lại gồm năm chương. Chương~\ref{chapter:Related_works} khảo sát bối cảnh và phân tích yêu cầu; Chương~\ref{chapter:Methodology} trình bày nền tảng lý thuyết và công nghệ; Chương~\ref{chapter:Experiment} mô tả thiết kế, xây dựng, kiểm thử và triển khai; Chương~\ref{chapter:SolutionAndContribution} phân tích ba đóng góp về đấu giá, tài chính và thẩm định; Chương~\ref{chapter:conclusion} tổng kết kết quả, giới hạn và hướng phát triển.
 
 \end{document}

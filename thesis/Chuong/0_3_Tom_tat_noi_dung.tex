@@ -5,11 +5,18 @@
     \Large{\textbf{TÓM TẮT NỘI DUNG ĐỒ ÁN}}\\
 \end{center}
 \vspace{1cm}
-Sinh viên viết tóm tắt ĐATN của mình trong mục này, với 200 đến 350 từ. Theo trình tự, các nội dung tóm tắt cần có: (i) Giới thiệu vấn đề (tại sao có vấn đề đó, hiện tại được giải quyết chưa, có những hướng tiếp cận nào, các hướng này giải quyết như thế nào, hạn chế là gì), (ii) Hướng tiếp cận sinh viên lựa chọn là gì, vì sao chọn hướng đó, (iii) Tổng quan giải pháp của sinh viên theo hướng tiếp cận đã chọn, và (iv) Đóng góp chính của ĐATN là gì, kết quả đạt được sau cùng là gì. Sinh viên cần viết thành đoạn văn, không được viết ý hoặc gạch đầu dòng.
+
+Giao dịch sản phẩm gỗ mỹ nghệ trực tuyến cần phối hợp thông tin sản phẩm, kết quả thẩm định, điều kiện đấu giá và các nghĩa vụ sau khi phiên kết thúc. Nếu các nội dung này được quản lý rời rạc, người dùng khó truy vết kết quả, dòng tiền và quá trình xử lý tranh chấp. Đồ án xây dựng WoodCert Auction nhằm hỗ trợ chuỗi nghiệp vụ từ tạo sản phẩm, thẩm định và phát hành chứng thư đến đặt giá theo thời gian thực, thanh toán, giao nhận và giải quyết tranh chấp.
+
+Hệ thống sử dụng kiến trúc đơn khối phân mô-đun ở phía máy chủ và ứng dụng trang đơn ở phía giao diện. MySQL quản lý dữ liệu bền vững; Redis và Lua script cập nhật nguyên tử trạng thái phiên đang hoạt động; WebSocket/STOMP truyền sự kiện giá mới tới trình duyệt. Phân hệ tài chính kết hợp số dư đóng băng, khóa thao tác nghiệp vụ và khóa lạc quan để hạn chế xử lý lặp hoặc cập nhật cạnh tranh. Quy trình thẩm định kiểm soát trạng thái sản phẩm và lưu dấu vân tay SHA-256 tham chiếu, không xem giá trị này là chữ ký số.
+
+Đóng góp chính của đồ án gồm cơ chế phối hợp Redis--MySQL cho đấu giá thời gian thực, xử lý tiền cọc và tác vụ tài chính có khả năng chạy lại an toàn, cùng quy trình thẩm định có dữ liệu chứng thư truy vết được. Hệ thống đã được đóng gói bằng Docker, triển khai production và kiểm tra bằng các bộ kiểm thử backend, frontend và trình duyệt. Kết quả kiểm thử ghi nhận 403 kiểm thử backend, 196 kiểm thử frontend và 7 kịch bản đầu cuối đều đạt. Các kết quả này chứng minh hành vi trong phạm vi kiểm thử, không thay thế đo kiểm tải, kiểm toán tài chính hoặc chứng nhận an toàn độc lập.
+
 \begin{flushright}
 Sinh viên thực hiện\\
 \begin{tabular}{@{}c@{}}
-\textit{(Ký và ghi rõ họ tên)}
+Duy\\[0.15cm]
+\textit{Nguyễn Khánh Duy}
 \end{tabular}
 \end{flushright}
 

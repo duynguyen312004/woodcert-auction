@@ -1,0 +1,89 @@
+@startuml
+!include chapter-4-style.puml
+title Bốn lớp điều phối nghiệp vụ tiêu biểu
+top to bottom direction
+hide empty members
+
+together {
+  class BidServiceImpl #FFF4D6 {
+    -auctionSessionRepository
+    -bidLuaScript
+    -redisTemplate
+    -auctionBroadcastService
+    -bidPersistenceService
+    --
+    +placeBid(bidderId, request)
+    -handleBidAccepted(...)
+    -persistBidBestEffort(...)
+    -syncSessionSnapshotBestEffort(...)
+  }
+
+  class AuctionSessionLifecycleWorker #FFF4D6 {
+    -auctionSessionRepository
+    -auctionParticipantRepository
+    -bidRepository
+    -productRepository
+    -auctionRedisService
+    --
+    +activateDueSession(id, now)
+    +finalizeDueSession(id, now)
+    -snapshotFromRedis(...)
+    -snapshotFromFallback(...)
+  }
+}
+
+together {
+  class WalletServiceImpl #FFF4D6 {
+    -walletRepository
+    -walletOperationLifecycleService
+    -walletTransactionRepository
+    -platformRevenueService
+    --
+    +topUpFromVnPay(...)
+    +freezeAuctionDeposit(...)
+    +captureAuctionDeposit(...)
+    +payOrder(...)
+    +refundOrder(...)
+    +creditSellerPayout(...)
+  }
+
+  class DisputeServiceImpl #FFF4D6 {
+    -disputeCaseRepository
+    -disputeMessageRepository
+    -disputeEvidenceRepository
+    -orderService
+    -disputeFulfillmentPort
+    -mediaAssetService
+    --
+    +openDispute(...)
+    +addParticipantMessage(...)
+    +markUnderReview(...)
+    +resolveDispute(...)
+  }
+}
+
+BidServiceImpl -[hidden]right-> AuctionSessionLifecycleWorker
+BidServiceImpl -[hidden]down-> WalletServiceImpl
+AuctionSessionLifecycleWorker -[hidden]down-> DisputeServiceImpl
+WalletServiceImpl -[hidden]right-> DisputeServiceImpl
+
+note bottom of BidServiceImpl
+Redis/Lua quyết định bid; hai bước MySQL
+sau đó được thực hiện theo best-effort.
+end note
+
+note bottom of AuctionSessionLifecycleWorker
+Kích hoạt Redis trước khi commit ACTIVE;
+chốt terminal trước bước quyết toán.
+end note
+
+note bottom of WalletServiceImpl
+operation_key và optimistic locking hỗ trợ lũy đẳng;
+không có escrow ledger độc lập.
+end note
+
+note bottom of DisputeServiceImpl
+Phối hợp order, fulfillment, media và audit;
+không hỗ trợ hoàn tiền một phần.
+end note
+@enduml

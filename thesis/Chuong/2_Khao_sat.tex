@@ -2,6 +2,8 @@
 \begin{document}
 \raggedbottom
 
+Chương này khảo sát bối cảnh và các hệ thống tương tự, đồng thời xác định tác nhân, use case, quy trình nghiệp vụ cùng các yêu cầu chức năng và phi chức năng của WoodCert Auction. Kết quả là cơ sở cho các chương thiết kế, triển khai và đánh giá tiếp theo.
+
 \section{Khảo sát hiện trạng}
 \label{section:2.1}
 
@@ -25,6 +27,8 @@ Catawiki có chuyên gia đánh giá, tuyển chọn đối tượng đấu giá
 
 Lạc Việt Auction công bố quy trình đăng ký tài khoản, đăng ký tham gia, trả giá trực tuyến và các quy định về tiền đặt trước, bước giá hoặc điều kiện áp dụng theo từng cuộc đấu giá \cite{lacviet-home,lacviet-user-guide,lacviet-auction-notice,lacviet-auction-regulation}. Đây là nguồn tham khảo phù hợp cho việc tổ chức phiên và minh bạch điều kiện tham gia trong bối cảnh Việt Nam.
 
+Bảng~\ref{tab:similar-auction-systems} đối chiếu phạm vi, điểm tham khảo và giới hạn của ba nền tảng so với WoodCert Auction.
+
 \begin{table}[htbp]
     \centering
     \caption{So sánh các hệ thống đấu giá tương tự}
@@ -44,7 +48,7 @@ Lạc Việt Auction công bố quy trình đăng ký tài khoản, đăng ký t
         \hline
     \end{tabular}
     \vspace{2pt}
-    \parbox{0.95\textwidth}{\footnotesize Nguồn: Sinh viên tổng hợp từ tài liệu chính thức của eBay, Catawiki và Lạc Việt Auction.}
+    \parbox{0.95\textwidth}{\footnotesize Nguồn: Tổng hợp từ tài liệu chính thức của eBay, Catawiki và Lạc Việt Auction.}
 \end{table}
 
 Từ kết quả khảo sát, WoodCert Auction cần kết nối ba nhóm yêu cầu: tạo căn cứ tin cậy về sản phẩm trước phiên đấu giá, bảo đảm điều kiện tham gia và đặt giá, đồng thời kiểm soát thanh toán, giao nhận và tranh chấp sau phiên. Đây là cơ sở để xác định phạm vi chức năng ở phần tiếp theo.
@@ -57,6 +61,8 @@ Từ kết quả khảo sát, WoodCert Auction cần kết nối ba nhóm yêu c
 \subsection{Tác nhân và biểu đồ use case tổng quát}
 
 Các tác nhân (actor) nghiệp vụ chính gồm khách truy cập (Guest), người tham gia/người mua (Bidder/Buyer), người bán (Seller), thẩm định viên (Appraiser) và quản trị viên (Admin). Người tham gia/người mua là nhóm tài khoản mặc định: người dùng được gọi là người tham gia khi đăng ký và đặt giá, đồng thời được gọi là người mua đối với đơn hàng phát sinh sau khi thắng phiên. Người bán là vai trò bổ sung sau khi người dùng hoàn thành hồ sơ bán hàng. Vì vậy, một tài khoản có thể đồng thời đảm nhận vai trò người tham gia/người mua và người bán. Ngoài ra, các sơ đồ phân rã sử dụng tác nhân trừu tượng ``Thời gian'' để biểu diễn sự kích hoạt của tác vụ theo lịch; VNPay Sandbox, Cloudinary và SMTP là các hệ thống hỗ trợ tương tác qua biên phần mềm.
+
+Bảng~\ref{tab:actor-main-functions} tóm tắt trách nhiệm chính của từng tác nhân và hệ thống hỗ trợ.
 
 \begin{table}[htbp]
     \centering
@@ -99,7 +105,7 @@ Hình~\ref{fig:overall-use-case} tập trung vào năm tác nhân nghiệp vụ 
     \includegraphics[width=0.9\linewidth,height=0.42\textheight,keepaspectratio]{chapter-2/overall-use-case.png}
     \caption{Biểu đồ use case tổng quát của WoodCert Auction}
     \label{fig:overall-use-case}
-    \caption*{\textit{Nguồn: Sinh viên tổng hợp từ phạm vi nghiệp vụ của hệ thống.}}
+    \caption*{\textit{Nguồn: Tổng hợp từ phạm vi nghiệp vụ của hệ thống.}}
 \end{figure}
 \FloatBarrier
 
@@ -176,7 +182,7 @@ Nhóm tổ chức và tham gia đấu giá được phân rã tại Hình~\ref{f
     \includegraphics[width=0.86\linewidth,height=0.36\textheight,keepaspectratio]{chapter-2/auction-use-case.png}
     \caption{Biểu đồ use case phân rã nghiệp vụ tổ chức và tham gia đấu giá}
     \label{fig:auction-use-case}
-    \caption*{\textit{Nguồn: Sinh viên tổng hợp từ mã nguồn và phạm vi WoodCert Auction.}}
+    \caption*{\textit{Nguồn: Tổng hợp từ mã nguồn và phạm vi WoodCert Auction.}}
 \end{figure}
 
 \subsection{Quy trình nghiệp vụ}
@@ -190,7 +196,7 @@ Giai đoạn sau đấu giá được trình bày tại Hình~\ref{fig:post-auct
     \includegraphics[width=\linewidth,height=0.35\textheight,keepaspectratio]{chapter-2/auction-business-flow.pdf}
     \caption{Quy trình từ tạo sản phẩm đến kết thúc phiên đấu giá}
     \label{fig:overall-business-flow}
-    \caption*{\textit{Nguồn: Sinh viên tổng hợp từ mã nguồn và phạm vi WoodCert Auction.}}
+    \caption*{\textit{Nguồn: Tổng hợp từ mã nguồn và phạm vi WoodCert Auction.}}
 \end{figure}
 
 \begin{figure}[htbp]
@@ -198,7 +204,7 @@ Giai đoạn sau đấu giá được trình bày tại Hình~\ref{fig:post-auct
     \includegraphics[width=\linewidth,height=0.35\textheight,keepaspectratio]{chapter-2/order-fulfillment-dispute-flow.pdf}
     \caption{Quy trình thanh toán, giao nhận và giải quyết tranh chấp}
     \label{fig:post-auction-business-flow}
-    \caption*{\textit{Nguồn: Sinh viên tổng hợp từ mã nguồn và phạm vi WoodCert Auction.}}
+    \caption*{\textit{Nguồn: Tổng hợp từ mã nguồn và phạm vi WoodCert Auction.}}
 \end{figure}
 \FloatBarrier
 
@@ -209,7 +215,7 @@ WoodCert Auction hiện chưa có trung tâm thông báo lưu bền, hoàn tiề
 \section{Đặc tả các use case chính}
 \label{section:2.3}
 
-Phần này lựa chọn sáu use case đại diện cho chuỗi nghiệp vụ cốt lõi. Các chi tiết triển khai như Redis, Lua, MySQL, thứ tự phát sự kiện hoặc cơ chế ghi cố gắng được trình bày ở Chương 4--5. Use case “Thẩm định và lập báo cáo” cùng các đặc tả bổ sung được chuyển sang Phụ lục B.
+Phần này lựa chọn sáu use case đại diện cho chuỗi nghiệp vụ cốt lõi. Đặc tả tương ứng được trình bày tại Bảng~\ref{tab:uc-submit-appraisal}, Bảng~\ref{tab:uc-create-auction}, Bảng~\ref{tab:uc-register-auction}, Bảng~\ref{tab:uc-place-bid}, Bảng~\ref{tab:uc-pay-order-remainder} và Bảng~\ref{tab:uc-open-dispute}. Các chi tiết triển khai như Redis, Lua, MySQL, thứ tự phát sự kiện hoặc cơ chế ghi cố gắng được trình bày ở Chương~\ref{chapter:Experiment}--\ref{chapter:SolutionAndContribution}. Use case ``Thẩm định và lập báo cáo'' cùng các đặc tả bổ sung được chuyển sang Phụ lục~\ref{chapter:AppendixA}.
 
 \subsection{UC-01: Gửi yêu cầu thẩm định}
 
@@ -425,7 +431,7 @@ Phần này lựa chọn sáu use case đại diện cho chuỗi nghiệp vụ c
 \section{Yêu cầu phi chức năng}
 \label{section:2.4}
 
-Các yêu cầu phi chức năng được trình bày ở mức tiêu chí chất lượng, không sử dụng các ngưỡng định lượng chưa được phê duyệt hoặc chưa có đo kiểm. Kết quả đáp ứng được đối chiếu tại Chương 4 và Chương 6.
+Bảng~\ref{tab:non-functional-requirements} trình bày các yêu cầu phi chức năng ở mức tiêu chí chất lượng. Báo cáo không sử dụng ngưỡng định lượng chưa được phê duyệt hoặc chưa có đo kiểm; kết quả đáp ứng được đối chiếu tại Chương~\ref{chapter:Experiment} và Chương~\ref{chapter:conclusion}.
 
 \begin{table}[htbp]
     \centering
@@ -455,7 +461,9 @@ Các yêu cầu phi chức năng được trình bày ở mức tiêu chí chấ
     \end{tabular}
 \end{table}
 
-Tóm lại, Chương 2 đã xác định bối cảnh, tác nhân, yêu cầu chức năng, các use case cốt lõi và yêu cầu chất lượng của WoodCert Auction; các đặc tả bổ sung được chuyển sang Phụ lục B.
+\section{Tổng kết chương}
+
+Chương~\ref{chapter:Related_works} đã trình bày kết quả khảo sát bối cảnh thực tế và đối chiếu ba hệ thống tương tự là eBay, Catawiki và Lạc Việt Auction. Thông qua đó, đồ án đã xác định các tác nhân nghiệp vụ, xây dựng danh sách yêu cầu chức năng và phi chức năng cốt lõi cho hệ thống WoodCert Auction. Để giữ cho nội dung chương tập trung vào các luồng nghiệp vụ chính, use case ``Thẩm định và lập báo cáo'' cùng một số đặc tả phân rã bổ sung đã được chuyển sang Phụ lục~\ref{chapter:AppendixA}. Đây là cơ sở quan trọng cho phần phân tích lựa chọn công nghệ và thiết kế kiến trúc chi tiết ở các chương tiếp theo.
 
 \FloatBarrier
 \clearpage

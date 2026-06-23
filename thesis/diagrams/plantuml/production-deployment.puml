@@ -1,0 +1,60 @@
+@startuml
+!include chapter-4-style.puml
+title Kiến trúc triển khai production
+left to right direction
+
+actor "Người dùng" as User
+cloud "Internet" as Internet
+
+node "VPS Ubuntu" as VPS {
+  node "Nginx host\nHTTPS/TLS và reverse proxy" as HostNginx #E8EEF3
+
+  frame "Docker Compose network" as Compose {
+    node "frontend" as Frontend {
+      component "Nginx static server\nReact SPA" as Static
+    }
+    node "backend" as Backend {
+      component "Spring Boot 3.5.15\nJava 17" as App
+    }
+    database "mysql-db\nMySQL 8.0" as MySQL
+    database "redis-cache\nRedis 7.4 + AOF" as Redis
+  }
+
+  folder "mysql_data" as MySQLVolume
+  folder "redis_data" as RedisVolume
+  file ".env.prod\nquyền 600" as Env
+}
+
+cloud "Cloudinary" as Cloudinary
+cloud "VNPay Sandbox" as VNPay
+cloud "SMTP" as SMTP
+
+User --> Internet : HTTPS
+Internet --> HostNginx : 80 / 443
+HostNginx --> Static : 127.0.0.1:3000\n/
+HostNginx --> App : 127.0.0.1:8080\n/api, /ws-auction,\n/readiness
+
+App --> MySQL : mạng Compose
+App --> Redis : mạng Compose
+MySQL --> MySQLVolume
+Redis --> RedisVolume
+Env ..> App : biến môi trường
+Env ..> MySQL
+Env ..> Redis
+
+App --> Cloudinary
+User --> Cloudinary : upload trực tiếp
+App --> VNPay
+User --> VNPay : redirect
+App --> SMTP
+
+note bottom of MySQL
+MySQL và Redis không publish cổng ra host.
+Frontend và backend chỉ bind vào loopback VPS.
+end note
+
+note bottom of HostNginx
+Cấu hình TLS cổng 443 thực tế nằm trên VPS;
+nginx-proxy.conf trong repository chưa phản ánh đầy đủ.
+end note
+@enduml

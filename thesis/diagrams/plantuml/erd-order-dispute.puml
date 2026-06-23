@@ -1,0 +1,90 @@
+@startuml
+!include chapter-4-style.puml
+title ERD rút gọn: đơn hàng, giao nhận và tranh chấp
+left to right direction
+hide methods
+hide stereotypes
+skinparam linetype ortho
+
+entity "users" as users {
+  *id : VARCHAR(36) <<PK>>
+}
+entity "products" as products {
+  *id : BIGINT <<PK>>
+}
+entity "media_assets" as media_assets {
+  *id : BIGINT <<PK>>
+}
+entity "orders" as orders {
+  *id : BIGINT <<PK>>
+  --
+  buyer_id : VARCHAR(36) <<FK>>
+  seller_id : VARCHAR(36) <<FK>>
+  product_id : BIGINT <<FK>>
+  source_type : VARCHAR
+  source_id : BIGINT
+  status : VARCHAR
+  --
+  UQ(source_type, source_id)
+}
+entity "order_fulfillments" as fulfillments {
+  *id : BIGINT <<PK>>
+  --
+  order_id : BIGINT <<FK,UQ>>
+  buyer_id : VARCHAR(36) <<FK>>
+  seller_id : VARCHAR(36) <<FK>>
+  status : VARCHAR
+  shipment_deadline : DATETIME <<nullable>>
+}
+entity "dispute_cases" as disputes {
+  *id : BIGINT <<PK>>
+  --
+  order_id : BIGINT <<FK>>
+  fulfillment_id : BIGINT <<FK,nullable>>
+  opened_by_user_id : VARCHAR(36) <<FK>>
+  resolved_by_admin_id : VARCHAR(36) <<FK,nullable>>
+  status : VARCHAR
+}
+entity "dispute_messages" as messages {
+  *id : BIGINT <<PK>>
+  --
+  dispute_case_id : BIGINT <<FK>>
+  author_user_id : VARCHAR(36) <<FK>>
+}
+entity "dispute_evidence" as evidence {
+  *id : BIGINT <<PK>>
+  --
+  dispute_case_id : BIGINT <<FK>>
+  message_id : BIGINT <<FK,nullable>>
+  media_id : BIGINT <<FK>>
+  uploaded_by_user_id : VARCHAR(36) <<FK>>
+}
+
+users ||--o{ orders : buyer/seller (2 FK)
+products ||--o{ orders
+orders ||--o| fulfillments
+users ||--o{ fulfillments : buyer/seller (2 FK)
+orders ||--o{ disputes
+fulfillments |o--o{ disputes
+users ||--o{ disputes : opened_by
+users |o--o{ disputes : resolved_by
+disputes ||--o{ messages
+users ||--o{ messages
+disputes ||--o{ evidence
+messages |o--o{ evidence
+media_assets ||--o{ evidence
+users ||--o{ evidence
+
+users -[hidden]right-> orders
+products -[hidden]down-> orders
+orders -[hidden]right-> fulfillments
+fulfillments -[hidden]right-> disputes
+disputes -[hidden]right-> messages
+messages -[hidden]right-> evidence
+media_assets -[hidden]down-> evidence
+
+note bottom of orders
+source_id của order nguồn AUCTION là liên kết logic;
+schema không tạo foreign key tới auction_sessions.
+end note
+@enduml
