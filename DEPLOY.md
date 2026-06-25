@@ -207,3 +207,5 @@ khi được phê duyệt. Quy trình bootstrap, GitHub Environment, GHCR, bảo
 
 Lệnh build trực tiếp trên VPS ở phần 7 vẫn được giữ làm phương án vận hành dự phòng. Pipeline
 CI/CD không đưa `.env.prod` hoặc credential production vào Docker image hay GitHub repository.
+
+<!-- Trigger deployment pipeline at 2026-06-26T00:18 -->
