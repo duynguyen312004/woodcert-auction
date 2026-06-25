@@ -60,28 +60,29 @@ entity "dispute_evidence" as evidence {
   uploaded_by_user_id : VARCHAR(36) <<FK>>
 }
 
-users ||--o{ orders : buyer/seller (2 FK)
+' --- Mối quan hệ cấu trúc cốt lõi ---
 products ||--o{ orders
 orders ||--o| fulfillments
-users ||--o{ fulfillments : buyer/seller (2 FK)
 orders ||--o{ disputes
 fulfillments |o--o{ disputes
-users ||--o{ disputes : opened_by
-users |o--o{ disputes : resolved_by
 disputes ||--o{ messages
-users ||--o{ messages
 disputes ||--o{ evidence
 messages |o--o{ evidence
 media_assets ||--o{ evidence
-users ||--o{ evidence
 
-users -[hidden]right-> orders
-products -[hidden]down-> orders
+' --- Mối quan hệ với users (giản lược để tránh rối sơ đồ) ---
+users ||--o{ orders : buyer/seller (2 FK)
+users ||--o{ disputes : opened_by
+users |o--o{ disputes : resolved_by
+
+' --- Bố cục ẩn để Graphviz render khoa học ---
+products -[hidden]down-> users
+users -[hidden]down-> orders
 orders -[hidden]right-> fulfillments
 fulfillments -[hidden]right-> disputes
-disputes -[hidden]right-> messages
+disputes -[hidden]down-> messages
 messages -[hidden]right-> evidence
-media_assets -[hidden]down-> evidence
+evidence -[hidden]up-> media_assets
 
 note bottom of orders
 source_id của order nguồn AUCTION là liên kết logic;
