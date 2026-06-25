@@ -14,6 +14,7 @@ public record CertificateVerificationRes(
         String productTitle,
         String description,
         List<String> imageUrls,
+        List<String> appraisalImageUrls,
         CategoryRes category,
         String material,
         String verifiedMaterial,
@@ -39,6 +40,14 @@ public record CertificateVerificationRes(
                     .toList();
         }
 
+        List<String> appraisalUrls = List.of();
+        if (report.getImages() != null) {
+            appraisalUrls = report.getImages().stream()
+                    .map(img -> img.getMediaAsset() != null ? img.getMediaAsset().getSecureUrl() : null)
+                    .filter(java.util.Objects::nonNull)
+                    .toList();
+        }
+
         String sellerName = null;
         if (product != null && product.getSeller() != null) {
             sellerName = product.getSeller().getSellerProfile() != null 
@@ -54,6 +63,7 @@ public record CertificateVerificationRes(
                 product != null ? product.getTitle() : null,
                 product != null ? product.getDescription() : null,
                 urls,
+                appraisalUrls,
                 product != null && product.getCategory() != null ? CategoryRes.fromEntity(product.getCategory()) : null,
                 product != null ? product.getMaterial() : null,
                 report.getVerifiedMaterial(),

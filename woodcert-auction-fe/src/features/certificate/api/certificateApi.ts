@@ -8,6 +8,7 @@ export interface CertificateVerification {
   productTitle: string | null;
   description: string | null;
   imageUrls: string[];
+  appraisalImageUrls?: string[];
   category: {
     id: number;
     name: string;

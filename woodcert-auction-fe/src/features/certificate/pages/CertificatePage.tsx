@@ -7,6 +7,7 @@ import {
   Check,
   Award,
   ShieldCheck,
+  ShieldAlert,
   FileText,
   Fingerprint,
   FileCheck,
@@ -23,6 +24,7 @@ export function CertificatePage() {
   const { certificateCode } = useParams();
   const [value, setValue] = useState(certificateCode ?? "");
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [imageTab, setImageTab] = useState<"product" | "appraisal" | null>(null);
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedSign, setCopiedSign] = useState(false);
   const navigate = useNavigate();
@@ -115,7 +117,12 @@ export function CertificatePage() {
         {query.data &&
           (() => {
             const data = query.data;
-            const imageUrls = data.imageUrls ?? [];
+            const hasAppraisal = !!(data.appraisalImageUrls && data.appraisalImageUrls.length > 0);
+            const effectiveTab = imageTab ?? (hasAppraisal ? "appraisal" : "product");
+            const imageUrls =
+              effectiveTab === "appraisal" && data.appraisalImageUrls
+                ? data.appraisalImageUrls
+                : (data.imageUrls ?? []);
 
             // Dịch cấp độ tình trạng sang tiếng Việt sang trọng
             const gradeMap: Record<string, string> = {
@@ -138,9 +145,44 @@ export function CertificatePage() {
               <div className="grid gap-8 lg:grid-cols-[1fr_1.3fr] items-start">
                 {/* Cột trái: Thư viện hình ảnh sản phẩm */}
                 <div className="space-y-4 lg:sticky lg:top-6">
+                  {hasAppraisal && (
+                    <div className="flex gap-2 p-1 rounded-lg border border-white/5 bg-[#181612]/80 backdrop-blur-sm">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setImageTab("appraisal");
+                          setActiveImageIndex(0);
+                        }}
+                        className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${
+                          effectiveTab === "appraisal"
+                            ? "bg-primary text-black shadow-md"
+                            : "text-[#8d877c] hover:text-white"
+                        }`}
+                      >
+                        Ảnh kiểm định (Thẩm định viên)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setImageTab("product");
+                          setActiveImageIndex(0);
+                        }}
+                        className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${
+                          effectiveTab === "product"
+                            ? "bg-primary text-black shadow-md"
+                            : "text-[#8d877c] hover:text-white"
+                        }`}
+                      >
+                        Ảnh giới thiệu (Người bán)
+                      </button>
+                    </div>
+                  )}
+
                   <div className="group relative overflow-hidden rounded-xl border border-white/10 bg-[#161411] aspect-square flex items-center justify-center shadow-2xl">
                     <div className="absolute top-3 left-3 z-10 bg-black/60 backdrop-blur-md text-[10px] uppercase font-bold tracking-wider text-primary px-3 py-1.5 rounded-full border border-white/10">
-                      Ảnh thực tế tác phẩm
+                      {effectiveTab === "appraisal"
+                        ? "Ảnh giám định thực chứng"
+                        : "Ảnh thực tế tác phẩm"}
                     </div>
                     <img
                       src={imageUrls[activeImageIndex] ?? FALLBACK_PRODUCT_IMAGE}
@@ -151,7 +193,7 @@ export function CertificatePage() {
 
                   {imageUrls.length > 1 && (
                     <div className="grid grid-cols-5 gap-2">
-                      {imageUrls.map((url, idx) => (
+                      {imageUrls.map((url: string, idx: number) => (
                         <button
                           key={idx}
                           onClick={() => setActiveImageIndex(idx)}
@@ -184,24 +226,38 @@ export function CertificatePage() {
 
                 {/* Cột phải: Bản chứng thư giấy sang trọng */}
                 <div className="space-y-6">
-                  <section className="relative rounded-2xl border-4 border-double border-[#cfa853]/35 bg-[#ebdcb9] p-8 text-stone-900 shadow-[0_15px_45px_rgba(0,0,0,0.4)] overflow-hidden">
+                  <section
+                    className={`relative rounded-2xl border-4 border-double p-8 text-stone-900 shadow-[0_15px_45px_rgba(0,0,0,0.4)] overflow-hidden transition-all ${
+                      data.authentic
+                        ? "border-[#cfa853]/35 bg-[#ebdcb9]"
+                        : "border-red-700/20 bg-[#ebd8d8]"
+                    }`}
+                  >
                     {/* Decorative background lines or seal effect */}
                     <div className="absolute -right-16 -top-16 w-48 h-48 rounded-full border-8 border-stone-800/5 flex items-center justify-center select-none pointer-events-none transform rotate-12">
                       <span className="text-[9px] font-bold text-stone-800/10 tracking-[0.3em] uppercase">
-                        WOODCERTIFIED
+                        {data.authentic ? "WOODCERTIFIED" : "DENIED"}
                       </span>
                     </div>
 
                     {/* Header của tờ chứng thư */}
                     <div className="text-center pb-6 border-b border-stone-800/20">
-                      <div className="inline-flex items-center justify-center p-2.5 bg-[#2f7d68]/10 rounded-full mb-3 text-[#22604f]">
-                        <ShieldCheck className="h-10 w-10" />
-                      </div>
+                      {data.authentic ? (
+                        <div className="inline-flex items-center justify-center p-2.5 bg-[#2f7d68]/10 rounded-full mb-3 text-[#22604f]">
+                          <ShieldCheck className="h-10 w-10" />
+                        </div>
+                      ) : (
+                        <div className="inline-flex items-center justify-center p-2.5 bg-red-600/10 rounded-full mb-3 text-red-700">
+                          <ShieldAlert className="h-10 w-10" />
+                        </div>
+                      )}
                       <h2 className="font-serif text-[10px] font-bold uppercase tracking-[0.3em] text-[#785b24] mb-1">
                         WoodCert Authentication Registry
                       </h2>
                       <h3 className="font-serif text-2xl font-bold tracking-tight text-stone-900 leading-tight">
-                        CHỨNG THƯ GIÁM ĐỊNH GỖ MỸ NGHỆ
+                        {data.authentic
+                          ? "CHỨNG THƯ GIÁM ĐỊNH GỖ MỸ NGHỆ"
+                          : "THÔNG BÁO TỪ CHỐI BẢO CHỨNG"}
                       </h3>
                       <div className="mt-3 flex items-center justify-center gap-2 text-stone-600 font-mono text-xs">
                         <span>Mã Chứng Thư:</span>
@@ -268,6 +324,7 @@ export function CertificatePage() {
                             label="Xác minh chính hãng"
                             value={data.authentic ? "Đã xác thực chính hãng" : "Không chính hãng"}
                             highlight={data.authentic}
+                            danger={!data.authentic}
                           />
                           <CertificateInfoItem
                             label="Vật liệu thực tế"
@@ -370,9 +427,15 @@ interface CertificateInfoItemProps {
   label: string;
   value: string;
   highlight?: boolean;
+  danger?: boolean;
 }
 
-function CertificateInfoItem({ label, value, highlight = false }: CertificateInfoItemProps) {
+function CertificateInfoItem({
+  label,
+  value,
+  highlight = false,
+  danger = false,
+}: CertificateInfoItemProps) {
   return (
     <div className="space-y-1.5 min-w-0">
       <span className="block text-[10px] font-bold uppercase tracking-[0.12em] text-[#785b24]/75 leading-none">
@@ -380,7 +443,11 @@ function CertificateInfoItem({ label, value, highlight = false }: CertificateInf
       </span>
       <span
         className={`block text-[14px] font-sans break-words leading-tight ${
-          highlight ? "font-bold text-[#1d5c4b]" : "font-semibold text-stone-900"
+          danger
+            ? "font-bold text-red-700"
+            : highlight
+              ? "font-bold text-[#1d5c4b]"
+              : "font-semibold text-stone-900"
         }`}
       >
         {value}

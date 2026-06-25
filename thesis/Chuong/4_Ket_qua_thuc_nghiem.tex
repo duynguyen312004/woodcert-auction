@@ -184,7 +184,7 @@ Nhóm phương thức chính xử lý nạp tiền, thu phí thẩm định, đ�
 
 \texttt{DisputeServiceImpl} quản lý vòng đời vụ việc từ khi buyer mở tranh chấp tới khi admin giải quyết. Service phối hợp repository vụ việc, tin nhắn, bằng chứng, \texttt{OrderService}, cổng fulfillment, media service và audit quản trị. \texttt{openDispute()} chỉ chấp nhận khi order và fulfillment đủ điều kiện, yêu cầu ít nhất một bằng chứng mở đầu và ngăn tồn tại đồng thời nhiều dispute \texttt{OPEN} hoặc \texttt{UNDER\_REVIEW} cho cùng order.
 
-Buyer có thể \texttt{cancelDispute()} khi vụ việc còn hoạt động. Admin có thể \texttt{markUnderReview()} và \texttt{resolveDispute()} với kết quả \texttt{SELLER\_WINS} hoặc \texttt{BUYER\_WINS}. Seller thắng dẫn tới hoàn tất order và payout; buyer thắng dẫn tới hoàn toàn bộ giá chốt, hủy fulfillment và đưa sản phẩm về trạng thái trả lại. Enum có giá trị \texttt{REJECTED}, nhưng mã nguồn hiện không có chuyển tiếp nghiệp vụ đưa dispute tới trạng thái đó.
+Buyer có thể \texttt{cancelDispute()} khi vụ việc còn hoạt động. Admin có thể \texttt{markUnderReview()} và \texttt{resolveDispute()} với kết quả \texttt{SELLER\_WINS} hoặc \texttt{BUYER\_WINS}. Seller thắng dẫn tới hoàn tất order và payout; buyer thắng dẫn tới hoàn toàn bộ giá chốt, hủy fulfillment và đưa sản phẩm về trạng thái trả lại. Khi quản trị viên đưa ra quyết định phân xử (\texttt{resolveDispute()}), hồ sơ tranh chấp được đóng lại ở trạng thái \texttt{RESOLVED} với kết quả phân định người thắng là \texttt{SELLER\_WINS} hoặc \texttt{BUYER\_WINS}.
 
 \begin{figure}[H]
 \centering
