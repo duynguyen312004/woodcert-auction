@@ -3,7 +3,7 @@
 title Quy trình kiểm tra và triển khai production
 
 start
-:Push hoặc pull request vào main;
+:Push, pull request vào main\nhoặc chạy CI thủ công;
 
 fork
   :Backend\nMaven test;
@@ -24,9 +24,27 @@ else (Không)
   stop
 endif
 
+if (Đủ điều kiện release?) then (Có)
+  note right
+  CI thành công của push trên main,
+  hoặc workflow release chạy thủ công.
+  Pull request không triển khai production.
+  end note
+else (Không)
+  :Kết thúc sau CI;
+  stop
+endif
+
 :Xác định target SHA thuộc origin/main;
 :Build và đẩy image backend/frontend\nvới tag full commit SHA;
 :Tạo provenance và SBOM;
+
+if (CD_ENABLED và production gate đạt?) then (Có)
+else (Không)
+  :Không triển khai production;
+  stop
+endif
+
 :Kết nối VPS bằng SSH;
 
 if (Guard triển khai đạt?) then (Có)

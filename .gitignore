@@ -55,5 +55,6 @@ thesis/**/*.toc
 thesis/**/*.run.xml
 thesis/**/*.synctex.gz
 thesis/**/*-blx.bib
+thesis/study
 # Keep only the main .tex, .bib and chapter .tex files
 # PDF output goes to thesis/build/

@@ -72,7 +72,7 @@ Bên cạnh việc kiểm soát quy trình, báo cáo cần có một giá trị
 
 \subsection{Giải pháp}
 
-Sản phẩm bắt đầu ở trạng thái nháp (\texttt{DRAFT}), sau đó chuyển sang chờ thẩm định và đang thẩm định; kết quả cuối là \texttt{APPRAISED} hoặc \texttt{REJECTED}. Khi thẩm định viên tiếp nhận hồ sơ, hệ thống sử dụng cơ chế khóa bản ghi tại tầng cơ sở dữ liệu để hạn chế nhiều người cùng nhận một yêu cầu. Báo cáo được liên kết với sản phẩm và người thẩm định; chứng thư chỉ được tạo sau khi dữ liệu thẩm định được hoàn tất và báo cáo có định danh ổn định.
+Sản phẩm bắt đầu ở trạng thái nháp (\texttt{DRAFT}). Sau khi người bán gửi yêu cầu, sản phẩm chuyển sang chờ thẩm định (\texttt{PENDING\_APPRAISAL}); khi thẩm định viên nhận quyền xử lý, trạng thái chuyển thành đang thẩm định (\texttt{UNDER\_APPRAISAL}). Kết quả cuối là \texttt{APPRAISED} hoặc \texttt{REJECTED}; nếu thẩm định viên chủ động trả quyền xử lý, sản phẩm quay lại \texttt{PENDING\_APPRAISAL}. Thao tác nhận hồ sơ khóa bản ghi tại tầng cơ sở dữ liệu và lưu người nhận cùng thời hạn giữ quyền để hạn chế nhiều thẩm định viên xử lý đồng thời. Báo cáo được liên kết với sản phẩm và người thẩm định; chứng thư chỉ được tạo sau khi dữ liệu thẩm định được hoàn tất và báo cáo có định danh ổn định.
 
 Máy trạng thái này phân tách trách nhiệm giữa người bán và thẩm định viên. Người bán cung cấp thông tin sản phẩm và gửi yêu cầu, nhưng không tự chuyển sản phẩm sang trạng thái đã thẩm định. Thẩm định viên tiếp nhận, đánh giá và đưa ra kết luận; các giao diện lập trình ứng dụng (API) tương ứng được giới hạn theo vai trò. Nhờ đó, chứng thư không chỉ là một bản ghi rời rạc mà là kết quả của một chuỗi chuyển trạng thái có điều kiện và có thể truy ngược tới chủ thể xử lý.
 

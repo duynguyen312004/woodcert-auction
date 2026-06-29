@@ -25,10 +25,12 @@ alt Seller giao trước deadline
   Fulfillment -> MySQL : fulfillment = SHIPPED\norder = FULFILLING\nauto-complete +168 giờ
 
   alt Buyer xác nhận đã nhận
-    Buyer -> Fulfillment : receive()
-    Fulfillment -> Order : completeOrder()
+    Buyer -> Fulfillment : confirmReceived(orderId)
+    Fulfillment -> Order : completeFromFulfillment(orderId)
+    Order -> Order : completeOrder(order) [private]
     Order -> Wallet : creditSellerPayout()
     Order -> MySQL : order = COMPLETED
+    Fulfillment -> MySQL : fulfillment = DELIVERED
   else Buyer mở tranh chấp
     Buyer -> Dispute : openDispute(evidence)
     Dispute -> MySQL : dispute = OPEN\norder = DISPUTED
@@ -36,24 +38,31 @@ alt Seller giao trước deadline
     Admin -> Dispute : resolve(SELLER_WINS | BUYER_WINS)
 
     alt SELLER_WINS
-      Dispute -> Order : hoàn tất order
-      Order -> Wallet : payout seller
+      Dispute -> Order : resolveDisputeSellerWins(orderId)
+      Order -> Order : completeOrder(order) [private]
+      Order -> Wallet : creditSellerPayout()
+      Dispute -> Fulfillment : markDisputeSellerWins(orderId)
+      Fulfillment -> MySQL : fulfillment = AUTO_COMPLETED
     else BUYER_WINS
-      Dispute -> Order : hoàn toàn bộ giá chốt
-      Order -> Wallet : refund buyer
-      Dispute -> Fulfillment : hủy fulfillment
-      Order -> MySQL : product = RETURNED
+      Dispute -> Order : resolveDisputeBuyerWins(orderId)
+      Order -> Wallet : refundOrder()
+      Order -> MySQL : order = CANCELED\nproduct = RETURNED
+      Dispute -> Fulfillment : markDisputeBuyerWins(orderId)
+      Fulfillment -> MySQL : fulfillment = CANCELED
     end
   else Không thao tác đến auto-complete deadline
-    Scheduler -> Fulfillment : complete overdue SHIPPED
-    Fulfillment -> Order : completeOrder()
-    Order -> Wallet : payout seller
+    Scheduler -> Fulfillment : autoCompleteOverdueFulfillment()
+    Fulfillment -> Order : completeFromFulfillment(orderId)
+    Order -> Order : completeOrder(order) [private]
+    Order -> Wallet : creditSellerPayout()
+    Fulfillment -> MySQL : fulfillment = AUTO_COMPLETED
   end
 else Seller quá hạn giao
-  Scheduler -> Fulfillment : cancel overdue PENDING_SHIPMENT
-  Fulfillment -> Order : hủy order
-  Order -> Wallet : hoàn toàn bộ giá chốt
-  Order -> MySQL : product = AVAILABLE
+  Scheduler -> Fulfillment : cancelOverdueShipment()
+  Fulfillment -> Order : cancelForShipmentDeadline(orderId)
+  Order -> Wallet : refundOrder()
+  Order -> MySQL : order = CANCELED\nproduct = AVAILABLE
+  Fulfillment -> MySQL : fulfillment = CANCELED
 end
 
 note over Buyer,MySQL

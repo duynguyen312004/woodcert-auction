@@ -37,6 +37,11 @@ end note
 
 |Thẩm định viên (Appraiser)|
 :Tiếp nhận quyền xử lý\nyêu cầu có thời hạn;
+
+|WoodCert Auction|
+:Chuyển sản phẩm sang\nUNDER_APPRAISAL;
+
+|Thẩm định viên (Appraiser)|
 :Kiểm tra trực tiếp hiện vật;
 :Lập báo cáo thẩm định;
 note right
@@ -61,13 +66,17 @@ endif
 |WoodCert Auction|
 :Kiểm tra giá, tiền cọc,\nthời gian và xung đột phiên;
 :Lưu phiên WAITING;
-:Tác vụ nền theo lịch\nkích hoạt phiên ACTIVE;
 
 |Người tham gia (Bidder)|
-:Đăng ký tham gia;
+:Đăng ký tham gia khi phiên WAITING\nhoặc ACTIVE còn hiệu lực;
 
 |WoodCert Auction|
 :Kiểm tra điều kiện và\nphong tỏa tiền đặt cọc;
+note right
+  Đăng ký được mở từ giai đoạn WAITING
+  và tiếp tục trong ACTIVE khi phiên còn thời gian.
+end note
+:Đến thời điểm bắt đầu, tác vụ nền\nchuyển phiên sang ACTIVE;
 
 while (Phiên ACTIVE và còn thời gian?) is ([Có])
     |Người tham gia (Bidder)|

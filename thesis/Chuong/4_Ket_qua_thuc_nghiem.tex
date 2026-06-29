@@ -245,7 +245,7 @@ Luồng trình tự chi tiết của quá trình thanh toán, giao nhận và gi
 \FloatBarrier
 \subsection{Thiết kế cơ sở dữ liệu}
 
-MySQL 8.0 lưu trữ dữ liệu bền vững của WoodCert Auction, còn Flyway quản lý quá trình thay đổi lược đồ. Hệ thống hiện có năm migration từ \texttt{V1} đến \texttt{V5}. \texttt{V1} tạo 33 bảng nền; \texttt{V2} và \texttt{V3} bổ sung dữ liệu tham chiếu cùng tài khoản vận hành; \texttt{V4} thêm hội thoại tranh chấp; \texttt{V5} thêm trường \texttt{shipment\_deadline}. Sau các thay đổi này, lược đồ gồm 34 bảng. Việc phân tách lược đồ thành các bảng chuyên biệt giúp hệ thống đạt chuẩn hóa cao, giảm thiểu dư thừa dữ liệu và tối ưu hóa hiệu năng truy vấn thông qua các chỉ mục được thiết lập phù hợp. Flyway giúp đảm bảo tính nhất quán của cấu trúc cơ sở dữ liệu trên tất cả các môi trường từ phát triển, kiểm thử cho đến triển khai thực tế trên production. Mỗi phiên bản migration đánh dấu một bước phát triển tính năng của ứng dụng, đảm bảo quá trình nâng cấp lược đồ diễn ra an toàn và có khả năng khôi phục khi gặp sự cố.
+MySQL 8.0 lưu trữ dữ liệu bền vững của WoodCert Auction, còn Flyway quản lý thứ tự thay đổi lược đồ. Hệ thống hiện có năm migration từ \texttt{V1} đến \texttt{V5}. \texttt{V1} tạo 33 bảng nền; \texttt{V2} và \texttt{V3} bổ sung dữ liệu tham chiếu cùng tài khoản vận hành; \texttt{V4} thêm hội thoại tranh chấp; \texttt{V5} thêm trường \texttt{shipment\_deadline}. Sau các thay đổi này, lược đồ gồm 34 bảng. Các bảng được phân theo miền nghiệp vụ và sử dụng khóa ngoại, ràng buộc duy nhất cùng chỉ mục cho những quan hệ và đường truy vấn đã xác định. Flyway giúp các môi trường áp dụng migration theo cùng thứ tự và lưu lịch sử phiên bản lược đồ. Cơ chế này không tự bảo đảm khả năng khôi phục dữ liệu; production tạo bản sao lưu trước khi triển khai nhưng việc phục hồi cơ sở dữ liệu vẫn là thao tác vận hành riêng.
 
 Bảng~\ref{tab:database-table-groups} phân nhóm 34 bảng theo các miền dữ liệu chính.
 
@@ -275,7 +275,7 @@ Lược đồ dữ liệu được trình bày theo ba cụm nghiệp vụ. Hìn
 
 Trong nhóm identity, \texttt{users} sử dụng UUID dạng chuỗi làm khóa chính và liên kết nhiều--nhiều với \texttt{roles} qua bảng liên kết. Quyền được ánh xạ từ role; trạng thái đình chỉ capability được lưu riêng theo user. \texttt{seller\_profiles} dùng \texttt{user\_id} làm khóa chính, vì vậy mỗi user có tối đa một hồ sơ seller. Wallet được tạo theo nhu cầu nên một user có từ không đến một wallet; khóa ngoại user trong bảng wallet có ràng buộc unique.
 
-Trong nhóm catalog, một seller có thể sở hữu nhiều product. Một product có nhiều \texttt{product\_images}, nhưng service yêu cầu đúng một ảnh chính khi tạo hoặc cập nhật. \texttt{appraisal\_reports.product\_id} có ràng buộc unique, tạo quan hệ product 1--0..1 report. \texttt{certificate\_code} và \texttt{integrity\_hash} phục vụ tra cứu cùng kiểm tra vân tay dữ liệu; chúng không phải chữ ký số pháp lý.
+Trong nhóm catalog, một seller có thể sở hữu nhiều product. Một product có nhiều \texttt{product\_images}, nhưng service yêu cầu đúng một ảnh chính khi tạo hoặc cập nhật. \texttt{appraisal\_reports.product\_id} có ràng buộc unique, tạo quan hệ product 1--0..1 report. \texttt{certificate\_code} phục vụ tra cứu, còn \texttt{integrity\_hash} lưu dấu vân tay SHA-256 tham chiếu của một số trường dữ liệu cốt lõi. Hệ thống chưa tự tính lại giá trị này khi tra cứu; đây không phải chữ ký số hoặc bằng chứng chống chối bỏ.
 
 \vfill
 \begin{figure}[H]
@@ -286,7 +286,7 @@ Trong nhóm catalog, một seller có thể sở hữu nhiều product. Một pr
 \par\small\textit{Nguồn: Tổng hợp từ Flyway migration \texttt{V1--V5}.}
 \end{figure}
 
-Biểu đồ ERD này làm rõ sự cô lập dữ liệu giữa tài khoản người dùng thông thường và hồ sơ người bán, đồng thời chuẩn hóa thông tin địa chỉ giao nhận qua các mã địa giới hành chính. Hệ thống đảm bảo tính toàn vẹn tham chiếu thông qua các khóa ngoại vật lý và composite primary key ở các bảng liên kết phân quyền nhiều-nhiều. Ngoài ra, cấu trúc của bảng \texttt{seller\_profiles} và \texttt{addresses} được thiết kế linh hoạt, cho phép lưu trữ chi tiết các thông tin pháp lý phục vụ cho việc hậu kiểm và đối soát của quản trị viên. Việc tách biệt bảng chứa tệp tin phương tiện \texttt{media\_assets} giúp quản lý tập trung và tối ưu hóa việc phân phát tài nguyên hình ảnh qua dịch vụ đám mây Cloudinary.
+Biểu đồ ERD này làm rõ sự tách biệt giữa tài khoản người dùng, hồ sơ người bán và địa chỉ giao nhận được tham chiếu bằng mã địa giới hành chính. Khóa ngoại vật lý cùng khóa chính ghép ở các bảng liên kết duy trì tính toàn vẹn tham chiếu cho các quan hệ đã mô hình hóa. \texttt{seller\_profiles} lưu thông tin hồ sơ kinh doanh trong phạm vi hệ thống, còn \texttt{addresses} lưu dữ liệu giao nhận; hai bảng này không thể hiện một quy trình xác minh danh tính pháp lý độc lập. Bảng \texttt{media\_assets} quản lý tập trung metadata và trạng thái liên kết của tài nguyên được lưu trên Cloudinary.
 
 Trong nhóm finance, \texttt{wallet\_transactions} lưu các biến động đã thành công; \texttt{wallet\_operations} quản lý vòng đời thao tác và bảo đảm \texttt{operation\_key} là duy nhất. \texttt{platform\_revenue\_transactions} ghi phí thẩm định, hoa hồng và phần phí từ cọc bị tịch thu. Không có sổ cái ký quỹ riêng.
 
@@ -301,7 +301,7 @@ Một product có thể có nhiều \texttt{auction\_sessions} trong lịch sử
 \par\small\textit{Nguồn: Tổng hợp từ Flyway migration \texttt{V1--V5}.}
 \end{figure}
 
-Sơ đồ tài chính thể hiện rõ tính độc lập của các thao tác ví thông qua khóa duy nhất của bảng operation, giúp ngăn ngừa việc thực thi lặp và bảo vệ số dư khả dụng của tài khoản. Quan hệ giữa các bảng đấu giá và lịch sử bid được tối ưu hóa cho việc truy vết và kiểm toán các giao dịch ký quỹ. Cơ chế ghi nhật ký giao dịch trong bảng \texttt{wallet\_transactions} hoạt động theo nguyên tắc append-only, đảm bảo mọi biến động số dư đều được lưu vết vĩnh viễn và không thể bị sửa đổi trái phép. Ràng buộc duy nhất trên cặp khóa ngoại của bảng đăng ký tham gia cũng giúp ngăn chặn việc một người dùng đăng ký nhiều lần trong cùng một phiên đấu giá, giữ vững tính công bằng của hệ thống.
+Sơ đồ tài chính thể hiện việc nhận diện từng thao tác ví bằng \texttt{operation\_key} duy nhất, qua đó hạn chế thực thi lặp ở tầng ứng dụng. \texttt{wallet\_transactions} được service ghi theo hướng append-only để lưu vết các biến động đã hoàn tất, nhưng lược đồ không có trigger làm cho bản ghi bất biến tuyệt đối ở tầng cơ sở dữ liệu. Quan hệ giữa phiên, người tham gia và bid hỗ trợ truy vết diễn biến đấu giá. Ràng buộc duy nhất trên cặp \texttt{(auction\_session\_id, user\_id)} ngăn tạo hai bản đăng ký cho cùng một tài khoản trong một phiên.
 
 \texttt{orders} dùng cặp \texttt{(source\_type, source\_id)} làm khóa duy nhất. Với nguồn \texttt{AUCTION}, source ID trỏ logic tới session nhưng schema không tạo foreign key trực tiếp từ order sang \texttt{auction\_sessions}; adapter chịu trách nhiệm xác minh nguồn. Mỗi order có tối đa một \texttt{order\_fulfillments}. Một order có thể có nhiều dispute theo lịch sử, nhưng service chỉ ngăn nhiều dispute hoạt động đồng thời. \texttt{dispute\_evidence} luôn thuộc một dispute và có thể không gắn message nếu là bằng chứng lúc mở vụ việc.
 
@@ -314,7 +314,7 @@ Sơ đồ tài chính thể hiện rõ tính độc lập của các thao tác v
 \par\small\textit{Nguồn: Tổng hợp từ Flyway migration \texttt{V1--V5}.}
 \end{figure}
 
-Thiết kế cơ sở dữ liệu của phân hệ sau đấu giá tập trung vào tính nhất quán trạng thái giữa đơn hàng, thông tin giao nhận và tranh chấp phát sinh. Các mối liên kết này hỗ trợ đắc lực cho việc xử lý khiếu nại và tự động hoàn tất đơn hàng theo thời gian định trước. Sự vắng mặt của khóa ngoại vật lý giữa bảng \texttt{orders} và \texttt{auction\_sessions} được bù đắp bằng các ràng buộc logic chặt chẽ trong mã nguồn ứng dụng, giúp giảm thiểu sự phụ thuộc trực tiếp giữa phân hệ đấu giá và phân hệ sau đấu giá, tạo điều kiện thuận lợi cho việc bảo trì và mở rộng hệ thống sau này. Các bằng chứng tranh chấp trong bảng \texttt{dispute\_evidence} được liên kết chặt chẽ với vụ việc tranh chấp để làm căn cứ pháp lý rõ ràng cho admin khi ra quyết định phân xử.
+Thiết kế cơ sở dữ liệu của phân hệ sau đấu giá liên kết trạng thái đơn hàng, giao nhận và tranh chấp để phục vụ các luồng hoàn tất, hủy và phân xử. Không có khóa ngoại vật lý giữa \texttt{orders} và \texttt{auction\_sessions}; adapter nguồn đơn xác minh liên kết logic này trong mã ứng dụng. Bằng chứng trong \texttt{dispute\_evidence} được gắn với hồ sơ tranh chấp và dùng làm dữ liệu hỗ trợ để Admin xem xét, không tự chứng minh tính xác thực hoặc giá trị pháp lý của nội dung ảnh.
 
 Redis không được đưa vào ERD vì không phải nguồn dữ liệu quan hệ bền vững. Hai key chính của phiên hoạt động là \texttt{auction:session:\{id\}:state} và \texttt{auction:session:\{id\}:bidders}. Production bật AOF và volume nhằm giảm mất state runtime khi container khởi động lại, nhưng Redis vẫn là nguồn trạng thái runtime của phiên \texttt{ACTIVE}, còn MySQL quản lý dữ liệu bền vững và trạng thái terminal.
 
@@ -415,7 +415,7 @@ Migration Flyway & 5 & \texttt{V1--V5} \\ \hline
 \label{tab:source-code-metrics}
 \end{table}
 
-Kết quả build và test được trình bày tại Mục~\ref{sec:automated-test-results}. Hệ thống đã được đưa lên production và hoạt động ổn định trong quá trình sử dụng. Trang chủ HTTPS cùng endpoint readiness đều trả HTTP 200 tại lần kiểm tra gần nhất.
+Kết quả build và test được trình bày tại Mục~\ref{sec:automated-test-results}. Hệ thống đã được đưa lên production; theo xác nhận của chủ dự án, các chức năng chính vẫn hoạt động bình thường. Trang chủ HTTPS cùng endpoint readiness đều trả HTTP 200 tại lần kiểm tra ngày 22/06/2026, nhưng kết quả tại một thời điểm không thay thế dữ liệu giám sát dài hạn.
 
 \FloatBarrier
 \subsection{Minh họa các chức năng chính}
@@ -424,9 +424,9 @@ Các ảnh minh họa ở phần này được chụp trực tiếp từ ứng d
 
 \subsubsection{Tạo sản phẩm và gửi thẩm định}
 
-Khu vực dành cho người bán được thiết kế tối giản để hỗ trợ quá trình đăng tải sản phẩm gỗ mỹ nghệ một cách nhanh chóng. Người bán có thể tạo bản nháp sản phẩm, nhập các thông tin mô tả chi tiết về kích thước, chất liệu gỗ, độ tuổi của gỗ, nguồn gốc xuất xứ và các tài liệu chứng minh tính hợp pháp đi kèm. Hệ thống hỗ trợ tải lên nhiều hình ảnh chụp chi tiết các góc cạnh của sản phẩm qua dịch vụ đám mây Cloudinary. Người bán bắt buộc phải lựa chọn đúng một ảnh đại diện chính làm ảnh hiển thị chính trong danh mục đấu giá trước khi có thể gửi yêu cầu thẩm định.
+Khu vực dành cho người bán hỗ trợ tạo bản nháp với các trường danh mục, tên sản phẩm, mô tả, chất liệu khai báo, kích thước và khối lượng. Mỗi sản phẩm có từ một đến mười ảnh được tải lên Cloudinary, trong đó đúng một ảnh phải được chọn làm ảnh chính. Nguồn gốc và tuổi ước tính không phải dữ liệu người bán nhập ở bước này; đây là các trường do thẩm định viên ghi nhận trong báo cáo sau khi kiểm tra sản phẩm.
 
-Trong giai đoạn sản phẩm còn ở trạng thái \texttt{DRAFT}, người bán hoàn toàn có quyền chỉnh sửa hoặc xóa thông tin sản phẩm. Khi người bán bấm nút gửi yêu cầu thẩm định, hệ thống sẽ thực hiện xác minh số dư tài khoản để tự động khấu trừ một khoản phí thẩm định cố định từ ví cá nhân của người bán. Khi giao dịch tài chính thành công, trạng thái sản phẩm sẽ tự động chuyển sang chờ thẩm định (\texttt{UNDER\_APPRAISAL}) và khóa toàn bộ quyền chỉnh sửa của người bán để bảo đảm tính toàn vẹn dữ liệu trước khi thẩm định viên tiếp nhận. Quy trình này được minh họa trực quan tại Hình~\ref{fig:ui-product-appraisal-submission}.
+Trong giai đoạn sản phẩm còn ở trạng thái \texttt{DRAFT}, người bán có thể chỉnh sửa hoặc xóa thông tin sản phẩm. Khi gửi yêu cầu thẩm định, hệ thống kiểm tra số dư và khấu trừ phí thẩm định từ ví người bán; nếu giao dịch thành công, sản phẩm chuyển sang chờ thẩm định (\texttt{PENDING\_APPRAISAL}) và người bán không còn được chỉnh sửa dữ liệu. Chỉ khi một thẩm định viên nhận quyền xử lý, sản phẩm mới chuyển sang đang thẩm định (\texttt{UNDER\_APPRAISAL}); hệ thống đồng thời lưu người nhận và thời hạn giữ quyền. Quy trình này được minh họa tại Hình~\ref{fig:ui-product-appraisal-submission}.
 
 \begin{figure}[H]
     \centering
@@ -441,9 +441,9 @@ Trong giai đoạn sản phẩm còn ở trạng thái \texttt{DRAFT}, người 
 
 \subsubsection{Kiểm định và tra cứu chứng thư}
 
-Thẩm định viên sử dụng một cổng thông tin chuyên biệt để theo dõi danh sách các sản phẩm đang xếp hàng chờ kiểm định từ toàn bộ người bán trên hệ thống. Khi tiếp nhận một hồ sơ, sản phẩm sẽ được khóa cho riêng thẩm định viên đó xử lý. Giao diện làm việc của thẩm định viên cho phép nhập các đánh giá chuyên môn chi tiết về loại gỗ, tình trạng nguyên vẹn, tuổi thọ ước tính của gỗ, và kết luận xác thực sản phẩm. Thẩm định viên bắt buộc phải tải lên các hình ảnh bằng chứng kiểm định cận cảnh các chi tiết vân gỗ hoặc các vết chạm trổ đặc trưng để làm căn cứ pháp lý. Sau khi báo cáo được gửi, hệ thống tự động khóa và không cho phép chỉnh sửa hay xóa để tránh gian lận, đồng thời chuyển trạng thái sản phẩm sang đã thẩm định (\texttt{APPRAISED}) hoặc từ chối (\texttt{REJECTED}).
+Thẩm định viên sử dụng khu vực chuyên biệt để theo dõi các sản phẩm đang chờ xử lý. Khi nhận một hồ sơ, sản phẩm chuyển sang \texttt{UNDER\_APPRAISAL} và quyền xử lý được giữ cho thẩm định viên đó trong thời hạn cấu hình. Giao diện cho phép nhập chất liệu đã xác minh, nguồn gốc, tuổi ước tính, mức tình trạng, giá trị ước tính, nhận xét và kết luận xác thực. Ảnh chứng minh có thể được tải lên để hỗ trợ việc xem xét nhưng không phải trường bắt buộc. Sau khi báo cáo được gửi, hệ thống không cung cấp thao tác sửa hoặc xóa báo cáo, đồng thời chuyển sản phẩm sang \texttt{APPRAISED} hoặc \texttt{REJECTED}.
 
-Bên cạnh đó, bất kỳ người dùng nào cũng có thể tra cứu thông tin chứng thư công khai thông qua mã số chứng thư độc nhất được cấp cho sản phẩm. Trang tra cứu chứng thư hiển thị toàn bộ thông tin chi tiết của sản phẩm gỗ, báo cáo kết luận của thẩm định viên và mã vân tay SHA-256 tham chiếu của dữ liệu báo cáo thẩm định. Việc cung cấp mã hash SHA-256 giúp người mua hoặc bên thứ ba có thể dễ dàng đối chiếu, xác minh tính toàn vẹn và chống làm giả chứng thư ngoại tuyến. Giao diện hàng chờ thẩm định và tra cứu chứng thư được mô tả tại Hình~\ref{fig:ui-appraisal-certificate}.
+Bên cạnh đó, người dùng có thể tra cứu chứng thư công khai bằng mã chứng thư được cấp cho sản phẩm, kể cả khi kết luận thẩm định là \texttt{REJECTED}. Trang tra cứu hiển thị dữ liệu sản phẩm, kết luận của thẩm định viên và dấu vân tay SHA-256 tham chiếu được lưu cùng báo cáo. Hệ thống hiện chưa tự tái tạo dữ liệu đầu vào để tính lại và so sánh hash khi tra cứu; vì vậy giá trị này hỗ trợ truy vết trong phạm vi ứng dụng, không phải chữ ký số và không tự bảo đảm chống sửa đổi hoặc làm giả chứng thư ngoại tuyến. Giao diện hàng chờ thẩm định và tra cứu chứng thư được mô tả tại Hình~\ref{fig:ui-appraisal-certificate}.
 
 \begin{figure}[H]
     \centering
@@ -458,7 +458,7 @@ Bên cạnh đó, bất kỳ người dùng nào cũng có thể tra cứu thôn
 
 \subsubsection{Tạo phiên và đăng ký tham gia}
 
-Chức năng tạo phiên đấu giá chỉ khả dụng đối với những sản phẩm đã có báo cáo thẩm định hợp lệ ở trạng thái \texttt{APPRAISED} và chưa từng tham gia phiên đấu giá nào khác (\texttt{AVAILABLE}). Biểu mẫu tạo phiên đấu giá yêu cầu người bán thiết lập các tham số vận hành quan trọng bao gồm: thời gian bắt đầu và kết thúc phiên, mức giá khởi điểm, giá bảo lưu (reserve price - mức giá tối thiểu mà người bán chấp nhận bán sản phẩm), bước giá tối thiểu cho mỗi lượt bid, và số tiền đặt cọc yêu cầu đối với người tham gia. Giao diện biểu mẫu tích hợp sẵn các công cụ gợi ý thông minh dựa trên giá trị thẩm định của sản phẩm để đề xuất mức giá khởi điểm và tiền cọc tối thiểu phù hợp, giúp tăng xác suất đấu giá thành công và bảo đảm quyền lợi tài chính cho người bán.
+Chức năng tạo phiên chỉ khả dụng khi sản phẩm có trạng thái thẩm định \texttt{APPRAISED}, trạng thái bán \texttt{AVAILABLE} và không tồn tại phiên \texttt{WAITING} hoặc \texttt{ACTIVE} khác cho cùng sản phẩm. \texttt{AVAILABLE} thể hiện sản phẩm hiện đủ điều kiện được đưa vào một phiên mới, không có nghĩa sản phẩm chưa từng tham gia đấu giá; sản phẩm từ phiên thất bại hoặc bị hủy có thể quay lại trạng thái này. Biểu mẫu yêu cầu thời gian bắt đầu và kết thúc, giá khởi điểm, giá bảo lưu, bước giá và tiền cọc. Giao diện hiển thị các giá trị đang nhập cùng giới hạn cọc theo quy tắc kiểm tra, không tự đề xuất giá bằng một mô hình thông minh dựa trên giá trị thẩm định.
 
 Về phía người mua, để tham gia đấu giá trong một phiên cụ thể, người mua bắt buộc phải đăng ký tham gia trước khi phiên kết thúc. Quá trình đăng ký yêu cầu hệ thống thực hiện kiểm tra số dư ví khả dụng của người mua; nếu số dư ví lớn hơn hoặc bằng số tiền cọc yêu cầu của phiên đấu giá, hệ thống sẽ thực hiện đóng băng khoản tiền này trong ví của người mua và chuyển trạng thái đăng ký sang thành công. Số tiền đóng băng này hoạt động như một khoản ký quỹ để ràng buộc trách nhiệm tham gia đấu giá của người mua. Giao diện tạo phiên đấu giá được thể hiện chi tiết tại Hình~\ref{fig:ui-create-auction}.
 
@@ -474,7 +474,7 @@ Về phía người mua, để tham gia đấu giá trong một phiên cụ th�
 
 Phòng đấu giá trực tuyến được thiết kế theo giao diện bảng điều khiển cockpit toàn màn hình nhằm tối ưu hóa sự tập trung của người dùng vào các biến động giá thời gian thực. Giao diện hiển thị trực quan mức giá hiện tại, định danh người đang dẫn đầu (đã được ẩn danh bằng cách che một phần ký tự để bảo đảm tính riêng tư), đồng hồ đếm ngược đồng bộ chính xác với thời gian của máy chủ backend, lịch sử chi tiết của tất cả các lượt đặt giá thành công và trạng thái kết nối thời gian thực qua giao thức WebSocket. Người dùng chỉ có thể thực hiện thao tác đặt giá khi đã đăng ký tham gia phiên thành công và trạng thái phiên hiển thị hợp lệ với thuộc tính \texttt{canBid=true} do máy chủ trả về.
 
-Khi có bất kỳ lượt đặt giá mới nào được máy chủ chấp nhận, thông tin phòng đấu giá sẽ lập tức được cập nhật tức thời tới toàn bộ các trình duyệt đang kết nối mà không cần tải lại trang. Hệ thống tích hợp sẵn các thông báo đẩy (toast notifications) để cảnh báo tức thì cho người dùng khi họ bị người khác vượt giá, giúp họ nhanh chóng đưa ra quyết định đặt giá tiếp theo. Ngoài ra, cơ chế chống đặt giá giây cuối (anti-sniper) hoạt động đồng bộ với backend; nếu có lượt đặt giá hợp lệ trong 30 giây cuối cùng, thời điểm đóng phiên sẽ tự động kéo dài thêm 60 giây, và giao diện sẽ hiển thị một banner thông báo màu vàng nổi bật để cảnh báo tất cả người tham gia về sự gia hạn này. Bố cục của phòng đấu giá trực tuyến được minh họa tại Hình~\ref{fig:ui-active-bidding-room}.
+Khi một lượt đặt giá mới được máy chủ chấp nhận, sự kiện được truyền tới các trình duyệt đang kết nối để cập nhật phòng đấu giá mà không cần tải lại trang. Người đang dẫn đầu nếu bị vượt giá sẽ thấy cảnh báo tạm thời trên giao diện và toast trong phiên sử dụng hiện tại; đây không phải thông báo đẩy của hệ điều hành hoặc trung tâm thông báo lưu bền. Nếu có lượt đặt giá hợp lệ trong 30 giây cuối, backend kéo dài thời điểm kết thúc thêm 60 giây và giao diện hiển thị thông tin gia hạn. Bố cục của phòng đấu giá trực tuyến được minh họa tại Hình~\ref{fig:ui-active-bidding-room}.
 
 \begin{figure}[H]
     \centering
@@ -486,7 +486,7 @@ Khi có bất kỳ lượt đặt giá mới nào được máy chủ chấp nh�
 
 \subsubsection{Thanh toán và giao nhận}
 
-Khi phiên đấu giá kết thúc thành công, hệ thống tự động khởi tạo một đơn hàng mới ở trạng thái chờ thanh toán (\texttt{PENDING\_PAYMENT}) dành cho người thắng cuộc. Người mua có thời hạn 72 giờ để truy cập vào chi tiết đơn hàng, lựa chọn địa chỉ giao nhận và thực hiện thanh toán phần giá trị còn lại (giá chốt trừ đi khoản tiền đặt cọc đã ký quỹ trước đó). Sau khi người mua hoàn tất thanh toán, trạng thái đơn hàng chuyển sang đã thanh toán (\texttt{PAID}), đồng thời gửi thông báo yêu cầu người bán chuẩn bị và giao hàng cho đơn vị vận chuyển.
+Khi phiên đấu giá kết thúc thành công, hệ thống tự động tạo đơn hàng \texttt{PENDING\_PAYMENT} cho người thắng. Người mua có 72 giờ để chọn địa chỉ giao nhận và thanh toán phần còn lại của giá chốt sau khi trừ tiền cọc. Khi thanh toán hoàn tất, đơn hàng chuyển sang \texttt{PAID} và bản ghi giao nhận ở trạng thái \texttt{PENDING\_SHIPMENT} được tạo với thời hạn giao hàng. Người bán theo dõi nghĩa vụ này trong danh sách đơn bán; hệ thống hiện chưa có trung tâm thông báo lưu bền để gửi và lưu lại một thông báo riêng cho sự kiện đó.
 
 Người bán có trách nhiệm xác nhận giao hàng cho đơn vị vận chuyển trước thời hạn giao hàng (shipment deadline). Khi xác nhận giao hàng, đối với các đơn vị vận chuyển bên thứ ba, người bán bắt buộc phải nhập tên nhà vận chuyển và mã số vận đơn thực tế để làm cơ sở đối soát. Trạng thái đơn hàng khi đó sẽ chuyển sang đang giao (\texttt{FULFILLING}) và người mua có thể theo dõi trực tiếp mã vận đơn để chủ động liên hệ nhận hàng. Hệ thống cũng thiết lập thời hạn tự động hoàn tất đơn hàng sau 168 giờ kể từ khi người bán giao hàng, nếu người mua không xác nhận đã nhận và không có tranh chấp phát sinh. Giao diện danh sách đơn bán của người bán được minh họa tại Hình~\ref{fig:ui-seller-order-list}.
 
@@ -500,7 +500,7 @@ Người bán có trách nhiệm xác nhận giao hàng cho đơn vị vận chu
 
 \subsubsection{Tranh chấp và quản trị}
 
-Trong trường hợp sản phẩm nhận được bị hư hại do vận chuyển hoặc không đúng với mô tả trong báo cáo thẩm định ban đầu, người mua có quyền gửi yêu cầu khiếu nại hoặc mở tranh chấp đơn hàng. Chức năng mở tranh chấp chỉ khả dụng khi đơn hàng đang ở trạng thái giao hàng và thông tin vận chuyển thực tế đã ở trạng thái \texttt{SHIPPED}. Người mua bắt buộc phải mô tả chi tiết lý do tranh chấp và tải lên các bằng chứng ban đầu bao gồm hình ảnh hoặc video mở hộp sản phẩm để làm cơ sở pháp lý cho yêu cầu của mình. Khi tranh chấp được mở, hệ thống sẽ tạm dừng toàn bộ tiến trình tự động hoàn tất đơn hàng và đóng băng khoản thanh toán để bảo đảm an toàn tài chính.
+Khi sản phẩm nhận được bị hư hại hoặc không phù hợp với thông tin đã công bố, người mua có thể mở tranh chấp nếu đơn hàng đang \texttt{FULFILLING} và fulfillment ở trạng thái \texttt{SHIPPED}. Yêu cầu phải có lý do và ít nhất một ảnh bằng chứng ban đầu; quy trình video mở hộp hoặc video đóng gói chưa được tích hợp. Khi tranh chấp được mở, order chuyển sang \texttt{DISPUTED}. Trạng thái này làm cho luồng tự động hoàn tất không thể giải ngân cho người bán cho đến khi Admin phân xử; hệ thống không triển khai một sổ cái escrow độc lập hoặc thao tác đóng băng riêng cho khoản thanh toán này.
 
 Giao diện hồ sơ tranh chấp hoạt động như một kênh trao đổi thông tin trực tiếp ba bên giữa người mua, người bán và quản trị viên hệ thống. Các bên có thể gửi phản hồi, tranh luận và tiếp tục bổ sung thêm các hình ảnh bằng chứng trực quan trong cùng một luồng hội thoại. Quản trị viên hệ thống sẽ đóng vai trò là trọng tài xem xét toàn bộ diễn biến trao đổi và các bằng chứng thực tế được cung cấp để ra phán quyết cuối cùng: hoặc chấp nhận tranh chấp của người mua để hoàn trả tiền, hoặc bác bỏ tranh chấp để tiến hành quyết toán đơn hàng cho người bán. Giao diện chi tiết của hồ sơ tranh chấp và lịch sử trao đổi được thể hiện tại Hình~\ref{fig:ui-participant-dispute}.
 
@@ -515,7 +515,7 @@ Giao diện hồ sơ tranh chấp hoạt động như một kênh trao đổi th
 \FloatBarrier
 \section{Kiểm thử}
 
-WoodCert Auction được kiểm tra ở các mức đơn vị, tích hợp, giao diện, đầu cuối và đóng gói. Bộ kiểm thử được chạy trên phiên bản \texttt{5aa5a4770db4} ngày 22/06/2026. Kết quả phản ánh những kịch bản đã thực thi, không thay thế cho kiểm thử tải hoặc quá trình theo dõi production dài hạn.
+WoodCert Auction được kiểm tra ở các mức đơn vị, tích hợp, giao diện, đầu cuối và đóng gói. Bộ kiểm thử được chạy ngày 29/06/2026 trong môi trường được mô tả dưới đây. Kết quả phản ánh những kịch bản đã thực thi, không thay thế cho kiểm thử tải hoặc quá trình theo dõi production dài hạn.
 
 Môi trường backend sử dụng Windows 11, Java 17.0.12, Maven Wrapper 3.9.14 và Docker Server 25.0.3. Testcontainers khởi tạo MySQL và Redis thật trong container cho bài integration. Frontend sử dụng Node.js 20.19.0, pnpm 11.0.9, Vitest 4.1.5 và Playwright 1.59.1 với Chromium.
 
@@ -586,7 +586,7 @@ Biên dịch backend & Maven compile & Toàn bộ mã nguồn & Đạt & 0 \\ \h
 \end{table}
 
 \FloatBarrier
-Toàn bộ các ca trong bộ kiểm thử đều đạt ở môi trường nêu trên. Dự án chưa thực hiện benchmark tải nên chưa có số liệu về p95, thông lượng hoặc tỷ lệ sẵn sàng. Việc production vận hành ổn định trong quá trình sử dụng là kết quả thực tế, nhưng chưa thay thế được dữ liệu giám sát dài hạn hoặc biên bản nghiệm thu cho từng kịch bản.
+Toàn bộ các ca trong bộ kiểm thử đều đạt ở môi trường nêu trên. Dự án chưa thực hiện benchmark tải nên chưa có số liệu về p95, thông lượng hoặc tỷ lệ sẵn sàng. Chủ dự án xác nhận các chức năng chính vẫn hoạt động bình thường trên production; xác nhận này không thay thế dữ liệu giám sát dài hạn hoặc biên bản nghiệm thu cho từng kịch bản.
 
 \subsection{Kiểm tra trên môi trường production}
 
@@ -652,7 +652,7 @@ Nếu stack mới không vượt qua xác minh, script đưa backend/frontend v�
 \FloatBarrier
 \subsection{Tình trạng hoạt động trên production}
 
-Production sử dụng tên miền \texttt{woodauction.id.vn} và đã hoạt động ổn định trong quá trình sử dụng. DNS phân giải đúng tên miền, HTTP được chuyển hướng sang HTTPS, trang chủ trả HTTP 200 và endpoint readiness trả HTTP 200 kèm các header bảo mật của Spring Security.
+Production sử dụng tên miền \texttt{woodauction.id.vn}. Kết quả kiểm tra ngày 22/06/2026 cho thấy DNS phân giải thành công và HTTP chuyển hướng sang HTTPS. Trang chủ cùng endpoint readiness trả HTTP 200; phản hồi readiness chứa các header bảo mật của Spring Security. Theo xác nhận của chủ dự án, các chức năng chính vẫn hoạt động bình thường sau thời điểm kiểm tra này.
 
 Các kết quả trên xác nhận WoodCert Auction đã được triển khai production và có thể truy cập tại thời điểm kiểm tra. Dự án chưa có dữ liệu giám sát và benchmark đủ dài để công bố tỷ lệ sẵn sàng, số người dùng đồng thời, thông lượng hoặc khả năng chịu tải.
 
