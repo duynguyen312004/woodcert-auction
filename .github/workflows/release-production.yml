@@ -57,7 +57,7 @@ jobs:
       allow_active_auctions: ${{ steps.release.outputs.allow_active_auctions }}
     steps:
       - name: Check out repository history
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
 
@@ -121,7 +121,7 @@ jobs:
             repository: duynguyen312004/woodcert-auction-frontend
     steps:
       - name: Check out release commit
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           ref: ${{ needs.resolve.outputs.target_sha }}
 
@@ -167,7 +167,7 @@ jobs:
       url: https://woodauction.id.vn
     steps:
       - name: Check out deployment script
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           ref: ${{ needs.resolve.outputs.target_sha }}
 
